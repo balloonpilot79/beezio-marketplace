@@ -1,0 +1,241 @@
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Menu, X, Hexagon } from 'lucide-react';
+import CartIcon from './CartIcon';
+
+const Header: React.FC = () => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
+  return (
+    <header className="bg-gradient-to-r from-royal via-hive to-royal shadow-lg sticky top-0 z-50 border-b-2 border-honey-500">
+      {/* Honeycomb Pattern Overlay */}
+      <div className="absolute inset-0 bg-honeycomb opacity-30"></div>
+      
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo with Hexagon */}
+          <Link to="/" className="flex items-center space-x-3 group" onClick={closeMobileMenu}>
+            <div className="relative">
+              {/* Hexagon Background */}
+              <div 
+                className="w-10 h-10 sm:w-12 sm:h-12 bg-honey-gradient rounded-lg shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110 floating"
+                style={{
+                  clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)'
+                }}
+              ></div>
+              {/* Bee Icon */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-bee-800 font-bold text-lg sm:text-xl">🐝</span>
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-2xl sm:text-3xl font-display font-bold text-bee-800 group-hover:text-honey-600 transition-colors">
+                Beezio
+              </span>
+              <span className="text-xs text-honey-600 font-medium -mt-1 hidden sm:block">
+                .co
+              </span>
+            </div>
+          </Link>
+          
+          {/* Tagline with Hexagon Decorations */}
+          <div className="hidden xl:flex items-center space-x-4 ml-8 mr-auto">
+            <div className="flex space-x-2">
+              <div 
+                className="w-3 h-3 bg-honey-400 floating"
+                style={{
+                  clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)',
+                  animationDelay: '0.5s'
+                }}
+              ></div>
+              <div 
+                className="w-3 h-3 bg-amber-500 floating"
+                style={{
+                  clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)',
+                  animationDelay: '1s'
+                }}
+              ></div>
+              <div 
+                className="w-3 h-3 bg-honey-600 floating"
+                style={{
+                  clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)',
+                  animationDelay: '1.5s'
+                }}
+              ></div>
+            </div>
+            <div className="text-center">
+              <h2 className="text-lg font-display font-bold text-bee-700">Empowering Commerce</h2>
+              <p className="text-sm text-honey-600 font-medium">The Hive of Affiliate Marketing</p>
+            </div>
+          </div>
+          
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center space-x-6">
+            <Link to="/" className="text-bee-700 hover:text-honey-500 transition-colors font-medium relative group">
+              Home
+              <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-honey-500 transition-all duration-300 group-hover:w-full"></div>
+            </Link>
+            <Link to="/fundraisers" className="text-bee-700 hover:text-honey-500 transition-colors relative group">
+              Fundraisers
+              <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-honey-500 transition-all duration-300 group-hover:w-full"></div>
+            </Link>
+            <Link to="/products" className="text-bee-700 hover:text-honey-500 transition-colors relative group">
+              Marketplace
+              <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-honey-500 transition-all duration-300 group-hover:w-full"></div>
+            </Link>
+            <Link to="/sellers" className="text-bee-700 hover:text-honey-500 transition-colors relative group">
+              Sellers
+              <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-honey-500 transition-all duration-300 group-hover:w-full"></div>
+            </Link>
+            <Link to="/affiliates" className="text-bee-700 hover:text-honey-500 transition-colors relative group">
+              Affiliates
+              <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-honey-500 transition-all duration-300 group-hover:w-full"></div>
+            </Link>
+            <Link to="/earnings" className="text-bee-700 hover:text-honey-500 transition-colors relative group">
+              Earnings
+              <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-honey-500 transition-all duration-300 group-hover:w-full"></div>
+            </Link>
+            <CartIcon />
+            <button
+              type="button"
+              className="btn-honey text-sm font-medium"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-auth-modal', { detail: { mode: 'login' } }))}
+            >
+              🐝 Login
+            </button>
+            <Link to="/signup" className="btn-honey text-sm font-medium">
+              🍯 Sign Up
+            </Link>
+          </div>
+
+          {/* Mobile Menu - Cart and Hamburger */}
+          <div className="flex items-center space-x-3 lg:hidden">
+            <CartIcon />
+            <button
+              onClick={toggleMobileMenu}
+              className="text-bee-700 hover:text-honey-500 transition-colors p-2 rounded-lg hover:bg-honey-100"
+              aria-label="Toggle mobile menu"
+            >
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Menu Dropdown */}
+        {isMobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <div 
+              className="fixed inset-0 bg-bee-800 bg-opacity-50 z-40 lg:hidden"
+              onClick={closeMobileMenu}
+            />
+            
+            {/* Menu Panel */}
+            <div className="absolute top-full left-0 right-0 lg:hidden bg-hive-gradient border-t-2 border-honey-500 shadow-xl z-50 animate-in slide-in-from-top-2 duration-200">
+              {/* Honeycomb Pattern */}
+              <div className="absolute inset-0 bg-honeycomb opacity-20"></div>
+              
+              <div className="relative px-4 py-6 space-y-2 max-h-[calc(100vh-4rem)] overflow-y-auto">
+                <Link 
+                  to="/" 
+                  className="flex items-center space-x-3 text-bee-700 hover:text-honey-500 transition-colors font-medium py-3 px-4 rounded-lg hover:bg-honey-100 active:bg-honey-200"
+                  onClick={closeMobileMenu}
+                >
+                  <div 
+                    className="w-4 h-4 bg-honey-400"
+                    style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)' }}
+                  ></div>
+                  <span>Home</span>
+                </Link>
+                <Link 
+                  to="/fundraisers" 
+                  className="flex items-center space-x-3 text-bee-700 hover:text-honey-500 transition-colors py-3 px-4 rounded-lg hover:bg-honey-100 active:bg-honey-200"
+                  onClick={closeMobileMenu}
+                >
+                  <div 
+                    className="w-4 h-4 bg-nectar"
+                    style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)' }}
+                  ></div>
+                  <span>Fundraisers</span>
+                </Link>
+                <Link 
+                  to="/products" 
+                  className="flex items-center space-x-3 text-bee-700 hover:text-honey-500 transition-colors py-3 px-4 rounded-lg hover:bg-honey-100 active:bg-honey-200"
+                  onClick={closeMobileMenu}
+                >
+                  <div 
+                    className="w-4 h-4 bg-amber-500"
+                    style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)' }}
+                  ></div>
+                  <span>Marketplace</span>
+                </Link>
+                <Link 
+                  to="/sellers" 
+                  className="flex items-center space-x-3 text-bee-700 hover:text-honey-500 transition-colors py-3 px-4 rounded-lg hover:bg-honey-100 active:bg-honey-200"
+                  onClick={closeMobileMenu}
+                >
+                  <div 
+                    className="w-4 h-4 bg-honey-600"
+                    style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)' }}
+                  ></div>
+                  <span>Sellers</span>
+                </Link>
+                <Link 
+                  to="/affiliates" 
+                  className="flex items-center space-x-3 text-bee-700 hover:text-honey-500 transition-colors py-3 px-4 rounded-lg hover:bg-honey-100 active:bg-honey-200"
+                  onClick={closeMobileMenu}
+                >
+                  <div 
+                    className="w-4 h-4 bg-pollen"
+                    style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)' }}
+                  ></div>
+                  <span>Affiliates</span>
+                </Link>
+                <Link 
+                  to="/earnings" 
+                  className="flex items-center space-x-3 text-bee-700 hover:text-honey-500 transition-colors py-3 px-4 rounded-lg hover:bg-honey-100 active:bg-honey-200"
+                  onClick={closeMobileMenu}
+                >
+                  <div 
+                    className="w-4 h-4 bg-honey-500"
+                    style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)' }}
+                  ></div>
+                  <span>Earnings</span>
+                </Link>
+                <div className="border-t-2 border-honey-300 pt-4 space-y-3">
+                  <button
+                    type="button"
+                    className="btn-honey w-full text-center"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('open-auth-modal', { detail: { mode: 'login' } }));
+                      closeMobileMenu();
+                    }}
+                  >
+                    � Login
+                  </button>
+                  <Link 
+                    to="/signup" 
+                    className="btn-honey w-full text-center block"
+                    onClick={closeMobileMenu}
+                  >
+                    🍯 Sign Up Free
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </header>
+  );
+};
+
+export default Header;

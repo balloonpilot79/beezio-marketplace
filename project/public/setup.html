@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beezio Database Setup</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; 
+            max-width: 900px; 
+            margin: 50px auto; 
+            padding: 20px; 
+            background: #f8fafc;
+        }
+        .setup-container { 
+            background: white; 
+            padding: 40px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .status { 
+            margin: 10px 0; 
+            padding: 15px; 
+            border-radius: 8px; 
+            border-left: 4px solid;
+        }
+        .success { 
+            background: #f0f9ff; 
+            color: #0c4a6e; 
+            border-color: #0ea5e9;
+        }
+        .error { 
+            background: #fef2f2; 
+            color: #991b1b; 
+            border-color: #ef4444;
+        }
+        .warning { 
+            background: #fffbeb; 
+            color: #92400e; 
+            border-color: #f59e0b;
+        }
+        button { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            border: none; 
+            padding: 16px 32px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 18px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button:hover { 
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .progress { 
+            width: 100%; 
+            background: #e5e7eb; 
+            border-radius: 8px; 
+            margin: 25px 0; 
+            overflow: hidden;
+        }
+        .progress-bar { 
+            width: 0%; 
+            height: 40px; 
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            border-radius: 8px; 
+            transition: width 0.5s ease; 
+            text-align: center; 
+            line-height: 40px; 
+            color: white; 
+            font-weight: 600;
+        }
+        h1 {
+            color: #1f2937;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+        }
+        #results {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <h1>🚀 Beezio Database Setup</h1>
+        <p class="subtitle">This will automatically set up all database tables for your Beezio marketplace.</p>
+        
+        <div class="progress">
+            <div class="progress-bar" id="progressBar">Ready to Start</div>
+        </div>
+        
+        <div id="status"></div>
+        
+        <button onclick="setupDatabase()" id="setupBtn">🚀 Start Automated Setup</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        // Your Supabase configuration
+        const SUPABASE_URL = 'https://yemgssttxhkgrivuodbz.supabase.co';
+        const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWdzc3R0eGhrZ3JpdnVvZGJ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTkzNDAyMSwiZXhwIjoyMDY3NTEwMDIxfQ.Us9GMI_6FKyUAeiuZCLkwXgHujq8NSfvukleneGv8RA';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        
+        function updateProgress(percentage, message) {
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = percentage === 0 ? 'Ready to Start' : percentage + '%';
+            
+            if (message) {
+                const status = document.getElementById('status');
+                status.innerHTML = `<div class="status warning">${message}</div>`;
+            }
+        }
+        
+        function addResult(message, type = 'success') {
+            const results = document.getElementById('results');
+            results.innerHTML += `<div class="status ${type}">${message}</div>`;
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        async function executeSQL(sql, description) {
+            try {
+                addResult(`📄 ${description}...`, 'warning');
+                
+                // Use direct SQL execution
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/exec_sql`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+                        'apikey': SUPABASE_SERVICE_KEY
+                    },
+                    body: JSON.stringify({ sql })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.text();
+                    addResult(`⚠️ ${description}: ${error}`, 'error');
+                    return false;
+                } else {
+                    addResult(`✅ ${description}: Success`, 'success');
+                    return true;
+                }
+            } catch (err) {
+                addResult(`❌ ${description}: ${err.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function setupDatabase() {
+            const setupBtn = document.getElementById('setupBtn');
+            setupBtn.disabled = true;
+            setupBtn.textContent = '🔄 Setting up...';
+            
+            updateProgress(5, 'Starting database setup...');
+            
+            const tables = [
+                {
+                    sql: `CREATE TABLE IF NOT EXISTS public.profiles (
+                        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+                        email TEXT NOT NULL UNIQUE,
+                        full_name TEXT,
+                        role TEXT CHECK (role IN ('buyer', 'seller', 'affiliate')) DEFAULT 'buyer',
+                        avatar_url TEXT,
+                        bio TEXT,
+                        website TEXT,
+                        location TEXT,
+                        phone TEXT,
+                        total_earnings DECIMAL(10,2) DEFAULT 0,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+                    );`,
+                    description: 'Creating profiles table'
+                },
+                {
+                    sql: `CREATE TABLE IF NOT EXISTS public.products (
+                        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        seller_id UUID REFERENCES profiles(id),
+                        title TEXT NOT NULL,
+                        description TEXT,
+                        price DECIMAL(10,2) NOT NULL DEFAULT 0,
+                        images TEXT[] DEFAULT '{}',
+                        stock_quantity INTEGER DEFAULT 0,
+                        is_active BOOLEAN DEFAULT true,
+                        commission_rate DECIMAL(5,2) DEFAULT 0,
+                        commission_type TEXT DEFAULT 'percentage',
+                        shipping_cost DECIMAL(10,2) DEFAULT 0,
+                        tags TEXT[] DEFAULT '{}',
+                        videos TEXT[] DEFAULT '{}',
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+                    );`,
+                    description: 'Creating products table'
+                },
+                {
+                    sql: `CREATE TABLE IF NOT EXISTS public.orders (
+                        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        user_id UUID REFERENCES profiles(id),
+                        total_amount DECIMAL(10,2) NOT NULL,
+                        currency TEXT NOT NULL DEFAULT 'USD',
+                        status TEXT NOT NULL DEFAULT 'pending',
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+                    );`,
+                    description: 'Creating orders table'
+                },
+                {
+                    sql: `ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;`,
+                    description: 'Enabling security on profiles'
+                },
+                {
+                    sql: `ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;`,
+                    description: 'Enabling security on products'
+                },
+                {
+                    sql: `CREATE POLICY IF NOT EXISTS "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = user_id);`,
+                    description: 'Creating profile security policy'
+                },
+                {
+                    sql: `CREATE POLICY IF NOT EXISTS "Anyone can view active products" ON public.products FOR SELECT USING (is_active = true);`,
+                    description: 'Creating product security policy'
+                }
+            ];
+            
+            let progress = 10;
+            const increment = 70 / tables.length;
+            
+            for (const table of tables) {
+                await executeSQL(table.sql, table.description);
+                progress += increment;
+                updateProgress(Math.round(progress), table.description + ' complete');
+                await new Promise(resolve => setTimeout(resolve, 800));
+            }
+            
+            updateProgress(85, 'Testing database connection...');
+            
+            // Test the setup
+            try {
+                const { data, error } = await supabase.from('profiles').select('id').limit(1);
+                if (!error) {
+                    updateProgress(100, 'Database setup complete!');
+                    addResult('🎉 SUCCESS! Your Beezio database is ready!', 'success');
+                    addResult('✅ You can now use your marketplace at: http://localhost:5173/', 'success');
+                    addResult('✅ Try creating an account and testing the features!', 'success');
+                    setupBtn.textContent = '✅ Setup Complete';
+                    setupBtn.style.background = '#10b981';
+                } else {
+                    addResult(`⚠️ Setup completed but got error: ${error.message}`, 'warning');
+                    setupBtn.textContent = '⚠️ Setup Complete (check results)';
+                    setupBtn.disabled = false;
+                }
+            } catch (err) {
+                addResult('⚠️ Setup completed but connection test failed. Try refreshing your site.', 'warning');
+                setupBtn.textContent = '🔄 Try Again';
+                setupBtn.disabled = false;
+            }
+        }
+        
+        // Test connection on page load
+        window.addEventListener('load', async () => {
+            try {
+                const { data, error } = await supabase.from('profiles').select('id').limit(1);
+                if (!error) {
+                    addResult('✅ Database already set up and working!', 'success');
+                    document.getElementById('setupBtn').textContent = '✅ Already Set Up';
+                    document.getElementById('setupBtn').disabled = true;
+                    document.getElementById('setupBtn').style.background = '#10b981';
+                }
+            } catch (e) {
+                // Database not set up yet, which is fine
+            }
+        });
+    </script>
+</body>
+</html>

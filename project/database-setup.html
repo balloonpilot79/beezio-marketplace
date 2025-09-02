@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beezio Database Setup</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .setup-container { background: #f5f5f5; padding: 30px; border-radius: 10px; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { background: #007bff; color: white; border: none; padding: 15px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        .progress { width: 100%; background: #ddd; border-radius: 5px; margin: 20px 0; }
+        .progress-bar { width: 0%; height: 30px; background: #4caf50; border-radius: 5px; transition: width 0.3s; text-align: center; line-height: 30px; color: white; }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <h1>🚀 Beezio Database Setup</h1>
+        <p>This will automatically set up all database tables for your Beezio marketplace.</p>
+        
+        <div class="progress">
+            <div class="progress-bar" id="progressBar">0%</div>
+        </div>
+        
+        <div id="status"></div>
+        
+        <button onclick="setupDatabase()" id="setupBtn">🚀 Start Automated Setup</button>
+        
+        <div id="results" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        // Your Supabase configuration
+        const SUPABASE_URL = 'https://yemgssttxhkgrivuodbz.supabase.co';
+        const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWdzc3R0eGhrZ3JpdnVvZGJ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTkzNDAyMSwiZXhwIjoyMDY3NTEwMDIxfQ.Us9GMI_6FKyUAeiuZCLkwXgHujq8NSfvukleneGv8RA';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        
+        function updateProgress(percentage, message) {
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = percentage + '%';
+            
+            const status = document.getElementById('status');
+            status.innerHTML = `<div class="status warning">${message}</div>`;
+        }
+        
+        function addResult(message, type = 'success') {
+            const results = document.getElementById('results');
+            results.innerHTML += `<div class="status ${type}">${message}</div>`;
+        }
+        
+        async function executeSQL(sql, description) {
+            try {
+                addResult(`📄 ${description}...`, 'warning');
+                const { data, error } = await supabase.rpc('exec_sql', { sql });
+                
+                if (error) {
+                    addResult(`⚠️ ${description}: ${error.message}`, 'error');
+                    return false;
+                } else {
+                    addResult(`✅ ${description}: Success`, 'success');
+                    return true;
+                }
+            } catch (err) {
+                addResult(`❌ ${description}: ${err.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function setupDatabase() {
+            const setupBtn = document.getElementById('setupBtn');
+            setupBtn.disabled = true;
+            setupBtn.textContent = '🔄 Setting up...';
+            
+            updateProgress(10, 'Starting database setup...');
+            
+            const tables = [
+                {
+                    sql: \`CREATE TABLE IF NOT EXISTS public.profiles (
+                        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+                        email TEXT NOT NULL UNIQUE,
+                        full_name TEXT,
+                        role TEXT CHECK (role IN ('buyer', 'seller', 'affiliate')) DEFAULT 'buyer',
+                        avatar_url TEXT,
+                        bio TEXT,
+                        website TEXT,
+                        location TEXT,
+                        phone TEXT,
+                        total_earnings DECIMAL(10,2) DEFAULT 0,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+                    )\`,
+                    description: 'Creating profiles table'
+                },
+                {
+                    sql: \`CREATE TABLE IF NOT EXISTS public.products (
+                        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        seller_id UUID REFERENCES profiles(id),
+                        title TEXT NOT NULL,
+                        description TEXT,
+                        price DECIMAL(10,2) NOT NULL DEFAULT 0,
+                        images TEXT[] DEFAULT '{}',
+                        stock_quantity INTEGER DEFAULT 0,
+                        is_active BOOLEAN DEFAULT true,
+                        commission_rate DECIMAL(5,2) DEFAULT 0,
+                        commission_type TEXT DEFAULT 'percentage',
+                        shipping_cost DECIMAL(10,2) DEFAULT 0,
+                        tags TEXT[] DEFAULT '{}',
+                        videos TEXT[] DEFAULT '{}',
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+                    )\`,
+                    description: 'Creating products table'
+                },
+                {
+                    sql: \`ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY\`,
+                    description: 'Enabling security on profiles'
+                },
+                {
+                    sql: \`ALTER TABLE public.products ENABLE ROW LEVEL SECURITY\`,
+                    description: 'Enabling security on products'
+                },
+                {
+                    sql: \`CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = user_id)\`,
+                    description: 'Creating profile security policy'
+                },
+                {
+                    sql: \`CREATE POLICY "Anyone can view active products" ON public.products FOR SELECT USING (is_active = true)\`,
+                    description: 'Creating product security policy'
+                }
+            ];
+            
+            let progress = 20;
+            const increment = 60 / tables.length;
+            
+            for (const table of tables) {
+                await executeSQL(table.sql, table.description);
+                progress += increment;
+                updateProgress(Math.round(progress), table.description + ' complete');
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            updateProgress(90, 'Testing database connection...');
+            
+            // Test the setup
+            try {
+                const { data, error } = await supabase.from('profiles').select('id').limit(1);
+                if (!error) {
+                    updateProgress(100, 'Database setup complete!');
+                    addResult('🎉 Success! Your Beezio database is ready!', 'success');
+                    addResult('✅ You can now use your marketplace at: http://localhost:5173/', 'success');
+                    setupBtn.textContent = '✅ Setup Complete';
+                } else {
+                    addResult('⚠️ Setup completed but there may be issues. Check the results above.', 'warning');
+                    setupBtn.textContent = '⚠️ Setup Complete (with warnings)';
+                }
+            } catch (err) {
+                addResult('⚠️ Setup may be incomplete. You can try manual setup.', 'warning');
+                setupBtn.textContent = '⚠️ Try Manual Setup';
+                setupBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

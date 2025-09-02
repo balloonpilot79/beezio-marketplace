@@ -1,0 +1,39 @@
+{
+  "name": "Beezio.co Deployment Scripts",
+  "scripts": {
+    "build-and-preview": {
+      "command": "npm run build && npm run preview",
+      "description": "Build for production and preview locally"
+    },
+    "deploy-check": {
+      "command": "npm run build && echo 'Build successful! Ready for Netlify deployment.'",
+      "description": "Verify build works before deployment"
+    },
+    "netlify-deploy": {
+      "command": "netlify deploy --prod --dir=dist",
+      "description": "Deploy to Netlify (requires netlify-cli)"
+    }
+  },
+  "environment-variables": {
+    "required": [
+      "VITE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY"
+    ],
+    "recommended": [
+      "VITE_STRIPE_PUBLISHABLE_KEY"
+    ],
+    "optional": [
+      "EXCHANGE_RATE_API_KEY",
+      "GEOLOCATION_API_KEY"
+    ]
+  },
+  "deployment-checklist": [
+    "✅ Production build successful",
+    "✅ All TypeScript errors resolved", 
+    "✅ Bee theme fully implemented",
+    "✅ netlify.toml configured",
+    "✅ Environment variables documented",
+    "⚠️ Add environment variables in Netlify dashboard",
+    "⚠️ Test all functionality after deployment"
+  ]
+}
