@@ -38,25 +38,25 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center space-x-4">
               <Link 
-                to="/marketplace" 
+                to="/start-earning" 
                 className="text-gray-700 hover:text-yellow-600 font-medium text-sm transition-colors duration-200 relative group px-2 py-1"
               >
-                Marketplace
+                Sell & Earn
                 <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-yellow-600 transition-all duration-300 group-hover:w-[calc(100%-16px)]"></span>
               </Link>
               <Link 
-                to="/fundraisers" 
-                className="text-gray-700 hover:text-yellow-600 font-medium text-sm transition-colors duration-200 relative group px-2 py-1"
+                to="/affiliate/products" 
+                className="text-gray-700 hover:text-green-600 font-medium text-sm transition-colors duration-200 relative group px-2 py-1"
               >
-                Fundraisers
-                <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-[calc(100%-16px)]"></span>
+                Affiliate Products
+                <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-green-600 transition-all duration-300 group-hover:w-[calc(100%-16px)]"></span>
               </Link>
               <Link 
-                to="/contact" 
-                className="text-gray-700 hover:text-purple-600 font-medium text-sm transition-colors duration-200 relative group px-2 py-1"
+                to="/marketplace" 
+                className="text-gray-700 hover:text-blue-600 font-medium text-sm transition-colors duration-200 relative group px-2 py-1"
               >
-                Contact
-                <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-[calc(100%-16px)]"></span>
+                Shop
+                <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-blue-600 transition-all duration-300 group-hover:w-[calc(100%-16px)]"></span>
               </Link>
               <div className="relative">
                 <button
@@ -76,8 +76,8 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                     <Link to="/sellers" className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium">
                       For Sellers
                     </Link>
-                    <Link to="/affiliates" className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium">
-                      For Affiliates
+                    <Link to="/affiliate-guide" className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium">
+                      Affiliate Guide
                     </Link>
                   </div>
                 )}
@@ -128,7 +128,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                   onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
                   className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-2 rounded-lg font-semibold hover:from-yellow-600 hover:to-orange-600 hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                 >
-                  Sign Up
+                  Start Earning
                 </button>
               </div>
             ) : (
@@ -165,6 +165,20 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                       Dashboard
                     </Link>
                     <Link
+                      to="/affiliate/products"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors duration-200"
+                      onClick={() => setIsUserDropdownOpen(false)}
+                    >
+                      💰 Affiliate Products
+                    </Link>
+                    <Link
+                      to="/seller/products"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200"
+                      onClick={() => setIsUserDropdownOpen(false)}
+                    >
+                      🏪 My Products
+                    </Link>
+                    <Link
                       to={`/store/${user.id}`}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                       onClick={() => setIsUserDropdownOpen(false)}
@@ -172,18 +186,18 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                       My Store
                     </Link>
                     <Link
+                      to="/earnings"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors duration-200"
+                      onClick={() => setIsUserDropdownOpen(false)}
+                    >
+                      💵 Earnings
+                    </Link>
+                    <Link
                       to="/profile"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                       onClick={() => setIsUserDropdownOpen(false)}
                     >
                       Profile Settings
-                    </Link>
-                    <Link
-                      to="/earnings"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-                      onClick={() => setIsUserDropdownOpen(false)}
-                    >
-                      Earnings
                     </Link>
                     <div className="border-t border-gray-100 my-1"></div>
                     <button
@@ -217,46 +231,46 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
           <div className="md:hidden py-4 border-t border-gray-200">
             <div className="flex flex-col space-y-3">
               <Link 
-                to="/marketplace" 
-                className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200"
+                to="/start-earning" 
+                className="text-gray-700 hover:text-yellow-600 font-medium transition-colors duration-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Marketplace
+                Sell & Earn
               </Link>
               <Link 
-                to="/fundraisers" 
-                className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200"
+                to="/affiliate/products" 
+                className="text-gray-700 hover:text-green-600 font-medium transition-colors duration-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Fundraisers
+                Affiliate Products
+              </Link>
+              <Link 
+                to="/marketplace" 
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Shop
               </Link>
               <Link 
                 to="/how-it-works" 
-                className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200"
+                className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
                 onClick={() => setIsMenuOpen(false)}
               >
                 How It Works
               </Link>
               <Link 
                 to="/sellers" 
-                className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200"
+                className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
                 onClick={() => setIsMenuOpen(false)}
               >
                 For Sellers
               </Link>
               <Link 
-                to="/affiliates" 
-                className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200"
+                to="/affiliate-guide" 
+                className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                For Affiliates
-              </Link>
-              <Link 
-                to="/contact-support" 
-                className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Contact/Support
+                Affiliate Guide
               </Link>
               
               {/* Mobile Sign In/Up for non-authenticated users */}
@@ -278,7 +292,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                     }}
                     className="block w-full text-left text-gray-700 hover:text-yellow-600 font-medium transition-colors duration-200"
                   >
-                    Sign Up
+                    Start Earning
                   </button>
                 </div>
               ) : (
@@ -296,6 +310,20 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                     Dashboard
                   </Link>
                   <Link
+                    to="/affiliate/products"
+                    className="block text-gray-700 hover:text-green-600 font-medium transition-colors duration-200"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    💰 Affiliate Products
+                  </Link>
+                  <Link
+                    to="/seller/products"
+                    className="block text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    🏪 My Products
+                  </Link>
+                  <Link
                     to={`/store/${user.id}`}
                     className="block text-gray-700 hover:text-yellow-600 font-medium transition-colors duration-200"
                     onClick={() => setIsMenuOpen(false)}
@@ -303,18 +331,18 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                     My Store
                   </Link>
                   <Link
+                    to="/earnings"
+                    className="block text-gray-700 hover:text-green-600 font-medium transition-colors duration-200"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    💵 Earnings
+                  </Link>
+                  <Link
                     to="/profile"
                     className="block text-gray-700 hover:text-yellow-600 font-medium transition-colors duration-200"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Profile Settings
-                  </Link>
-                  <Link
-                    to="/earnings"
-                    className="block text-gray-700 hover:text-yellow-600 font-medium transition-colors duration-200"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Earnings
                   </Link>
                   <button
                     onClick={() => {

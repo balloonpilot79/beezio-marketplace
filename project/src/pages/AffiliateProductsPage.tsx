@@ -174,7 +174,7 @@ const AffiliateProductsPage: React.FC = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Affiliate Products</h1>
               <p className="mt-2 text-gray-600">
-                Choose products to promote and earn commissions on every sale
+                Select high-converting products and start earning commissions immediately
               </p>
             </div>
             <div className="mt-4 lg:mt-0 flex flex-col sm:flex-row gap-4">
@@ -182,9 +182,10 @@ const AffiliateProductsPage: React.FC = () => {
                 <div className="text-sm text-blue-600 font-medium">Selected Products</div>
                 <div className="text-2xl font-bold text-blue-900">{selectedProductsCount}</div>
               </div>
-              <div className="bg-green-50 px-4 py-3 rounded-lg">
-                <div className="text-sm text-green-600 font-medium">Potential Monthly Earnings</div>
+              <div className="bg-green-50 px-4 py-3 rounded-lg border border-green-200">
+                <div className="text-sm text-green-600 font-medium">Potential Earnings</div>
                 <div className="text-2xl font-bold text-green-900">${totalPotentialEarnings.toFixed(2)}</div>
+                <div className="text-xs text-green-600">per sale cycle</div>
               </div>
             </div>
           </div>
@@ -262,8 +263,8 @@ const AffiliateProductsPage: React.FC = () => {
                     className="w-full h-48 object-cover"
                   />
                   <div className="absolute top-4 right-4">
-                    <div className="bg-green-500 text-white px-2 py-1 rounded-full text-sm font-bold">
-                      {product.commission_rate}%
+                    <div className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                      {product.commission_rate}% Commission
                     </div>
                   </div>
                   <div className="absolute top-4 left-4">
@@ -296,16 +297,16 @@ const AffiliateProductsPage: React.FC = () => {
                   </div>
 
                   {/* Price and Commission */}
-                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-gray-600">Product Price:</span>
                       <span className="font-semibold text-gray-900">${product.price}</span>
                     </div>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-gray-600">Commission Rate:</span>
+                      <span className="text-sm font-semibold text-green-800">Commission Rate:</span>
                       <span className="font-bold text-green-600">{product.commission_rate}%</span>
                     </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                    <div className="flex justify-between items-center pt-2 border-t border-green-300">
                       <span className="text-sm font-medium text-gray-900">Your Earnings:</span>
                       <span className="font-bold text-blue-600">
                         ${calculateEarnings(product.price, product.commission_rate)}
@@ -368,10 +369,10 @@ const AffiliateProductsPage: React.FC = () => {
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
               <div className="font-semibold text-gray-900">
-                {selectedProductsCount} products selected
+                {selectedProductsCount} products selected for promotion
               </div>
               <div className="text-sm text-gray-600">
-                Potential earnings: ${totalPotentialEarnings.toFixed(2)} per sale cycle
+                Potential earnings: <span className="font-bold text-green-600">${totalPotentialEarnings.toFixed(2)}</span> per sale cycle
               </div>
             </div>
             <div className="flex gap-3">
@@ -379,13 +380,13 @@ const AffiliateProductsPage: React.FC = () => {
                 to="/affiliate/dashboard"
                 className="bg-blue-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors"
               >
-                View Dashboard
+                View Earnings Dashboard
               </Link>
               <Link
                 to="/affiliate/links"
                 className="bg-green-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors"
               >
-                Manage Links
+                Get Affiliate Links
               </Link>
             </div>
           </div>

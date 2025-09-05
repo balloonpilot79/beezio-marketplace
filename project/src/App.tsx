@@ -16,6 +16,7 @@ import SellerProductsPage from './pages/SellerProductsPage';
 import SellerProductFormPage from './pages/SellerProductFormPage';
 import AffiliateGuide from './pages/AffiliateGuide';
 import AutomationPage from './pages/AutomationPage';
+import FundraisersPage from './pages/FundraisersPage';
 import Dashboard from './components/Dashboard';
 import UnifiedDashboard from './components/UnifiedDashboard';
 import DashboardTest from './components/DashboardTest';
@@ -24,6 +25,9 @@ import UserSubHeader from './components/UserSubHeader';
 import AuthModal from './components/AuthModal';
 import SimpleSignupModal from './components/SimpleSignupModal';
 import AutomationBanner from './components/AutomationBanner';
+import WhiteLabelStoreBuilder from './components/WhiteLabelStoreBuilder';
+import CommissionRulesEngine from './components/CommissionRulesEngine';
+import EnhancedAffiliateDashboard from './components/EnhancedAffiliateDashboard';
 
 function App() {
   const [authModal, setAuthModal] = useState<{
@@ -71,6 +75,10 @@ function App() {
                     <Route path="/how-it-works" element={<HowItWorksPage onOpenAuthModal={setAuthModal} onOpenSimpleSignup={() => setSimpleSignupModal(true)} />} />
                     <Route path="/start-earning" element={<StartEarningPage onOpenAuthModal={setAuthModal} onOpenSimpleSignup={() => setSimpleSignupModal(true)} />} />
                     <Route path="/pricing" element={<PricingPage onOpenAuthModal={setAuthModal} onOpenSimpleSignup={() => setSimpleSignupModal(true)} />} />
+                    <Route path="/white-label-store-builder" element={<WhiteLabelStoreBuilder />} />
+                    <Route path="/commission-rules-engine" element={<CommissionRulesEngine />} />
+                    <Route path="/enhanced-affiliate-dashboard" element={<EnhancedAffiliateDashboard />} />
+                    <Route path="/fundraisers" element={<FundraisersPage />} />
                   </Routes>
                 </main>
                 
@@ -135,27 +143,41 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal, onOpenSimpleSignup }) 
           {/* Navigation - Fixed/Locked Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
             <Link to="/marketplace" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
-              Marketplace
-            </Link>
-            <Link to="/services" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
-              Services
+              🏪 Sell & Earn
             </Link>
             <Link to="/how-it-works" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
               How It Works
             </Link>
+            <Link to="/services" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
+              Services
+            </Link>
             <Link to="/automation" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
-              🚀 Free Automation
+              🚀 Free Tools
             </Link>
             <Link to="/start-earning" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
-              Start Earning
+              💰 Start Earning
+            </Link>
+            <Link to="/fundraisers" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
+              💝 Fundraisers
             </Link>
             <Link to="/pricing" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
               Pricing
             </Link>
             {user && (
-              <Link to="/dashboard" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
-                Dashboard
-              </Link>
+              <>
+                <Link to="/white-label-store-builder" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
+                  🏪 Store Builder
+                </Link>
+                <Link to="/commission-rules-engine" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
+                  ⚙️ Commission Rules
+                </Link>
+                <Link to="/enhanced-affiliate-dashboard" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
+                  📊 Advanced Dashboard
+                </Link>
+                <Link to="/dashboard" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">
+                  Dashboard
+                </Link>
+              </>
             )}
           </nav>
 
@@ -217,10 +239,12 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal, onOpenSimpleSignup }) 
                 <summary className="font-bold text-purple-700 py-2 cursor-pointer">Main Menu</summary>
                 <div className="pl-4">
                   <Link to="/marketplace" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Marketplace</Link>
-                  <Link to="/services" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Services</Link>
+                  <Link to="/marketplace" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>🏪 Sell & Earn</Link>
                   <Link to="/how-it-works" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>How It Works</Link>
-                  <Link to="/automation" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>🚀 Free Automation</Link>
-                  <Link to="/start-earning" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Start Earning</Link>
+                  <Link to="/services" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Services</Link>
+                  <Link to="/automation" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>🚀 Free Tools</Link>
+                  <Link to="/start-earning" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>💰 Earn Money</Link>
+                  <Link to="/fundraisers" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>💝 Fundraisers</Link>
                   <Link to="/pricing" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
                 </div>
               </details>
@@ -242,6 +266,9 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal, onOpenSimpleSignup }) 
                       <Link to="/dashboard/seller" className="block text-gray-700 hover:text-yellow-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Seller Dashboard</Link>
                       <Link to="/dashboard/affiliate" className="block text-gray-700 hover:text-green-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Affiliate Dashboard</Link>
                       <Link to="/dashboard/buyer" className="block text-gray-700 hover:text-blue-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Buyer Dashboard</Link>
+                      <Link to="/white-label-store-builder" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>🏪 Store Builder</Link>
+                      <Link to="/commission-rules-engine" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>⚙️ Commission Rules</Link>
+                      <Link to="/enhanced-affiliate-dashboard" className="block text-gray-700 hover:text-purple-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>📊 Advanced Dashboard</Link>
                     </div>
                   </details>
                 </>
@@ -288,19 +315,19 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
               
               <h1 className="text-5xl lg:text-7xl font-display font-bold mb-6 leading-tight">
                 <span className="bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 bg-clip-text text-transparent">
-                  Buzz Into Savings,
+                  Earn Big,
                 </span>
                 <br />
                 <span className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
-                  Earn With Every Sale
+                  Sell Smart
                 </span>
               </h1>
               
               <p className="text-xl lg:text-2xl text-purple-700 mb-4 max-w-4xl mx-auto leading-relaxed font-medium">
-                🛍️ Shop Local • 💰 Earn Rewards • 🤝 Build Community
+                🏪 Sell Products • 🤝 Earn Commissions • 🛍️ Buy Quality Goods
               </p>
               <p className="text-lg text-gray-600 mb-8 max-w-3xl mx-auto">
-                Where sellers, affiliates, buyers, and fundraisers all thrive together in the Beezio hive
+                The ultimate marketplace for sellers, affiliates, and smart shoppers
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
@@ -314,7 +341,7 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
                   to="/marketplace"
                   className="bg-white/80 backdrop-blur-sm hover:bg-white text-purple-700 border-2 border-purple-200 hover:border-purple-300 px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 shadow-lg transform hover:scale-105"
                 >
-                  🛍️ Explore Marketplace
+                  🛍️ Browse Marketplace
                 </Link>
               </div>
               
@@ -325,32 +352,32 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
                     <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                       <span className="text-3xl">🏪</span>
                     </div>
-                    <h4 className="font-bold text-gray-900 mb-2">Sellers Profit</h4>
-                    <p className="text-sm text-gray-600">Printful, Printify, Shopify integration</p>
+                    <h4 className="font-bold text-gray-900 mb-2">Sell Products</h4>
+                    <p className="text-sm text-gray-600">Easy product listings, integrated with top print providers</p>
                   </div>
                   
                   <div className="text-center">
                     <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                       <span className="text-3xl">🤝</span>
                     </div>
-                    <h4 className="font-bold text-gray-900 mb-2">Affiliates Earn</h4>
-                    <p className="text-sm text-gray-600">Up to 50% commissions + cashback</p>
+                    <h4 className="font-bold text-gray-900 mb-2">Earn Commissions</h4>
+                    <p className="text-sm text-gray-600">Up to 50% commissions on every sale you drive</p>
                   </div>
                   
                   <div className="text-center">
                     <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                      <span className="text-3xl">💝</span>
+                      <span className="text-3xl">💰</span>
                     </div>
-                    <h4 className="font-bold text-gray-900 mb-2">Fundraisers Raise</h4>
-                    <p className="text-sm text-gray-600">Commerce-powered fundraising</p>
+                    <h4 className="font-bold text-gray-900 mb-2">Fundraise</h4>
+                    <p className="text-sm text-gray-600">Turn product sales into donations for your cause</p>
                   </div>
                   
                   <div className="text-center">
                     <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                       <span className="text-3xl">🛒</span>
                     </div>
-                    <h4 className="font-bold text-gray-900 mb-2">Buyers Save</h4>
-                    <p className="text-sm text-gray-600">Discounts while supporting causes</p>
+                    <h4 className="font-bold text-gray-900 mb-2">Buy Quality</h4>
+                    <p className="text-sm text-gray-600">Shop from verified sellers with secure payments</p>
                   </div>
                 </div>
               </div>
@@ -378,10 +405,10 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
               <span className="text-3xl">🌟</span>
             </div>
             <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-              What Makes Beezio Different?
+              Why Shop on Beezio?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Unlike other platforms that only serve one type of user, Beezio is designed for everyone to succeed together
+              A marketplace designed for buyers, with amazing products, great prices, and rewards for shopping
             </p>
           </div>
 
@@ -390,15 +417,15 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
               <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <span className="text-3xl">🏪</span>
               </div>
-              <h3 className="text-xl font-semibold mb-3 text-purple-800">Sellers Make Money</h3>
-              <p className="text-gray-600">Integrate Printful, Printify, import Shopify stores, or sell anything. Keep 100% of your listed prices.</p>
+              <h3 className="text-xl font-semibold mb-3 text-purple-800">Easy Selling</h3>
+              <p className="text-gray-600">Integrate Printful, Printify, Shopify stores, or sell anything. Keep 100% of your listed prices.</p>
             </div>
             
             <div className="text-center bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-purple-100 hover:shadow-xl transition-all duration-300">
               <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <span className="text-3xl">🤝</span>
               </div>
-              <h3 className="text-xl font-semibold mb-3 text-purple-800">Affiliates Earn Big</h3>
+              <h3 className="text-xl font-semibold mb-3 text-purple-800">High Commissions</h3>
               <p className="text-gray-600">Earn 10-50% commissions. Buy products and get your commission back - making everything cheaper.</p>
             </div>
             
@@ -406,7 +433,7 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
               <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <span className="text-3xl">💝</span>
               </div>
-              <h3 className="text-xl font-semibold mb-3 text-purple-800">Fundraisers Powered by Commerce</h3>
+              <h3 className="text-xl font-semibold mb-3 text-purple-800">Fundraising Power</h3>
               <p className="text-gray-600">Raise money by promoting products instead of just asking for donations. Commission goes to your cause.</p>
             </div>
             
@@ -414,8 +441,8 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
               <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <span className="text-3xl">🛒</span>
               </div>
-              <h3 className="text-xl font-semibold mb-3 text-purple-800">Buyers Save Money</h3>
-              <p className="text-gray-600">Buy through affiliate links and get cashback. Support causes while shopping smart.</p>
+              <h3 className="text-xl font-semibold mb-3 text-purple-800">Secure Shopping</h3>
+              <p className="text-gray-600">Shop with confidence in a verified marketplace with secure payments and buyer protection.</p>
             </div>
           </div>
         </div>
@@ -434,10 +461,10 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
               <span className="text-3xl">🛍️</span>
             </div>
             <h2 className="text-4xl lg:text-5xl font-bold mb-4">
-              Shop Featured Products
+              Featured Products
             </h2>
             <p className="text-xl text-purple-200 max-w-3xl mx-auto">
-              Discover amazing products from our community of sellers and earn rewards through our affiliate program
+              Discover amazing products from our community and earn rewards while you shop
             </p>
           </div>
 
