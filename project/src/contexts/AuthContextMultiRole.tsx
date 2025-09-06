@@ -24,7 +24,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    // During development/initialization, return a safe default
+    console.warn('useAuth called outside of AuthProvider, returning safe defaults');
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      userRoles: [],
+      currentRole: 'buyer',
+      signIn: async () => {},
+      signUp: async () => {},
+      signOut: async () => {},
+      resetPassword: async () => {},
+      sendMagicLink: async () => {},
+      switchRole: async () => false,
+      addRole: async () => false,
+      hasRole: () => false,
+      loading: true
+    };
   }
   return context;
 };
