@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Camera, Upload, X, Search, Loader2, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import { useBehaviorTracker } from '../hooks/useBehaviorTracker';
+import useBehaviorTracker from '../hooks/useBehaviorTracker';
 
 interface VisualSearchProps {
   onResultsFound?: (products: any[]) => void;

@@ -12,7 +12,7 @@ interface BehaviorTracker {
   trackShare: (productId: string, platform?: string) => void;
 }
 
-const useBehaviorTracker = (): BehaviorTracker => {
+export const useBehaviorTracker = (): BehaviorTracker => {
   const { user } = useAuth();
   const sessionStartTime = useRef<number>(Date.now());
   const pageStartTime = useRef<number>(Date.now());

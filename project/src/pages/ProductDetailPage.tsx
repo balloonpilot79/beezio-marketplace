@@ -8,7 +8,7 @@ import { useCart } from '../contexts/CartContext';
 import AuthModal from '../components/AuthModal';
 import RecommendationEngine from '../components/RecommendationEngine';
 import ShippingSelector from '../components/ShippingSelector';
-import { useBehaviorTracker } from '../hooks/useBehaviorTracker';
+import useBehaviorTracker from '../hooks/useBehaviorTracker';
 
 interface Product {
   id: string;
