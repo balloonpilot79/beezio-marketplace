@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useNavigate } from 'react-router-dom';
 import { Search, Grid, List, Clock, ArrowRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';

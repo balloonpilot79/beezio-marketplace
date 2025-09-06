@@ -271,10 +271,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.location.href = '/';
     }
   };
-      alert('You have been signed out.');
-      window.location.href = '/';
-    }
-  };
 
   const resetPassword = async (email: string) => {
     let redirectUrl;

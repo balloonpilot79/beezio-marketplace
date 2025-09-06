@@ -20,7 +20,7 @@ const CartPage: React.FC = () => {
   const navigate = useNavigate();
   
   // Behavior tracking
-  const { trackPageView, trackCartRemove, trackCartUpdate, trackClick } = useBehaviorTracker();
+  const { trackView, trackClick } = useBehaviorTracker();
 
   const subtotal = getTotalPrice();
   const shipping = getShippingTotal();
@@ -29,31 +29,22 @@ const CartPage: React.FC = () => {
 
   useEffect(() => {
     // Track cart page view
-    trackPageView('/cart');
-  }, [trackPageView]);
+    trackView();
+  }, [trackView]);
 
   const handleQuantityChange = (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) {
       // Track item removal
       const item = items.find(i => i.id === itemId);
       if (item) {
-        trackCartRemove(item.productId, {
-          title: item.title,
-          price: item.price,
-          quantity: item.quantity
-        });
+        trackClick(item.productId, 'cart_remove');
       }
       removeFromCart(itemId);
     } else {
       // Track quantity update
       const item = items.find(i => i.id === itemId);
       if (item) {
-        trackCartUpdate(item.productId, {
-          title: item.title,
-          price: item.price,
-          old_quantity: item.quantity,
-          new_quantity: newQuantity
-        });
+        trackClick(item.productId, 'cart_update');
       }
       updateQuantity(itemId, newQuantity);
     }
@@ -61,13 +52,7 @@ const CartPage: React.FC = () => {
 
   const handleCheckout = () => {
     // Track checkout initiation
-    trackClick('checkout_initiated', {
-      cart_value: total,
-      item_count: getTotalItems(),
-      subtotal: subtotal,
-      shipping: shipping,
-      tax: tax
-    });
+    trackClick(undefined, 'checkout_initiated');
 
     if (!user) {
       // Redirect to login/signup with return URL
@@ -186,11 +171,7 @@ const CartPage: React.FC = () => {
                 <button
                   onClick={() => {
                     // Track item removal
-                    trackCartRemove(item.productId, {
-                      title: item.title,
-                      price: item.price,
-                      quantity: item.quantity
-                    });
+                    trackClick(item.productId, 'cart_remove');
                     removeFromCart(item.id);
                   }}
                   className="text-red-600 hover:text-red-700 p-2"
@@ -277,7 +258,6 @@ const CartPage: React.FC = () => {
           <RecommendationEngine 
             type="cart" 
             title="Complete your purchase"
-            subtitle="Products that go well with items in your cart"
           />
         </div>
       )}
