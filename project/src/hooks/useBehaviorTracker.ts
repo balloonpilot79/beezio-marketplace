@@ -190,5 +190,4 @@ export const useBehaviorTracker = (): BehaviorTracker => {
   };
 };
 
-export { useBehaviorTracker };
 export default useBehaviorTracker;
