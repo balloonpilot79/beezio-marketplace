@@ -1,6 +1,6 @@
 import React from 'react';
 import { ExternalLink, Copy, Share } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 
 interface StoreLinksProps {
   userRole: 'seller' | 'affiliate';

@@ -7,7 +7,7 @@ import { Br            <nav className="hidden md:flex space-x-8">
               <a href="/affiliate-dashboard" className="text-gray-700 hover:text-orange-600 font-medium transition-colors">Affiliate Dashboard</a>
               <a href="/buyer-dashboard" className="text-gray-700 hover:text-orange-600 font-medium transition-colors">Buyer Dashboard</a>
             </nav>Router as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContextMultiRole';
 import { CartProvider } from './contexts/CartContext';
 import { GlobalProvider } from './contexts/GlobalContext';
 import EnhancedSellerDashboard from './components/EnhancedSellerDashboard';

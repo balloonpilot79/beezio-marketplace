@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContextMultiRole';
 import { CartProvider } from './contexts/CartContext';
 import { GlobalProvider } from './contexts/GlobalContext';
 import { GamificationProvider } from './contexts/GamificationContext';

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useNavigate } from 'react-router-dom';
 
 const DEMO_SHELTER_ID = 'demo-shelter-001';

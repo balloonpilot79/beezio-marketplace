@@ -10,7 +10,7 @@ import {
   ExternalLink,
   Plus
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useAffiliate } from '../contexts/AffiliateContext';
 import { products } from '../data/sampleProducts';
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import ProductGrid from '../components/ProductGrid';
 import StoreCustomization from '../components/StoreCustomization';
 import { Star, MapPin, Clock, Package, Award, ExternalLink, Share2, Settings, Edit3 } from 'lucide-react';

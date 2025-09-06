@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContextMultiRole';
 import { AffiliateProvider } from './contexts/AffiliateContext';
 import { GlobalProvider } from './contexts/GlobalContext';
 import { GamificationProvider } from './contexts/GamificationContext';

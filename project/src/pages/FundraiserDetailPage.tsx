@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Calendar, Clock, Target, Users, Share2, Heart, MapPin } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import { SAMPLE_FUNDRAISERS, FUNDRAISER_CATEGORIES } from '../lib/sampleFundraisers';
 import ProductGrid from '../components/ProductGrid';
 import { SAMPLE_PRODUCTS } from '../lib/sampleData';

@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Heart, ShoppingCart, Shield, Truck, RotateCcw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { SAMPLE_PRODUCTS } from '../lib/sampleData';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 
 interface Product {
   id: string;

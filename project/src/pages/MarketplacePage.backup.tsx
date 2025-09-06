@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { SAMPLE_PRODUCTS } from '../lib/sampleData';
 import StarRating from '../components/StarRating';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 
 interface Product {
   id: string;

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart, Eye, TrendingUp } from 'lucide-react';
 import SocialShareButton from './SocialShareButton';
 import StarRating from './StarRating';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 
 interface Product {
   id: string;

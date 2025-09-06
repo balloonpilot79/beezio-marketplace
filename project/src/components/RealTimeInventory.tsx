@@ -5,7 +5,7 @@ import {
   DollarSign, Target, Truck, CheckCircle, XCircle
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 
 interface InventoryItem {
   id: string;
