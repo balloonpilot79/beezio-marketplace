@@ -582,3 +582,6 @@ export const getRandomProducts = (count: number = 6): SampleProduct[] => {
 };
 
 export default SAMPLE_PRODUCTS;
+
+// Export products as alias for SAMPLE_PRODUCTS for backward compatibility
+export const products = SAMPLE_PRODUCTS;
