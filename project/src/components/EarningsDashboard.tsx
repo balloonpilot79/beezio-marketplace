@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, DollarSign, Clock, Download, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 
 interface EarningsData {
   total_earned: number;

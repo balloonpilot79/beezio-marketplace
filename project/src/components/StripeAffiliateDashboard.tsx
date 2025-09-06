@@ -13,7 +13,7 @@ import {
   RefreshCw,
   Download
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 
 interface AffiliateEarnings {

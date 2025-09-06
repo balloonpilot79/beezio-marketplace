@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, User, Bot } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 
 // Sample initial messages
 const INITIAL_MESSAGES = [

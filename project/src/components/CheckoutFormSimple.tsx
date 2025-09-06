@@ -7,7 +7,7 @@ import {
   CardCvcElement,
 } from '@stripe/react-stripe-js';
 import { useCart } from '../contexts/CartContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 
 interface CheckoutFormProps {
   amount: number;
