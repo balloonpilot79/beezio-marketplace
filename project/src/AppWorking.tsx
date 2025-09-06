@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ContactSupport from './pages/ContactSupport';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContextMultiRole';
 import { CartProvider } from './contexts/CartContext';
 import { AffiliateProvider } from './contexts/AffiliateContext';
 import { GlobalProvider } from './contexts/GlobalContext';

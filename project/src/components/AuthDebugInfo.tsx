@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 
 const AuthDebugInfo: React.FC = () => {
   const { user, session, profile } = useAuth();

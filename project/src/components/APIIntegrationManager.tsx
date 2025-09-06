@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { ExternalLink, Key, Settings, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 

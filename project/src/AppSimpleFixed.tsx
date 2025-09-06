@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContextMultiRole';
 import { CartProvider } from './contexts/CartContext';
 import { AffiliateProvider } from './contexts/AffiliateContext';
 import MarketplacePage from './pages/MarketplacePageSimple';

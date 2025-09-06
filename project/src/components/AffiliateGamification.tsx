@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import BadgeDisplay from './BadgeDisplay';
 import { 
   TrendingUp, Target, Flame, Star, Users, Eye, Share2, 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Camera, Upload, User, X, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 
 interface AvatarUploadProps {
   currentAvatarUrl?: string;

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { CreditCard, Lock, MapPin, User, Mail, Phone } from 'lucide-react';
 import { stripePromise, STRIPE_CONFIG, toStripeAmount, PAYMENT_METHODS_BY_COUNTRY } from '../lib/stripe';
 import { useGlobal } from '../contexts/GlobalContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import { calculateShippingCost } from '../lib/geolocation';
 import { supabase } from '../lib/supabase';
 

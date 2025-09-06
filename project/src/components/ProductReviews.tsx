@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Calendar, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import StarRating from './StarRating';
 
 interface Review {

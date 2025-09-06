@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { TrendingUp, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AffiliateLink from './AffiliateLink';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import ProductAffiliateQRCode from './ProductAffiliateQRCode';
 import { SAMPLE_PRODUCTS } from '../lib/sampleData';
 import StarRating from './StarRating';

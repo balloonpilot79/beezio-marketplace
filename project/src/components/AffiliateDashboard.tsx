@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import { Link } from 'react-router-dom';
 
 interface Payout {

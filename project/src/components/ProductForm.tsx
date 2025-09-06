@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Plus } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import PricingCalculator from './PricingCalculator';
 import ImageUpload from './ImageUpload';
