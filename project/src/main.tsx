@@ -21,6 +21,4 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
   </StrictMode>
-);
-"// Deployment trigger" 
-"// Force deploy trigger" 
+); 

@@ -336,5 +336,4 @@ const SellerProductsPage: React.FC = () => {
   );
 };
 
-export default SellerProductsPage;</content>
-<parameter name="filePath">c:\Users\jason\OneDrive\Desktop\bz\project\src\pages\SellerProductsPage.tsx
+export default SellerProductsPage;
