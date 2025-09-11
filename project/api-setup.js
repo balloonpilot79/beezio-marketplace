@@ -40,4 +40,30 @@ async function quickSetup() {
   console.log('✅ Result:', result);
 }
 
+async function setupLinkedAccountsAndProducts() {
+  console.log('📋 Setting up linked accounts and imported products tables...');
+
+  const sql = `
+    CREATE TABLE IF NOT EXISTS linked_accounts (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      user_id UUID REFERENCES profiles(id),
+      platform TEXT NOT NULL,
+      account_details JSONB,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS imported_products (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      user_id UUID REFERENCES profiles(id),
+      product_data JSONB,
+      source TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `;
+
+  const result = await executeSQL(sql);
+  console.log('✅ Linked accounts and imported products setup result:', result);
+}
+
 quickSetup();
+setupLinkedAccountsAndProducts();

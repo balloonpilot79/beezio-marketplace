@@ -189,5 +189,3 @@ export const useBehaviorTracker = (): BehaviorTracker => {
     trackShare
   };
 };
-
-export default useBehaviorTracker;

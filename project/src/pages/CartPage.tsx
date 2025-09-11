@@ -4,7 +4,7 @@ import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import RecommendationEngine from '../components/RecommendationEngine';
-import useBehaviorTracker from '../hooks/useBehaviorTracker';
+import { useBehaviorTracker } from '../hooks/useBehaviorTracker';
 
 const CartPage: React.FC = () => {
   const { 

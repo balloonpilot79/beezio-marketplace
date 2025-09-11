@@ -11,9 +11,19 @@ interface ProductFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   editMode?: boolean;
+  product?: {
+    title: string;
+    description: string;
+    images: string[];
+    category_id: string;
+    stock_quantity: number;
+    is_subscription: boolean;
+    subscription_interval: string;
+    requires_shipping: boolean;
+  };
 }
 
-const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode }) => {
+const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode, product }) => {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,21 +31,21 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [pricingBreakdown, setPricingBreakdown] = useState<PricingBreakdown | null>(null);
 
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    images: [] as string[],
+    title: product?.title || '',
+    description: product?.description || '',
+    images: product?.images || [],
     videos: [] as string[],
     tags: [] as string[],
-    category_id: '',
-    stock_quantity: 1,
-    is_subscription: false,
-    subscription_interval: '',
+    category_id: product?.category_id || '',
+    stock_quantity: product?.stock_quantity || 1,
+    is_subscription: product?.is_subscription || false,
+    subscription_interval: product?.subscription_interval || '',
     shipping_options: [
       { name: 'Standard Shipping', cost: 0, estimated_days: '3-5 business days' },
       { name: 'Express Shipping', cost: 0, estimated_days: '1-2 business days' },
       { name: 'Free Shipping', cost: 0, estimated_days: '5-7 business days' }
     ] as Array<{ name: string; cost: number; estimated_days: string }>,
-    requires_shipping: true,
+    requires_shipping: product?.requires_shipping !== false,
   });
 
   const [productImages, setProductImages] = useState<any[]>([]);
@@ -50,46 +60,39 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       if (productId) {
         setCurrentProductId(productId);
         (async () => {
-          // Load product data
-          const { data } = await supabase.from('products').select('*').eq('id', productId).single();
-          if (data) {
-            setFormData({
-              title: data.title,
-              description: data.description,
-              images: data.images || [],
-              videos: data.videos || [],
-              tags: data.tags || [],
-              category_id: data.category_id || '',
-              stock_quantity: data.stock_quantity || 1,
-              is_subscription: data.is_subscription || false,
-              subscription_interval: data.subscription_interval || '',
-              shipping_options: data.shipping_options || [
-                { name: 'Standard Shipping', cost: 0, estimated_days: '3-5 business days' },
-                { name: 'Express Shipping', cost: 0, estimated_days: '1-2 business days' },
-                { name: 'Free Shipping', cost: 0, estimated_days: '5-7 business days' }
-              ],
-              requires_shipping: data.requires_shipping !== false,
-            });
-            setPricingBreakdown({
-              sellerAmount: data.seller_amount,
-              affiliateAmount: data.flat_commission_amount || 0,
-              platformFee: data.platform_fee,
-              stripeFee: data.stripe_fee,
-              listingPrice: data.price,
-              affiliateRate: data.commission_rate,
-              affiliateType: data.commission_type,
-            });
-          }
-
-          // Load product images
-          const { data: imagesData } = await supabase
-            .from('product_images')
-            .select('*')
-            .eq('product_id', productId)
-            .order('display_order', { ascending: true });
-          
-          if (imagesData) {
-            setProductImages(imagesData);
+          try {
+            // Load product data
+            const { data } = await supabase.from('products').select('*').eq('id', productId).single();
+            if (data) {
+              setFormData({
+                title: data.title,
+                description: data.description,
+                images: data.images || [],
+                videos: data.videos || [],
+                tags: data.tags || [],
+                category_id: data.category_id || '',
+                stock_quantity: data.stock_quantity || 1,
+                is_subscription: data.is_subscription || false,
+                subscription_interval: data.subscription_interval || '',
+                shipping_options: data.shipping_options || [
+                  { name: 'Standard Shipping', cost: 0, estimated_days: '3-5 business days' },
+                  { name: 'Express Shipping', cost: 0, estimated_days: '1-2 business days' },
+                  { name: 'Free Shipping', cost: 0, estimated_days: '5-7 business days' }
+                ],
+                requires_shipping: data.requires_shipping !== false,
+              });
+              setPricingBreakdown({
+                sellerAmount: data.seller_amount,
+                affiliateAmount: data.flat_commission_amount || 0,
+                platformFee: data.platform_fee,
+                stripeFee: data.stripe_fee,
+                listingPrice: data.price,
+                affiliateRate: data.commission_rate,
+                affiliateType: data.commission_type,
+              });
+            }
+          } catch (error) {
+            console.error('Error loading product data:', error);
           }
         })();
       }

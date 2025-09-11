@@ -1,8 +1,8 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { Link } from 'react-router-dom';
+import QRCode from 'qrcode.react';
 
 interface Payout {
   id: string;
@@ -22,6 +22,7 @@ interface Earnings {
 interface PromotedProduct {
   id: string;
   title: string;
+  description?: string; // Made optional to avoid errors
   price: number;
   commission_rate: number;
   commission_type: 'percentage' | 'flat_rate';
@@ -30,6 +31,68 @@ interface PromotedProduct {
   custom_link?: string;
 }
 
+const generateAffiliateLink = (affiliateId: string, productId?: string) => {
+  const baseUrl = window.location.origin;
+  return productId
+    ? `${baseUrl}/product/${productId}?ref=${affiliateId}`
+    : `${baseUrl}?ref=${affiliateId}`;
+};
+
+const AffiliateLinks: React.FC<{ affiliateId: string; products: PromotedProduct[] }> = ({ affiliateId, products }) => (
+  <div className="bg-white p-6 rounded-lg shadow-md">
+    <h2 className="text-lg font-bold mb-4">Affiliate Links</h2>
+
+    {/* Global Affiliate Link */}
+    <div className="mb-6">
+      <h3 className="text-sm font-medium text-gray-700">Global Affiliate Link</h3>
+      <p className="text-sm text-gray-600 mb-2">Share this link to earn commissions on all purchases.</p>
+      <div className="flex items-center gap-4">
+        <input
+          type="text"
+          value={generateAffiliateLink(affiliateId)}
+          readOnly
+          className="w-full px-3 py-2 border rounded-lg"
+        />
+        <button
+          onClick={() => navigator.clipboard.writeText(generateAffiliateLink(affiliateId))}
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+        >
+          Copy
+        </button>
+      </div>
+      <div className="mt-4">
+        <QRCode value={generateAffiliateLink(affiliateId)} size={128} />
+      </div>
+    </div>
+
+    {/* Product-Specific Links */}
+    <div>
+      <h3 className="text-sm font-medium text-gray-700">Product-Specific Links</h3>
+      <p className="text-sm text-gray-600 mb-2">Generate links for individual products.</p>
+      <ul>
+        {products.map((product) => (
+          <li key={product.id} className="mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">{product.title}</h4>
+                <p className="text-sm text-gray-600">{product.description}</p>
+              </div>
+              <button
+                onClick={() => navigator.clipboard.writeText(generateAffiliateLink(affiliateId, product.id))}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+              >
+                Copy Link
+              </button>
+            </div>
+            <div className="mt-2">
+              <QRCode value={generateAffiliateLink(affiliateId, product.id)} size={128} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+);
 
 const AffiliateDashboard: React.FC = () => {
   const { profile } = useAuth();
@@ -264,6 +327,11 @@ const AffiliateDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Affiliate Links Section */}
+      {profile && products.length > 0 && (
+        <AffiliateLinks affiliateId={profile.id} products={products} />
+      )}
     </div>
   );
 };

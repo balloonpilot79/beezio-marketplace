@@ -88,7 +88,8 @@ const EnhancedSellerDashboard: React.FC = () => {
       provider: '' as '' | 'printful' | 'printify' | 'shopify' | 'custom',
       product_id: '',
       webhook_url: ''
-    }
+    },
+    shipping_cost: 0
   });
 
   const categories = [
@@ -290,6 +291,7 @@ const EnhancedSellerDashboard: React.FC = () => {
           product_id: '',
           webhook_url: ''
         },
+        shipping_cost: 0
       });
       setShowProductForm(false);
       
@@ -301,29 +303,133 @@ const EnhancedSellerDashboard: React.FC = () => {
     }
   };
 
-  const downloadProductDescription = (product: Product) => {
-    const description = `
-📦 ${product.title}
+  const handleAddProduct = async () => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.from('products').insert({
+        seller_id: profile?.id,
+        title: newProduct.title,
+        description: newProduct.description,
+        price: newProduct.price,
+        affiliate_commission_rate: newProduct.affiliate_commission_rate,
+        shipping_cost: newProduct.shipping_cost,
+        images: newProduct.images,
+        created_at: new Date().toISOString(),
+      });
 
-💰 Price: $${product.price}
-🎯 Commission: ${product.affiliate_commission_type === 'percentage' ? product.affiliate_commission_rate + '%' : '$' + product.affiliate_commission_rate}
-
-📋 Description:
-${product.description}
-
-🔗 Affiliate Link: ${generateAffiliateLink(product.id)}
-
-🏪 Sold by: ${profile?.business_name || profile?.full_name}
-    `;
-
-    const blob = new Blob([description], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${product.title.replace(/[^a-z0-9]/gi, '_')}_description.txt`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      if (error) throw error;
+      alert('Product added successfully!');
+      fetchProducts();
+    } catch (error) {
+      console.error('Error adding product:', error);
+      alert('Failed to add product.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleAddAffiliateProduct = async (productId: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.from('affiliate_products').insert({
+        affiliate_id: profile?.id,
+        product_id: productId,
+        added_at: new Date().toISOString(),
+      });
+
+      if (error) throw error;
+      alert('Product added to your store successfully!');
+      fetchAffiliateProducts();
+    } catch (error) {
+      console.error('Error adding affiliate product:', error);
+      alert('Failed to add product.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const ProductForm = () => (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <h2 className="text-lg font-bold mb-4">Add New Product</h2>
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        handleAddProduct();
+      }}>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700">Title</label>
+          <input
+            type="text"
+            value={newProduct.title}
+            onChange={(e) => setNewProduct({ ...newProduct, title: e.target.value })}
+            className="w-full px-3 py-2 border rounded-lg"
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700">Description</label>
+          <textarea
+            value={newProduct.description}
+            onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+            className="w-full px-3 py-2 border rounded-lg"
+          ></textarea>
+        </div>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700">Price</label>
+          <input
+            type="number"
+            value={newProduct.price}
+            onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })}
+            className="w-full px-3 py-2 border rounded-lg"
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700">Affiliate Commission Rate (%)</label>
+          <input
+            type="number"
+            value={newProduct.affiliate_commission_rate}
+            onChange={(e) => setNewProduct({ ...newProduct, affiliate_commission_rate: parseFloat(e.target.value) })}
+            className="w-full px-3 py-2 border rounded-lg"
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700">Shipping Cost</label>
+          <input
+            type="number"
+            value={newProduct.shipping_cost}
+            onChange={(e) => setNewProduct({ ...newProduct, shipping_cost: parseFloat(e.target.value) })}
+            className="w-full px-3 py-2 border rounded-lg"
+          />
+        </div>
+        <button
+          type="submit"
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+        >
+          Add Product
+        </button>
+      </form>
+    </div>
+  );
+
+  const ProductSelection = () => (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <h2 className="text-lg font-bold mb-4">Select Products to Add</h2>
+      <ul>
+        {products.map((product) => (
+          <li key={product.id} className="flex justify-between items-center mb-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-900">{product.title}</h3>
+              <p className="text-sm text-gray-600">{product.description}</p>
+            </div>
+            <button
+              onClick={() => handleAddAffiliateProduct(product.id)}
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+            >
+              Add to My Store
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 
   // Show loading only if auth is actually loading
   if (loading) {
@@ -563,303 +669,14 @@ ${product.description}
       )}
 
       {activeTab === 'products' && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Your Products</h3>
-            <button 
-              onClick={() => setShowProductForm(true)}
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-            >
-              Add New Product
-            </button>
-          </div>
-
-          {/* Product Creation Form */}
-          {showProductForm && (
-            <div className="bg-white p-6 rounded-xl shadow-lg border border-orange-200">
-              <div className="flex justify-between items-center mb-6">
-                <h4 className="text-lg font-semibold">Create New Product</h4>
-                <button 
-                  onClick={() => setShowProductForm(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <form onSubmit={handleCreateProduct} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Product Title *
-                  </label>
-                  <input
-                    type="text"
-                    value={newProduct.title}
-                    onChange={(e) => setNewProduct({...newProduct, title: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Product Type *
-                    </label>
-                    <select
-                      value={newProduct.product_type}
-                      onChange={(e) => setNewProduct({...newProduct, product_type: e.target.value as 'one_time' | 'subscription'})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      required
-                    >
-                      <option value="one_time">One-Time Purchase</option>
-                      <option value="subscription">Subscription</option>
-                    </select>
-                  </div>
-
-                  {newProduct.product_type === 'subscription' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Billing Interval *
-                      </label>
-                      <select
-                        value={newProduct.subscription_interval}
-                        onChange={(e) => setNewProduct({...newProduct, subscription_interval: e.target.value as 'monthly' | 'yearly'})}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        required
-                      >
-                        <option value="monthly">Monthly</option>
-                        <option value="yearly">Yearly</option>
-                      </select>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category *
-                  </label>
-                  <select
-                    value={newProduct.category}
-                    onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description *
-                  </label>
-                  <textarea
-                    value={newProduct.description}
-                    onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
-                    rows={4}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Product Images</label>
-                  <ImageUpload
-                    bucket="product-images"
-                    maxFiles={5}
-                    onUploadComplete={(urls: string[]) => setNewProduct({ ...newProduct, images: urls })}
-                    onUploadError={(err: string) => alert('Image upload error: ' + err)}
-                  />
-                  {newProduct.images && newProduct.images.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {newProduct.images.map((img, idx) => (
-                        <img key={idx} src={img} alt="Product" className="w-20 h-20 object-cover rounded border" />
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Product Video (YouTube or direct link)</label>
-                  <input
-                    type="url"
-                    value={newProduct.video_url}
-                    onChange={e => setNewProduct({ ...newProduct, video_url: e.target.value })}
-                    placeholder="https://youtube.com/... or direct video link"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                  {newProduct.video_url && (
-                    <div className="mt-2">
-                      <video src={newProduct.video_url} controls className="w-full max-w-xs rounded" />
-                    </div>
-                  )}
-                </div>
-
-                {/* API Integration Section */}
-                <div className="border-t pt-4">
-                  <div className="flex items-center mb-4">
-                    <input
-                      type="checkbox"
-                      id="api-integration"
-                      checked={newProduct.api_integration.enabled}
-                      onChange={(e) => setNewProduct({
-                        ...newProduct, 
-                        api_integration: {...newProduct.api_integration, enabled: e.target.checked}
-                      })}
-                      className="mr-2"
-                    />
-                    <label htmlFor="api-integration" className="text-sm font-medium text-gray-700">
-                      Enable API Integration (Printful, Printify, Shopify)
-                    </label>
-                  </div>
-
-                  {newProduct.api_integration.enabled && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Provider
-                        </label>
-                        <select
-                          value={newProduct.api_integration.provider}
-                          onChange={(e) => setNewProduct({
-                            ...newProduct, 
-                            api_integration: {...newProduct.api_integration, provider: e.target.value as any}
-                          })}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        >
-                          <option value="">Select provider</option>
-                          <option value="printful">Printful</option>
-                          <option value="printify">Printify</option>
-                          <option value="shopify">Shopify</option>
-                          <option value="custom">Custom API</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Product ID
-                        </label>
-                        <input
-                          type="text"
-                          value={newProduct.api_integration.product_id}
-                          onChange={(e) => setNewProduct({
-                            ...newProduct, 
-                            api_integration: {...newProduct.api_integration, product_id: e.target.value}
-                          })}
-                          placeholder="External product ID"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Price ($) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={newProduct.price}
-                      onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Affiliate Commission (%) *
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="50"
-                      value={newProduct.affiliate_commission_rate}
-                      onChange={(e) => setNewProduct({...newProduct, affiliate_commission_rate: parseInt(e.target.value) || 10})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                  <button
-                    type="submit"
-                    className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-                  >
-                    Create Product
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowProductForm(false)}
-                    className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {products.map((product) => (
-              <div key={product.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{product.title}</h4>
-                    <p className="text-sm text-gray-600 mt-1">${product.price}</p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => downloadProductDescription(product)}
-                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                      title="Download product description"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => copyToClipboard(generateAffiliateLink(product.id))}
-                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                      title="Copy affiliate link"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Sales:</span>
-                    <span className="font-medium">{product.sales_count || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Revenue:</span>
-                    <span className="font-medium">${(product.total_revenue || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Commission:</span>
-                    <span className="font-medium">
-                      {product.affiliate_commission_type === 'percentage' 
-                        ? `${product.affiliate_commission_rate}%` 
-                        : `$${product.affiliate_commission_rate}`}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <button className="text-orange-600 hover:text-orange-700 text-sm font-medium">
-                    Edit Product
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div>
+          <button
+            onClick={() => setShowProductForm(!showProductForm)}
+            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 mb-4"
+          >
+            {showProductForm ? 'Close Form' : 'Add New Product'}
+          </button>
+          {showProductForm && <ProductForm />}
         </div>
       )}
 
@@ -1252,44 +1069,8 @@ ${product.description}
       )}
 
       {activeTab === 'affiliate-tools' && (
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Site-Wide Affiliate Link</h3>
-            <p className="text-gray-600 mb-4">This link gives affiliates commission on any product they sell</p>
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={generateAffiliateLink()}
-                readOnly
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-              />
-              <button
-                onClick={() => copyToClipboard(generateAffiliateLink())}
-                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Downloadable Product Descriptions</h3>
-            <p className="text-gray-600 mb-4">Help affiliates promote your products with ready-to-use descriptions</p>
-            <div className="space-y-2">
-              {products.map((product) => (
-                <div key={product.id} className="flex items-center justify-between py-2">
-                  <span className="text-gray-900">{product.title}</span>
-                  <button
-                    onClick={() => downloadProductDescription(product)}
-                    className="flex items-center space-x-2 text-orange-600 hover:text-orange-700 transition-colors"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="text-sm">Download</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div>
+          <ProductSelection />
         </div>
       )}
 

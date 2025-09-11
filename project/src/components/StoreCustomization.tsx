@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Save, Upload, Eye, Palette, Globe, Settings } from 'lucide-react';
+import { Save, Eye, Palette, Globe, Settings } from 'lucide-react';
 
 interface StoreSettings {
   store_name?: string;
@@ -10,6 +10,7 @@ interface StoreSettings {
   store_theme?: string;
   custom_domain?: string;
   social_links?: {
+    [key: string]: string | undefined;
     facebook?: string;
     instagram?: string;
     twitter?: string;
@@ -20,10 +21,10 @@ interface StoreSettings {
   return_policy?: string;
 }
 
-const StoreCustomization: React.FC<{ sellerId: string }> = ({ sellerId }) => {
+const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate' }> = ({ userId, role }) => {
   const [storeSettings, setStoreSettings] = useState<StoreSettings>({
     store_theme: 'modern',
-    social_links: {}
+    social_links: {},
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -31,15 +32,16 @@ const StoreCustomization: React.FC<{ sellerId: string }> = ({ sellerId }) => {
 
   useEffect(() => {
     fetchStoreSettings();
-  }, [sellerId]);
+  }, [userId, role]);
 
   const fetchStoreSettings = async () => {
+    const table = role === 'seller' ? 'store_settings' : 'affiliate_store_settings';
     const { data } = await supabase
-      .from('store_settings')
+      .from(table)
       .select('*')
-      .eq('seller_id', sellerId)
+      .eq(`${role}_id`, userId)
       .single();
-    
+
     if (data) {
       setStoreSettings(data);
     }
@@ -48,12 +50,13 @@ const StoreCustomization: React.FC<{ sellerId: string }> = ({ sellerId }) => {
 
   const handleSave = async () => {
     setSaving(true);
+    const table = role === 'seller' ? 'store_settings' : 'affiliate_store_settings';
     const { error } = await supabase
-      .from('store_settings')
+      .from(table)
       .upsert({
-        seller_id: sellerId,
+        [`${role}_id`]: userId,
         ...storeSettings,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       });
 
     if (error) {
@@ -81,7 +84,8 @@ const StoreCustomization: React.FC<{ sellerId: string }> = ({ sellerId }) => {
     }));
   };
 
-  const storeUrl = `${window.location.origin}/store/${sellerId}`;
+  const storeUrl = `${window.location.origin}/store/${userId}`;
+  const themeOptions = ['modern', 'vibrant', 'minimalist', 'dark', 'classic', 'elegant'];
 
   if (loading) {
     return (
@@ -303,33 +307,19 @@ const StoreCustomization: React.FC<{ sellerId: string }> = ({ sellerId }) => {
                 )}
               </div>
 
-              <div>
+              <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Store Theme
+                  Theme
                 </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {[
-                    { id: 'modern', name: 'Modern', color: 'bg-blue-500' },
-                    { id: 'classic', name: 'Classic', color: 'bg-gray-700' },
-                    { id: 'vibrant', name: 'Vibrant', color: 'bg-pink-500' },
-                    { id: 'nature', name: 'Nature', color: 'bg-green-500' },
-                    { id: 'elegant', name: 'Elegant', color: 'bg-purple-500' },
-                    { id: 'minimal', name: 'Minimal', color: 'bg-gray-300' }
-                  ].map(theme => (
-                    <button
-                      key={theme.id}
-                      onClick={() => handleInputChange('store_theme', theme.id)}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        storeSettings.store_theme === theme.id
-                          ? 'border-amber-500 shadow-md'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className={`w-full h-8 ${theme.color} rounded mb-2`}></div>
-                      <div className="text-sm font-medium">{theme.name}</div>
-                    </button>
+                <select
+                  value={storeSettings.store_theme}
+                  onChange={(e) => handleInputChange('store_theme', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  {themeOptions.map((theme) => (
+                    <option key={theme} value={theme}>{theme.charAt(0).toUpperCase() + theme.slice(1)}</option>
                   ))}
-                </div>
+                </select>
               </div>
             </div>
           )}
@@ -337,20 +327,17 @@ const StoreCustomization: React.FC<{ sellerId: string }> = ({ sellerId }) => {
           {/* Domain Tab */}
           {activeTab === 'domain' && (
             <div className="space-y-6">
-              <div>
+              <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Custom Domain
                 </label>
                 <input
                   type="text"
+                  placeholder="e.g., mystore.com"
                   value={storeSettings.custom_domain || ''}
                   onChange={(e) => handleInputChange('custom_domain', e.target.value)}
-                  placeholder="yourdomain.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
-                <p className="text-sm text-gray-500 mt-1">
-                  Connect your own domain for a professional look. Contact support for setup assistance.
-                </p>
               </div>
 
               <div className="bg-gray-50 p-4 rounded-lg">

@@ -1,28 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Package,
-  Plus,
-  Edit,
-  Trash2,
-  Eye,
-  DollarSign,
-  TrendingUp,
-  Search,
-  Filter,
-  ExternalLink,
-  Image as ImageIcon,
-  Star
-} from 'lucide-react';
+import { Package, Plus, Eye, DollarSign, TrendingUp, Search, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
+import ProductForm from '../components/ProductForm'; // Import the ProductForm component
 
+// Define Product interface
 interface Product {
   id: string;
   title: string;
   description: string;
   price: number;
-  images: string[];
+  images?: string[];
   category: string;
   affiliate_commission_rate: number;
   affiliate_commission_type: 'percentage' | 'fixed';
@@ -39,6 +28,8 @@ const SellerProductsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     if (user && profile) {
@@ -64,26 +55,7 @@ const SellerProductsPage: React.FC = () => {
     }
   };
 
-  const toggleProductStatus = async (productId: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('products')
-        .update({ is_active: !currentStatus })
-        .eq('id', productId);
-
-      if (error) throw error;
-      await fetchProducts(); // Refresh the list
-    } catch (error) {
-      console.error('Error updating product status:', error);
-      alert('Failed to update product status');
-    }
-  };
-
   const deleteProduct = async (productId: string) => {
-    if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
-      return;
-    }
-
     try {
       const { error } = await supabase
         .from('products')
@@ -91,25 +63,49 @@ const SellerProductsPage: React.FC = () => {
         .eq('id', productId);
 
       if (error) throw error;
-      await fetchProducts(); // Refresh the list
+      setProducts((prev) => prev.filter((product) => product.id !== productId));
     } catch (error) {
       console.error('Error deleting product:', error);
-      alert('Failed to delete product');
+      // Replace with a notification system
     }
   };
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
-    const matchesStatus = statusFilter === 'all' ||
-                         (statusFilter === 'active' && product.is_active) ||
-                         (statusFilter === 'inactive' && !product.is_active);
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesSearch =
+        product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'active' && product.is_active) ||
+        (statusFilter === 'inactive' && !product.is_active);
 
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [products, searchTerm, categoryFilter, statusFilter]);
 
-  const categories = [...new Set(products.map(p => p.category))];
+  const categories = useMemo(() => [...new Set(products.map((p) => p.category))], [products]);
+
+  const handleFormSubmit = async (product: Product) => {
+    try {
+      const { error } = editingProduct
+        ? await supabase.from('products').update(product).eq('id', editingProduct.id)
+        : await supabase.from('products').insert(product);
+
+      if (error) throw error;
+      fetchProducts();
+      setShowForm(false);
+      setEditingProduct(null);
+    } catch (error) {
+      console.error('Error saving product:', error);
+    }
+  };
+
+  const handleEdit = (product: Product) => {
+    setEditingProduct(product);
+    setShowForm(true);
+  };
 
   if (loading) {
     return (
@@ -308,14 +304,10 @@ const SellerProductsPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <button
-                          onClick={() => toggleProductStatus(product.id, product.is_active)}
-                          className={`text-xs px-2 py-1 rounded ${
-                            product.is_active
-                              ? 'text-red-600 hover:text-red-900 hover:bg-red-50'
-                              : 'text-green-600 hover:text-green-900 hover:bg-green-50'
-                          }`}
+                          onClick={() => handleEdit(product)}
+                          className="text-blue-600 hover:text-blue-900 hover:bg-blue-50 text-xs px-2 py-1 rounded"
                         >
-                          {product.is_active ? 'Deactivate' : 'Activate'}
+                          Edit
                         </button>
                         <button
                           onClick={() => deleteProduct(product.id)}
@@ -331,6 +323,15 @@ const SellerProductsPage: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Product Form */}
+        {showForm && (
+          <ProductForm
+            product={editingProduct || undefined}
+            onSubmit={handleFormSubmit}
+            onCancel={() => setShowForm(false)}
+          />
+        )}
       </div>
     </div>
   );

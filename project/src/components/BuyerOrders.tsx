@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { updateOrderTracking, submitProductReview } from '../api/orderFeatures';
 
 const BuyerOrders: React.FC<{ buyerId: string }> = ({ buyerId }) => {
   const [orders, setOrders] = useState<any[]>([]);
@@ -23,6 +24,19 @@ const BuyerOrders: React.FC<{ buyerId: string }> = ({ buyerId }) => {
     setLoading(false);
   };
 
+  const handleLeaveReview = async (productId: string) => {
+    const rating = prompt('Rate the product (1-5):');
+    const review = prompt('Write your review:');
+    if (rating && review) {
+      try {
+        await submitProductReview(productId, buyerId, parseInt(rating), review);
+        alert('Review submitted successfully!');
+      } catch (error) {
+        alert('Failed to submit review: ' + error.message);
+      }
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
 
@@ -37,6 +51,15 @@ const BuyerOrders: React.FC<{ buyerId: string }> = ({ buyerId }) => {
             <span className="font-medium">{order.products?.title}</span>
             <span className="text-gray-600">${order.products?.price}</span>
             <span className="text-xs text-gray-500">{new Date(order.created_at).toLocaleDateString()}</span>
+            {order.tracking_url && (
+              <a href={order.tracking_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Track Order</a>
+            )}
+            <button
+              onClick={() => handleLeaveReview(order.products?.id)}
+              className="bg-blue-500 text-white px-2 py-1 rounded"
+            >
+              Leave Review
+            </button>
           </div>
         ))
       )}

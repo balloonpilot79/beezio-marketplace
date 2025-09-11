@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { sendWelcomeEmail } from '../services/emailService';
 
 interface AuthContextType {
   user: User | null;
@@ -24,19 +25,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    // During development/initialization, return a safe default
-    console.warn('useAuth called outside of AuthProvider, returning safe defaults');
+    // During development/initialization, return a safe default to prevent crashes
+    console.warn('useAuth called outside of AuthProvider or during initialization, returning safe defaults');
     return {
       user: null,
       session: null,
       profile: null,
       userRoles: [],
       currentRole: 'buyer',
-      signIn: async () => {},
-      signUp: async () => {},
+      signIn: async () => ({ error: null }),
+      signUp: async () => ({ error: null }),
       signOut: async () => {},
-      resetPassword: async () => {},
-      sendMagicLink: async () => {},
+      resetPassword: async () => ({ error: null }),
+      sendMagicLink: async () => ({ error: null }),
       switchRole: async () => false,
       addRole: async () => false,
       hasRole: () => false,
@@ -212,6 +213,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Role creation error:', roleError);
           // Don't throw here, profile was created successfully
         }
+
+        // Send welcome email
+        try {
+          await sendWelcomeEmail(
+            data.user.id,
+            email,
+            userData.fullName || email.split('@')[0]
+          );
+          console.log('Welcome email sent successfully');
+        } catch (emailError) {
+          console.error('Error sending welcome email:', emailError);
+          // Don't throw here, user account was created successfully
+        }
       }
 
       return data;
@@ -291,13 +305,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     let redirectUrl;
-    
+
     if (window.location.hostname === 'localhost') {
-      redirectUrl = 'http://localhost:5173/reset-password';
+      // Use current port for localhost
+      redirectUrl = `${window.location.origin}/reset-password`;
     } else if (window.location.hostname.includes('beezio.co')) {
       redirectUrl = 'https://beezio.co/reset-password';
     } else {
       redirectUrl = `${window.location.origin}/reset-password`;
+    }
     }
       
     try {

@@ -14,6 +14,7 @@ interface ImageUploadProps {
   className?: string;
   preview?: boolean;
   multiple?: boolean;
+  productId?: string; // Added productId field
 }
 
 interface UploadingFile {
@@ -71,7 +72,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
   const uploadFile = async (file: File): Promise<string> => {
     const fileName = generateFileName(file);
-    
+
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(fileName, file, {
@@ -83,11 +84,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       throw new Error(`Upload failed: ${error.message}`);
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(data.path);
-
+    const { publicUrl } = supabase.storage.from(bucket).getPublicUrl(fileName);
     return publicUrl;
   };
 
