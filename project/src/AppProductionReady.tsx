@@ -607,7 +607,7 @@ const HomePage = () => {
 };
 
 // Missing component definitions
-const HomePage = () => <div>Home Page</div>;
+// (HomePage is implemented above; keep the other placeholders below)
 const ChatBot = () => <div>Chat Bot</div>;
 const EnhancedBuyerDashboard = () => <div>Buyer Dashboard</div>;
 const SellerStorePage = () => <div>Seller Store</div>;

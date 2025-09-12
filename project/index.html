@@ -30,6 +30,37 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      Inline script: aggressively unregister any active service workers and reload once.
+      This runs before the app bundle so it helps clear stale cached bundles that can
+      cause runtime errors (for example, old versions of contexts that throw when
+      used before providers were added). It sets a localStorage flag so it only triggers
+      a single reload to avoid reload loops.
+    -->
+    <script>
+      (function() {
+        try {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              if (registrations && registrations.length > 0 && !localStorage.getItem('beezio_sw_unregistered')) {
+                console.log('Found active service workers — unregistering to clear stale caches.');
+                registrations.forEach(function(r) {
+                  try { r.unregister(); } catch (e) { console.warn('SW unregister error', e); }
+                });
+                // Mark that we've unregistered once so we don't loop.
+                localStorage.setItem('beezio_sw_unregistered', '1');
+                // Reload so the browser fetches the latest assets from the network.
+                window.location.reload();
+              }
+            }).catch(function(err){
+              console.warn('Error while checking service workers:', err);
+            });
+          }
+        } catch (e) {
+          console.warn('SW unregister helper failed:', e);
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
