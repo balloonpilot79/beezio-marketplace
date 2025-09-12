@@ -14,109 +14,9 @@ import PrivacyPage from './pages/PrivacyPage';
 import EnhancedSellerDashboard from './components/EnhancedSellerDashboard';
 import EnhancedAffiliateDashboard from './components/EnhancedAffiliateDashboard';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import AuthModal from './components/AuthModal';
 import { SAMPLE_PRODUCTS } from './data/sampleProducts';
 import { Star, Heart, Share2, Users, TrendingUp, Shield, Facebook, Twitter, Instagram, Linkedin, Youtube } from 'lucide-react';
-
-// Professional Header component
-const Header = () => {
-  const { user, signOut } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Sign out error:', error);
-    }
-  };
-
-  const handleSignIn = () => {
-    setAuthMode('login');
-    setShowAuthModal(true);
-  };
-
-  const handleGetStarted = () => {
-    setAuthMode('register');
-    setShowAuthModal(true);
-  };
-
-  return (
-    <>
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Main Header */}
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Link to="/" className="text-2xl font-bold text-amber-600">🐝 Beezio</Link>
-              <nav className="hidden md:flex space-x-6">
-                <Link to="/marketplace" className="text-gray-700 hover:text-amber-600 transition-colors font-medium">Marketplace</Link>
-                <Link to="/seller-guide" className="text-gray-700 hover:text-amber-600 transition-colors font-medium">For Sellers</Link>
-                <Link to="/affiliate-guide" className="text-gray-700 hover:text-amber-600 transition-colors font-medium">For Affiliates</Link>
-                <Link to="/fundraisers" className="text-gray-700 hover:text-amber-600 transition-colors font-medium">Fundraisers</Link>
-              </nav>
-            </div>
-            <div className="flex items-center space-x-4">
-              {user ? (
-                <button 
-                  onClick={handleSignOut}
-                  className="text-gray-700 hover:text-amber-600 transition-colors font-medium"
-                >
-                  Sign Out
-                </button>
-              ) : (
-                <>
-                  <button 
-                    onClick={handleSignIn}
-                    className="text-gray-700 hover:text-amber-600 transition-colors font-medium"
-                  >
-                    Sign In
-                  </button>
-                  <button 
-                    onClick={handleGetStarted}
-                    className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors font-medium"
-                  >
-                    Get Started
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Sub-header with Dashboard Links (only when logged in) */}
-          {user && (
-            <div className="border-t border-gray-100">
-              <div className="flex items-center justify-between py-2 px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center space-x-4 text-sm">
-                  <span className="text-gray-500 font-medium hidden sm:inline">Dashboards:</span>
-                  <Link to="/seller-dashboard" className="text-gray-600 hover:text-amber-600 transition-colors font-medium whitespace-nowrap">
-                    🏪 Seller
-                  </Link>
-                  <Link to="/affiliate-dashboard" className="text-gray-600 hover:text-amber-600 transition-colors font-medium whitespace-nowrap">
-                    🤝 Affiliate
-                  </Link>
-                  <Link to="/buyer-dashboard" className="text-gray-600 hover:text-amber-600 transition-colors font-medium whitespace-nowrap">
-                    🛒 Buyer
-                  </Link>
-                </div>
-                <span className="text-sm text-gray-600 font-medium hidden md:inline">
-                  Welcome, {user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}! 👋
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
-      
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        mode={authMode}
-      />
-    </>
-  );
-};
 
 // Hero Section
 const HeroSection = () => (
@@ -706,7 +606,115 @@ const HomePage = () => {
   );
 };
 
+// Missing component definitions
+const HomePage = () => <div>Home Page</div>;
+const ChatBot = () => <div>Chat Bot</div>;
+const EnhancedBuyerDashboard = () => <div>Buyer Dashboard</div>;
+const SellerStorePage = () => <div>Seller Store</div>;
+const AffiliateStorePage = () => <div>Affiliate Store</div>;
+
 const AppProductionReady = () => {
+  // Professional Header component
+  const Header = () => {
+    const { user, signOut } = useAuth();
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+
+    const handleSignOut = async () => {
+      try {
+        await signOut();
+      } catch (error) {
+        console.error('Sign out error:', error);
+      }
+    };
+
+    const handleSignIn = () => {
+      setAuthMode('login');
+      setShowAuthModal(true);
+    };
+
+    const handleGetStarted = () => {
+      setAuthMode('register');
+      setShowAuthModal(true);
+    };
+
+    return (
+      <>
+        <header className="bg-white shadow-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Main Header */}
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center space-x-4">
+                <Link to="/" className="text-2xl font-bold text-amber-600">🐝 Beezio</Link>
+                <nav className="hidden md:flex space-x-6">
+                  <Link to="/marketplace" className="text-gray-700 hover:text-amber-600 transition-colors font-medium">Marketplace</Link>
+                  <Link to="/seller-guide" className="text-gray-700 hover:text-amber-600 transition-colors font-medium">For Sellers</Link>
+                  <Link to="/affiliate-guide" className="text-gray-700 hover:text-amber-600 transition-colors font-medium">For Affiliates</Link>
+                  <Link to="/fundraisers" className="text-gray-700 hover:text-amber-600 transition-colors font-medium">Fundraisers</Link>
+                </nav>
+              </div>
+              <div className="flex items-center space-x-4">
+                {user ? (
+                  <button
+                    onClick={handleSignOut}
+                    className="text-gray-700 hover:text-amber-600 transition-colors font-medium"
+                  >
+                    Sign Out
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleSignIn}
+                      className="text-gray-700 hover:text-amber-600 transition-colors font-medium"
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={handleGetStarted}
+                      className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors font-medium"
+                    >
+                      Get Started
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Sub-header with Dashboard Links (only when logged in) */}
+            {user && (
+              <div className="border-t border-gray-100">
+                <div className="flex items-center justify-between py-2 px-4 sm:px-6 lg:px-8">
+                  <div className="flex items-center space-x-4 text-sm">
+                    <span className="text-gray-500 font-medium hidden sm:inline">Dashboards:</span>
+                    <Link to="/seller-dashboard" className="text-gray-600 hover:text-amber-600 transition-colors font-medium whitespace-nowrap">
+                      🏪 Seller
+                    </Link>
+                    <Link to="/affiliate-dashboard" className="text-gray-600 hover:text-amber-600 transition-colors font-medium whitespace-nowrap">
+                      🤝 Affiliate
+                    </Link>
+                    <Link to="/buyer-dashboard" className="text-gray-600 hover:text-amber-600 transition-colors font-medium whitespace-nowrap">
+                      🛒 Buyer
+                    </Link>
+                  </div>
+                  <span className="text-sm text-gray-600 font-medium hidden md:inline">
+                    Welcome, {user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}! 👋
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </header>
+
+        {/* Auth Modal */}
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          mode={authMode}
+        />
+      </>
+    );
+  };
+
   return (
     <AuthProvider>
       <GlobalProvider>
