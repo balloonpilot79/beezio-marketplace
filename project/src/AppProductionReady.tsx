@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContextMultiRole';
 import { AffiliateProvider } from './contexts/AffiliateContext';
 import { GlobalProvider } from './contexts/GlobalContext';
 import { GamificationProvider } from './contexts/GamificationContext';
+import { CartProvider } from './contexts/CartContext';
 import MarketplacePage from './pages/MarketplacePageBeautiful';
 import FundraisersPage from './pages/FundraisersPageBeautiful';
 import SellerGuide from './pages/SellerGuide';
@@ -709,31 +710,33 @@ const AppProductionReady = () => {
   return (
     <AuthProvider>
       <GlobalProvider>
-        <AffiliateProvider>
-          <GamificationProvider>
-            <Router>
-              <div className="min-h-screen bg-white">
-                <Header />
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/marketplace" element={<MarketplacePage />} />
-                  <Route path="/seller-guide" element={<SellerGuide />} />
-                  <Route path="/affiliate-guide" element={<AffiliateGuide />} />
-                  <Route path="/fundraisers" element={<FundraisersPage />} />
-                  <Route path="/contact" element={<ContactPage />} />
-                  <Route path="/privacy" element={<PrivacyPage />} />
-                  <Route path="/reset-password" element={<ResetPasswordPage />} />
-                  <Route path="/seller-dashboard" element={<EnhancedSellerDashboard />} />
-                  <Route path="/affiliate-dashboard" element={<EnhancedAffiliateDashboard />} />
-                  <Route path="/buyer-dashboard" element={<EnhancedBuyerDashboard />} />
-                  <Route path="/store/:sellerId" element={<SellerStorePage />} />
-                  <Route path="/affiliate/:affiliateId" element={<AffiliateStorePage />} />
-                </Routes>
-                <ChatBot />
-              </div>
-            </Router>
-          </GamificationProvider>
-        </AffiliateProvider>
+        <CartProvider>
+          <AffiliateProvider>
+            <GamificationProvider>
+              <Router>
+                <div className="min-h-screen bg-white">
+                  <Header />
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/marketplace" element={<MarketplacePage />} />
+                    <Route path="/seller-guide" element={<SellerGuide />} />
+                    <Route path="/affiliate-guide" element={<AffiliateGuide />} />
+                    <Route path="/fundraisers" element={<FundraisersPage />} />
+                    <Route path="/contact" element={<ContactPage />} />
+                    <Route path="/privacy" element={<PrivacyPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+                    <Route path="/seller-dashboard" element={<EnhancedSellerDashboard />} />
+                    <Route path="/affiliate-dashboard" element={<EnhancedAffiliateDashboard />} />
+                    <Route path="/buyer-dashboard" element={<EnhancedBuyerDashboard />} />
+                    <Route path="/store/:sellerId" element={<SellerStorePage />} />
+                    <Route path="/affiliate/:affiliateId" element={<AffiliateStorePage />} />
+                  </Routes>
+                  <ChatBot />
+                </div>
+              </Router>
+            </GamificationProvider>
+          </AffiliateProvider>
+        </CartProvider>
       </GlobalProvider>
     </AuthProvider>
   );

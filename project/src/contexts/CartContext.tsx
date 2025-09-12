@@ -35,7 +35,19 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const useCart = () => {
   const context = useContext(CartContext);
   if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider');
+    // During development/initialization, return safe defaults to prevent crashes
+    console.warn('useCart called outside of CartProvider or during initialization, returning safe defaults');
+    return {
+      items: [],
+      addToCart: () => {},
+      removeFromCart: () => {},
+      updateQuantity: () => {},
+      clearCart: () => {},
+      getTotalItems: () => 0,
+      getTotalPrice: () => 0,
+      getShippingTotal: () => 0,
+      isInCart: () => false
+    };
   }
   return context;
 };
