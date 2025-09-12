@@ -14,6 +14,7 @@ import PrivacyPage from './pages/PrivacyPage';
 import EnhancedSellerDashboard from './components/EnhancedSellerDashboard';
 import EnhancedAffiliateDashboard from './components/EnhancedAffiliateDashboard';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import DebugSW from './pages/DebugSW';
 import AuthModal from './components/AuthModal';
 import { SAMPLE_PRODUCTS } from './data/sampleProducts';
 import { Star, Heart, Share2, Users, TrendingUp, Shield, Facebook, Twitter, Instagram, Linkedin, Youtube } from 'lucide-react';
@@ -733,6 +734,7 @@ const AppProductionReady = () => {
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/privacy" element={<PrivacyPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
+                    <Route path="/debug-sw" element={<DebugSW />} />
                     <Route path="/seller-dashboard" element={<EnhancedSellerDashboard />} />
                     <Route path="/affiliate-dashboard" element={<EnhancedAffiliateDashboard />} />
                     <Route path="/buyer-dashboard" element={<EnhancedBuyerDashboard />} />
