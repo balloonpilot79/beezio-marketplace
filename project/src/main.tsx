@@ -28,7 +28,9 @@ if ('serviceWorker' in navigator) {
   // });
 }
 
-console.log('React app is initializing...');
+if (process.env.NODE_ENV !== 'production') {
+  console.debug('React app is initializing...');
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -36,5 +38,7 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>
 );
 
-console.log('React app is rendering...');
+if (process.env.NODE_ENV !== 'production') {
+  console.debug('React app is rendering...');
+}
 // Force deployment trigger - build fixes applied

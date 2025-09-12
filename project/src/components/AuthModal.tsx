@@ -11,7 +11,9 @@ interface AuthModalProps {
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMode }) => {
-  console.log('AuthModal: Component rendering, isOpen prop:', isOpen, 'mode:', initialMode);
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('AuthModal: Component rendering, isOpen prop:', isOpen, 'mode:', initialMode);
+  }
   
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
   
@@ -40,14 +42,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('AuthModal: Form submitted, mode:', mode, 'email:', formData.email);
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('AuthModal: Form submitted, mode:', mode, 'email:', formData.email);
+    }
     setLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
       if (mode === 'forgot') {
-        console.log('AuthModal: Attempting password reset...');
+  if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting password reset...');
         await resetPassword(formData.email);
         setSuccess('Password reset email sent! Check your inbox for instructions.');
         setTimeout(() => {
@@ -55,9 +59,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           setSuccess(null);
         }, 3000);
       } else if (mode === 'login') {
-        console.log('AuthModal: Attempting sign in...');
+  if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting sign in...');
         const result = await signIn(formData.email, formData.password);
-        console.log('AuthModal: Sign in result:', result);
+  if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Sign in result:', result);
         if (result.user) {
           setSuccess('Successfully signed in!');
           onClose();
@@ -68,7 +72,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           }, 100);
         }
       } else {
-        console.log('AuthModal: Attempting sign up...');
+  if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting sign up...');
         const result = await signUp(formData.email, formData.password, formData);
         if (result.user) {
           setSuccess('Account created successfully!');
