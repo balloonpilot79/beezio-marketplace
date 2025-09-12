@@ -4,28 +4,14 @@ import './index.css';
 import './lib/i18n';
 import App from './App';
 
-// Temporarily disable service worker registration while debugging
-// to avoid it intercepting requests and causing network errors
+// Register service worker with safe update flow
 if ('serviceWorker' in navigator) {
-  // Unregister any existing service workers first
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    for (let registration of registrations) {
-      registration.unregister().then(() => {
-        console.log('SW unregistered: ', registration);
-      });
-    }
+  // Register the SW using our helper which emits events when updates are available
+  import('./services/swRegister').then(({ registerServiceWorker }) => {
+    registerServiceWorker();
+  }).catch(() => {
+    // ignore import failures
   });
-
-  // Don't register a new one for now
-  // window.addEventListener('load', () => {
-  //   navigator.serviceWorker.register('/sw.js')
-  //     .then((registration) => {
-  //       console.log('SW registered: ', registration);
-  //     })
-  //     .catch((registrationError) => {
-  //       console.log('SW registration failed: ', registrationError);
-  //     });
-  // });
 }
 
 if (process.env.NODE_ENV !== 'production') {

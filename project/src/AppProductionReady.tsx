@@ -18,6 +18,7 @@ import DebugSW from './pages/DebugSW';
 import AuthModal from './components/AuthModal';
 import { SAMPLE_PRODUCTS } from './data/sampleProducts';
 import { Star, Heart, Share2, Users, TrendingUp, Shield, Facebook, Twitter, Instagram, Linkedin, Youtube } from 'lucide-react';
+import UpdateBanner from './components/UpdateBanner';
 
 // Hero Section
 const HeroSection = () => (
@@ -725,6 +726,7 @@ const AppProductionReady = () => {
               <Router>
                 <div className="min-h-screen bg-white">
                   <Header />
+              <UpdateBanner />
                   <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/marketplace" element={<MarketplacePage />} />
@@ -741,7 +743,7 @@ const AppProductionReady = () => {
                     <Route path="/store/:sellerId" element={<SellerStorePage />} />
                     <Route path="/affiliate/:affiliateId" element={<AffiliateStorePage />} />
                   </Routes>
-                  <ChatBot />
+                  {/* ChatBot removed for stability on mobile */}
                 </div>
               </Router>
             </GamificationProvider>
