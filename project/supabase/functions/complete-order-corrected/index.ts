@@ -72,7 +72,8 @@ serve(async (req) => {
       paymentIntentId, 
       items, 
       billingDetails,
-      totalPaid // Amount actually paid by customer
+      totalPaid, // Amount actually paid by customer
+      tax = 0 // Fixed tax amount passed from client
     } = await req.json()
 
     const supabase = createClient(
@@ -84,7 +85,8 @@ serve(async (req) => {
       orderId,
       paymentIntentId,
       itemCount: items.length,
-      totalPaid: totalPaid
+      totalPaid: totalPaid,
+      tax
     });
 
     // Validate and calculate distributions for all items
@@ -134,6 +136,7 @@ serve(async (req) => {
         stripe_payment_intent_id: paymentIntentId,
         billing_name: billingDetails.name,
         billing_email: billingDetails.email,
+        tax_amount: tax,
         updated_at: new Date().toISOString(),
       })
       .eq('id', orderId)
@@ -164,6 +167,7 @@ serve(async (req) => {
           stripe_fee: detail.distribution.stripeFee,
           commission_rate: item.commissionRate,
           affiliate_commission_rate: item.affiliateCommissionRate || 0,
+          tax_amount: tax / items.length // Spread tax across items (simple allocation)
         })
 
       if (itemError) {

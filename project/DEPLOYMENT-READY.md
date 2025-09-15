@@ -23,13 +23,13 @@ Create these in your deployment platform:
 ```bash
 # Production Supabase (keep current values)
 VITE_SUPABASE_URL=https://yemgssttxhkgrivuodbz.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_ANON_KEY=[REDACTED_SUPABASE_ANON]
+SUPABASE_SERVICE_ROLE_KEY=[REDACTED_SUPABASE_SERVICE_ROLE]
 
 # Stripe Keys (SWITCH TO LIVE for production)
 VITE_STRIPE_PUBLISHABLE_KEY=pk_live_... # ⚠️ CHANGE FROM TEST
 STRIPE_SECRET_KEY=sk_live_...            # ⚠️ CHANGE FROM TEST
-STRIPE_WEBHOOK_SECRET=whsec_...          # ⚠️ SETUP NEW WEBHOOK
+STRIPE_WEBHOOK_SECRET=[REDACTED_WHSEC]          # ⚠️ SETUP NEW WEBHOOK
 
 # Optional
 NODE_VERSION=18
@@ -109,7 +109,7 @@ VITE_STRIPE_PUBLISHABLE_KEY=pk_live_your_live_key
 # Backend (Supabase Edge Functions)
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 STRIPE_SECRET_KEY=sk_live_your_live_secret
-STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+STRIPE_WEBHOOK_SECRET=[REDACTED_WHSEC]
 ```
 
 ### **Production URLs**

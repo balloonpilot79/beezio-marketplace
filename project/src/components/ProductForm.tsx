@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
@@ -103,12 +103,22 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [imageUrl, setImageUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
 
-  // Product categories
-  const categories = [
-    'Electronics', 'Fashion', 'Home & Garden', 'Health & Beauty',
-    'Sports & Outdoors', 'Books & Media', 'Toys & Games', 'Food & Beverages',
-    'Travel & Experiences', 'Art & Crafts', 'Business & Industrial', 'Automotive', 'Other'
-  ];
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data, error } = await supabase.from('categories').select('id, name').order('sort_order', { ascending: true });
+        if (error) {
+          console.warn('Could not load categories:', error.message || error);
+          return;
+        }
+        setCategories(data || []);
+      } catch (e) {
+        console.warn('Category fetch error:', e);
+      }
+    })();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -364,9 +374,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
               >
                 <option value="">Select a category</option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
                   </option>
                 ))}
               </select>

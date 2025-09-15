@@ -4,6 +4,7 @@ import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import RecommendationEngine from '../components/RecommendationEngine';
+import { TAX_RATE } from '../lib/pricing';
 import { useBehaviorTracker } from '../hooks/useBehaviorTracker';
 
 const CartPage: React.FC = () => {
@@ -24,7 +25,7 @@ const CartPage: React.FC = () => {
 
   const subtotal = getTotalPrice();
   const shipping = getShippingTotal();
-  const tax = subtotal * 0.08; // 8% tax rate (should be calculated based on location)
+  const tax = Math.round((subtotal * TAX_RATE + Number.EPSILON) * 100) / 100;
   const total = subtotal + shipping + tax;
 
   useEffect(() => {

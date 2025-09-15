@@ -1,8 +1,9 @@
 // Quick script to check your current database structure
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = 'https://yemgssttxhkgrivuodbz.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWdzc3R0eGhrZ3JpdnVvZGJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzMwNzg5NjQsImV4cCI6MjA0ODY1NDk2NH0.JZaEy7pFJGkZNJhNq0dWQ2ZrQAYg6oOQQdTk6EJuYOA';
+// IMPORTANT: Do NOT commit production keys. This script should read credentials from environment variables.
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'your-supabase-key';
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 

@@ -1,8 +1,9 @@
 // Simple database migration test
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = 'https://yemgssttxhkgrivuodbz.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWdzc3R0eGhrZ3JpdnVvZGJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5MzQwMjEsImV4cCI6MjA2NzUxMDAyMX0.EyargNCg2m77Tz-JoO5qs6Auxdcd3StvDKx9ZHkKcNM';
+// Use environment variables for Supabase configuration. Do not hardcode keys in source.
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'your-supabase-key';
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 

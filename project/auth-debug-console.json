@@ -1,0 +1,26 @@
+[
+  {
+    "type": "log",
+    "text": "Auth state change: INITIAL_SESSION undefined"
+  },
+  {
+    "type": "log",
+    "text": "Auth state change: INITIAL_SESSION undefined"
+  },
+  {
+    "type": "error",
+    "text": "Refused to apply inline style because it violates the following Content Security Policy directive: \"style-src 'self' 'sha256-0hAheEzaMe6uXIKV4EehS9pu1am1lj/KnnzrOYqckXk='\". Either the 'unsafe-inline' keyword, a hash ('sha256-4z94HBtDQ7TATlXQpTKGg1rMyQvXAdMgvQ5YYOMBiDs='), or a nonce ('nonce-...') is required to enable inline execution.\n"
+  },
+  {
+    "type": "error",
+    "text": "Refused to apply inline style because it violates the following Content Security Policy directive: \"style-src 'self'\". Either the 'unsafe-inline' keyword, a hash ('sha256-4z94HBtDQ7TATlXQpTKGg1rMyQvXAdMgvQ5YYOMBiDs='), or a nonce ('nonce-...') is required to enable inline execution.\n"
+  },
+  {
+    "type": "error",
+    "text": "[Report Only] Refused to apply inline style because it violates the following Content Security Policy directive: \"style-src 'self'\". Either the 'unsafe-inline' keyword, a hash ('sha256-4z94HBtDQ7TATlXQpTKGg1rMyQvXAdMgvQ5YYOMBiDs='), or a nonce ('nonce-...') is required to enable inline execution.\n"
+  },
+  {
+    "type": "error",
+    "text": "Refused to apply inline style because it violates the following Content Security Policy directive: \"style-src https://m.stripe.network\". Either the 'unsafe-inline' keyword, a hash ('sha256-4z94HBtDQ7TATlXQpTKGg1rMyQvXAdMgvQ5YYOMBiDs='), or a nonce ('nonce-...') is required to enable inline execution.\n"
+  }
+]

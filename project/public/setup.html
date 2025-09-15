@@ -111,11 +111,10 @@
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script>
-        // Your Supabase configuration
-        const SUPABASE_URL = 'https://yemgssttxhkgrivuodbz.supabase.co';
-        const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWdzc3R0eGhrZ3JpdnVvZGJ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTkzNDAyMSwiZXhwIjoyMDY3NTEwMDIxfQ.Us9GMI_6FKyUAeiuZCLkwXgHujq8NSfvukleneGv8RA';
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    // WARNING: do NOT expose service role keys in client-side HTML. Use server-side or Supabase dashboard for privileged operations.
+    const SUPABASE_URL = window.__SUPABASE_URL__ || 'https://your-project.supabase.co';
+    const SUPABASE_ANON_KEY = window.__SUPABASE_ANON_KEY__ || '';
+    const supabase = (window.supabase && SUPABASE_ANON_KEY) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
         
         function updateProgress(percentage, message) {
             const progressBar = document.getElementById('progressBar');

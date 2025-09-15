@@ -36,8 +36,8 @@
 
 - [ ] **Set Environment Variables**
   - [ ] `VITE_SUPABASE_URL=https://yemgssttxhkgrivuodbz.supabase.co`
-  - [ ] `VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
-  - [ ] `VITE_STRIPE_PUBLISHABLE_KEY=pk_test_51RmQ5ZGfNVbOuQlVyEEB8hvXCPgeBKhfnOOUUASIYubRwB1eNvpdhvY1cYjoqfF76Jd7607GFvxIAeJOb2Qr4L0M001Two7BPP`
+  - [ ] `VITE_SUPABASE_ANON_KEY=[REDACTED_SUPABASE_ANON]`
+  - [ ] `VITE_STRIPE_PUBLISHABLE_KEY=[REDACTED_PK_TEST]`
 
 ### **Phase 3: Post-Deployment Testing (20 minutes)**
 - [ ] **Core Functionality Tests**

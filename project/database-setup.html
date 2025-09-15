@@ -35,11 +35,13 @@
     </div>
 
     <script>
-        // Your Supabase configuration
-        const SUPABASE_URL = 'https://yemgssttxhkgrivuodbz.supabase.co';
-        const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWdzc3R0eGhrZ3JpdnVvZGJ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTkzNDAyMSwiZXhwIjoyMDY3NTEwMDIxfQ.Us9GMI_6FKyUAeiuZCLkwXgHujq8NSfvukleneGv8RA';
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    // WARNING: Do NOT put service role keys or secrets in client-side HTML. This is insecure.
+    // Use server-side scripts or the Supabase dashboard to run privileged setup steps.
+    // For local testing only, provide your public anon key via a secure mechanism (or edit locally but do NOT commit).
+    const SUPABASE_URL = window.__SUPABASE_URL__ || 'https://your-project.supabase.co';
+    const SUPABASE_ANON_KEY = window.__SUPABASE_ANON_KEY__ || '';
+
+    const supabase = (window.supabase && SUPABASE_ANON_KEY) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
         
         function updateProgress(percentage, message) {
             const progressBar = document.getElementById('progressBar');

@@ -63,13 +63,43 @@ serve(async (req) => {
       allItems: JSON.stringify(items)
     }
 
-    // Create payment intent
-    const paymentIntent = await stripe.paymentIntents.create({
+    // Check for seller connected account (use primary item as the main seller)
+    let transferDestination: string | undefined = undefined
+    try {
+      if (primaryItem && primaryItem.sellerId) {
+        const { data: sellerProfile, error: sellerError } = await supabase
+          .from('profiles')
+          .select('stripe_account_id')
+          .eq('id', primaryItem.sellerId)
+          .single()
+
+        if (!sellerError && sellerProfile?.stripe_account_id) {
+          transferDestination = sellerProfile.stripe_account_id
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching seller profile for transfer destination:', err)
+    }
+
+    // Build PaymentIntent params. If transferDestination is present, create a direct charge to the connected account
+    const piParams: any = {
       amount,
       currency: 'usd',
       metadata,
       description: `Order from ${billingName || 'Customer'} - ${items.length} item(s)`,
-    })
+    }
+
+    if (transferDestination) {
+      // Calculate platform application fee (10% of item subtotal + stripe estimate)
+      // For now, compute a simple application_fee_amount = Math.round(amount * 0.10)
+      const applicationFeeAmount = Math.round(amount * 0.10)
+
+      piParams.transfer_data = { destination: transferDestination }
+      piParams.application_fee_amount = applicationFeeAmount
+    }
+
+    // Create payment intent
+    const paymentIntent = await stripe.paymentIntents.create(piParams)
 
     // Create order record in database
     const { data: order, error: orderError } = await supabase

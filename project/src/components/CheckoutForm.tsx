@@ -9,7 +9,7 @@ import {
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
-import { calculatePricing, formatPricingBreakdown } from '../lib/pricing';
+import { calculatePricing, formatPricingBreakdown, TAX_RATE } from '../lib/pricing';
 
 interface CheckoutFormProps {
   amount: number;
@@ -83,6 +83,10 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
         affiliateCommissionRate: item.affiliateCommissionRate || 0
       }));
 
+      // compute subtotal for tax calculation
+      const itemsSubtotal = cartMetadata.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+      const taxAmount = Math.round((itemsSubtotal * TAX_RATE + Number.EPSILON) * 100) / 100;
+
       // Create payment intent using Supabase function
       const { data, error: functionError } = await supabase.functions.invoke('create-payment-intent', {
         body: {
@@ -91,6 +95,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
           userId: user?.id,
           billingName: billingDetails.name,
           billingEmail: billingDetails.email,
+          tax: taxAmount,
         },
       });
 
@@ -98,7 +103,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
         throw new Error(`Payment setup failed: ${functionError.message}`);
       }
 
-      const { client_secret, order_id } = data;
+  const { client_secret, order_id, payment_intent_id } = data;
 
       // Confirm payment
       const { error: confirmError } = await stripe.confirmCardPayment(client_secret, {
@@ -117,10 +122,11 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
         await supabase.functions.invoke('complete-order-corrected', {
           body: {
             orderId: order_id,
-            paymentIntentId: client_secret.split('_secret_')[0], // Extract payment intent ID
+            paymentIntentId: payment_intent_id,
             items: cartMetadata,
             billingDetails: billingDetails,
-            totalPaid: amount
+            totalPaid: amount,
+            tax: taxAmount,
           },
         });
 

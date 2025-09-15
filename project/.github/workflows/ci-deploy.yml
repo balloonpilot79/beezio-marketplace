@@ -1,0 +1,114 @@
+name: CI — scan, build, optional deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run secret scan
+        run: node scripts/secret-scan.js
+
+  build:
+    runs-on: ubuntu-latest
+    needs: secret-scan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run env guard
+        run: node scripts/env-guard.js
+
+      - name: Build
+        run: npm run build
+
+  deploy-functions:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SUPABASE_CLI_TOKEN != '' && secrets.SUPABASE_PROJECT_REF != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install platform CLI
+        run: |
+          npm install -g supabase
+
+      - name: Authenticate CLI
+        env:
+          SUPABASE_CLI_TOKEN: ${{ secrets.SUPABASE_CLI_TOKEN }}
+        run: |
+          echo "$SUPABASE_CLI_TOKEN" | supabase login --token
+
+      - name: Push secrets to platform
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+        run: |
+          # set secrets in the platform (idempotent)
+          supabase secrets set SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" --project-ref "$SUPABASE_PROJECT_REF"
+          supabase secrets set STRIPE_SECRET_KEY="$STRIPE_SECRET_KEY" --project-ref "$SUPABASE_PROJECT_REF"
+          supabase secrets set STRIPE_WEBHOOK_SECRET="$STRIPE_WEBHOOK_SECRET" --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Deploy Edge Functions
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          cd supabase/functions
+          for d in */ ; do
+            echo "Deploying $d"
+            supabase functions deploy "${d%/}" --project-ref "$SUPABASE_PROJECT_REF" || true
+          done
+
+  deploy-netlify:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ secrets.NETLIFY_AUTH_TOKEN && secrets.NETLIFY_SITE_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Netlify CLI
+        run: npm install -g netlify-cli
+
+      - name: Deploy to Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          netlify deploy --site "$NETLIFY_SITE_ID" --auth "$NETLIFY_AUTH_TOKEN" --prod --dir=dist

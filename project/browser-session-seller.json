@@ -1,0 +1,14 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:5173",
+      "localStorage": [
+        {
+          "name": "supabase.auth.token",
+          "value": "{\"access_token\":\"eyJhbGciOiJIUzI1NiIsImtpZCI6InVSbUxiMGNxb2Fma3l6Q3UiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3llbWdzc3R0eGhrZ3JpdnVvZGJ6LnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJmZWU4M2Q0Yi1lNWE0LTRkM2QtYmIzMS1iMWYxNGYzYjg4N2UiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzU3Nzk4MTc0LCJpYXQiOjE3NTc3OTQ1NzQsImVtYWlsIjoiZTJlLXNlbGxlckB0ZXN0LmJlZXppby5jbyIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWwiOiJlMmUtc2VsbGVyQHRlc3QuYmVlemlvLmNvIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwic3ViIjoiZmVlODNkNGItZTVhNC00ZDNkLWJiMzEtYjFmMTRmM2I4ODdlIn0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3NTc3OTQ1NzR9XSwic2Vzc2lvbl9pZCI6IjA4ZDUwNzQ3LWYwMzctNDJkOC05NDU4LTg2N2M5ODVjNDczNiIsImlzX2Fub255bW91cyI6ZmFsc2V9.tABfU9OKZsaV0VcxA9fBQQ1Hsko4KeaOfTQmiU8m5Uc\",\"token_type\":\"bearer\",\"expires_in\":3600,\"expires_at\":1757798174,\"refresh_token\":\"jj5b5excmu4v\",\"user\":{\"id\":\"fee83d4b-e5a4-4d3d-bb31-b1f14f3b887e\",\"aud\":\"authenticated\",\"role\":\"authenticated\",\"email\":\"e2e-seller@test.beezio.co\",\"email_confirmed_at\":\"2025-09-13T16:56:31.163371Z\",\"phone\":\"\",\"confirmed_at\":\"2025-09-13T16:56:31.163371Z\",\"last_sign_in_at\":\"2025-09-13T20:16:14.375709301Z\",\"app_metadata\":{\"provider\":\"email\",\"providers\":[\"email\"]},\"user_metadata\":{\"email\":\"e2e-seller@test.beezio.co\",\"email_verified\":true,\"phone_verified\":false,\"sub\":\"fee83d4b-e5a4-4d3d-bb31-b1f14f3b887e\"},\"identities\":[{\"identity_id\":\"f09c234e-a89c-4459-9bbb-32802dcf47d1\",\"id\":\"fee83d4b-e5a4-4d3d-bb31-b1f14f3b887e\",\"user_id\":\"fee83d4b-e5a4-4d3d-bb31-b1f14f3b887e\",\"identity_data\":{\"email\":\"e2e-seller@test.beezio.co\",\"email_verified\":false,\"phone_verified\":false,\"sub\":\"fee83d4b-e5a4-4d3d-bb31-b1f14f3b887e\"},\"provider\":\"email\",\"last_sign_in_at\":\"2025-09-13T16:56:31.16091Z\",\"created_at\":\"2025-09-13T16:56:31.160967Z\",\"updated_at\":\"2025-09-13T16:56:31.160967Z\",\"email\":\"e2e-seller@test.beezio.co\"}],\"created_at\":\"2025-09-13T16:56:31.155463Z\",\"updated_at\":\"2025-09-13T20:16:14.377269Z\",\"is_anonymous\":false}}"
+        }
+      ]
+    }
+  ]
+}

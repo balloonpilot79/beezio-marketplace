@@ -1,0 +1,14 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:5173",
+      "localStorage": [
+        {
+          "name": "supabase.auth.token",
+          "value": "{\"access_token\":\"eyJhbGciOiJIUzI1NiIsImtpZCI6InVSbUxiMGNxb2Fma3l6Q3UiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3llbWdzc3R0eGhrZ3JpdnVvZGJ6LnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJlNDdlYWI5MC04MThiLTRjY2UtYmRhZC0zMGU0ZTU5MDY0MzAiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzU3Nzk4MTcxLCJpYXQiOjE3NTc3OTQ1NzEsImVtYWlsIjoiZTJlLWJ1eWVyQHRlc3QuYmVlemlvLmNvIiwicGhvbmUiOiIiLCJhcHBfbWV0YWRhdGEiOnsicHJvdmlkZXIiOiJlbWFpbCIsInByb3ZpZGVycyI6WyJlbWFpbCJdfSwidXNlcl9tZXRhZGF0YSI6eyJlbWFpbCI6ImUyZS1idXllckB0ZXN0LmJlZXppby5jbyIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJwaG9uZV92ZXJpZmllZCI6ZmFsc2UsInN1YiI6ImU0N2VhYjkwLTgxOGItNGNjZS1iZGFkLTMwZTRlNTkwNjQzMCJ9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzU3Nzk0NTcxfV0sInNlc3Npb25faWQiOiJlMjE0ZDY4YS1kMjhmLTRmYmEtYjk5OC0xM2UzYjhlMzE5MDUiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.SDIShiZvIj9wfkGIGEorJc6YVQx8p0UdJ0SYjiyvBHY\",\"token_type\":\"bearer\",\"expires_in\":3600,\"expires_at\":1757798171,\"refresh_token\":\"mw3evqph3xcx\",\"user\":{\"id\":\"e47eab90-818b-4cce-bdad-30e4e5906430\",\"aud\":\"authenticated\",\"role\":\"authenticated\",\"email\":\"e2e-buyer@test.beezio.co\",\"email_confirmed_at\":\"2025-09-13T16:56:29.231674Z\",\"phone\":\"\",\"confirmed_at\":\"2025-09-13T16:56:29.231674Z\",\"last_sign_in_at\":\"2025-09-13T20:16:11.993696274Z\",\"app_metadata\":{\"provider\":\"email\",\"providers\":[\"email\"]},\"user_metadata\":{\"email\":\"e2e-buyer@test.beezio.co\",\"email_verified\":true,\"phone_verified\":false,\"sub\":\"e47eab90-818b-4cce-bdad-30e4e5906430\"},\"identities\":[{\"identity_id\":\"11318944-6cf6-4c69-8a06-6df23ac4ddd2\",\"id\":\"e47eab90-818b-4cce-bdad-30e4e5906430\",\"user_id\":\"e47eab90-818b-4cce-bdad-30e4e5906430\",\"identity_data\":{\"email\":\"e2e-buyer@test.beezio.co\",\"email_verified\":false,\"phone_verified\":false,\"sub\":\"e47eab90-818b-4cce-bdad-30e4e5906430\"},\"provider\":\"email\",\"last_sign_in_at\":\"2025-09-13T16:56:29.211158Z\",\"created_at\":\"2025-09-13T16:56:29.211813Z\",\"updated_at\":\"2025-09-13T16:56:29.211813Z\",\"email\":\"e2e-buyer@test.beezio.co\"}],\"created_at\":\"2025-09-13T16:56:29.167572Z\",\"updated_at\":\"2025-09-13T20:16:11.995361Z\",\"is_anonymous\":false}}"
+        }
+      ]
+    }
+  ]
+}

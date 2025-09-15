@@ -7,6 +7,7 @@ export interface PricingBreakdown {
   platformFee: number;         // Beezio 10% platform fee
   stripeFee: number;          // Stripe 3% processing fee
   listingPrice: number;       // Final price customer pays
+  taxAmount?: number;         // Fixed tax amount included in listing
   affiliateRate: number;      // Affiliate commission rate/amount
   affiliateType: 'percentage' | 'flat_rate';
 }
@@ -21,6 +22,9 @@ export interface PricingInput {
 export const PLATFORM_FEE_RATE = 0.10; // 10% platform fee (Beezio) - NOT USED in new formula
 export const STRIPE_FEE_RATE = 0.03;   // 3% Stripe fee
 export const STRIPE_FEE_FIXED = 0.60;  // $0.60 fixed Stripe fee
+// Fixed sales tax applied to orders (flat $0.07 per order)
+// Sales tax rate (7% = 0.07)
+export const TAX_RATE = 0.07;
 
 /**
  * Calculate complete pricing breakdown (CORRECTED FORMULA)
@@ -56,13 +60,22 @@ export const calculatePricing = (input: PricingInput): PricingBreakdown => {
   const platformFee = totalBeforePlatform * 0.10; // Beezio gets 10%
 
   // Step 5: Final listing price = (seller + affiliate + stripe) + Beezio
-  const listingPrice = totalBeforePlatform + platformFee;
+  // compute tax on subtotal (before platform fee): typically tax applies to goods+affiliate but not platform markup; here we apply tax to (seller + affiliate + stripe?)
+  // Common approach: tax applies to the taxable amount (seller + affiliate). We'll compute tax on (seller + affiliate).
+  const taxableBase = sellerAmount + affiliateAmount;
+  const rawTax = taxableBase * TAX_RATE;
+  // round to cents
+  const taxAmount = Math.round(rawTax * 100) / 100;
+
+  const listingPrice = totalBeforePlatform + platformFee + taxAmount;
 
   return {
     sellerAmount,
     affiliateAmount,
     platformFee,
     stripeFee,
+    taxAmount,
+    // Note: listingPrice now includes the tax amount
     listingPrice,
     affiliateRate,
     affiliateType,
@@ -148,6 +161,7 @@ export const formatPricingBreakdown = (
   affiliate: string;
   platform: string;
   stripe: string;
+  tax: string;
   total: string;
 } => {
   const formatter = new Intl.NumberFormat('en-US', {
@@ -160,6 +174,7 @@ export const formatPricingBreakdown = (
     affiliate: formatter.format(breakdown.affiliateAmount),
     platform: formatter.format(breakdown.platformFee),
     stripe: formatter.format(breakdown.stripeFee),
+    tax: formatter.format(breakdown.taxAmount || 0),
     total: formatter.format(breakdown.listingPrice),
   };
 };

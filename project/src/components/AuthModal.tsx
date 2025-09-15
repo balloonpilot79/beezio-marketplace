@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
+
+// Runtime check for Vite env vars (will be inlined at build time)
+const RUNTIME_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const RUNTIME_SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const isSupabaseConfigured = (): boolean => {
+  if (!RUNTIME_SUPABASE_URL || !RUNTIME_SUPABASE_ANON) return false;
+  if (RUNTIME_SUPABASE_URL.includes('placeholder') || RUNTIME_SUPABASE_ANON.includes('placeholder')) return false;
+  return true;
+};
 import { useNavigate } from 'react-router-dom';
 
 interface AuthModalProps {
@@ -50,31 +59,54 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
     setSuccess(null);
 
     try {
+      // Quick guard: if Supabase isn't configured in the deployed environment, surface an instructive error
+      if (!isSupabaseConfigured()) {
+        console.error('Supabase environment variables missing at runtime. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in Netlify.');
+        setError('Site not configured: authentication is currently unavailable. If you are the site owner, configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify.');
+        return;
+      }
       if (mode === 'forgot') {
-  if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting password reset...');
-        await resetPassword(formData.email);
-        setSuccess('Password reset email sent! Check your inbox for instructions.');
-        setTimeout(() => {
-          setMode('login');
-          setSuccess(null);
-        }, 3000);
+        if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting password reset...');
+
+        // Wrap reset in a timeout promise so the UI doesn't spin forever
+        const resetPromise = resetPassword(formData.email);
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000));
+
+        await Promise.race([resetPromise, timeout])
+          .then(() => {
+            setSuccess('Password reset email sent! Check your inbox for instructions.');
+            setTimeout(() => {
+              setMode('login');
+              setSuccess(null);
+            }, 3000);
+          })
+          .catch((err: any) => {
+            console.error('Password reset error or timeout:', err);
+            if (err && err.message === 'timeout') {
+              setError('Password reset is taking too long. Please try again or contact support.');
+            } else {
+              setError(err?.message || 'Failed to send password reset email.');
+            }
+          });
+
       } else if (mode === 'login') {
-  if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting sign in...');
+        if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting sign in...');
         const result = await signIn(formData.email, formData.password);
-  if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Sign in result:', result);
-        if (result.user) {
+        if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Sign in result:', result);
+        if (result && (result.user || result.session)) {
           setSuccess('Successfully signed in!');
           onClose();
-          
-          // Always redirect to /dashboard - the Dashboard component will handle role-based rendering
-          setTimeout(() => {
-            navigate('/dashboard');
-          }, 100);
+          // Always redirect to /dashboard - the Dashboard will handle role-based rendering
+          setTimeout(() => navigate('/dashboard'), 100);
+        } else {
+          // If no user/session returned, surface the response for debugging
+          console.warn('Sign in returned no user/session:', result);
+          setError('Sign in failed. Please check your credentials and try again.');
         }
       } else {
-  if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting sign up...');
+        if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting sign up...');
         const result = await signUp(formData.email, formData.password, formData);
-        if (result.user) {
+        if (result && result.user) {
           setSuccess('Account created successfully!');
           // Supabase: If email confirmation is required, session will be null
           if (!result.session) {
@@ -84,32 +116,31 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           // If session exists, sign in and redirect
           try {
             const signInResult = await signIn(formData.email, formData.password);
-            if (signInResult.user) {
+            if (signInResult && (signInResult.user || signInResult.session)) {
               onClose();
-              // Always redirect to /dashboard - the Dashboard component will handle role-based rendering
-              setTimeout(() => {
-                navigate('/dashboard');
-              }, 100);
+              setTimeout(() => navigate('/dashboard'), 100);
             } else {
               setError('Sign in failed after registration. Please try logging in.');
             }
           } catch (signInError: any) {
+            console.error('Error signing in after registration:', signInError);
             setError(signInError.message || 'Sign in failed after registration.');
           }
         }
       }
     } catch (err: any) {
       console.error('Auth error:', err);
-      if (err.message && err.message.includes('already exists')) {
+      const msg = err?.message || String(err);
+      if (msg.includes('already exists')) {
         setError('An account with this email already exists. Please sign in instead.');
         setTimeout(() => {
           setMode('login');
           setError(null);
         }, 3000);
-      } else if (err.message && err.message.includes('Invalid login credentials')) {
+      } else if (msg.includes('Invalid login credentials') || msg.includes('Invalid login')) {
         setError('Invalid email or password. Please check your credentials and try again.');
       } else {
-        setError(err.message || 'An error occurred during authentication');
+        setError(msg || 'An error occurred during authentication');
       }
     } finally {
       setLoading(false);

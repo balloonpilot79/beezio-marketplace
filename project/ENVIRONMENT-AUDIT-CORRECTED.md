@@ -10,8 +10,8 @@
 - ✅ Supabase URL: `https://yemgssttxhkgrivuodbz.supabase.co`
 - ✅ Supabase anonymous key is configured
 - ✅ Supabase service role key is configured
-- ✅ Stripe publishable key: `pk_test_...` (TEST mode)
-- ✅ Stripe secret key: `sk_test_...` (TEST mode)
+-- ✅ Stripe publishable key: `[REDACTED_PK_TEST]` (TEST mode)
+-- ✅ Stripe secret key: `[REDACTED_SK_TEST]` (TEST mode)
 - ✅ Stripe webhook secret is configured
 
 ### **Development Server Status:**

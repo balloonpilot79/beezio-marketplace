@@ -17,8 +17,8 @@ Your `dist/` folder is built and ready to deploy immediately.
 2. **Add these 3 variables:**
 ```bash
 VITE_SUPABASE_URL=https://yemgssttxhkgrivuodbz.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWdzc3R0eGhrZ3JpdnVvZGJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5MzQwMjEsImV4cCI6MjA2NzUxMDAyMX0.EyargNCg2m77Tz-JoO5qs6Auxdcd3StvDKx9ZHkKcNM
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_51RmQ5ZGfNVbOuQlVyEEB8hvXCPgeBKhfnOOUUASIYubRwB1eNvpdhvY1cYjoqfF76Jd7607GFvxIAeJOb2Qr4L0M001Two7BPP
+VITE_SUPABASE_ANON_KEY=[REDACTED_SUPABASE_ANON]
+VITE_STRIPE_PUBLISHABLE_KEY=[REDACTED_PK_TEST]
 ```
 3. **Drag `dist` folder again** to redeploy with environment variables
 

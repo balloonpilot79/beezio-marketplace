@@ -66,6 +66,27 @@ serve(async (req) => {
 
         console.log('Processing payment distribution for:', paymentIntent.id)
 
+        // Idempotency check: if we've already processed this payment intent, skip
+        const { data: existingTx, error: existingError } = await supabase
+          .from('transactions')
+          .select('id')
+          .eq('stripe_payment_intent_id', paymentIntent.id)
+          .limit(1)
+          .maybeSingle()
+
+        if (existingError) {
+          console.error('Error checking existing transaction for idempotency:', existingError)
+          // continue - we'll attempt to create the transaction below, but surface the error to logs
+        }
+
+        if (existingTx) {
+          console.log(`PaymentIntent ${paymentIntent.id} already processed (transaction id: ${existingTx.id}). Skipping.`)
+          return new Response(JSON.stringify({ received: true, skipped: true }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          })
+        }
+
         // Create transaction record
         const { data: transaction, error: transactionError } = await supabase
           .from('transactions')

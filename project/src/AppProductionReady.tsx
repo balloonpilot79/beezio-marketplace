@@ -14,6 +14,11 @@ import PrivacyPage from './pages/PrivacyPage';
 import EnhancedSellerDashboard from './components/EnhancedSellerDashboard';
 import EnhancedAffiliateDashboard from './components/EnhancedAffiliateDashboard';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+// debug-only route (enabled when VITE_ENABLE_DEBUG is 'true')
+let DashboardDebug: any = null;
+if (import.meta.env.VITE_ENABLE_DEBUG === 'true') {
+  DashboardDebug = (await import('./pages/DashboardDebug')).default;
+}
 import DebugSW from './pages/DebugSW';
 import AuthModal from './components/AuthModal';
 import { SAMPLE_PRODUCTS } from './data/sampleProducts';
@@ -736,6 +741,9 @@ const AppProductionReady = () => {
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/privacy" element={<PrivacyPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
+                    {import.meta.env.VITE_ENABLE_DEBUG === 'true' && DashboardDebug && (
+                      <Route path="/dashboard-debug" element={<DashboardDebug />} />
+                    )}
                     <Route path="/debug-sw" element={<DebugSW />} />
                     <Route path="/seller-dashboard" element={<EnhancedSellerDashboard />} />
                     <Route path="/affiliate-dashboard" element={<EnhancedAffiliateDashboard />} />

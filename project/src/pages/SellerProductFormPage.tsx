@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Save, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -13,7 +13,7 @@ const SellerProductFormPage: React.FC = () => {
     title: '',
     description: '',
     price: 0,
-    category: '',
+    category_id: '',
     product_type: 'one_time' as 'one_time' | 'subscription',
     subscription_interval: 'monthly' as 'monthly' | 'yearly',
     affiliate_commission_rate: 10,
@@ -28,11 +28,22 @@ const SellerProductFormPage: React.FC = () => {
     }
   });
 
-  const categories = [
-    'Electronics', 'Fashion', 'Home & Garden', 'Health & Beauty',
-    'Sports & Outdoors', 'Books & Media', 'Toys & Games', 'Food & Beverages',
-    'Travel & Experiences', 'Art & Crafts', 'Business & Industrial', 'Automotive', 'Other'
-  ];
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data, error } = await supabase.from('categories').select('id, name').order('sort_order', { ascending: true });
+        if (error) {
+          console.warn('Could not load categories:', error.message || error);
+          return;
+        }
+        setCategories(data || []);
+      } catch (e) {
+        console.warn('Category fetch error:', e);
+      }
+    })();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +64,7 @@ const SellerProductFormPage: React.FC = () => {
       return;
     }
 
-    if (!newProduct.category) {
+    if (!newProduct.category_id) {
       alert('Please select a category.');
       return;
     }
@@ -73,6 +84,7 @@ const SellerProductFormPage: React.FC = () => {
 
       const productData = {
         ...newProduct,
+        category_id: newProduct.category_id || null,
         seller_id: profile.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -185,15 +197,15 @@ const SellerProductFormPage: React.FC = () => {
                     Category *
                   </label>
                   <select
-                    value={newProduct.category}
-                    onChange={(e) => handleInputChange('category', e.target.value)}
+                      value={newProduct.category_id}
+                      onChange={(e) => handleInputChange('category_id', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     required
                   >
                     <option value="">Select a category</option>
-                    {categories.map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
                   </select>
                 </div>
 

@@ -5,10 +5,14 @@
   "type": "module",
   "scripts": {
     "lint": "eslint .",
+  "e2e:browser": "node ./scripts/e2e-browser-test.cjs",
+  "e2e:api": "node --experimental-modules ./scripts/e2e-api-test.mjs",
     "populate-db": "node populate-sample-data.js",
     "test-fulfillment": "node test-fulfillment-system.js",
     "dev": "vite",
     "build": "vite build",
+  "prebuild": "node ./scripts/env-guard.js",
+  "scan:secrets": "node ./scripts/secret-scan.js",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -47,6 +51,7 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
+    "playwright": "^1.37.0",
     "postcss": "^8.5.6",
     "supabase": "^2.33.5",
     "tailwindcss": "^3.4.17",

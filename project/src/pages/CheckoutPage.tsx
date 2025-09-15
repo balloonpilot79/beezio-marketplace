@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Lock, CreditCard } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import { calculatePricing, formatPricingBreakdown, TAX_RATE } from '../lib/pricing';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import CheckoutForm from '../components/CheckoutForm';
@@ -31,7 +32,7 @@ const CheckoutPage: React.FC = () => {
 
   const subtotal = getTotalPrice();
   const shipping = getShippingTotal();
-  const tax = subtotal * 0.08; // 8% tax rate
+  const tax = Math.round((subtotal * TAX_RATE + Number.EPSILON) * 100) / 100;
   const total = subtotal + shipping + tax;
 
   if (!user || items.length === 0) {
