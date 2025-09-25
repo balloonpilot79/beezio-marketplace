@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Heart, ShoppingCart, Shield, Truck, RotateCcw, DollarSign, Gift, Star, Users, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Heart, ShoppingCart, Shield, Truck, RotateCcw, DollarSign, Gift, Star, Users, TrendingUp, Play, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { SAMPLE_PRODUCTS } from '../data/sampleProducts';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -48,6 +48,37 @@ const ProductDetailPage: React.FC = () => {
   
   // Behavior tracking
   const { trackView, trackClick, trackCartAdd } = useBehaviorTracker();
+
+  // Function to get embed URL from video URL
+  const getVideoEmbedUrl = (url: string): string | null => {
+    if (!url) return null;
+    
+    // YouTube
+    const youtubeMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+    if (youtubeMatch) {
+      return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+    }
+    
+    // TikTok
+    const tiktokMatch = url.match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/);
+    if (tiktokMatch) {
+      return `https://www.tiktok.com/embed/v2/${tiktokMatch[1]}`;
+    }
+    
+    // Vimeo
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) {
+      return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+    }
+    
+    // Instagram
+    const instagramMatch = url.match(/instagram\.com\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
+    if (instagramMatch) {
+      return `https://www.instagram.com/p/${instagramMatch[1]}/embed/`;
+    }
+    
+    return null;
+  };
 
   useEffect(() => {
     if (productId) {
@@ -260,33 +291,115 @@ const ProductDetailPage: React.FC = () => {
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Product Images */}
+        {/* Product Media (Images & Videos) */}
         <div className="space-y-4">
-          {/* Main Image */}
-          <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
-            <img
-              src={product.images[selectedImageIndex] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=800'}
-              alt={product.title}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          
-          {/* Thumbnail Images */}
-          {product.images.length > 1 && (
-            <div className="flex space-x-2">
-              {product.images.map((image, index) => (
+          {/* Media Tabs */}
+          {(product.images.length > 0 || product.videos.length > 0) && (
+            <div className="flex space-x-1 mb-4">
+              {product.images.length > 0 && (
                 <button
-                  key={index}
-                  onClick={() => setSelectedImageIndex(index)}
-                  className={`w-20 h-20 rounded-lg overflow-hidden border-2 ${
-                    selectedImageIndex === index ? 'border-amber-500' : 'border-gray-200'
+                  onClick={() => setSelectedImageIndex(0)}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                    selectedImageIndex < product.images.length 
+                      ? 'bg-amber-100 text-amber-800' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  <img src={image} alt={`${product.title} ${index + 1}`} className="w-full h-full object-cover" />
+                  Photos ({product.images.length})
                 </button>
-              ))}
+              )}
+              {product.videos.length > 0 && (
+                <button
+                  onClick={() => setSelectedImageIndex(product.images.length)}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                    selectedImageIndex >= product.images.length 
+                      ? 'bg-amber-100 text-amber-800' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Videos ({product.videos.length})
+                </button>
+              )}
             </div>
           )}
+
+          {/* Main Media Display */}
+          <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+            {selectedImageIndex < product.images.length ? (
+              // Display Image
+              <img
+                src={product.images[selectedImageIndex] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=800'}
+                alt={product.title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              // Display Video
+              (() => {
+                const videoIndex = selectedImageIndex - product.images.length;
+                const videoUrl = product.videos[videoIndex];
+                const embedUrl = getVideoEmbedUrl(videoUrl);
+                
+                if (embedUrl) {
+                  return (
+                    <iframe
+                      src={embedUrl}
+                      className="w-full h-full"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={`Video ${videoIndex + 1} for ${product.title}`}
+                    />
+                  );
+                } else {
+                  return (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                      <div className="text-center">
+                        <ExternalLink className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-gray-600 text-sm">Video not supported</p>
+                        <a 
+                          href={videoUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-700 text-sm underline"
+                        >
+                          Open in new tab
+                        </a>
+                      </div>
+                    </div>
+                  );
+                }
+              })()
+            )}
+          </div>
+          
+          {/* Thumbnail Navigation */}
+          <div className="flex space-x-2 overflow-x-auto">
+            {/* Image Thumbnails */}
+            {product.images.map((image, index) => (
+              <button
+                key={`image-${index}`}
+                onClick={() => setSelectedImageIndex(index)}
+                className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 ${
+                  selectedImageIndex === index ? 'border-amber-500' : 'border-gray-200'
+                }`}
+              >
+                <img src={image} alt={`${product.title} ${index + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
+            
+            {/* Video Thumbnails */}
+            {product.videos.map((video, index) => (
+              <button
+                key={`video-${index}`}
+                onClick={() => setSelectedImageIndex(product.images.length + index)}
+                className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 bg-gray-100 flex items-center justify-center ${
+                  selectedImageIndex === product.images.length + index ? 'border-amber-500' : 'border-gray-200'
+                }`}
+              >
+                <Play className="w-6 h-6 text-gray-600" />
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Product Info */}

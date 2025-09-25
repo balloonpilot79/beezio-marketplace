@@ -14,6 +14,12 @@ import PrivacyPage from './pages/PrivacyPage';
 import EnhancedSellerDashboard from './components/EnhancedSellerDashboard';
 import EnhancedAffiliateDashboard from './components/EnhancedAffiliateDashboard';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import ProductForm from './components/ProductForm';
+import SellerStorePage from './pages/SellerStorePage';
+import AffiliateStorePage from './pages/AffiliateStorePage';
+import AffiliateProductsPage from './pages/AffiliateProductsPage';
+import UserProfilePage from './pages/UserProfilePage';
+import ProductDetailPageSimple from './pages/ProductDetailPageSimple';
 // debug-only route (enabled when VITE_ENABLE_DEBUG is 'true')
 let DashboardDebug: any = null;
 if (import.meta.env.VITE_ENABLE_DEBUG === 'true') {
@@ -84,7 +90,7 @@ const FeatureCards = () => {
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8">
+  <div className="grid md:grid-cols-2 gap-8">
         {/* Seller Card */}
         <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-8 text-center border-t-4 border-blue-500">
           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -139,32 +145,6 @@ const FeatureCards = () => {
           </Link>
         </div>
 
-        {/* Buyer Card */}
-        <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-8 text-center border-t-4 border-purple-500">
-          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Shield className="w-8 h-8 text-purple-600" />
-          </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">🛒 For Buyers</h3>
-          <p className="text-gray-600 mb-6">
-            Discover incredible products at great prices while supporting sellers and earning rewards through our smart shopping platform.
-          </p>
-          <div className="text-left mb-8">
-            <h4 className="font-semibold text-gray-800 mb-3">🎁 What You Get:</h4>
-            <ul className="text-sm text-gray-600 space-y-2">
-              <li>• <strong>Cashback Rewards</strong> - Earn money on every purchase</li>
-              <li>• <strong>Exclusive Deals</strong> - Special offers from top sellers</li>
-              <li>• <strong>Quality Guarantee</strong> - All products verified and rated</li>
-              <li>• <strong>Secure Payments</strong> - Protected transactions every time</li>
-              <li>• <strong>Free Shipping</strong> - Many items ship free</li>
-              <li>• <strong>Easy Returns</strong> - Hassle-free return policy</li>
-              <li>• <strong>Personalized Recommendations</strong> - AI-powered suggestions</li>
-              <li>• <strong>24/7 Support</strong> - Help whenever you need it</li>
-            </ul>
-          </div>
-          <Link to="/marketplace" className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold">
-            Start Shopping Now
-          </Link>
-        </div>
       </div>
     </div>
   );
@@ -218,6 +198,12 @@ const FeaturedProducts = () => {
                     <p className="text-xs text-gray-500">by {product.seller}</p>
                   </div>
                   <div className="flex space-x-2">
+                    <Link 
+                      to={`/product/${product.id}`}
+                      className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium"
+                    >
+                      View Details
+                    </Link>
                     <button className="p-2 text-gray-400 hover:text-red-500 transition-colors">
                       <Heart className="w-5 h-5" />
                     </button>
@@ -617,8 +603,6 @@ const HomePage = () => {
 // (HomePage is implemented above; keep the other placeholders below)
 const ChatBot = () => <div>Chat Bot</div>;
 const EnhancedBuyerDashboard = () => <div>Buyer Dashboard</div>;
-const SellerStorePage = () => <div>Seller Store</div>;
-const AffiliateStorePage = () => <div>Affiliate Store</div>;
 
 const AppProductionReady = () => {
   // Professional Header component
@@ -702,6 +686,9 @@ const AppProductionReady = () => {
                     <Link to="/buyer-dashboard" className="text-gray-600 hover:text-amber-600 transition-colors font-medium whitespace-nowrap">
                       🛒 Buyer
                     </Link>
+                    <Link to="/profile" className="text-gray-600 hover:text-amber-600 transition-colors font-medium whitespace-nowrap">
+                      👤 Profile
+                    </Link>
                   </div>
                   <span className="text-sm text-gray-600 font-medium hidden md:inline">
                     Welcome, {user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}! 👋
@@ -746,10 +733,16 @@ const AppProductionReady = () => {
                     )}
                     <Route path="/debug-sw" element={<DebugSW />} />
                     <Route path="/seller-dashboard" element={<EnhancedSellerDashboard />} />
+                    <Route path="/dashboard/products/add" element={<ProductForm />} />
+                    <Route path="/dashboard/products/edit/:id" element={<ProductForm editMode={true} />} />
                     <Route path="/affiliate-dashboard" element={<EnhancedAffiliateDashboard />} />
+                    <Route path="/affiliate/products" element={<AffiliateProductsPage />} />
+                    <Route path="/affiliate/links" element={<div>Affiliate Links Management</div>} />
                     <Route path="/buyer-dashboard" element={<EnhancedBuyerDashboard />} />
                     <Route path="/store/:sellerId" element={<SellerStorePage />} />
                     <Route path="/affiliate/:affiliateId" element={<AffiliateStorePage />} />
+                    <Route path="/profile" element={<UserProfilePage />} />
+                    <Route path="/product/:productId" element={<ProductDetailPageSimple />} />
                   </Routes>
                   {/* ChatBot removed for stability on mobile */}
                 </div>

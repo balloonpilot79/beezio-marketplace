@@ -8,6 +8,7 @@ import ImageUpload from './ImageUpload';
 import MonetizationHelper from './MonetizationHelper';
 import { Download, ExternalLink, Copy, TrendingUp, DollarSign, Package, Users, ShoppingCart, BarChart3, CreditCard, AlertTriangle, Star, Truck, Target, Box, Settings, Zap, Bot, Cog, CheckCircle } from 'lucide-react';
 import StripeSellerDashboard from './StripeSellerDashboard';
+import { useNavigate } from 'react-router-dom';
 
 interface Product {
   id: string;
@@ -56,6 +57,7 @@ interface Customer {
 
 const EnhancedSellerDashboard: React.FC = () => {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -671,10 +673,10 @@ const EnhancedSellerDashboard: React.FC = () => {
       {activeTab === 'products' && (
         <div>
           <button
-            onClick={() => setShowProductForm(!showProductForm)}
+            onClick={() => navigate('/dashboard/products/add')}
             className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 mb-4"
           >
-            {showProductForm ? 'Close Form' : 'Add New Product'}
+            Add New Product
           </button>
           {showProductForm && <ProductForm />}
         </div>

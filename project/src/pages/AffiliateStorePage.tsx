@@ -35,7 +35,7 @@ const AffiliateStorePage: React.FC = () => {
   };
 
   const fetchStoreSettings = async () => {
-    const { data } = await supabase.from('affiliate_stores').select('*').eq('affiliate_id', affiliateId).single();
+    const { data } = await supabase.from('affiliate_store_settings').select('*').eq('affiliate_id', affiliateId).single();
     setStoreSettings(data);
   };
 
@@ -243,6 +243,84 @@ const AffiliateStorePage: React.FC = () => {
           </div>
         </div>
 
+        {/* Social Proof & Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Star className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">$2,450</p>
+                <p className="text-sm text-gray-600">This Month's Earnings</p>
+              </div>
+            </div>
+            <p className="text-sm text-green-600 font-medium">↑ 23% from last month</p>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <User className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">1,247</p>
+                <p className="text-sm text-gray-600">Happy Customers</p>
+              </div>
+            </div>
+            <p className="text-sm text-blue-600 font-medium">Customers I've helped</p>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Award className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">4.9★</p>
+                <p className="text-sm text-gray-600">Average Rating</p>
+              </div>
+            </div>
+            <p className="text-sm text-purple-600 font-medium">Trusted by thousands</p>
+          </div>
+        </div>
+
+        {/* Customer Testimonials */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Heart className="w-5 h-5 text-red-500" />
+            What Customers Are Saying
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border border-gray-100 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <div className="flex text-yellow-400">
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                </div>
+                <span className="text-sm text-gray-600 ml-2">Sarah M.</span>
+              </div>
+              <p className="text-sm text-gray-700 italic">"Thanks to this affiliate's recommendation, I found exactly what I was looking for. Great products and even better service!"</p>
+            </div>
+            <div className="border border-gray-100 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <div className="flex text-yellow-400">
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                </div>
+                <span className="text-sm text-gray-600 ml-2">Mike R.</span>
+              </div>
+              <p className="text-sm text-gray-700 italic">"I've purchased through this affiliate multiple times. They only recommend quality products and the commissions clearly support their work."</p>
+            </div>
+          </div>
+        </div>
+
         {/* Favorite Categories */}
         {storeSettings?.favorite_categories && storeSettings.favorite_categories.length > 0 && (
           <div className="mb-8">
@@ -302,6 +380,43 @@ const AffiliateStorePage: React.FC = () => {
               {products.length} products available
             </div>
           </div>
+
+          {/* Call to Action Banner */}
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  🎯 Support Quality Content & Great Products
+                </h3>
+                <p className="text-gray-700 text-sm mb-3">
+                  When you shop through my affiliate links, you're not just getting amazing products -
+                  you're also supporting independent creators and content makers like myself.
+                </p>
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <span className="flex items-center gap-1">
+                    <Star className="w-4 h-4 text-yellow-500" />
+                    Quality Products
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Heart className="w-4 h-4 text-red-500" />
+                    Creator Support
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Award className="w-4 h-4 text-purple-500" />
+                    Best Commissions
+                  </span>
+                </div>
+              </div>
+              <div className="hidden md:block">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600 mb-1">Your Purchase</div>
+                  <div className="text-sm text-gray-600">Helps creators like me</div>
+                  <div className="text-sm text-gray-600">continue making content</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <ProductGrid products={products} />
         </div>
       </div>

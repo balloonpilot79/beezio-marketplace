@@ -84,6 +84,8 @@ CREATE TABLE IF NOT EXISTS public.products (
     video_url TEXT,
     tags TEXT[],
     api_integration JSONB DEFAULT '{"enabled": false}',
+    shipping_options JSONB DEFAULT '[]',
+    requires_shipping BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );

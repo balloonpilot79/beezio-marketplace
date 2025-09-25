@@ -38,7 +38,7 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
   const fetchAffiliateSettings = async () => {
     // Try to get affiliate store settings
     const { data } = await supabase
-      .from('affiliate_stores')
+      .from('affiliate_store_settings')
       .select('*')
       .eq('affiliate_id', affiliateId)
       .single();
@@ -54,7 +54,7 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
     setSaving(true);
     try {
       const { data, error } = await supabase
-        .from('affiliate_stores')
+        .from('affiliate_store_settings')
         .upsert({
           affiliate_id: affiliateId,
           ...storeSettings,

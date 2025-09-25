@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
+import { EmbeddedStripeOnboarding } from './EmbeddedStripeOnboarding';
+import { TaxComplianceDashboard } from './TaxComplianceDashboard';
 
 interface AffiliateEarnings {
   total_earnings: number;
@@ -43,6 +45,7 @@ export const StripeAffiliateDashboard: React.FC = () => {
   const [payments, setPayments] = useState<CommissionPayment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stripeConnected, setStripeConnected] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -96,10 +99,30 @@ export const StripeAffiliateDashboard: React.FC = () => {
 
   const connectStripeAccount = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('create-stripe-account', {
+      // Check if user has signed tax agreements
+      const { data: agreements } = await supabase
+        .from('tax_agreements')
+        .select('agreement_type')
+        .eq('user_id', user?.id);
+
+      const requiredAgreements = ['1099', 'independent_contractor', 'tax_withholding'];
+      const signedAgreements = agreements?.map(a => a.agreement_type) || [];
+      const hasAllAgreements = requiredAgreements.every(agreement =>
+        signedAgreements.includes(agreement)
+      );
+
+      if (!hasAllAgreements) {
+        // Show embedded onboarding which includes agreement signing
+        setShowOnboarding(true);
+        return;
+      }
+
+      // If agreements are signed, proceed with account creation
+      const { data, error } = await supabase.functions.invoke('create-embedded-stripe-account', {
         body: { 
           email: user?.email,
-          type: 'affiliate'
+          type: 'affiliate',
+          agreements_signed: true
         }
       });
 
@@ -111,13 +134,9 @@ export const StripeAffiliateDashboard: React.FC = () => {
         .update({ stripe_account_id: data.account_id })
         .eq('id', user?.id);
 
-      // Open Stripe onboarding
-      window.open(data.onboarding_url, '_blank');
+      // Show onboarding modal
+      setShowOnboarding(true);
       
-      setTimeout(() => {
-        checkStripeConnection();
-      }, 5000);
-
     } catch (err) {
       console.error('Error connecting Stripe account:', err);
     }
@@ -335,6 +354,9 @@ export const StripeAffiliateDashboard: React.FC = () => {
         )}
       </div>
 
+      {/* Tax Compliance Section */}
+      <TaxComplianceDashboard />
+
       {/* Payment Schedule Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <div className="flex items-start space-x-3">
@@ -354,6 +376,21 @@ export const StripeAffiliateDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Embedded Stripe Onboarding Modal */}
+      {showOnboarding && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <EmbeddedStripeOnboarding
+              userType="affiliate"
+              onComplete={(accountId) => {
+                setShowOnboarding(false);
+                checkStripeConnection();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
+import { EmbeddedStripeOnboarding } from './EmbeddedStripeOnboarding';
+import { TaxComplianceDashboard } from './TaxComplianceDashboard';
 
 interface StripeAccountStatus {
   account_id: string;
@@ -44,6 +46,7 @@ export const StripeSellerDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -82,12 +85,31 @@ export const StripeSellerDashboard: React.FC = () => {
   };
 
   const createStripeAccount = async () => {
-    if (!user?.email) return;
-    
     setIsCreatingAccount(true);
+    setError(null);
     try {
-      const { data, error } = await supabase.functions.invoke('create-stripe-account', {
-        body: { email: user.email }
+      // Check if user has signed tax agreements
+      const { data: agreements } = await supabase
+        .from('tax_agreements')
+        .select('agreement_type')
+        .eq('user_id', user?.id);
+
+      const requiredAgreements = ['1099', 'independent_contractor', 'tax_withholding'];
+      const signedAgreements = agreements?.map(a => a.agreement_type) || [];
+      const hasAllAgreements = requiredAgreements.every(agreement =>
+        signedAgreements.includes(agreement)
+      );
+
+      if (!hasAllAgreements) {
+        // Show embedded onboarding which includes agreement signing
+        setShowOnboarding(true);
+        setIsCreatingAccount(false);
+        return;
+      }
+
+      // If agreements are signed, proceed with account creation
+      const { data, error } = await supabase.functions.invoke('create-embedded-stripe-account', {
+        body: { email: user?.email, type: 'seller', agreements_signed: true }
       });
 
       if (error) throw error;
@@ -98,13 +120,8 @@ export const StripeSellerDashboard: React.FC = () => {
         .update({ stripe_account_id: data.account_id })
         .eq('id', user.id);
 
-      // Redirect to Stripe onboarding
-      window.open(data.onboarding_url, '_blank');
-      
-      // Refresh account status after a delay
-      setTimeout(() => {
-        fetchStripeAccountStatus();
-      }, 5000);
+      // Show onboarding modal
+      setShowOnboarding(true);
 
     } catch (err) {
       console.error('Error creating Stripe account:', err);
@@ -317,6 +334,9 @@ export const StripeSellerDashboard: React.FC = () => {
         )}
       </div>
 
+      {/* Tax Compliance Section */}
+      <TaxComplianceDashboard />
+
       {/* Payout History */}
       {payoutHistory.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -361,6 +381,21 @@ export const StripeSellerDashboard: React.FC = () => {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Embedded Stripe Onboarding Modal */}
+      {showOnboarding && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <EmbeddedStripeOnboarding
+              userType="seller"
+              onComplete={(accountId) => {
+                setShowOnboarding(false);
+                fetchStripeAccountStatus();
+              }}
+            />
+          </div>
         </div>
       )}
     </div>

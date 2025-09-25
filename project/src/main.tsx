@@ -5,7 +5,9 @@ import './lib/i18n';
 import App from './App';
 
 // Register service worker with safe update flow
-if ('serviceWorker' in navigator) {
+// Only register the service worker when explicitly enabled via VITE_ENABLE_SW
+// This prevents stale/buggy service workers from causing blank pages during local development
+if ('serviceWorker' in navigator && import.meta.env.VITE_ENABLE_SW === 'true') {
   // Register the SW using our helper which emits events when updates are available
   import('./services/swRegister').then(({ registerServiceWorker }) => {
     registerServiceWorker();
