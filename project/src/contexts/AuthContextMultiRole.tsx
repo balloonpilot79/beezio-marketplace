@@ -304,24 +304,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const resetPassword = async (email: string) => {
-    let redirectUrl;
-
-    if (window.location.hostname === 'localhost') {
-      // Use current port for localhost
-      redirectUrl = `${window.location.origin}/reset-password`;
-    } else if (window.location.hostname.includes('beezio.co')) {
-      redirectUrl = 'https://beezio.co/reset-password';
-    } else {
-      redirectUrl = `${window.location.origin}/reset-password`;
-    }
-
     try {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectUrl,
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) throw error;
-      return data;
+      return { success: true };
     } catch (error) {
       console.error('Reset password error:', error);
       throw error;
@@ -330,15 +319,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const sendMagicLink = async (email: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithOtp({ 
+      const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`
-        }
+          shouldCreateUser: false,
+        },
       });
 
       if (error) throw error;
-      return data;
+      return { success: true };
     } catch (error) {
       console.error('Magic link error:', error);
       throw error;

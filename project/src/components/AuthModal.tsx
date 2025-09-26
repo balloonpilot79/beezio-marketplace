@@ -96,8 +96,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         if (result && (result.user || result.session)) {
           setSuccess('Successfully signed in!');
           onClose();
-          // Always redirect to /dashboard - the Dashboard will handle role-based rendering
-          setTimeout(() => navigate('/dashboard'), 100);
+          // Don't redirect to dashboard if user is on reset password page
+          if (window.location.pathname !== '/reset-password') {
+            setTimeout(() => navigate('/dashboard'), 100);
+          }
         } else {
           // If no user/session returned, surface the response for debugging
           console.warn('Sign in returned no user/session:', result);
