@@ -250,6 +250,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Reset password error:', error);
+      throw error;
+    }
+  };
+
+  const sendMagicLink = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
+        },
+      });
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Magic link error:', error);
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     try {
       console.log('Starting sign out process...');
@@ -300,37 +331,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Still redirect even on error
       window.location.href = '/';
-    }
-  };
-
-  const resetPassword = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
-      return { success: true };
-    } catch (error) {
-      console.error('Reset password error:', error);
-      throw error;
-    }
-  };
-
-  const sendMagicLink = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: false,
-        },
-      });
-
-      if (error) throw error;
-      return { success: true };
-    } catch (error) {
-      console.error('Magic link error:', error);
-      throw error;
     }
   };
 
