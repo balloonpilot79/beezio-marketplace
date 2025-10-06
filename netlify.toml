@@ -1,0 +1,16 @@
+[build]
+  # The project lives in the `project/` subfolder
+  base = "project"
+  # Use the existing npm build script from project/package.json
+  command = "npm run build"
+  # Vite output
+  publish = "project/dist"
+
+[context.production.environment]
+# Environment variables should be set in the Netlify UI or via the Netlify CLI.
+# Do NOT store secrets here in the repo.
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
