@@ -130,7 +130,22 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   useEffect(() => {
     (async () => {
       try {
-        const { data, error } = await supabase.from('categories').select('id, name').order('sort_order', { ascending: true });
+        // Try to use the helper function first
+        const { data: functionData, error: functionError } = await supabase.rpc('get_active_categories');
+        
+        if (!functionError && functionData && functionData.length > 0) {
+          console.log('✅ Categories loaded from database function');
+          setCategories(functionData.map((cat: any) => ({ id: cat.id, name: cat.name })));
+          return;
+        }
+
+        // Fallback to direct table query
+        const { data, error } = await supabase
+          .from('categories')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        
         if (error) {
           console.warn('Could not load categories from database, using defaults:', error.message || error);
           setCategories(defaultCategories);
@@ -138,6 +153,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         }
         
         if (data && data.length > 0) {
+          console.log('✅ Categories loaded from database table');
           setCategories(data);
         } else {
           console.log('No categories found in database, using defaults');
@@ -440,6 +456,94 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               </select>
             </div>
 
+            {/* Sale Type - Clear and Simple */}
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                How do you want to sell this product? *
+              </label>
+              
+              <div className="space-y-3">
+                {/* One-Time Purchase Option */}
+                <label className="flex items-start space-x-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors">
+                  <input
+                    type="radio"
+                    name="sale_type"
+                    value="one-time"
+                    checked={!formData.is_subscription}
+                    onChange={() => setFormData(prev => ({ 
+                      ...prev, 
+                      is_subscription: false,
+                      subscription_interval: ''
+                    }))}
+                    className="mt-1 text-blue-500 focus:ring-blue-500"
+                  />
+                  <div>
+                    <div className="font-medium text-gray-900">
+                      💰 One-Time Purchase (Recommended)
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Customer pays once and owns the product forever. Best for physical items, digital downloads, courses, etc.
+                    </div>
+                  </div>
+                </label>
+
+                {/* Subscription Option */}
+                <label className="flex items-start space-x-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:bg-green-50 hover:border-green-300 transition-colors">
+                  <input
+                    type="radio"
+                    name="sale_type"
+                    value="subscription"
+                    checked={formData.is_subscription}
+                    onChange={() => setFormData(prev => ({ 
+                      ...prev, 
+                      is_subscription: true,
+                      subscription_interval: 'monthly'
+                    }))}
+                    className="mt-1 text-green-500 focus:ring-green-500"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">
+                      🔄 Recurring Subscription (Advanced)
+                    </div>
+                    <div className="text-sm text-gray-600 mb-2">
+                      Customer pays regularly to maintain access. Best for software, memberships, ongoing services.
+                    </div>
+                    
+                    {/* Subscription Interval (only shown when subscription is selected) */}
+                    {formData.is_subscription && (
+                      <div className="mt-3 pl-2 border-l-2 border-green-200">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          How often should customers be charged?
+                        </label>
+                        <select
+                          name="subscription_interval"
+                          value={formData.subscription_interval}
+                          onChange={handleInputChange}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+                        >
+                          <option value="monthly">Monthly - Every month</option>
+                          <option value="yearly">Yearly - Every year (better value)</option>
+                          <option value="weekly">Weekly - Every week</option>
+                        </select>
+                        <div className="text-xs text-gray-500 mt-1">
+                          💡 Tip: Yearly subscriptions typically offer better value for customers
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </label>
+              </div>
+
+              {/* Help text */}
+              <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="text-xs text-blue-800">
+                  <strong>🤔 Not sure which to choose?</strong><br/>
+                  • <strong>One-Time Purchase:</strong> Best for 90% of products (physical items, digital downloads, courses)<br/>
+                  • <strong>Subscription:</strong> Only for ongoing services (software access, monthly boxes, memberships)
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Stock Quantity
@@ -454,35 +558,67 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               />
             </div>
 
-            {/* Subscription Option */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Subscription Product
+            {/* Product Type Selection */}
+            <div className="bg-gray-50 p-4 rounded-lg border">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                💳 How will customers pay for this product?
               </label>
-              <div className="flex items-center space-x-4">
-                <label className="inline-flex items-center">
+              
+              <div className="space-y-3">
+                {/* One-time purchase option */}
+                <label className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-white transition-colors">
                   <input
-                    type="checkbox"
-                    name="is_subscription"
-                    checked={formData.is_subscription}
-                    onChange={e => setFormData(prev => ({ ...prev, is_subscription: e.target.checked, subscription_interval: e.target.checked ? 'monthly' : '' }))}
-                    className="form-checkbox h-5 w-5 text-amber-600"
+                    type="radio"
+                    name="payment_type"
+                    checked={!formData.is_subscription}
+                    onChange={() => setFormData(prev => ({ ...prev, is_subscription: false, subscription_interval: '' }))}
+                    className="mt-1 form-radio h-4 w-4 text-amber-600"
                   />
-                  <span className="ml-2 text-gray-700">Enable subscription</span>
+                  <div>
+                    <span className="font-medium text-gray-900">🛒 One-time purchase</span>
+                    <p className="text-sm text-gray-600 mt-1">Customer pays once and owns the product forever</p>
+                    <p className="text-xs text-green-600 mt-1">✓ Most common choice for physical products, digital downloads, courses</p>
+                  </div>
                 </label>
-                {formData.is_subscription && (
-                  <select
-                    name="subscription_interval"
-                    value={formData.subscription_interval}
-                    onChange={e => setFormData(prev => ({ ...prev, subscription_interval: e.target.value as 'weekly' | 'monthly' }))}
-                    className="ml-4 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  >
-                    <option value="monthly">Monthly</option>
-                    <option value="weekly">Weekly</option>
-                  </select>
-                )}
+
+                {/* Subscription option */}
+                <label className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-white transition-colors">
+                  <input
+                    type="radio"
+                    name="payment_type"
+                    checked={formData.is_subscription}
+                    onChange={() => setFormData(prev => ({ ...prev, is_subscription: true, subscription_interval: 'monthly' }))}
+                    className="mt-1 form-radio h-4 w-4 text-amber-600"
+                  />
+                  <div className="flex-1">
+                    <span className="font-medium text-gray-900">🔄 Recurring subscription</span>
+                    <p className="text-sm text-gray-600 mt-1">Customer pays regularly for ongoing access or deliveries</p>
+                    <p className="text-xs text-blue-600 mt-1">✓ Great for services, memberships, software, monthly boxes</p>
+                    
+                    {formData.is_subscription && (
+                      <div className="mt-3 ml-4">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">How often will customers be charged?</label>
+                        <select
+                          name="subscription_interval"
+                          value={formData.subscription_interval}
+                          onChange={e => setFormData(prev => ({ ...prev, subscription_interval: e.target.value }))}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                        >
+                          <option value="monthly">Monthly ($XX/month)</option>
+                          <option value="weekly">Weekly ($XX/week)</option>
+                          <option value="yearly">Yearly ($XX/year)</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </label>
               </div>
-              <p className="text-xs text-gray-500 mt-1">If enabled, buyers will be charged automatically on a recurring basis and affiliates will earn recurring commissions.</p>
+              
+              <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                <p className="text-xs text-blue-700">
+                  <strong>💡 Not sure which to choose?</strong> Most sellers choose "One-time purchase" for physical products, digital downloads, and courses. Choose "Subscription" only if you want customers to pay monthly/weekly for ongoing access or regular deliveries.
+                </p>
+              </div>
             </div>
 
             {/* Shipping Configuration */}
@@ -698,9 +834,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   <ImageUpload
                     bucket="product-images"
                     productId={currentProductId}
-                    onUploadSuccess={handleImageUploadSuccess}
+                    onUploadComplete={handleImageUploadSuccess}
                     maxFiles={10}
-                    acceptedTypes={['image/jpeg', 'image/png', 'image/webp']}
+                    allowedTypes={['image/jpeg', 'image/png', 'image/webp']}
                   />
                 </div>
               )}
