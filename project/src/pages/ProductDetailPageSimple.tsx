@@ -4,28 +4,20 @@ import { ArrowLeft, Star, Heart, Share2, ShoppingCart } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAffiliate } from '../contexts/AffiliateContext';
 import ProductReviews from '../components/ProductReviews';
-import { products } from '../data/sampleProducts';
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-  category: string;
-  rating: number;
-  reviews: number;
-  seller: string;
-}
+import { SampleProduct, products as sampleProducts } from '../data/sampleProducts';
+import { isProductSampleDataEnabled } from '../config/sampleDataConfig';
+import { fetchProductById } from '../services/productService';
 
 const ProductDetailPageSimple: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
   const [searchParams] = useSearchParams();
   const { addToCart } = useCart();
   const { trackClick } = useAffiliate();
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<SampleProduct | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const sampleDataEnabled = isProductSampleDataEnabled();
 
   // Handle affiliate tracking
   useEffect(() => {
@@ -40,26 +32,58 @@ const ProductDetailPageSimple: React.FC = () => {
   }, [searchParams, productId, trackClick]);
 
   useEffect(() => {
-    // Find product from our sample data
-    const foundProduct = products.find(p => p.id === productId);
-    setProduct(foundProduct || null);
-    setLoading(false);
-  }, [productId]);
+    const loadProduct = async () => {
+      setLoading(true);
+      setError(null);
+
+      if (!productId) {
+        setProduct(null);
+        setLoading(false);
+        return;
+      }
+
+      if (sampleDataEnabled) {
+        const foundProduct = sampleProducts.find(p => p.id === productId) || null;
+        setProduct(foundProduct);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const realProduct = await fetchProductById(productId);
+        if (realProduct) {
+          setProduct(realProduct);
+        } else {
+          setProduct(null);
+          setError('We couldn\'t find that product. Double-check the link or add it to your catalog.');
+        }
+      } catch (err) {
+        console.error('ProductDetailPageSimple: failed to load Supabase product', err);
+        setProduct(null);
+        setError('Unable to load product details from Supabase.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProduct();
+  }, [productId, sampleDataEnabled]);
 
   const handleAddToCart = () => {
     if (product) {
-      // Find the full product data to get commission rate
-      const fullProduct = products.find(p => p.id === product.id);
-      
       addToCart({
         productId: product.id,
         title: product.name,
         price: product.price,
         quantity: quantity,
         image: product.image,
-        sellerId: product.seller,
+        sellerId: product.sellerId || product.seller || 'unknown-seller',
         sellerName: product.seller,
-        commission_rate: fullProduct?.commission_rate || 25 // Default to 25% if not found
+        commission_rate: product.commission_rate || 25,
+        commission_type: product.commission_type,
+        flat_commission_amount: product.flat_commission_amount,
+        shippingCost: product.shipping_cost,
+        maxQuantity: product.stock_quantity
       });
       // You could show a success message here
     }
@@ -82,7 +106,7 @@ const ProductDetailPageSimple: React.FC = () => {
         <div className="text-center">
           <div className="text-6xl mb-4">😕</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Product Not Found</h2>
-          <p className="text-gray-600 mb-6">The product you're looking for doesn't exist.</p>
+          <p className="text-gray-600 mb-6">{error || "The product you're looking for doesn't exist."}</p>
           <Link
             to="/marketplace"
             className="inline-flex items-center bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors"
@@ -110,7 +134,18 @@ const ProductDetailPageSimple: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           {/* Product Image */}
           <div className="relative bg-gradient-to-br from-yellow-100 via-orange-100 to-purple-100 rounded-3xl aspect-square flex items-center justify-center shadow-lg overflow-hidden">
-            <span className="text-9xl drop-shadow-lg">📦</span>
+            {product.image ? (
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = '/api/placeholder/600/600';
+                }}
+              />
+            ) : (
+              <span className="text-9xl drop-shadow-lg">📦</span>
+            )}
             {/* Decorative Glow */}
             <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-orange-200 rounded-full blur-2xl opacity-40 pointer-events-none" />
           </div>

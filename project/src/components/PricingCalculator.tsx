@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Calculator, DollarSign, TrendingUp, CreditCard, Info } from 'lucide-react';
-import { 
-  calculatePricing, 
-  formatPricingBreakdown, 
+import { Calculator, DollarSign, TrendingUp, CreditCard, Info, AlertTriangle } from 'lucide-react';
+import {
+  calculatePricing,
+  reverseCalculateFromListingPrice,
+  formatPricingBreakdown,
   validatePricingInput,
   getRecommendedAffiliateRates,
   PricingBreakdown,
-  PricingInput 
+  PricingInput,
+  TAX_RATE
 } from '../lib/pricing';
 
 interface PricingCalculatorProps {
   onPricingChange?: (breakdown: PricingBreakdown) => void;
-  initialSellerAmount?: number;
+  initialListingPrice?: number;
   initialAffiliateRate?: number;
   initialAffiliateType?: 'percentage' | 'flat_rate';
   currency?: string;
@@ -19,15 +21,15 @@ interface PricingCalculatorProps {
 
 const PricingCalculator: React.FC<PricingCalculatorProps> = ({
   onPricingChange,
-  initialSellerAmount = 100,
+  initialListingPrice = 129.99,
   initialAffiliateRate = 20,
   initialAffiliateType = 'percentage',
   currency = 'USD'
 }) => {
-  const [input, setInput] = useState<PricingInput>({
-    sellerDesiredAmount: initialSellerAmount,
+  const [input, setInput] = useState({
+    listingPrice: initialListingPrice,
     affiliateRate: initialAffiliateRate,
-    affiliateType: initialAffiliateType,
+    affiliateType: initialAffiliateType as 'percentage' | 'flat_rate',
   });
 
   const [breakdown, setBreakdown] = useState<PricingBreakdown | null>(null);
@@ -36,20 +38,29 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
 
   // Calculate pricing whenever input changes
   useEffect(() => {
-    const validationErrors = validatePricingInput(input);
-    setErrors(validationErrors);
-
-    if (validationErrors.length === 0) {
-      const newBreakdown = calculatePricing(input);
-      setBreakdown(newBreakdown);
-      onPricingChange?.(newBreakdown);
+    if (input.listingPrice > 0) {
+      try {
+        const newBreakdown = reverseCalculateFromListingPrice(
+          input.listingPrice,
+          input.affiliateRate,
+          input.affiliateType
+        );
+        setBreakdown(newBreakdown);
+        setErrors([]);
+        onPricingChange?.(newBreakdown);
+      } catch (error) {
+        setBreakdown(null);
+        setErrors(['Invalid pricing calculation']);
+        onPricingChange?.(null as any);
+      }
     } else {
       setBreakdown(null);
+      setErrors(['Please enter a valid listing price']);
       onPricingChange?.(null as any);
     }
   }, [input, onPricingChange]);
 
-  const handleInputChange = (field: keyof PricingInput, value: number | string) => {
+  const handleInputChange = (field: string, value: number | string) => {
     setInput(prev => ({
       ...prev,
       [field]: typeof value === 'string' ? value : value,
@@ -64,14 +75,15 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
     setShowRecommendations(false);
   };
 
-  const recommendations = getRecommendedAffiliateRates(input.sellerDesiredAmount);
+  const recommendations = breakdown ? getRecommendedAffiliateRates(breakdown.sellerAmount) : { low: 15, medium: 20, high: 25 };
   const formattedBreakdown = breakdown ? formatPricingBreakdown(breakdown, currency) : null;
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
+    <div className="bg-white rounded-lg shadow-lg p-6 space-y-6 border-2 border-amber-200">
       <div className="flex items-center space-x-2 mb-4">
         <Calculator className="h-6 w-6 text-amber-600" />
         <h3 className="text-xl font-bold text-gray-900">Pricing Calculator</h3>
+        <span className="text-sm text-amber-600 bg-amber-100 px-2 py-1 rounded-full">Required</span>
       </div>
 
       {/* Fee Structure Explanation */}
@@ -81,57 +93,59 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
           <h4 className="font-semibold text-blue-900">How Beezio Pricing Works</h4>
         </div>
         <p className="text-blue-800 text-sm">
-          <strong>Simple Formula:</strong> Seller Amount + 10% Platform Fee + Affiliate Commission + 3% Stripe Fee = Final Listing Price
+          <strong>Enter your final selling price</strong> (what customers pay) and we'll calculate what you'll actually receive after all fees.
         </p>
-        <p className="text-blue-700 text-xs mt-1">
-          ✓ Sellers pay nothing - you get 100% of your desired amount<br/>
-          ✓ All fees are added on top of what you want to earn
-        </p>
+        <div className="text-blue-700 text-xs mt-2 space-y-1">
+          <div><strong>Fixed Fees (cannot be changed):</strong></div>
+          <div>• Beezio Platform Fee: 10%</div>
+          <div>• Stripe Processing: 2.6% + $0.60</div>
+          <div>• Sales Tax: {Math.round(TAX_RATE * 100)}% (estimated)</div>
+        </div>
       </div>
 
       {/* Input Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Seller Desired Amount */}
-        <div>
+        {/* Final Selling Price Input */}
+        <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <DollarSign className="h-4 w-4 inline mr-1" />
-            How much do you want to make per sale?
+            Final Selling Price (What customers pay)
           </label>
           <div className="relative">
             <span className="absolute left-3 top-2.5 text-gray-500">$</span>
             <input
               type="number"
-              min="0"
+              min="0.01"
               step="0.01"
-              value={input.sellerDesiredAmount}
-              onChange={(e) => handleInputChange('sellerDesiredAmount', parseFloat(e.target.value) || 0)}
-              className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-              placeholder="100.00"
+              value={input.listingPrice}
+              onChange={(e) => handleInputChange('listingPrice', parseFloat(e.target.value) || 0)}
+              className="w-full pl-8 pr-3 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-lg font-semibold"
+              placeholder="129.99"
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">This is exactly what you'll receive per sale</p>
+          <p className="text-xs text-gray-500 mt-1">This is the price customers will see and pay</p>
         </div>
 
         {/* Affiliate Commission */}
-        <div>
+        <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <TrendingUp className="h-4 w-4 inline mr-1" />
-            Affiliate Commission (You Choose the Rate)
+            Affiliate Commission Rate (Editable)
           </label>
-          <p className="text-xs text-gray-600 mb-2">
-            Set how much affiliates earn for promoting YOUR product - this is added ON TOP of your profit
+          <p className="text-xs text-gray-600 mb-3">
+            Choose how much affiliates earn for promoting your product. Higher rates attract more affiliates but reduce your earnings.
           </p>
-          
-          <div className="flex space-x-2 mb-2">
+
+          <div className="flex space-x-3 mb-3">
             <select
               value={input.affiliateType}
               onChange={(e) => handleInputChange('affiliateType', e.target.value as 'percentage' | 'flat_rate')}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
-              <option value="percentage">Percentage</option>
-              <option value="flat_rate">Flat Rate</option>
+              <option value="percentage">Percentage of Sale</option>
+              <option value="flat_rate">Flat Dollar Amount</option>
             </select>
-            
+
             <div className="relative flex-1">
               {input.affiliateType === 'flat_rate' && (
                 <span className="absolute left-3 top-2.5 text-gray-500">$</span>
@@ -151,39 +165,35 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
             </div>
           </div>
 
-          <p className="text-xs text-green-700 mt-1 font-medium">
-            ✓ This commission does NOT come out of your profit - it's added to the final price
-          </p>
-
           <button
             type="button"
             onClick={() => setShowRecommendations(!showRecommendations)}
             className="text-xs text-amber-600 hover:text-amber-700 underline"
           >
-            Show recommended rates
+            Show recommended rates for this price range
           </button>
 
           {showRecommendations && (
-            <div className="mt-2 p-3 bg-amber-50 rounded-lg">
-              <p className="text-xs text-gray-600 mb-2">Recommended rates for your price range:</p>
+            <div className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <p className="text-xs text-gray-600 mb-2">Recommended affiliate rates:</p>
               <div className="flex space-x-2">
                 <button
                   onClick={() => applyRecommendedRate(recommendations.low)}
-                  className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
+                  className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 font-medium"
                 >
-                  Low: {recommendations.low}%
+                  Conservative: {recommendations.low}%
                 </button>
                 <button
                   onClick={() => applyRecommendedRate(recommendations.medium)}
-                  className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
+                  className="px-3 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 font-medium"
                 >
-                  Medium: {recommendations.medium}%
+                  Standard: {recommendations.medium}%
                 </button>
                 <button
                   onClick={() => applyRecommendedRate(recommendations.high)}
-                  className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                  className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 font-medium"
                 >
-                  High: {recommendations.high}%
+                  Aggressive: {recommendations.high}%
                 </button>
               </div>
             </div>
@@ -194,7 +204,10 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
       {/* Error Messages */}
       {errors.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-red-800 mb-2">Please fix these issues:</h4>
+          <div className="flex items-center space-x-2 mb-2">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <h4 className="text-sm font-medium text-red-800">Please fix these issues:</h4>
+          </div>
           <ul className="text-sm text-red-700 space-y-1">
             {errors.map((error, index) => (
               <li key={index}>• {error}</li>
@@ -204,57 +217,115 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
       )}
 
       {/* Pricing Breakdown */}
-      {breakdown && formattedBreakdown && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-6">
-          <h4 className="text-lg font-semibold text-gray-900 mb-4">Pricing Breakdown</h4>
-          
-          <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-amber-200">
-              <div className="flex items-center space-x-2">
-                <DollarSign className="h-4 w-4 text-green-600" />
-                <span className="text-gray-700">Your earnings (seller)</span>
+      {breakdown && (
+        <div className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
+          <h4 className="text-lg font-semibold text-gray-900 mb-4">💰 Your Earnings Breakdown</h4>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* What You Keep */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <DollarSign className="h-5 w-5 text-green-600" />
+                <h5 className="font-semibold text-green-900">What You Keep</h5>
               </div>
-              <span className="font-semibold text-green-600">{formattedBreakdown.seller}</span>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Your Profit:</span>
+                  <span className="font-bold text-green-700">${breakdown.sellerAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Affiliate Commission:</span>
+                  <span className="font-bold text-blue-700">${breakdown.affiliateAmount.toFixed(2)}</span>
+                </div>
+                <div className="border-t border-green-300 pt-2 mt-2">
+                  <div className="flex justify-between font-semibold">
+                    <span className="text-green-900">Total You Keep:</span>
+                    <span className="text-green-700">${(breakdown.sellerAmount + breakdown.affiliateAmount).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="flex justify-between items-center py-2 border-b border-amber-200">
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4 text-blue-600" />
-                <span className="text-gray-700">Affiliate commission</span>
+            {/* Fees Deducted */}
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <CreditCard className="h-5 w-5 text-red-600" />
+                <h5 className="font-semibold text-red-900">Fees (Auto-Deducted)</h5>
               </div>
-              <span className="font-semibold text-blue-600">{formattedBreakdown.affiliate}</span>
-            </div>
-
-            <div className="flex justify-between items-center py-2 border-b border-amber-200">
-              <div className="flex items-center space-x-2">
-                <Info className="h-4 w-4 text-amber-600" />
-                <span className="text-gray-700">Beezio platform fee (10% of seller amount)</span>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Beezio Platform (10%):</span>
+                  <span className="font-bold text-red-700">${breakdown.platformFee.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Stripe Processing:</span>
+                  <span className="font-bold text-red-700">${breakdown.stripeFee.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Sales Tax (est.):</span>
+                  <span className="font-bold text-red-700">${(breakdown.taxAmount || 0).toFixed(2)}</span>
+                </div>
+                <div className="border-t border-red-300 pt-2 mt-2">
+                  <div className="flex justify-between font-semibold">
+                    <span className="text-red-900">Total Fees:</span>
+                    <span className="text-red-700">${(breakdown.platformFee + breakdown.stripeFee + (breakdown.taxAmount || 0)).toFixed(2)}</span>
+                  </div>
+                </div>
               </div>
-              <span className="font-semibold text-amber-600">{formattedBreakdown.platform}</span>
-            </div>
-
-            <div className="flex justify-between items-center py-2 border-b border-amber-200">
-              <div className="flex items-center space-x-2">
-                <CreditCard className="h-4 w-4 text-purple-600" />
-                <span className="text-gray-700">Stripe processing fee (3%)</span>
-              </div>
-              <span className="font-semibold text-purple-600">{formattedBreakdown.stripe}</span>
-            </div>
-
-            <div className="flex justify-between items-center py-3 bg-white rounded-lg px-4 border-2 border-amber-300">
-              <span className="text-lg font-bold text-gray-900">Customer pays (listing price)</span>
-              <span className="text-xl font-bold text-amber-600">{formattedBreakdown.total}</span>
             </div>
           </div>
 
-          <div className="mt-4 p-3 bg-green-50 rounded-lg">
-            <p className="text-sm text-green-800">
-              <strong>🎯 Perfect Control:</strong> You set your profit ({formattedBreakdown.seller}) and affiliate rate ({formattedBreakdown.affiliate}). 
-              All fees are added on top - you keep exactly what you want!
+          {/* Summary */}
+          <div className="mt-6 bg-white border-2 border-amber-300 rounded-lg p-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900 mb-2">
+                Customer Pays: ${breakdown.listingPrice.toFixed(2)}
+              </div>
+              <div className="text-lg text-green-700 font-semibold">
+                You Receive: ${(breakdown.sellerAmount + breakdown.affiliateAmount).toFixed(2)}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">
+                Profit Margin: {(((breakdown.sellerAmount + breakdown.affiliateAmount) / breakdown.listingPrice) * 100).toFixed(1)}%
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs text-amber-800">
+              <strong>✅ Ready to save:</strong> This pricing will be automatically applied when you create your product.
+              You can always edit the affiliate commission rate later, but the platform fees are fixed.
             </p>
-            <p className="text-xs text-green-700 mt-1">
-              Platform fee: {formattedBreakdown.platform} • Processing: {formattedBreakdown.stripe} • Your control = 100%
-            </p>
+          </div>
+
+          {/* Shipping Cost Information */}
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-blue-600" />
+              <h5 className="font-semibold text-blue-900">🚚 Shipping Costs (Your Control)</h5>
+            </div>
+            <div className="text-sm text-blue-800 space-y-2">
+              <p><strong>✅ Shipping is 100% separate from platform fees</strong></p>
+              <div className="grid grid-cols-2 gap-4 mt-3">
+                <div className="bg-white p-2 rounded border">
+                  <div className="text-xs text-gray-600">Example: FREE Shipping</div>
+                  <div className="font-semibold">Product: ${breakdown.listingPrice.toFixed(2)}</div>
+                  <div className="text-green-600">Shipping: $0.00</div>
+                  <div className="border-t pt-1 font-bold">Total: ${breakdown.listingPrice.toFixed(2)}</div>
+                </div>
+                <div className="bg-white p-2 rounded border">
+                  <div className="text-xs text-gray-600">Example: $8.99 Shipping</div>
+                  <div className="font-semibold">Product: ${breakdown.listingPrice.toFixed(2)}</div>
+                  <div className="text-blue-600">Shipping: $8.99</div>
+                  <div className="border-t pt-1 font-bold">Total: ${(breakdown.listingPrice + 8.99).toFixed(2)}</div>
+                </div>
+              </div>
+              <div className="text-xs text-blue-700 mt-2 space-y-1">
+                <div>• You set shipping costs when creating your product</div>
+                <div>• Shipping revenue goes 100% to you (no platform fees)</div>
+                <div>• Offer multiple options: Standard, Express, Overnight</div>
+                <div>• FREE shipping can increase conversion rates by 40%+</div>
+              </div>
+            </div>
           </div>
         </div>
       )}

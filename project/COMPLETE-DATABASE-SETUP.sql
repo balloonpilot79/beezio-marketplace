@@ -275,6 +275,26 @@ CREATE TRIGGER on_affiliate_links_updated
     BEFORE UPDATE ON public.affiliate_links
     FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
+-- Create password reset tokens table for custom password reset flow
+CREATE TABLE IF NOT EXISTS public.password_reset_tokens (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    used BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    used_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Create index on token for fast lookups
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON public.password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON public.password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON public.password_reset_tokens(expires_at);
+
+-- Create trigger for password_reset_tokens updated_at (though it doesn't have an updated_at column, keeping consistent)
+-- Actually, password_reset_tokens doesn't need updated_at since tokens are immutable once created
+
 -- Success message
 SELECT 'Beezio complete database with multi-role system setup completed successfully!' as message;
 

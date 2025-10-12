@@ -394,7 +394,7 @@ const SellerStorePage: React.FC = () => {
         {isOwner && isCustomizing && (
           <div className="mt-8 border-t pt-8">
             <h3 className="text-xl font-semibold text-gray-900 mb-6">Customize Your Store</h3>
-            <StoreCustomization sellerId={sellerId!} />
+            <StoreCustomization userId={sellerId!} role="seller" />
           </div>
         )}
       </div>

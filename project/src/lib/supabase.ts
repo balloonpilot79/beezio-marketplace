@@ -8,6 +8,11 @@ if (supabaseUrl === 'https://placeholder.supabase.co' || supabaseAnonKey === 'pl
   console.warn('Supabase not configured. Please create a .env file with your Supabase credentials.');
 }
 
+export const isSupabaseConfigured = (
+  supabaseUrl !== 'https://placeholder.supabase.co' &&
+  supabaseAnonKey !== 'placeholder-key'
+);
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export type Database = {

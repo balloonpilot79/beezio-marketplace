@@ -63,6 +63,48 @@ const emailTemplates = {
     `
   }),
 
+  password_reset: (data: any) => ({
+    subject: 'Reset Your Beezio Password 🔐',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 40px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">🔐 Password Reset</h1>
+          <p style="color: white; margin: 10px 0 0 0; opacity: 0.9;">Reset your Beezio account password</p>
+        </div>
+        <div style="background: white; padding: 40px 30px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <h2 style="color: #1f2937; margin-top: 0;">Reset Your Password</h2>
+          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+            We received a request to reset your password for your Beezio account. Click the button below to create a new password.
+          </p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.resetUrl}" style="background: #f59e0b; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">Reset Password</a>
+          </div>
+
+          <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+            <h3 style="color: #92400e; margin-top: 0;">⚠️ Security Notice:</h3>
+            <ul style="color: #92400e; margin: 10px 0; padding-left: 20px;">
+              <li>This link will expire in 1 hour</li>
+              <li>If you didn't request this reset, please ignore this email</li>
+              <li>Your account security is important to us</li>
+            </ul>
+          </div>
+
+          <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #1f2937; margin-top: 0;">Can't click the button?</h3>
+            <p style="color: #6b7280; margin: 10px 0;">Copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; background: white; padding: 10px; border: 1px solid #e5e7eb; border-radius: 4px; font-family: monospace; font-size: 12px; color: #374151;">${data.resetUrl}</p>
+          </div>
+
+          <p style="color: #6b7280; font-size: 14px; text-align: center; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+            If you have any questions, contact our support team.<br>
+            Stay safe and happy selling! 🐝
+          </p>
+        </div>
+      </div>
+    `
+  }),
+
   order_confirmation: (data: any) => ({
     subject: `Order Confirmation - Order #${data.orderId}`,
     html: `
@@ -338,28 +380,23 @@ class EmailService {
     });
   }
 
-  // Product sold notification for sellers
-  async sendProductSold(
+  // Password reset email
+  async sendPasswordResetEmail(
     userId: string,
     userEmail: string,
-    saleData: {
-      productName: string;
-      price: number;
-      commission: number;
-      orderId: string;
-      customerName: string;
-      dashboardUrl: string;
+    resetData: {
+      resetUrl: string;
     }
   ): Promise<boolean> {
-    const template = emailTemplates.product_sold(saleData);
+    const template = emailTemplates.password_reset(resetData);
 
     return this.sendEmail({
       to: userEmail,
       subject: template.subject,
       html: template.html,
-      type: 'product_sold',
+      type: 'password_reset',
       userId,
-      metadata: saleData
+      metadata: resetData
     });
   }
 
@@ -425,3 +462,6 @@ export const sendSaleNotification = (userId: string, email: string, saleData: an
 
 export const sendShippingNotification = (userId: string, email: string, shippingData: any) =>
   emailService.sendOrderShipped(userId, email, shippingData);
+
+export const sendPasswordResetEmail = (userId: string, email: string, resetData: any) =>
+  emailService.sendPasswordResetEmail(userId, email, resetData);

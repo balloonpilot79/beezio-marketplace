@@ -5,14 +5,14 @@
   "type": "module",
   "scripts": {
     "lint": "eslint .",
-  "e2e:browser": "node ./scripts/e2e-browser-test.cjs",
-  "e2e:api": "node --experimental-modules ./scripts/e2e-api-test.mjs",
+    "e2e:browser": "node ./scripts/e2e-browser-test.cjs",
+    "e2e:api": "node --experimental-modules ./scripts/e2e-api-test.mjs",
     "populate-db": "node populate-sample-data.js",
     "test-fulfillment": "node test-fulfillment-system.js",
-    "dev": "vite",
+    "dev": "vite --force",
     "build": "vite build",
-  "prebuild": "node ./scripts/env-guard.cjs",
-  "scan:secrets": "node ./scripts/secret-scan.js",
+    "prebuild": "node ./scripts/env-guard.cjs",
+    "scan:secrets": "node ./scripts/secret-scan.js",
     "preview": "vite preview"
   },
   "dependencies": {

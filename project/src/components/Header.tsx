@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useCart } from '../contexts/CartContext';
 import CartIcon from './CartIcon';
@@ -13,10 +13,24 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
   const { user, signOut } = useAuth();
   const { items } = useCart();
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHelpDropdownOpen, setIsHelpDropdownOpen] = useState(false);
   const [isGlobalDropdownOpen, setIsGlobalDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setIsUserDropdownOpen(false);
+      navigate('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Still close dropdown and navigate even if logout has issues
+      setIsUserDropdownOpen(false);
+      navigate('/');
+    }
+  };
 
   return (
     <header className="bg-white/95 backdrop-blur-sm border-b border-gray-200/80 sticky top-0 z-50 shadow-sm">
@@ -57,6 +71,13 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
               >
                 Shop
                 <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-blue-600 transition-all duration-300 group-hover:w-[calc(100%-16px)]"></span>
+              </Link>
+              <Link 
+                to="/contact" 
+                className="text-gray-700 hover:text-orange-600 font-medium text-sm transition-colors duration-200 relative group px-2 py-1"
+              >
+                Contact
+                <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-orange-600 transition-all duration-300 group-hover:w-[calc(100%-16px)]"></span>
               </Link>
               <div className="relative">
                 <button
@@ -201,10 +222,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                     </Link>
                     <div className="border-t border-gray-100 my-1"></div>
                     <button
-                      onClick={() => {
-                        signOut();
-                        setIsUserDropdownOpen(false);
-                      }}
+                      onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors duration-200"
                     >
                       Sign Out
@@ -250,6 +268,13 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Shop
+              </Link>
+              <Link 
+                to="/contact" 
+                className="text-gray-700 hover:text-orange-600 font-medium transition-colors duration-200"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Contact
               </Link>
               <Link 
                 to="/how-it-works" 
@@ -346,7 +371,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                   </Link>
                   <button
                     onClick={() => {
-                      signOut();
+                      handleLogout();
                       setIsMenuOpen(false);
                     }}
                     className="block w-full text-left text-red-700 hover:text-red-800 font-medium transition-colors duration-200 pt-2 border-t border-gray-200"

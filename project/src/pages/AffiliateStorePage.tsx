@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ProductGrid from '../components/ProductGrid';
 import AffiliateStoreCustomization from '../components/AffiliateStoreCustomization';
-import { Settings, Edit, User, Award, Heart, Star, Globe, Share2, Facebook, Instagram, Twitter, Youtube, ExternalLink } from 'lucide-react';
+import { Settings, User, Award, Heart, Star, Globe, Share2, Facebook, Instagram, Twitter, Youtube, ExternalLink } from 'lucide-react';
 
 const AffiliateStorePage: React.FC = () => {
   const { affiliateId } = useParams<{ affiliateId: string }>();
@@ -13,7 +13,6 @@ const AffiliateStorePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [showCustomization, setShowCustomization] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     if (!affiliateId) return;
@@ -25,7 +24,6 @@ const AffiliateStorePage: React.FC = () => {
 
   const checkCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    setCurrentUser(user);
     setIsOwner(user?.id === affiliateId);
   };
 

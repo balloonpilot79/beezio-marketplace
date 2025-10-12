@@ -6,6 +6,7 @@ import PricingCalculator from './PricingCalculator';
 import ImageUpload from './ImageUpload';
 import ImageGallery from './ImageGallery';
 import { PricingBreakdown } from '../lib/pricing';
+import { useNavigate } from 'react-router-dom';
 
 interface ProductFormProps {
   onSuccess?: () => void;
@@ -25,6 +26,7 @@ interface ProductFormProps {
 
 const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode, product }) => {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -203,6 +205,30 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
 
+    // Validate shipping configuration
+    if (formData.requires_shipping) {
+      if (!formData.shipping_options || formData.shipping_options.length === 0) {
+        setError('Please add at least one shipping option');
+        return;
+      }
+
+      // Check that all shipping options have required fields
+      for (const option of formData.shipping_options) {
+        if (!option.name.trim()) {
+          setError('All shipping options must have a name');
+          return;
+        }
+        if (!option.estimated_days.trim()) {
+          setError('All shipping options must have estimated delivery time');
+          return;
+        }
+        if (option.cost < 0) {
+          setError('Shipping costs cannot be negative');
+          return;
+        }
+      }
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -297,7 +323,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       setPricingBreakdown(null);
 
       setTimeout(() => {
-        onSuccess?.();
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          navigate('/dashboard');
+        }
       }, 2000);
 
     } catch (err: any) {
@@ -793,13 +823,21 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 {loading ? 'Creating Product...' : 'Create Product'}
               </button>
               
-              {onCancel && (
+              {onCancel ? (
                 <button
                   type="button"
                   onClick={onCancel}
                   className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard')}
+                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Back to Dashboard
                 </button>
               )}
             </div>

@@ -40,7 +40,7 @@ interface PayoutHistory {
 }
 
 export const StripeSellerDashboard: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [stripeAccount, setStripeAccount] = useState<StripeAccountStatus | null>(null);
   const [payoutHistory, setPayoutHistory] = useState<PayoutHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -115,10 +115,12 @@ export const StripeSellerDashboard: React.FC = () => {
       if (error) throw error;
 
       // Update user profile with Stripe account ID
-      await supabase
-        .from('profiles')
-        .update({ stripe_account_id: data.account_id })
-        .eq('id', user.id);
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({ stripe_account_id: data.account_id })
+          .eq('id', user.id);
+      }
 
       // Show onboarding modal
       setShowOnboarding(true);
@@ -390,7 +392,7 @@ export const StripeSellerDashboard: React.FC = () => {
           <div className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <EmbeddedStripeOnboarding
               userType="seller"
-              onComplete={(accountId) => {
+              onComplete={(_accountId) => {
                 setShowOnboarding(false);
                 fetchStripeAccountStatus();
               }}

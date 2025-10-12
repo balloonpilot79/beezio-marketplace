@@ -15,18 +15,64 @@ const ResetPasswordPage: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
+
+    const checkSession = async () => {
       try {
         const res = await supabase.auth.getSession();
         const session = (res as any)?.data?.session ?? null;
-        if (mounted) setAllowed(Boolean(session && session.user));
+        console.log('ResetPasswordPage: Session check:', {
+          hasSession: Boolean(session),
+          hasUser: Boolean(session?.user),
+          userEmail: session?.user?.email,
+          userId: session?.user?.id
+        });
+
+        if (mounted) {
+          setAllowed(Boolean(session && session.user));
+
+          // If we have a session, we're in password reset mode
+          if (session?.user) {
+            console.log('ResetPasswordPage: User is authenticated for password reset');
+          } else {
+            console.log('ResetPasswordPage: No session found - user may need to use reset link');
+            setError('Please use the password reset link from your email to access this page. If you clicked the link and are still seeing this message, make sure the redirect URLs are configured in your Supabase dashboard.');
+          }
+        }
       } catch (err) {
-        console.error('session check failed', err);
-        if (mounted) setAllowed(false);
+        console.error('ResetPasswordPage: Session check failed:', err);
+        if (mounted) {
+          setAllowed(false);
+          setError('Failed to verify authentication status. Please try the reset link again.');
+        }
       }
-    })();
+    };
+
+    // Check session immediately
+    checkSession();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('ResetPasswordPage: Auth state change:', event, {
+        hasSession: Boolean(session),
+        hasUser: Boolean(session?.user),
+        userEmail: session?.user?.email
+      });
+
+      if (mounted) {
+        setAllowed(Boolean(session && session.user));
+        if (session?.user) {
+          console.log('ResetPasswordPage: User authenticated via reset link');
+          setError(null); // Clear any previous errors
+        } else {
+          console.log('ResetPasswordPage: User signed out or session invalid');
+          setError('Your session has expired. Please use the reset link again.');
+        }
+      }
+    });
+
     return () => {
       mounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -42,7 +88,11 @@ const ResetPasswordPage: React.FC = () => {
       const { error: upErr } = await supabase.auth.updateUser({ password });
       if (upErr) throw upErr;
       setSuccess(true);
-      setTimeout(() => navigate('/'), 1400);
+      console.log('ResetPasswordPage: Password updated successfully');
+      // Redirect to dashboard after successful password reset
+      setTimeout(() => {
+        navigate('/'); // Will redirect to appropriate dashboard based on role
+      }, 2000);
     } catch (err: any) {
       setError(err?.message || String(err));
     } finally {

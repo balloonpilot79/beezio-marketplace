@@ -11,6 +11,7 @@ import UserSubHeader from './components/UserSubHeader';
 import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
+import SimpleSignupModal from './components/SimpleSignupModal';
 import PaymentForm from './components/PaymentForm';
 import ProductForm from './components/ProductForm';
 import HowItWorksPage from './pages/HowItWorksPage';
@@ -18,6 +19,7 @@ import SellersPage from './pages/SellersPage';
 import AffiliatePageNew from './pages/AffiliatePageNew';
 import AffiliateProductsPage from './pages/AffiliateProductsPage';
 import AffiliateDashboardPage from './pages/AffiliateDashboardPage';
+import StartEarningPage from './pages/StartEarningPageNew';
 import EnhancedCheckoutPage from './pages/EnhancedCheckoutPage';
 import ProductDetailPage from './pages/ProductDetailPageSimple';
 import MarketplacePage from './pages/MarketplacePageSimple';
@@ -33,7 +35,6 @@ import SellerStorePage from './pages/SellerStorePage';
 import AffiliateStorePage from './pages/AffiliateStorePage';
 import CartPage from './pages/CartPage';
 import WriteReview from './pages/WriteReview';
-import CheckoutPage from './pages/CheckoutPage';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import EarningsDashboard from './components/EarningsDashboard';
 import PlatformAdminDashboard from './components/PlatformAdminDashboard';
@@ -41,11 +42,15 @@ import PlatformSettings from './components/PlatformSettings';
 import StoreCustomization from './components/StoreCustomization';
 import UniversalIntegrationsPage from './components/UniversalIntegrationsPage';
 import OrderManagement from './components/OrderManagement';
-import ChatBot from './components/ChatBot';
+// import ChatBot from './components/ChatBot';
 import ProductSlider from './components/ProductSlider';
 import FundraiserSlider from './components/FundraiserSlider';
 import RevolutionaryShowcaseSimple from './components/RevolutionaryShowcaseSimple';
 import TestPage from './components/TestPage';
+import ContactPage from './pages/ContactPage';
+import SellerProductFormPage from './pages/SellerProductFormPage';
+import ProfileCompletion from './components/ProfileCompletion';
+import TestingDashboard from './components/TestingDashboard';
 
 // Protect admin route
 const ADMIN_EMAIL = "balloonpilot79@gmail.com";
@@ -63,7 +68,7 @@ const StoreSettingsRoute = () => {
   if (!profile || profile.role !== 'seller') {
     return <div className="max-w-xl mx-auto mt-20 text-center text-red-600 text-lg font-bold">Access denied. Sellers only.</div>;
   }
-  return <StoreCustomization sellerId={profile.id || 'default'} />;
+  return <StoreCustomization userId={profile.id || 'default'} role="seller" />;
 };
 
 // Beautiful Home Page Component
@@ -383,6 +388,7 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenAuthModal }) => {
 
 const AppWorking: React.FC = () => {
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; mode: 'login' | 'register' }>({ isOpen: false, mode: 'login' });
+  const [showSimpleSignup, setShowSimpleSignup] = useState(false);
   const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; product: any }>({ isOpen: false, product: null });
 
   useEffect(() => {
@@ -425,6 +431,7 @@ const AppWorking: React.FC = () => {
                   <Routes>
                     <Route path="/" element={<HomePage onOpenAuthModal={setAuthModal} />} />
                     <Route path="/test" element={<TestPage />} />
+                    <Route path="/testing" element={<TestingDashboard />} />
                     <Route path="/revolutionary" element={<RevolutionaryShowcaseSimple />} />
                     <Route path="/marketplace" element={<MarketplacePage />} />
                     <Route path="/search" element={<SearchPage />} />
@@ -432,6 +439,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/fundraiser/:fundraiserId" element={<FundraiserDetailPage />} />
                     <Route path="/product/:productId" element={<ProductDetailPage />} />
                     <Route path="/how-it-works" element={<HowItWorksPage />} />
+                    <Route path="/start-earning" element={<StartEarningPage onOpenAuthModal={setAuthModal} onOpenSimpleSignup={() => setShowSimpleSignup(true)} />} />
                     <Route path="/sellers" element={<SellersPage />} />
                     <Route path="/affiliates" element={<AffiliatePageNew />} />
                     <Route path="/affiliate/products" element={<AffiliateProductsPage />} />
@@ -447,7 +455,10 @@ const AppWorking: React.FC = () => {
                     <Route path="/dashboard/products/edit/:id" element={<ProductForm editMode={true} />} />
                     <Route path="/dashboard/store-settings" element={<StoreSettingsRoute />} />
                     <Route path="/dashboard/integrations" element={<UniversalIntegrationsPage />} />
+                    <Route path="/seller/products/new" element={<SellerProductFormPage />} />
+                    <Route path="/profile" element={<ProfileCompletion />} />
                     <Route path="/earnings" element={<EarningsDashboard />} />
+                    <Route path="/contact" element={<ContactPage />} />
                     <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                     <Route path="/admin/platform" element={<AdminRoute><PlatformAdminDashboard /></AdminRoute>} />
                     <Route path="/admin/settings" element={<AdminRoute><PlatformSettings /></AdminRoute>} />
@@ -462,13 +473,23 @@ const AppWorking: React.FC = () => {
                   </Routes>
                 </main>
 
-                <ChatBot />
+                {/* <ChatBot /> */}
 
                 {/* Auth Modal */}
                 <AuthModal
                   isOpen={authModal.isOpen}
                   mode={authModal.mode}
                   onClose={() => setAuthModal(prev => ({ ...prev, isOpen: false }))}
+                />
+
+                {/* Simple Signup Modal */}
+                <SimpleSignupModal
+                  isOpen={showSimpleSignup}
+                  onClose={() => setShowSimpleSignup(false)}
+                  onSuccess={() => {
+                    setShowSimpleSignup(false);
+                    // Optionally redirect to dashboard
+                  }}
                 />
 
                 {/* Payment Modal */}

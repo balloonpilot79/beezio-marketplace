@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { sendWelcomeEmail } from '../services/emailService';
+import { sendWelcomeEmail, sendPasswordResetEmail } from '../services/emailService';
 
 interface AuthContextType {
   user: User | null;
@@ -55,6 +55,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentRole, setCurrentRole] = useState<string>('buyer');
   const [loading, setLoading] = useState(true);
 
+  // Add timeout to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      console.warn('AuthContext: Loading timeout reached, setting loading to false');
+      setLoading(false);
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, []);
+
   // Fetch user roles from database
   const fetchUserRoles = async (userId: string) => {
     try {
@@ -78,46 +88,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        // Fetch profile
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
+      try {
+        console.log('AuthContext: Starting session fetch...');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error fetching profile:', error);
+        if (sessionError) {
+          console.error('AuthContext: Session error:', sessionError);
+          setLoading(false);
+          return;
         }
         
-        if (profile) {
-          setProfile(profile);
-          setCurrentRole(profile.primary_role || profile.role || 'buyer');
-          
-          // Fetch user roles
-          const roles = await fetchUserRoles(session.user.id);
-          setUserRoles(roles.length > 0 ? roles : [profile.primary_role || profile.role || 'buyer']);
-        }
-      }
-      
-      setLoading(false);
-    };
-
-    getSession();
-
-    // Handle auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email);
-        
+        console.log('AuthContext: Session loaded:', session?.user?.email || 'No user');
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          console.log('AuthContext: Fetching profile for user:', session.user.id);
           // Fetch profile
           const { data: profile, error } = await supabase
             .from('profiles')
@@ -126,9 +112,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .maybeSingle();
           
           if (error && error.code !== 'PGRST116') {
-            console.error('Error fetching profile:', error);
+            console.error('AuthContext: Error fetching profile:', error);
           }
           
+          console.log('AuthContext: Profile loaded:', profile ? 'Yes' : 'No');
           if (profile) {
             setProfile(profile);
             setCurrentRole(profile.primary_role || profile.role || 'buyer');
@@ -136,18 +123,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Fetch user roles
             const roles = await fetchUserRoles(session.user.id);
             setUserRoles(roles.length > 0 ? roles : [profile.primary_role || profile.role || 'buyer']);
+            console.log('AuthContext: User roles:', roles);
+          } else {
+            console.log('AuthContext: No profile found, user may need to complete profile');
+            setProfile(null);
           }
-
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            console.log('User signed in:', session.user.email);
-          }
-        } else {
-          setProfile(null);
-          setUserRoles([]);
-          setCurrentRole('buyer');
         }
         
+        console.log('AuthContext: Loading complete');
         setLoading(false);
+      } catch (error) {
+        console.error('AuthContext: Unexpected error in getSession:', error);
+        setLoading(false);
+      }
+    };
+
+    getSession();
+
+    // Handle auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        try {
+          console.log('AuthContext: Auth state change:', event, session?.user?.email || 'No user');
+          
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            console.log('AuthContext: Auth state change - fetching profile for:', session.user.id);
+            // Fetch profile
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .maybeSingle();
+            
+            if (error && error.code !== 'PGRST116') {
+              console.error('AuthContext: Auth state change - profile error:', error);
+            }
+            
+            if (profile) {
+              console.log('AuthContext: Auth state change - profile loaded for role:', profile.role);
+              setProfile(profile);
+              setCurrentRole(profile.primary_role || profile.role || 'buyer');
+              
+              // Fetch user roles
+              const roles = await fetchUserRoles(session.user.id);
+              setUserRoles(roles.length > 0 ? roles : [profile.primary_role || profile.role || 'buyer']);
+            } else {
+              console.log('AuthContext: Auth state change - no profile found');
+              setProfile(null);
+            }
+
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              console.log('AuthContext: User signed in successfully:', session.user.email);
+            }
+          } else {
+            console.log('AuthContext: Auth state change - user signed out');
+            setProfile(null);
+            setUserRoles([]);
+            setCurrentRole('buyer');
+          }
+          
+          console.log('AuthContext: Auth state change complete, setting loading to false');
+          setLoading(false);
+        } catch (error) {
+          console.error('AuthContext: Unexpected error in auth state change:', error);
+          setLoading(false);
+        }
       }
     );
 
@@ -200,7 +243,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Insert all roles
         const roleInserts = rolesToAdd.map(role => ({
-          user_id: data.user.id,
+          user_id: data.user?.id,
           role: role,
           is_active: true
         }));
@@ -252,11 +295,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     try {
+      // First, check if user exists
+      const { data: userData, error: userError } = await supabase
+        .from('profiles')
+        .select('user_id, email')
+        .eq('email', email)
+        .single();
+
+      if (userError || !userData) {
+        // For security, don't reveal if email exists or not
+        // Just return success to prevent email enumeration
+        console.log('Password reset requested for non-existent email:', email);
+        return { success: true };
+      }
+
+      const redirectUrl = '/reset-password';
+      console.log('Sending password reset email to:', email, 'with redirect to:', redirectUrl);
+
+      // IMPORTANT: For password reset to work properly, you must configure the redirect URLs in Supabase:
+      // Go to Supabase Dashboard > Authentication > URL Configuration > Redirect URLs
+      // Add: http://localhost:5174/reset-password (for local development)
+      // Add: https://yourdomain.com/reset-password (for production)
+      // Without this, the reset link may not redirect properly and users will just get logged in without being able to change their password.
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: redirectUrl,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase resetPasswordForEmail error:', error);
+        throw error;
+      }
+
+      // Also send our custom Beezio-branded password reset email
+      // Note: In production, you'd configure Supabase to use custom SMTP to avoid duplicate emails
+      const emailSent = await sendPasswordResetEmail(userData.user_id, email, { resetUrl: redirectUrl });
+
+      if (!emailSent) {
+        console.warn('Failed to send custom password reset email, but Supabase email was sent');
+      }
+
+      console.log('Password reset email sent successfully to:', email);
       return { success: true };
     } catch (error) {
       console.error('Reset password error:', error);
@@ -296,13 +374,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('supabase.auth.token');
       localStorage.removeItem('sb-yemgssttxhkgrivuodbz-auth-token');
 
-      // Clear any other auth-related localStorage keys
+      // Clear any other auth-related localStorage keys that might exist
       Object.keys(localStorage).forEach(key => {
-        if (key.includes('supabase') || key.includes('auth')) {
+        if (key.includes('supabase') || key.includes('auth') || key.includes('sb-')) {
           localStorage.removeItem(key);
         }
       });
 
+      // Clear session storage
       sessionStorage.clear();
 
       // Call Supabase signOut
@@ -312,25 +391,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Continue with logout even if Supabase signOut fails
       }
 
-      console.log('Sign out successful - redirecting...');
-
-      // Use React Router navigation instead of window.location.href for better SPA behavior
-      window.location.href = '/';
+      console.log('Sign out successful - user logged out from Supabase and local state cleared');
 
     } catch (error) {
-      console.error('Error during sign out:', error);
-
-      // Force cleanup even on error
+      console.error('Sign out error:', error);
+      // Even if there's an error, clear local state
       setUser(null);
       setSession(null);
       setProfile(null);
       setUserRoles([]);
       setCurrentRole('buyer');
-      localStorage.clear();
-      sessionStorage.clear();
-
-      // Still redirect even on error
-      window.location.href = '/';
     }
   };
 

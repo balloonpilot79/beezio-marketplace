@@ -1,17 +1,4 @@
 /** @type {import('tailwindcss').Config} */
-/** @type {import(        },
-      },
-      spacing: {
-        'safe-top': 'env(safe-area-inset-top)',
-        'safe-bottom': 'env(safe-area-inset-bottom)',
-        'safe-left': 'env(safe-area-inset-left)',
-        'safe-right': 'env(safe-area-inset-right)',
-      },
-      minHeight: {
-        'screen-safe': 'calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
-        'touch-target': '44px',
-      },
-      fontFamily: {ilwindcss').Config} */
 export default {
   content: [
     "./index.html",

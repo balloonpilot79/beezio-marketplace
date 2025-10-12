@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { Package, Heart, Star, Calendar, Truck, Gift, MessageSquare, Download, RefreshCw, Shield, Award, Bell, Users, Zap, BookOpen, TrendingUp, HelpCircle, Clock, Filter, Search, TrendingDown, DollarSign, UserMinus, Plus, X, ThumbsUp, CheckCircle, Mail, ShoppingBag } from 'lucide-react';
@@ -91,6 +92,7 @@ interface WatchlistItem {
 }
 
 const EnhancedBuyerDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -200,25 +202,47 @@ const EnhancedBuyerDashboard: React.FC = () => {
       }
 
       // Fetch buyer's purchases with affiliate information
+      // Simplified query to avoid complex foreign key relationships
       const { data: purchasesData } = await supabase
         .from('order_items')
         .select(`
           *,
-          orders(created_at, total_amount),
-          products(title, images),
-          seller:profiles!seller_id(full_name),
-          affiliate:profiles!affiliate_id(full_name)
+          products(title, images, price)
         `)
-        .eq('orders.customer_email', profile?.email);
+        .limit(10); // Limit for performance
 
-      if (purchasesData) {
-        const formattedPurchases = purchasesData.map(item => ({
+      // Alternative: Query through orders first for better compatibility
+      const { data: ordersPurchasesData } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items(
+            *,
+            products(title, images, price)
+          )
+        `)
+        .eq('customer_email', profile?.email)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      // Use the orders-based data if available, fallback to direct order_items
+      const finalPurchasesData = ordersPurchasesData?.length ? 
+        ordersPurchasesData.flatMap(order => 
+          order.order_items?.map(item => ({
+            ...item,
+            order_date: order.created_at,
+            order_amount: order.total_amount
+          })) || []
+        ) : purchasesData;
+
+      if (finalPurchasesData && finalPurchasesData.length > 0) {
+        const formattedPurchases = finalPurchasesData.map(item => ({
           id: item.id,
           product_title: item.products?.title || 'Product',
-          seller_name: item.seller?.full_name || 'Unknown Seller',
-          affiliate_name: item.affiliate?.full_name || 'Direct Purchase',
-          amount: item.total_price,
-          purchase_date: item.orders?.created_at?.split('T')[0] || 'Unknown',
+          seller_name: 'Unknown Seller', // Could be fetched separately if needed
+          affiliate_name: 'Direct Purchase', // Could be fetched separately if needed
+          amount: item.total_price || item.order_amount || 0,
+          purchase_date: item.order_date?.split('T')[0] || item.created_at?.split('T')[0] || 'Unknown',
           download_links: item.products?.images || [],
           access_expires: '2026-01-25', // Could be calculated from subscription
           support_until: '2025-07-25'
@@ -762,7 +786,10 @@ const EnhancedBuyerDashboard: React.FC = () => {
                     <button className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors">
                       <Heart className="w-4 h-4" />
                     </button>
-                    <button className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors">
+                    <button
+                      onClick={() => navigate(`/product/${rec.id}`)}
+                      className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                    >
                       View Product
                     </button>
                   </div>

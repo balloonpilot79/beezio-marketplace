@@ -7,6 +7,13 @@
   NODE_VERSION = "18"
   NPM_FLAGS = "--production=false"
 
+# Redirect www to non-www
+[[redirects]]
+  from = "https://www.beezio.co/*"
+  to = "https://beezio.co/:splat"
+  status = 301
+  force = true
+
 # SPA routing - redirect all routes to index.html
 [[redirects]]
   from = "/*"

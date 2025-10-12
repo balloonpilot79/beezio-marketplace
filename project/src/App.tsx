@@ -1,6 +1,4 @@
-// Re-export the full production-ready App implementation.
-// This keeps `src/App.tsx` as the canonical entrypoint while using
-// the larger, feature-complete `AppProductionReady` implementation.
-import AppProductionReady from './AppProductionReady';
+// Using the complete working e-commerce app with all features and components
+import AppWorking from './AppWorking';
 
-export default AppProductionReady;
+export default AppWorking;

@@ -28,7 +28,7 @@ const AutomationShowcase: React.FC = () => {
 
   const handleEnableAutomation = () => {
     if (user) {
-      navigate('/seller-dashboard?tab=automation');
+      navigate('/dashboard?tab=automation');
     } else {
       navigate('/login?seller=true');
     }

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Grid3X3, List, Star, Heart, Share2, ChevronDown, ArrowUpDown } from 'lucide-react';
-import { SAMPLE_PRODUCTS } from '../data/sampleProducts';
+import { SAMPLE_PRODUCTS, SampleProduct } from '../data/sampleProducts';
 import { isProductSampleDataEnabled } from '../config/sampleDataConfig';
+import { fetchMarketplaceProducts } from '../services/productService';
 
 type SortOption = 'featured' | 'price-low' | 'price-high' | 'rating' | 'newest' | 'commission';
 
@@ -24,6 +25,9 @@ const CATEGORIES = [
 
 const MarketplacePage = () => {
   const enableSampleData = isProductSampleDataEnabled();
+  const [products, setProducts] = useState<SampleProduct[]>(enableSampleData ? SAMPLE_PRODUCTS : []);
+  const [loading, setLoading] = useState(!enableSampleData);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [sortBy, setSortBy] = useState<SortOption>('featured');
@@ -31,8 +35,32 @@ const MarketplacePage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
-  // Get products based on sample data configuration
-  const products = enableSampleData ? SAMPLE_PRODUCTS : [];
+  useEffect(() => {
+    const loadProducts = async () => {
+      if (enableSampleData) {
+        setProducts(SAMPLE_PRODUCTS);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const realProducts = await fetchMarketplaceProducts();
+        setProducts(realProducts);
+      } catch (err) {
+        console.error('MarketplacePageSimple: unable to load Supabase products', err);
+        setProducts([]);
+        setError('Unable to load products from Supabase. Please verify your database connection.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, [enableSampleData]);
 
   // Filter and sort products
   const filteredProducts = products.filter(product => {
@@ -68,7 +96,21 @@ const MarketplacePage = () => {
     setFavorites(newFavorites);
   };
 
-  if (!enableSampleData) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center bg-white p-12 rounded-2xl shadow-xl">
+          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Loading Marketplace</h2>
+          <p className="text-gray-600 text-lg">Fetching products...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!enableSampleData && products.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center bg-white p-12 rounded-2xl shadow-xl">
@@ -76,8 +118,17 @@ const MarketplacePage = () => {
             <Search className="w-12 h-12 text-gray-400" />
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Marketplace</h2>
-          <p className="text-gray-600 text-lg">Sample data is currently disabled.</p>
-          <p className="text-sm text-gray-500 mt-2">Enable sample data to see products.</p>
+          {error ? (
+            <>
+              <p className="text-gray-600 text-lg">We couldn&apos;t load your products right now.</p>
+              <p className="text-sm text-gray-500 mt-2">{error}</p>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-600 text-lg">No products are live yet.</p>
+              <p className="text-sm text-gray-500 mt-2">Add products via the Seller dashboard or Supabase to populate the marketplace.</p>
+            </>
+          )}
         </div>
       </div>
     );

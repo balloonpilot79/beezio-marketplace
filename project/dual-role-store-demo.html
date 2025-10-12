@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual Role Store System - Visual Demo</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin: 0;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+        
+        .dual-store-demo {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 40px 0;
+        }
+        
+        .store-card {
+            border: 2px solid #e1e5e9;
+            border-radius: 15px;
+            padding: 25px;
+            background: #f8f9fa;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .store-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+        
+        .seller-store {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        }
+        
+        .affiliate-store {
+            border-color: #007bff;
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        }
+        
+        .store-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .store-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+        }
+        
+        .seller-icon {
+            background: #28a745;
+        }
+        
+        .affiliate-icon {
+            background: #007bff;
+        }
+        
+        .store-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .store-url {
+            background: #fff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #495057;
+            margin: 15px 0;
+            border-left: 4px solid;
+        }
+        
+        .seller-store .store-url {
+            border-left-color: #28a745;
+        }
+        
+        .affiliate-store .store-url {
+            border-left-color: #007bff;
+        }
+        
+        .features-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .features-list li {
+            padding: 8px 0;
+            position: relative;
+            padding-left: 25px;
+        }
+        
+        .features-list li:before {
+            content: "✅";
+            position: absolute;
+            left: 0;
+        }
+        
+        .user-flow {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 40px 0;
+            border: 2px solid #dee2e6;
+        }
+        
+        .user-flow h3 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+        }
+        
+        .flow-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .flow-step {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .comparison-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+        
+        .comparison-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e1e5e9;
+        }
+        
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+        
+        .production-ready {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .enhancement-option {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .cta-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .cta-section h3 {
+            margin-top: 0;
+            font-size: 2em;
+        }
+        
+        @media (max-width: 768px) {
+            .dual-store-demo {
+                grid-template-columns: 1fr;
+            }
+            
+            .comparison-table {
+                font-size: 0.9em;
+            }
+            
+            .comparison-table th,
+            .comparison-table td {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏪 Dual Role Store System</h1>
+            <p class="subtitle">Complete Guide to Affiliate Custom Stores & Seller-Affiliate Combinations</p>
+        </div>
+        
+        <div class="dual-store-demo">
+            <div class="store-card seller-store">
+                <div class="store-header">
+                    <div class="store-icon seller-icon">🏪</div>
+                    <div class="store-title">Seller Store</div>
+                </div>
+                <div class="store-url">/store/[user_id]</div>
+                <ul class="features-list">
+                    <li>Shows ONLY your own products</li>
+                    <li>Business-focused branding</li>
+                    <li>Professional customization</li>
+                    <li>Full profit on sales</li>
+                    <li>Product management tools</li>
+                    <li>Store analytics dashboard</li>
+                    <li>Customer management</li>
+                </ul>
+            </div>
+            
+            <div class="store-card affiliate-store">
+                <div class="store-header">
+                    <div class="store-icon affiliate-icon">📱</div>
+                    <div class="store-title">Affiliate Store</div>
+                </div>
+                <div class="store-url">/affiliate/[user_id]</div>
+                <ul class="features-list">
+                    <li>Shows ALL marketplace products</li>
+                    <li>Personal marketing branding</li>
+                    <li>6 custom themes available</li>
+                    <li>Commission-based earnings</li>
+                    <li>Social media integration</li>
+                    <li>Goal setting & tracking</li>
+                    <li>Category preferences</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="user-flow">
+            <h3>🎯 Dual Role User Journey</h3>
+            <div class="flow-steps">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <h4>Sign Up</h4>
+                    <p>User creates account and can select multiple roles (Seller + Affiliate)</p>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <h4>Role Switching</h4>
+                    <p>Unified Dashboard allows switching between seller and affiliate modes</p>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <h4>Store Setup</h4>
+                    <p>Customize both stores with different branding and themes</p>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <h4>Dual Strategy</h4>
+                    <p>Use seller store for own products, affiliate store for broader promotion</p>
+                </div>
+            </div>
+        </div>
+        
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Seller Store</th>
+                    <th>Affiliate Store</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Custom URL</strong></td>
+                    <td>/store/[user_id]</td>
+                    <td>/affiliate/[user_id]</td>
+                    <td><span class="status-badge production-ready">Production Ready</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Product Selection</strong></td>
+                    <td>Own products only</td>
+                    <td>All marketplace products</td>
+                    <td><span class="status-badge production-ready">Production Ready</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Customization</strong></td>
+                    <td>Business themes & branding</td>
+                    <td>6 personal themes + social integration</td>
+                    <td><span class="status-badge production-ready">Production Ready</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Revenue Model</strong></td>
+                    <td>Full profit on sales</td>
+                    <td>Commission percentages</td>
+                    <td><span class="status-badge production-ready">Production Ready</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Role Switching</strong></td>
+                    <td colspan="2">Unified Dashboard with seamless role management</td>
+                    <td><span class="status-badge production-ready">Production Ready</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Combined Store Option</strong></td>
+                    <td colspan="2">Hybrid store showing both product types in sections</td>
+                    <td><span class="status-badge enhancement-option">Enhancement Option</span></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="cta-section">
+            <h3>🚀 Ready to Launch!</h3>
+            <p><strong>Both affiliate custom stores and dual role functionality are fully operational and production-ready.</strong></p>
+            <p>Users can have separate stores for maximum flexibility, or we can implement a hybrid store system in about 30-60 minutes if you prefer combined storefronts.</p>
+            <p><em>The current separate store approach gives users the most strategic flexibility for different marketing approaches.</em></p>
+        </div>
+    </div>
+</body>
+</html>

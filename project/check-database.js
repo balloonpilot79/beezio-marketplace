@@ -1,5 +1,8 @@
 // Quick script to check your current database structure
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // IMPORTANT: Do NOT commit production keys. This script should read credentials from environment variables.
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';

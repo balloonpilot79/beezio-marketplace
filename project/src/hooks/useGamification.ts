@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 
@@ -21,43 +21,65 @@ export const useGamification = () => {
   const { user } = useAuth();
   const [newBadges, setNewBadges] = useState<NewBadgeNotification[]>([]);
   const [lastCheckedBadges, setLastCheckedBadges] = useState<Set<string>>(new Set());
+  const [badgesSupported, setBadgesSupported] = useState(true);
+  const hasLoggedSchemaWarningRef = useRef(false);
 
-  // Track affiliate activity
-  const trackActivity = useCallback(async (
-    activityType: 'sale' | 'referral' | 'view' | 'share',
-    data?: {
-      commissionAmount?: number;
-      productId?: string;
+  const isSchemaOutOfSync = useCallback((error: any) => {
+    if (!error) return false;
+    const possibleCodes = new Set([
+      'PGRST200',
+      'PGRST201',
+      'PGRST204',
+      'PGRST302',
+      '42P01',
+      '42703',
+      400,
+      404,
+      406
+    ]);
+
+    const code = error.code ?? error.status;
+    const message = (error.message || '').toLowerCase();
+    const details = (error.details || '').toLowerCase();
+
+    if (code && possibleCodes.has(code)) {
+      return true;
     }
-  ) => {
-    if (!user) return;
 
-    try {
-      // Call the update_affiliate_stats function
-      const { error } = await supabase.rpc('update_affiliate_stats', {
-        p_user_id: user.id,
-        p_commission_amount: data?.commissionAmount || 0,
-        p_is_referral: activityType === 'referral',
-        p_product_view: activityType === 'view',
-        p_social_share: activityType === 'share'
-      });
+    if (message.includes('relationship') || message.includes('does not exist')) {
+      return true;
+    }
 
-      if (error) {
-        console.error('Error tracking activity:', error);
-        return;
+    if (details.includes('relationship') || details.includes('does not exist')) {
+      return true;
+    }
+
+    return false;
+  }, []);
+
+  const handleSchemaMismatch = useCallback((error: any) => {
+    if (!badgesSupported) {
+      return;
+    }
+
+    if (isSchemaOutOfSync(error)) {
+      setBadgesSupported(false);
+
+      if (!hasLoggedSchemaWarningRef.current) {
+        console.warn(
+          '[gamification] Badge tables are missing or out of sync on Supabase. Gamification features will be disabled until the migration runs.'
+        );
+        hasLoggedSchemaWarningRef.current = true;
       }
-
-      // Check for new badges after activity
-      await checkForNewBadges();
-
-    } catch (error) {
-      console.error('Error in trackActivity:', error);
+      return true;
     }
-  }, [user]);
+
+    return false;
+  }, [badgesSupported, isSchemaOutOfSync]);
 
   // Check for newly earned badges
   const checkForNewBadges = useCallback(async () => {
-    if (!user) return;
+    if (!user || !badgesSupported) return;
 
     try {
       const { data: userBadges, error } = await supabase
@@ -79,7 +101,9 @@ export const useGamification = () => {
         .order('earned_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching badges:', error);
+        if (!handleSchemaMismatch(error)) {
+          console.error('Error fetching badges:', error);
+        }
         return;
       }
 
@@ -89,18 +113,30 @@ export const useGamification = () => {
       ) || [];
 
       if (newlyEarnedBadges.length > 0) {
-        const notifications: NewBadgeNotification[] = newlyEarnedBadges.map(badge => ({
-          id: badge.id,
-          badge: {
-            id: badge.badge_type_id,
-            name: badge.badge_types.name,
-            description: badge.badge_types.description,
-            icon: badge.badge_types.icon,
-            color: badge.badge_types.color,
-            tier: badge.badge_types.tier,
-            points_reward: badge.badge_types.points_reward
-          }
-        }));
+        const notifications: NewBadgeNotification[] = newlyEarnedBadges
+          .map(badge => {
+            const badgeType = Array.isArray(badge.badge_types)
+              ? badge.badge_types[0]
+              : badge.badge_types;
+
+            if (!badgeType) {
+              return null;
+            }
+
+            return {
+              id: badge.id,
+              badge: {
+                id: badge.badge_type_id,
+                name: badgeType.name,
+                description: badgeType.description,
+                icon: badgeType.icon,
+                color: badgeType.color,
+                tier: badgeType.tier,
+                points_reward: badgeType.points_reward
+              }
+            } as NewBadgeNotification;
+          })
+          .filter(Boolean) as NewBadgeNotification[];
 
         setNewBadges(prev => [...prev, ...notifications]);
       }
@@ -112,14 +148,49 @@ export const useGamification = () => {
     } catch (error) {
       console.error('Error in checkForNewBadges:', error);
     }
-  }, [user, lastCheckedBadges]);
+  }, [user, badgesSupported, lastCheckedBadges, handleSchemaMismatch]);
+
+  // Track affiliate activity
+  const trackActivity = useCallback(async (
+    activityType: 'sale' | 'referral' | 'view' | 'share',
+    data?: {
+      commissionAmount?: number;
+      productId?: string;
+    }
+  ) => {
+    if (!user || !badgesSupported) return;
+
+    try {
+      // Call the update_affiliate_stats function
+      const { error } = await supabase.rpc('update_affiliate_stats', {
+        p_user_id: user.id,
+        p_commission_amount: data?.commissionAmount || 0,
+        p_is_referral: activityType === 'referral',
+        p_product_view: activityType === 'view',
+        p_social_share: activityType === 'share'
+      });
+
+      if (error) {
+        if (!handleSchemaMismatch(error)) {
+          console.error('Error tracking activity:', error);
+        }
+        return;
+      }
+
+      // Check for new badges after activity
+      await checkForNewBadges();
+
+    } catch (error) {
+      console.error('Error in trackActivity:', error);
+    }
+  }, [user, badgesSupported, handleSchemaMismatch, checkForNewBadges]);
 
   // Initialize badge checking
   useEffect(() => {
-    if (user) {
+    if (user && badgesSupported) {
       checkForNewBadges();
     }
-  }, [user]);
+  }, [user, badgesSupported, checkForNewBadges]);
 
   // Track product views when affiliate links are used
   const trackProductView = useCallback(async (productId: string) => {
@@ -148,7 +219,7 @@ export const useGamification = () => {
 
   // Get current affiliate stats
   const getAffiliateStats = useCallback(async () => {
-    if (!user) return null;
+    if (!user || !badgesSupported) return null;
 
     try {
       const { data, error } = await supabase
@@ -158,7 +229,9 @@ export const useGamification = () => {
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching affiliate stats:', error);
+        if (!handleSchemaMismatch(error)) {
+          console.error('Error fetching affiliate stats:', error);
+        }
         return null;
       }
 
@@ -167,7 +240,7 @@ export const useGamification = () => {
       console.error('Error in getAffiliateStats:', error);
       return null;
     }
-  }, [user]);
+  }, [user, badgesSupported, handleSchemaMismatch]);
 
   return {
     newBadges,
@@ -177,7 +250,8 @@ export const useGamification = () => {
     trackSale,
     trackReferral,
     getAffiliateStats,
-    checkForNewBadges
+    checkForNewBadges,
+    badgesSupported
   };
 };
 

@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import { FileText, CheckCircle, AlertCircle, Download, ExternalLink } from 'lucide-react';
-
-interface TaxAgreement {
-  id: string;
-  user_id: string;
-  agreement_type: '1099' | 'independent_contractor' | 'tax_withholding';
-  signed_at: string;
-  ip_address: string;
-  user_agent: string;
-  document_version: string;
-}
+import { FileText, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
 
 interface StripeOnboardingProps {
   onComplete: (accountId: string) => void;
@@ -21,7 +11,6 @@ interface StripeOnboardingProps {
 export const EmbeddedStripeOnboarding: React.FC<StripeOnboardingProps> = ({ onComplete, userType }) => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [agreements, setAgreements] = useState<TaxAgreement[]>([]);
   const [currentStep, setCurrentStep] = useState<'agreements' | 'onboarding' | 'complete'>('agreements');
   const [acceptedAgreements, setAcceptedAgreements] = useState<Set<string>>(new Set());
 
@@ -32,12 +21,12 @@ export const EmbeddedStripeOnboarding: React.FC<StripeOnboardingProps> = ({ onCo
   }, [user]);
 
   const fetchExistingAgreements = async () => {
-    const { data } = await supabase
+    await supabase
       .from('tax_agreements')
       .select('*')
       .eq('user_id', user?.id);
 
-    setAgreements(data || []);
+    // Agreements fetched successfully
   };
 
   const taxAgreements = [

@@ -9,6 +9,7 @@ interface GamificationContextType {
   trackReferral: () => Promise<void>;
   getAffiliateStats: () => Promise<any>;
   checkForNewBadges: () => Promise<void>;
+  badgesSupported: boolean;
 }
 
 const GamificationContext = createContext<GamificationContextType | undefined>(undefined);
@@ -26,7 +27,8 @@ export const GamificationProvider: React.FC<GamificationProviderProps> = ({ chil
     trackSale,
     trackReferral,
     getAffiliateStats,
-    checkForNewBadges
+    checkForNewBadges,
+    badgesSupported
   } = useGamification();
 
   const value = {
@@ -35,7 +37,8 @@ export const GamificationProvider: React.FC<GamificationProviderProps> = ({ chil
     trackSale,
     trackReferral,
     getAffiliateStats,
-    checkForNewBadges
+    checkForNewBadges,
+    badgesSupported
   };
 
   return (

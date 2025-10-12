@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Save, Upload, Eye, Palette, Globe, Settings, Heart, Star } from 'lucide-react';
+import { Save, Eye, Palette, Settings, Heart } from 'lucide-react';
 
 interface AffiliateStoreSettings {
   store_name?: string;
@@ -53,7 +53,7 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('affiliate_store_settings')
         .upsert({
           affiliate_id: affiliateId,
@@ -250,7 +250,7 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
                       </label>
                       <input
                         type="url"
-                        value={storeSettings.social_links?.[social.key] || ''}
+                        value={storeSettings.social_links?.[social.key as keyof typeof storeSettings.social_links] || ''}
                         onChange={(e) => handleSocialLinkChange(social.key, e.target.value)}
                         placeholder={social.placeholder}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"

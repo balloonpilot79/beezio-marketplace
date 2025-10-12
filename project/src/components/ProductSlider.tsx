@@ -1,18 +1,39 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { getRandomProducts, SampleProduct } from '../data/sampleProducts';
 import { isProductSampleDataEnabled } from '../config/sampleDataConfig';
+import { fetchMarketplaceProducts } from '../services/productService';
 
 const ProductSlider: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [products, setProducts] = useState<SampleProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const sampleDataEnabled = isProductSampleDataEnabled();
   const itemsPerView = 3;
 
   useEffect(() => {
-    // Load sample products if enabled
-    const sampleProducts = getRandomProducts(12); // Get 12 random products
-    setProducts(sampleProducts);
-  }, []);
+    const loadProducts = async () => {
+      try {
+        if (sampleDataEnabled) {
+          setProducts(getRandomProducts(12));
+          return;
+        }
+
+        const realProducts = await fetchMarketplaceProducts(12);
+        setProducts(realProducts);
+      } catch (error) {
+        console.error('ProductSlider: falling back to sample data due to Supabase error', error);
+        if (sampleDataEnabled) {
+          setProducts(getRandomProducts(12));
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, [sampleDataEnabled]);
 
   const nextSlide = () => {
     setCurrentIndex((prev) => 
@@ -34,7 +55,11 @@ const ProductSlider: React.FC = () => {
   }, [products.length]);
 
   // Don't render if sample data is disabled or no products
-  if (!isProductSampleDataEnabled() || products.length === 0) {
+  if (loading) {
+    return null;
+  }
+
+  if (products.length === 0) {
     return null;
   }
 
@@ -110,9 +135,12 @@ const ProductSlider: React.FC = () => {
                     </div>
                   </div>
                   
-                  <button className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 text-white py-2 px-4 rounded-lg font-medium hover:from-amber-600 hover:to-yellow-700 transition-all duration-200 transform hover:scale-105">
+                  <Link
+                    to={`/product/${product.id}`}
+                    className="w-full inline-flex items-center justify-center bg-gradient-to-r from-amber-500 to-yellow-600 text-white py-2 px-4 rounded-lg font-medium hover:from-amber-600 hover:to-yellow-700 transition-all duration-200 transform hover:scale-105"
+                  >
                     View Product
-                  </button>
+                  </Link>
                 </div>
               </div>
             ))}

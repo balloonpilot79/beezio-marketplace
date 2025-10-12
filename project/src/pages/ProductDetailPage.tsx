@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Heart, ShoppingCart, Shield, Truck, RotateCcw, DollarSign, Gift, Star, Users, TrendingUp, Play, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Heart, ShoppingCart, Shield, Truck, RotateCcw, DollarSign, Star, Users, TrendingUp, Play, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { SAMPLE_PRODUCTS } from '../data/sampleProducts';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useCart } from '../contexts/CartContext';
 import AuthModal from '../components/AuthModal';
+import BuyerRewards from '../components/BuyerRewards';
 import RecommendationEngine from '../components/RecommendationEngine';
 import ShippingSelector from '../components/ShippingSelector';
 import { useBehaviorTracker } from '../hooks/useBehaviorTracker';
@@ -388,7 +389,7 @@ const ProductDetailPage: React.FC = () => {
             ))}
             
             {/* Video Thumbnails */}
-            {product.videos.map((video, index) => (
+            {product.videos.map((_, index) => (
               <button
                 key={`video-${index}`}
                 onClick={() => setSelectedImageIndex(product.images.length + index)}

@@ -5,17 +5,23 @@ import { isProductSampleDataEnabled } from '../config/sampleDataConfig';
 
 export const ENABLE_SAMPLE_DATA = isProductSampleDataEnabled();
 
-interface SampleProduct {
+export interface SampleProduct {
   id: string;
   name: string;
   price: number;
   image: string;
+  images?: string[];
   rating: number;
   category: string;
   description: string;
   seller: string;
+  sellerId?: string;
   reviews: number;
   commission_rate: number;
+  commission_type?: 'percentage' | 'flat_rate';
+  flat_commission_amount?: number;
+  shipping_cost?: number;
+  stock_quantity?: number;
   created_at: string;
 }
 

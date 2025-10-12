@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import { supabase } from '../lib/supabase';
 
 // Runtime check for Vite env vars (will be inlined at build time)
 const RUNTIME_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
@@ -35,7 +34,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const { signIn, signUp, resetPassword, sendMagicLink } = useAuth();
+  const { signIn, signUp, resetPassword, sendMagicLink, currentRole } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -98,7 +97,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           onClose();
           // Don't redirect to dashboard if user is on reset password page
           if (window.location.pathname !== '/reset-password') {
-            setTimeout(() => navigate('/dashboard'), 100);
+            console.log('AuthModal: Not on reset-password page, redirecting user after login');
+            // Redirect to dashboard after a short delay to allow profile loading
+            // The Dashboard component will automatically render the correct dashboard based on user role
+            setTimeout(() => {
+              console.log('Login redirect - redirecting to /dashboard for role-based rendering');
+              navigate('/dashboard');
+            }, 1000); // Give more time for profile to load
+          } else {
+            console.log('AuthModal: On reset-password page, not redirecting');
           }
         } else {
           // If no user/session returned, surface the response for debugging
@@ -120,7 +127,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
             const signInResult = await signIn(formData.email, formData.password);
             if (signInResult && (signInResult.user || signInResult.session)) {
               onClose();
-              setTimeout(() => navigate('/dashboard'), 100);
+              // Redirect based on role
+              const roleRedirects = {
+                seller: '/seller-dashboard',
+                affiliate: '/affiliate-dashboard',
+                buyer: '/buyer-dashboard',
+                fundraiser: '/seller-dashboard' // Fundraisers start with seller dashboard
+              };
+              const redirectPath = roleRedirects[formData.role as keyof typeof roleRedirects] || '/buyer-dashboard';
+              setTimeout(() => navigate(redirectPath), 100);
             } else {
               setError('Sign in failed after registration. Please try logging in.');
             }
@@ -141,6 +156,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         }, 3000);
       } else if (msg.includes('Invalid login credentials') || msg.includes('Invalid login')) {
         setError('Invalid email or password. Please check your credentials and try again.');
+      } else if (msg.includes('Email not confirmed') || msg.includes('email_not_confirmed')) {
+        setError('Please check your email and click the confirmation link before signing in.');
+      } else if (msg.includes('Too many requests')) {
+        setError('Too many login attempts. Please wait a few minutes before trying again.');
       } else {
         setError(msg || 'An error occurred during authentication');
       }

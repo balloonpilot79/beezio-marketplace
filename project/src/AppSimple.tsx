@@ -28,13 +28,7 @@ const SimpleHeader = () => {
       </div>
     </header>
   );
-};React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider as AuthProviderMultiRole } from './contexts/AuthContextMultiRole';
-import { CartProvider } from './contexts/CartContext';
-import { AffiliateProvider } from './contexts/AffiliateContext';
-import Header from './components/Header';
-import MarketplacePage from './pages/MarketplacePageSimple';
+};
 
 // Simple HomePage component
 const HomePage = () => {

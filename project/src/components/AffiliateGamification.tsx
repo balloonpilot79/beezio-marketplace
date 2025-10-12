@@ -56,6 +56,58 @@ export const AffiliateGamification: React.FC = () => {
   const [availableBadges, setAvailableBadges] = useState<BadgeType[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'badges' | 'leaderboard'>('overview');
+  const [badgesSupported, setBadgesSupported] = useState(true);
+  const [schemaMessageShown, setSchemaMessageShown] = useState(false);
+
+  const isSchemaOutOfSync = (error: any) => {
+    if (!error) return false;
+    const code = error.code ?? error.status;
+    const message = (error.message || '').toLowerCase();
+    const details = (error.details || '').toLowerCase();
+
+    const schemaCodes = new Set([
+      'PGRST200',
+      'PGRST201',
+      'PGRST204',
+      'PGRST302',
+      '42P01',
+      '42703',
+      400,
+      404,
+      406
+    ]);
+
+    if (code && schemaCodes.has(code)) {
+      return true;
+    }
+
+    if (message.includes('relationship') || message.includes('does not exist')) {
+      return true;
+    }
+
+    if (details.includes('relationship') || details.includes('does not exist')) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const handleSchemaMismatch = (error: any, logLabel: string) => {
+    if (isSchemaOutOfSync(error)) {
+      if (badgesSupported) {
+        setBadgesSupported(false);
+      }
+
+      if (!schemaMessageShown) {
+        console.warn(`[gamification] ${logLabel}: Supabase badges schema not found. Gamification UI will be disabled until migrations are applied.`);
+        setSchemaMessageShown(true);
+      }
+
+      return true;
+    }
+
+    return false;
+  };
 
   useEffect(() => {
     if (user) {
@@ -64,6 +116,8 @@ export const AffiliateGamification: React.FC = () => {
   }, [user]);
 
   const fetchGamificationData = async () => {
+    let schemaMismatchDetected = false;
+
     try {
       // Fetch affiliate stats
       const { data: statsData, error: statsError } = await supabase
@@ -73,38 +127,54 @@ export const AffiliateGamification: React.FC = () => {
         .single();
 
       if (statsError && statsError.code !== 'PGRST116') {
-        console.error('Error fetching stats:', statsError);
+        if (!handleSchemaMismatch(statsError, 'Error fetching stats')) {
+          console.error('Error fetching stats:', statsError);
+        } else {
+          schemaMismatchDetected = true;
+        }
       } else {
         setStats(statsData);
       }
 
       // Fetch earned badges
-      const { data: badgesData, error: badgesError } = await supabase
-        .from('user_badges')
-        .select(`
-          *,
-          badge_types:badge_type_id (*)
-        `)
-        .eq('user_id', user!.id)
-        .order('earned_at', { ascending: false });
+      if (badgesSupported && !schemaMismatchDetected) {
+        const { data: badgesData, error: badgesError } = await supabase
+          .from('user_badges')
+          .select(`
+            *,
+            badge_types:badge_type_id (*)
+          `)
+          .eq('user_id', user!.id)
+          .order('earned_at', { ascending: false });
 
-      if (badgesError) {
-        console.error('Error fetching badges:', badgesError);
-      } else {
-        setEarnedBadges(badgesData || []);
+        if (badgesError) {
+          if (!handleSchemaMismatch(badgesError, 'Error fetching badges')) {
+            console.error('Error fetching badges:', badgesError);
+          } else {
+            schemaMismatchDetected = true;
+          }
+        } else {
+          setEarnedBadges(badgesData || []);
+        }
       }
 
       // Fetch all available badge types
-      const { data: badgeTypesData, error: badgeTypesError } = await supabase
-        .from('badge_types')
-        .select('*')
-        .eq('is_active', true)
-        .order('requirement_value', { ascending: true });
+      if (badgesSupported && !schemaMismatchDetected) {
+        const { data: badgeTypesData, error: badgeTypesError } = await supabase
+          .from('badge_types')
+          .select('*')
+          .eq('is_active', true)
+          .order('requirement_value', { ascending: true });
 
-      if (badgeTypesError) {
-        console.error('Error fetching badge types:', badgeTypesError);
-      } else {
-        setAvailableBadges(badgeTypesData || []);
+        if (badgeTypesError) {
+          if (!handleSchemaMismatch(badgeTypesError, 'Error fetching badge types')) {
+            console.error('Error fetching badge types:', badgeTypesError);
+          } else {
+            schemaMismatchDetected = true;
+          }
+        } else {
+          setAvailableBadges(badgeTypesData || []);
+        }
       }
     } catch (error) {
       console.error('Error in fetchGamificationData:', error);
@@ -156,6 +226,18 @@ export const AffiliateGamification: React.FC = () => {
             <div className="h-4 bg-gray-200 rounded w-3/4"></div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (!badgesSupported) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Affiliate gamification coming soon</h3>
+        <p className="text-gray-600">
+          We couldn&apos;t load the badges tables from Supabase. Run the latest migrations to unlock levels, leaderboards, and badges.
+        </p>
       </div>
     );
   }

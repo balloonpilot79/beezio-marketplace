@@ -74,6 +74,22 @@ npm run build
 # Upload the 'dist' folder to your hosting provider
 ```
 
+### Beta Testing with Real Products (Stripe in Test Mode)
+
+1. **Disable sample catalog data**
+   - Create or update your `.env` file with `VITE_ENABLE_SAMPLE_DATA=false` to switch the storefront over to Supabase-driven products.
+2. **Apply the latest Supabase schema**
+   - Run `supabase db push` (or execute the SQL migrations in `supabase/`) so the `products` table matches the app expectations.
+3. **Load real products**
+   - Add items through the Seller dashboard or import them directly in Supabase (ensure `is_active=true` and at least one image URL).
+4. **Keep Stripe in test mode**
+   - Leave `VITE_STRIPE_PUBLISHABLE_KEY` and server-side Stripe keys pointed at your **test** account.
+   - Use Stripe’s universal test card `4242 4242 4242 4242` with any future expiry and a random CVC/ZIP to smoke test checkout.
+5. **Verify end-to-end flows**
+   - Run `npm run build` followed by a quick smoke test in the deployed preview. Confirm products render, add-to-cart works, and checkout accepts test digits.
+
+When you’re ready for paid beta testers in phase two, swap your Stripe keys to live mode while keeping the real catalog intact.
+
 ## Project Structure
 
 ```

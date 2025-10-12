@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  CreditCard, 
   DollarSign, 
   TrendingUp, 
   Calendar,
@@ -40,7 +39,7 @@ interface CommissionPayment {
 }
 
 export const StripeAffiliateDashboard: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [earnings, setEarnings] = useState<AffiliateEarnings | null>(null);
   const [payments, setPayments] = useState<CommissionPayment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -383,7 +382,7 @@ export const StripeAffiliateDashboard: React.FC = () => {
           <div className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <EmbeddedStripeOnboarding
               userType="affiliate"
-              onComplete={(accountId) => {
+              onComplete={(_accountId) => {
                 setShowOnboarding(false);
                 checkStripeConnection();
               }}
