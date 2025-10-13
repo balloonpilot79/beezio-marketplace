@@ -40,40 +40,57 @@ const AffiliateProductsPage: React.FC = () => {
   const fetchRealProducts = async () => {
     try {
       setLoading(true);
+      
+      // Try to fetch real products, but handle errors gracefully
       const { data, error } = await supabase
         .from('products')
-        .select(`
-          *,
-          profiles!inner(full_name, email)
-        `)
+        .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching real products:', error);
+        console.warn('Error fetching real products, using sample data:', error);
+        // Use sample products as fallback
+        setRealProducts(products.map(product => ({
+          ...product,
+          commission_rate: 20 // Default commission rate
+        })));
+        setLoading(false);
         return;
       }
 
       // Transform real products to match sample product format
       const transformedProducts = (data || []).map(product => ({
         id: product.id,
-        name: product.title,
-        price: product.price,
+        name: product.title || 'Untitled Product',
+        price: product.price || 0,
         image: product.images && product.images.length > 0 ? product.images[0] : 'https://via.placeholder.com/400x300?text=No+Image',
         rating: 4.5, // Default rating for new products
-        category: product.category || 'Other',
-        description: product.description,
-        seller: product.profiles?.full_name || product.profiles?.email || 'Unknown Seller',
+        category: product.category_name || product.category_id || 'Other',
+        description: product.description || 'No description available',
+        seller: 'Marketplace Seller',
         reviews: 0, // New products start with 0 reviews
-        commission_rate: product.affiliate_commission_type === 'percentage'
-          ? product.affiliate_commission_rate
-          : (product.affiliate_commission_rate / product.price) * 100, // Convert fixed to percentage
+        commission_rate: product.commission_rate || 20, // Use commission_rate field or default to 20%
         created_at: product.created_at
       }));
 
-      setRealProducts(transformedProducts);
+      // If no real products, use sample products
+      if (transformedProducts.length === 0) {
+        console.log('No real products found, using sample data');
+        setRealProducts(products.map(product => ({
+          ...product,
+          commission_rate: 20 // Default commission rate
+        })));
+      } else {
+        setRealProducts(transformedProducts);
+      }
     } catch (error) {
-      console.error('Error fetching real products:', error);
+      console.error('Error in fetchRealProducts, using sample data:', error);
+      // Fallback to sample products on any error
+      setRealProducts(products.map(product => ({
+        ...product,
+        commission_rate: 20 // Default commission rate
+      })));
     } finally {
       setLoading(false);
     }

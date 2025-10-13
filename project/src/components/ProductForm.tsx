@@ -128,6 +128,24 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   ];
 
   useEffect(() => {
+    // Always start with default categories to ensure dropdown isn't empty
+    setCategories(defaultCategories);
+    
+    // Try to load from database in background
+    (async () => {
+      try {
+        const { data, error } = await supabase.from('categories').select('id, name').order('sort_order', { ascending: true });
+        if (!error && data && data.length > 0) {
+          console.log('Categories loaded from database:', data.length);
+          setCategories(data);
+        } else {
+          console.log('Using fallback categories');
+        }
+      } catch (e) {
+        console.log('Category fetch error, keeping defaults:', e);
+      }
+    })();
+  }, []);  useEffect(() => {
     (async () => {
       try {
         // Try to use the helper function first
