@@ -80,304 +80,178 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenAuthModal }) => {
   return (
     <>
       <div className="min-h-screen bg-gray-50">
-        {/* Marketplace Header Banner */}
-        <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <span className="text-lg font-medium">🐝 Welcome to Beezio Marketplace</span>
-                <span className="hidden sm:inline text-yellow-100">• Transparent pricing • Fair commissions</span>
-              </div>
-              <div className="text-sm">
-                <span className="bg-white/20 px-3 py-1 rounded-full">Your Trusted Affiliate Platform</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Search Hero Section */}
-        <div className="bg-white border-b border-gray-200 py-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8">
-                Discover Amazing Products
+        {/* Compact Hero Section */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="text-center mb-6">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                Welcome to <span className="text-yellow-600">Beezio</span>
               </h1>
-              
-              {/* Search Bar */}
-              <div className="max-w-4xl mx-auto">
-                <div className="flex">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      placeholder="Search for products, brands, or categories..."
-                      className="w-full px-6 py-4 text-lg border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                    />
-                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                      <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                  <button className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-8 py-4 rounded-r-lg hover:from-yellow-600 hover:to-orange-600 transition-all font-semibold text-lg">
-                    Search
-                  </button>
-                </div>
-                
-                {/* Category Menu Bar */}
-                <div className="flex flex-wrap justify-center gap-6 mt-6 py-4 border-t border-gray-100">
-                  {['All Products', 'Electronics', 'Fashion', 'Home & Garden', 'Books', 'Sports', 'Beauty', 'Health & Wellness', 'Technology', 'Arts & Crafts', 'Automotive', 'Pet Supplies', 'Toys & Games'].map((category) => (
-                    <button
-                      key={category}
-                      onClick={() => {
-                        if (category === 'All Products') {
-                          window.location.href = '/marketplace';
-                        } else {
-                          window.location.href = `/marketplace?category=${encodeURIComponent(category)}`;
-                        }
-                      }}
-                      className="text-gray-700 hover:text-yellow-600 hover:underline transition-colors font-medium cursor-pointer"
-                    >
-                      {category}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Value Proposition Hero */}
-        <div className="bg-gradient-to-r from-blue-50 to-yellow-50 border-y border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                The World's First <span className="text-blue-600">100% Transparent</span> Marketplace
-              </h2>
-              <p className="text-xl text-gray-600 max-w-4xl mx-auto mb-8">
-                Unlike Amazon, eBay, or other platforms that hide fees and take massive cuts, we show customers exactly where every dollar goes. 
-                This breakthrough in transparency creates unprecedented trust and generates true recurring monthly income for affiliates.
+              <p className="text-sm text-gray-600">
+                Your marketplace for buying, selling & earning
               </p>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white rounded-xl p-6 shadow-lg text-center border-l-4 border-blue-500">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">👁️</span>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Complete Transparency</h3>
-                <p className="text-gray-600 text-sm">First platform ever to show customers the exact breakdown of where their money goes - no hidden fees or surprises</p>
-              </div>
-              
-              <div className="bg-white rounded-xl p-6 shadow-lg text-center border-l-4 border-green-500">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">💰</span>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Recurring Revenue</h3>
-                <p className="text-gray-600 text-sm">Affiliates earn every month customers stay active - build true wealth through recurring income, not just one-time commissions</p>
-              </div>
-              
-              <div className="bg-white rounded-xl p-6 shadow-lg text-center border-l-4 border-yellow-500">
-                <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">🎯</span>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Trust = More Sales</h3>
-                <p className="text-gray-600 text-sm">When customers see transparency, they buy more. When affiliates see recurring income, they promote more. Everyone wins.</p>
+
+            {/* Compact Search Bar */}
+            <div className="max-w-2xl mx-auto mb-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500 bg-white"
+                />
+                <button className="absolute right-1.5 top-1.5 bg-yellow-600 text-white px-4 py-1.5 rounded-md hover:bg-yellow-700 transition-colors text-sm font-medium">
+                  Search
+                </button>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200 mb-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">Why This Changes Everything</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="text-lg font-semibold text-red-600 mb-2">❌ Traditional Platforms:</h4>
-                  <ul className="text-gray-600 space-y-1 text-sm">
-                    <li>• Hidden fees and surprise charges</li>
-                    <li>• One-time commissions only</li>
-                    <li>• Platform keeps most of the profit</li>
-                    <li>• No transparency = customer distrust</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="text-lg font-semibold text-green-600 mb-2">✅ Beezio Platform:</h4>
-                  <ul className="text-green-700 space-y-1 text-sm">
-                    <li>• Every fee shown upfront to customers</li>
-                    <li>• Monthly recurring affiliate income</li>
-                    <li>• Fair profit sharing for everyone</li>
-                    <li>• Transparency builds customer loyalty</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button 
-                onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-semibold shadow-lg"
+            {/* Compact Category Pills */}
+            <div className="flex flex-wrap justify-center gap-2">
+              {['Electronics', 'Fashion', 'Home', 'Books', 'Sports', 'Beauty', 'Health', 'Tech'].map((category) => (
+                <button
+                  key={category}
+                  onClick={() => window.location.href = `/marketplace?category=${encodeURIComponent(category)}`}
+                  className="px-3 py-1.5 bg-white rounded-md text-xs font-medium text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 transition-all"
+                >
+                  {category}
+                </button>
+              ))}
+              <button
+                onClick={() => window.location.href = '/marketplace'}
+                className="px-3 py-1.5 bg-yellow-600 rounded-md text-xs font-medium text-white hover:bg-yellow-700 transition-all"
               >
-                Start Earning Recurring Income
-              </button>
-              <button 
-                onClick={() => window.location.href = '/how-it-works'}
-                className="bg-white text-blue-600 px-8 py-3 rounded-lg hover:bg-blue-50 transition-all font-semibold border-2 border-blue-600"
-              >
-                See How It Works
+                All Categories →
               </button>
             </div>
           </div>
         </div>
 
-        {/* Product Slider */}
+        {/* Prominent CTA Banner */}
+        <div className="bg-gradient-to-r from-yellow-500 to-amber-600 border-b border-yellow-600">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="text-white text-center md:text-left">
+                <h2 className="text-lg md:text-xl font-bold mb-1">
+                  Start Earning with Beezio Today
+                </h2>
+                <p className="text-sm text-yellow-50">
+                  Sell products • Promote & earn commissions • Raise funds • Get 2% on your affiliate network
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3 justify-center">
+                <button
+                  onClick={() => window.location.href = '/signup?role=seller'}
+                  className="bg-white text-yellow-700 px-6 py-2.5 rounded-lg font-semibold text-sm hover:bg-yellow-50 transition-all shadow-md hover:shadow-lg"
+                >
+                  Become a Seller
+                </button>
+                <button
+                  onClick={() => window.location.href = '/signup?role=affiliate'}
+                  className="bg-gray-900 text-white px-6 py-2.5 rounded-lg font-semibold text-sm hover:bg-gray-800 transition-all shadow-md hover:shadow-lg"
+                >
+                  Become an Affiliate
+                </button>
+                <button
+                  onClick={() => window.location.href = '/signup?role=fundraiser'}
+                  className="border-2 border-white text-white px-6 py-2.5 rounded-lg font-semibold text-sm hover:bg-white hover:text-yellow-700 transition-all"
+                >
+                  Start Fundraising
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Product Slider - Featured Products */}
         <ProductSlider />
         
         {/* Fundraiser Slider */}
         <FundraiserSlider />
 
-        {/* Call to Action Section */}
-        <div className="bg-gradient-to-r from-yellow-500 to-orange-500 py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-              Ready to Start Your Journey?
-            </h2>
-            <p className="text-xl text-yellow-100 mb-8 max-w-2xl mx-auto">
-              Join thousands of sellers and affiliates earning with complete transparency
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button 
-                onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
-                className="group bg-white text-yellow-600 px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all duration-300 transform hover:-translate-y-1 shadow-xl hover:shadow-white/20 flex items-center justify-center"
-              >
-                <span className="mr-2">🚀</span>
-                Start Selling Today
-                <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
-              </button>
-              <button 
-                onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
-                className="group border-2 border-white text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/10 transition-all duration-300 transform hover:-translate-y-1 shadow-xl hover:shadow-white/20 flex items-center justify-center"
-              >
-                <span className="mr-2">💰</span>
-                Become an Affiliate
-                <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
-              </button>
-            </div>
-            
-            {/* Trust Indicators */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto mt-12">
-              <div className="backdrop-blur bg-white/10 rounded-2xl p-6 border border-white/20">
-                <div className="text-3xl mb-3">⚡</div>
-                <h3 className="text-lg font-semibold text-white mb-2">Instant Setup</h3>
-                <p className="text-white/80 text-sm">Launch your store in minutes</p>
-              </div>
-              <div className="backdrop-blur bg-white/10 rounded-2xl p-6 border border-white/20">
-                <div className="text-3xl mb-3">🎯</div>
-                <h3 className="text-lg font-semibold text-white mb-2">Smart Analytics</h3>
-                <p className="text-white/80 text-sm">Track performance in real-time</p>
-              </div>
-              <div className="backdrop-blur bg-white/10 rounded-2xl p-6 border border-white/20">
-                <div className="text-3xl mb-3">💎</div>
-                <h3 className="text-lg font-semibold text-white mb-2">Premium Support</h3>
-                <p className="text-white/80 text-sm">24/7 expert assistance</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Social Proof Stats */}
-        <div className="bg-white py-16">
+        {/* Compact 3-Card Section */}
+        <div className="py-12 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-                Join the Transparency Revolution
+            <div className="text-center mb-8">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+                Three Ways to Earn
               </h2>
-              <p className="text-lg text-gray-600">
-                Early adopters are already seeing unprecedented results
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-blue-600 mb-2">35+</div>
-                <div className="text-gray-600 text-sm md:text-base">Sample Products</div>
-                <div className="text-xs text-gray-500">Across 13 Categories</div>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-green-600 mb-2">65%</div>
-                <div className="text-gray-600 text-sm md:text-base">Max Commission</div>
-                <div className="text-xs text-gray-500">Recurring Monthly</div>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-yellow-600 mb-2">100%</div>
-                <div className="text-gray-600 text-sm md:text-base">Transparency</div>
-                <div className="text-xs text-gray-500">No Hidden Fees</div>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-purple-600 mb-2">∞</div>
-                <div className="text-gray-600 text-sm md:text-base">Growth Potential</div>
-                <div className="text-xs text-gray-500">Unlimited Earnings</div>
-              </div>
             </div>
 
-            <div className="text-center mt-12">
-              <div className="inline-flex items-center bg-blue-50 rounded-full px-6 py-3">
-                <span className="text-blue-600 font-semibold">🚀 Pre-Launch Phase</span>
-                <span className="ml-2 text-blue-500">• Get in early and dominate your niche</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+              {/* Seller Card */}
+              <div className="bg-white rounded-lg p-5 border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all">
+                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mb-3">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-bold text-gray-900 mb-1.5">Sell Products</h3>
+                <p className="text-xs text-gray-600 mb-3">Custom store • Set your price • Get paid</p>
+                <button 
+                  onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
+                  className="w-full bg-blue-500 text-white py-2 rounded-md font-medium hover:bg-blue-600 transition-colors text-sm"
+                >
+                  Start Selling
+                </button>
+              </div>
+
+              {/* Affiliate Card */}
+              <div className="bg-white rounded-lg p-5 border border-gray-200 hover:border-green-300 hover:shadow-md transition-all">
+                <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center mb-3">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-bold text-gray-900 mb-1.5">Promote Products</h3>
+                <p className="text-xs text-gray-600 mb-3">Custom rates • Share links • Earn commissions</p>
+                <button 
+                  onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
+                  className="w-full bg-green-500 text-white py-2 rounded-md font-medium hover:bg-green-600 transition-colors text-sm"
+                >
+                  Become Affiliate
+                </button>
+              </div>
+
+              {/* Referral Card */}
+              <div className="bg-white rounded-lg p-5 border border-gray-200 hover:border-yellow-300 hover:shadow-md transition-all">
+                <div className="w-10 h-10 bg-yellow-600 rounded-lg flex items-center justify-center mb-3">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-bold text-gray-900 mb-1.5">Refer Affiliates</h3>
+                <p className="text-xs text-gray-600 mb-3">Build network • Earn 2% • Passive income</p>
+                <button 
+                  onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
+                  className="w-full bg-yellow-600 text-white py-2 rounded-md font-medium hover:bg-yellow-700 transition-colors text-sm"
+                >
+                  Get Started
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Features Section */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Why Beezio is Revolutionary</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Three groundbreaking features that make us the most transparent and profitable marketplace ever created
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Transparent Pricing */}
-            <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-100 hover:shadow-2xl transition-shadow">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-6">
-                <span className="text-3xl">👁️</span>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">100% Transparent Pricing</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                First marketplace to show customers exactly where every dollar goes. No hidden fees, 
-                complete transparency builds unprecedented trust and higher conversion rates.
-              </p>
-              <div className="bg-blue-50 rounded-lg p-4">
-                <p className="text-sm font-semibold text-blue-800">Coming Soon - Revolutionary Transparency</p>
-              </div>
-            </div>
-            {/* Recurring Commissions */}
-            <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-100 hover:shadow-2xl transition-shadow">
-              <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-6">
-                <span className="text-3xl">💰</span>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Monthly Recurring Commissions</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                Affiliates earn EVERY MONTH customers stay subscribed. Build true wealth through 
-                recurring income instead of one-time payments like other platforms.
-              </p>
-              <div className="bg-green-50 rounded-lg p-4">
-                <p className="text-sm font-semibold text-green-800">Launching Soon - True Recurring Income</p>
-              </div>
-            </div>
-            {/* Trust Architecture */}
-            <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-100 hover:shadow-2xl transition-shadow">
-              <div className="w-16 h-16 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center mb-6">
-                <span className="text-3xl">⚡</span>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Trust-First Architecture</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                Transparent pricing creates customer confidence, gamified affiliate system drives 
-                engagement, and recurring payments ensure long-term relationships.
-              </p>
-              <div className="bg-yellow-50 rounded-lg p-4">
-                <p className="text-sm font-semibold text-yellow-800">Launching Soon - Built for Trust & Transparency</p>
-              </div>
+        {/* Compact CTA Footer */}
+        <div className="bg-gradient-to-r from-gray-900 to-gray-800 py-10 border-t border-gray-700">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-xl md:text-2xl font-bold text-white mb-4">
+              Ready to Get Started?
+            </h2>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button 
+                onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
+                className="bg-yellow-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-yellow-700 transition-all text-sm"
+              >
+                Sign Up Free
+              </button>
+              <button 
+                onClick={() => window.location.href = '/how-it-works'}
+                className="border border-gray-400 bg-transparent text-white px-6 py-2.5 rounded-lg font-medium hover:bg-gray-700 transition-all text-sm"
+              >
+                Learn More
+              </button>
             </div>
           </div>
         </div>

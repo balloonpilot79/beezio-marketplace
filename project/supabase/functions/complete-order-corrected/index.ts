@@ -201,6 +201,56 @@ serve(async (req) => {
             commission_amount: detail.distribution.affiliateAmount,
             status: 'pending',
           })
+
+        // Check if this affiliate was referred by someone (2-tier commission)
+        const { data: referralData } = await supabase
+          .from('affiliate_referrals')
+          .select('referrer_id, referral_code')
+          .eq('referred_id', item.affiliateId)
+          .eq('status', 'active')
+          .single()
+
+        if (referralData) {
+          // Calculate 2% referral commission from the TOTAL sale amount
+          const saleAmount = item.price * item.quantity;
+          const referralCommission = saleAmount * 0.02; // 2% of total sale
+          
+          console.log(`💰 Referral commission for ${item.productId}:`, {
+            referrer: referralData.referrer_id,
+            referred_affiliate: item.affiliateId,
+            sale_amount: `$${saleAmount.toFixed(2)}`,
+            commission: `$${referralCommission.toFixed(2)} (2%)`
+          });
+
+          // Create referral commission record
+          await supabase
+            .from('referral_commissions')
+            .insert({
+              referrer_id: referralData.referrer_id,
+              referred_affiliate_id: item.affiliateId,
+              order_id: orderId,
+              sale_amount: saleAmount,
+              commission_amount: referralCommission,
+              commission_rate: 2.00,
+              status: 'pending'
+            })
+
+          // Update total commission for this referral relationship
+          await supabase
+            .from('affiliate_referrals')
+            .update({
+              total_sales: supabase.sql`total_sales + ${saleAmount}`,
+              total_commission: supabase.sql`total_commission + ${referralCommission}`,
+              updated_at: new Date().toISOString()
+            })
+            .eq('referrer_id', referralData.referrer_id)
+            .eq('referred_id', item.affiliateId)
+
+          // Reduce platform fee by 2% (from 10% to 8%)
+          totalPlatformRevenue -= referralCommission;
+          
+          console.log(`📉 Platform fee adjusted: -$${referralCommission.toFixed(2)} (2% goes to referrer)`);
+        }
       }
     }
 

@@ -13,6 +13,8 @@ import {
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useAffiliate } from '../contexts/AffiliateContext';
 import { products } from '../data/sampleProducts';
+import ReferralDashboard from '../components/ReferralDashboard';
+import ReferredAffiliatesList from '../components/ReferredAffiliatesList';
 
 const AffiliateDashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -256,6 +258,21 @@ const AffiliateDashboardPage: React.FC = () => {
               <h3 className="font-semibold">View Earnings</h3>
               <p className="text-sm text-blue-100">Track your commission payments</p>
             </Link>
+          </div>
+        </div>
+
+        {/* Referral Program Section */}
+        <div className="mt-12">
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">🚀 Referral Program</h2>
+            <p className="text-gray-600">
+              Grow your income by referring other affiliates. Earn 2% from all their sales!
+            </p>
+          </div>
+          
+          <div className="space-y-8">
+            <ReferralDashboard />
+            <ReferredAffiliatesList />
           </div>
         </div>
       </div>

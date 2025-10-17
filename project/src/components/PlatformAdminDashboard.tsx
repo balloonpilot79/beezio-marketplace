@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, DollarSign, Users, Package, BarChart3, Download } from 'lucide-react';
+import { TrendingUp, DollarSign, Users, Package, BarChart3, Download, ShieldAlert } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import ContentModerationDashboard from './ContentModerationDashboard';
 
 interface PlatformStats {
   total_revenue: number;
@@ -39,7 +40,7 @@ export default function PlatformAdminDashboard() {
   const [topSellers, setTopSellers] = useState<TopSeller[]>([]);
   const [pendingPayouts, setPendingPayouts] = useState<PendingPayout[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'analytics' | 'moderation'>('overview');
 
   useEffect(() => {
     fetchPlatformData();
@@ -244,6 +245,17 @@ export default function PlatformAdminDashboard() {
               >
                 Analytics
               </button>
+              <button
+                onClick={() => setActiveTab('moderation')}
+                className={`px-6 py-2 rounded-md transition-colors flex items-center gap-2 ${
+                  activeTab === 'moderation'
+                    ? 'bg-amber-500 text-white'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <ShieldAlert className="w-4 h-4" />
+                Moderation
+              </button>
             </div>
           </div>
 
@@ -440,6 +452,11 @@ export default function PlatformAdminDashboard() {
                 </ResponsiveContainer>
               </div>
             </div>
+          )}
+
+          {/* Moderation Tab */}
+          {activeTab === 'moderation' && (
+            <ContentModerationDashboard />
           )}
         </div>
       </div>
