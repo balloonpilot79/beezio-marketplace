@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Save, Eye, Palette, Globe, Settings } from 'lucide-react';
+import CustomDomainManager from './CustomDomainManager';
 
 interface StoreSettings {
   store_name?: string;
@@ -326,45 +327,11 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
 
           {/* Domain Tab */}
           {activeTab === 'domain' && (
-            <div className="space-y-6">
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Custom Domain
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., mystore.com"
-                  value={storeSettings.custom_domain || ''}
-                  onChange={(e) => handleInputChange('custom_domain', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-semibold text-gray-900 mb-2">Current Store URL</h4>
-                <div className="flex items-center space-x-2">
-                  <code className="bg-white px-3 py-2 rounded border text-sm flex-1">
-                    {storeUrl}
-                  </code>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(storeUrl)}
-                    className="px-3 py-2 text-sm border border-gray-300 rounded hover:bg-white transition-colors"
-                  >
-                    Copy
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-semibold text-blue-900 mb-2">Domain Setup Instructions</h4>
-                <ol className="text-sm text-blue-800 space-y-1">
-                  <li>1. Purchase your domain from any domain registrar</li>
-                  <li>2. Add your domain in the field above</li>
-                  <li>3. Contact our support team for DNS configuration</li>
-                  <li>4. We'll help you set up SSL certificates and redirects</li>
-                </ol>
-              </div>
-            </div>
+            <CustomDomainManager 
+              userId={userId} 
+              role={role} 
+              currentDomain={storeSettings.custom_domain}
+            />
           )}
         </div>
       </div>

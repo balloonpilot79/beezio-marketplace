@@ -348,22 +348,15 @@ Use this checklist to verify everything works:
 ## 📊 **Expected Payment Flow**
 
 ```
-Customer Pays: $77.76
+Customer Pays: $78.11
 ├── Product Price: $68.00
 │   ├── Seller Gets: $50.00 ✅ (Your desired amount)
 │   ├── Affiliate Gets: $10.00 ✅ (20% commission)
 │   ├── Stripe Fee: $1.80 ✅ (3% + $0.60)
 │   └── Beezio Fee: $6.18 ✅ (10% platform fee)
 ├── Shipping: $5.00 → Goes to seller for shipping costs
-└── Tax: $4.76 → HELD SEPARATELY for state tax remittance (7% of product only)
+└── Tax: $5.11 → Goes to platform for tax remittance
 ```
-
-**Important Tax Notes:**
-- ✅ Tax is 7% of product price ONLY ($68.00 × 0.07 = $4.76)
-- ✅ Shipping is NOT taxed (standard practice, varies by state)
-- ✅ Tax is held separately and NOT part of the split
-- ✅ Tax must be remitted to the state quarterly/annually
-- ✅ Seller, affiliate, and Beezio DO NOT receive any tax portion
 
 ---
 
