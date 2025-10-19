@@ -1,9 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import EnhancedSellerDashboard from './EnhancedSellerDashboard';
-import EnhancedAffiliateDashboard from './EnhancedAffiliateDashboard';
-import EnhancedBuyerDashboard from './EnhancedBuyerDashboard';
+import UnifiedMegaDashboard from './UnifiedMegaDashboard';
 
 const Dashboard: React.FC = () => {
   const { user, profile, loading: authLoading } = useAuth();
@@ -103,19 +101,8 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  // Render appropriate dashboard based on user role
-  switch (profile.role) {
-    case 'seller':
-      return <EnhancedSellerDashboard />;
-    case 'affiliate':
-      return <EnhancedAffiliateDashboard />;
-    case 'fundraiser':
-      return <EnhancedAffiliateDashboard />; // Use affiliate dashboard for fundraisers with modified UI
-    case 'buyer':
-      return <EnhancedBuyerDashboard />;
-    default:
-      return <EnhancedBuyerDashboard />; // Default to buyer dashboard
-  }
+  // Render unified dashboard with all features for all roles
+  return <UnifiedMegaDashboard />;
 };
 
 export default Dashboard;
