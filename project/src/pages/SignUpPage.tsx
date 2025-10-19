@@ -119,16 +119,8 @@ const SignUpPage: React.FC = () => {
         try {
           const signInResult = await signIn(formData.email, formData.password);
           if (signInResult.user) {
-            // Route to dashboard by role
-            if (formData.role === 'buyer') {
-              navigate('/dashboard/buyer');
-            } else if (formData.role === 'seller') {
-              navigate('/dashboard/seller');
-            } else if (formData.role === 'affiliate') {
-              navigate('/dashboard/affiliate');
-            } else {
-              navigate('/dashboard');
-            }
+            // Route ALL users to unified dashboard regardless of role
+            navigate('/dashboard');
           } else {
             setError('Sign in failed after registration. Please try logging in.');
           }
