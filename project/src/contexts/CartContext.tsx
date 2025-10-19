@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 export interface CartItem {
   id: string;
@@ -54,23 +55,50 @@ export const useCart = () => {
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Load cart from localStorage on component mount
+  // Load cart from localStorage on component mount AND track user
   useEffect(() => {
-    const savedCart = localStorage.getItem('beezio-cart');
-    if (savedCart) {
-      try {
-        setItems(JSON.parse(savedCart));
-      } catch (error) {
-        console.error('Error loading cart from localStorage:', error);
+    // Get current user from Supabase session
+    const checkUserAndLoadCart = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || null;
+      
+      // If user changed, clear cart
+      if (userId !== currentUserId) {
+        setCurrentUserId(userId);
+        
+        if (userId) {
+          // New user logged in - load their cart
+          const savedCart = localStorage.getItem(`beezio-cart-${userId}`);
+          if (savedCart) {
+            try {
+              setItems(JSON.parse(savedCart));
+            } catch (error) {
+              console.error('Error loading cart from localStorage:', error);
+              setItems([]);
+            }
+          } else {
+            setItems([]);
+          }
+        } else {
+          // User logged out - clear cart
+          setItems([]);
+        }
       }
-    }
-  }, []);
+    };
+    
+    checkUserAndLoadCart();
+  }, [currentUserId]);
 
-  // Save cart to localStorage whenever items change
+  // Save cart to localStorage whenever items change - PER USER
   useEffect(() => {
-    localStorage.setItem('beezio-cart', JSON.stringify(items));
-  }, [items]);
+    if (currentUserId) {
+      localStorage.setItem(`beezio-cart-${currentUserId}`, JSON.stringify(items));
+    }
+    // Also clear old global cart key if it exists
+    localStorage.removeItem('beezio-cart');
+  }, [items, currentUserId]);
 
   const addToCart = (newItem: Omit<CartItem, 'id'>) => {
     setItems(prevItems => {
@@ -135,6 +163,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCart = () => {
     setItems([]);
+    // Also clear from localStorage
+    if (currentUserId) {
+      localStorage.removeItem(`beezio-cart-${currentUserId}`);
+    }
   };
 
   const getTotalItems = () => {

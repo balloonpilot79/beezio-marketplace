@@ -110,22 +110,31 @@ const SignUpPage: React.FC = () => {
           }
         }
 
-        setSuccess('Account created successfully!');
+        setSuccess('Account created successfully! Signing you in...');
+        
         if (!result.session) {
           setSuccess('Account created! Please check your email to confirm your account before logging in.');
           setLoading(false);
           return;
         }
+        
+        // Wait a moment for profile to be fully set in context
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         try {
           const signInResult = await signIn(formData.email, formData.password);
           if (signInResult.user) {
+            // Wait for profile to load
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            console.log('✅ Sign up complete! Navigating to dashboard...');
             // Route ALL users to unified dashboard regardless of role
             navigate('/dashboard');
           } else {
-            setError('Sign in failed after registration. Please try logging in.');
+            setError('Sign in failed after registration. Please try logging in manually.');
           }
         } catch (signInError: any) {
-          setError(signInError.message || 'Sign in failed after registration.');
+          setError(signInError.message || 'Sign in failed after registration. Please try logging in manually.');
         }
       }
     } catch (err: any) {

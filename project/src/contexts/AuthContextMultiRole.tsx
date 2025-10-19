@@ -207,13 +207,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       if (data.user) {
-        // Wait a moment for the user to be fully created in auth
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait for auth system to fully propagate
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         const initialRole = userData.role || 'buyer';
         
         // Create profile with primary role
-        const { error: profileError } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .insert({
             user_id: data.user.id,
@@ -226,11 +226,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             website: null,
             location: userData.city && userData.state ? `${userData.city}, ${userData.state}` : null,
             zip_code: userData.zipCode || null,
-          });
+          })
+          .select()
+          .single();
 
         if (profileError) {
           console.error('Profile creation error:', profileError);
           throw new Error(`Failed to create profile: ${profileError.message}`);
+        }
+
+        // Immediately set the profile in context so Dashboard sees it
+        if (profileData) {
+          setProfile(profileData);
+          console.log('✅ Profile created and loaded:', profileData);
         }
 
         // Add initial role to user_roles table
@@ -363,6 +371,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Starting sign out process...');
 
+      // Get user ID before clearing (for cart cleanup)
+      const userId = user?.id;
+
       // Clear local state first
       setUser(null);
       setSession(null);
@@ -370,17 +381,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserRoles([]);
       setCurrentRole('buyer');
 
-      // Clear all Supabase-related storage
-      localStorage.removeItem('supabase.auth.token');
-      localStorage.removeItem('sb-yemgssttxhkgrivuodbz-auth-token');
-
-      // Clear any other auth-related localStorage keys that might exist
-      Object.keys(localStorage).forEach(key => {
-        if (key.includes('supabase') || key.includes('auth') || key.includes('sb-')) {
-          localStorage.removeItem(key);
-        }
-      });
-
+      // Clear ALL localStorage completely on logout
+      localStorage.clear();
+      
       // Clear session storage
       sessionStorage.clear();
 
@@ -391,16 +394,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Continue with logout even if Supabase signOut fails
       }
 
-      console.log('Sign out successful - user logged out from Supabase and local state cleared');
+      console.log('Sign out successful - ALL data cleared, user logged out');
 
     } catch (error) {
       console.error('Sign out error:', error);
-      // Even if there's an error, clear local state
+      // Even if there's an error, clear everything
       setUser(null);
       setSession(null);
       setProfile(null);
       setUserRoles([]);
       setCurrentRole('buyer');
+      localStorage.clear();
+      sessionStorage.clear();
     }
   };
 
