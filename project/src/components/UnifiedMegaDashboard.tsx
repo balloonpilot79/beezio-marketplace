@@ -317,10 +317,11 @@ const UnifiedMegaDashboard: React.FC = () => {
                   {isSeller && 'Manage your products, orders, and grow your business'}
                   {isAffiliate && 'Track your commissions and promote products'}
                   {isBuyer && 'View your orders and track purchases'}
+                  {!profile && 'Access all features - sell products, earn commissions, and more!'}
                 </p>
                 <div className="mt-4 flex items-center gap-4">
                   <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-white/20 backdrop-blur-sm">
-                    {profile?.role === 'fundraiser' ? '💝 Fundraiser' : `${profile?.role?.charAt(0).toUpperCase()}${profile?.role?.slice(1)}`}
+                    {profile?.role === 'fundraiser' ? '💝 Fundraiser' : profile?.role ? `${profile.role.charAt(0).toUpperCase()}${profile.role.slice(1)}` : '👤 User'}
                   </span>
                   <span className="text-sm text-orange-100">
                     Member since {new Date(user?.created_at || Date.now()).toLocaleDateString()}
