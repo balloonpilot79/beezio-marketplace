@@ -87,12 +87,13 @@ const UnifiedMegaDashboard: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
 
-  // User role checks
+  // User role checks - ALL USERS GET FULL ACCESS
   const isSeller = profile?.role === 'seller';
   const isAffiliate = profile?.role === 'affiliate' || profile?.role === 'fundraiser';
   const isBuyer = profile?.role === 'buyer';
-  const canSellProducts = isSeller;
-  const canEarnCommissions = isAffiliate || isSeller;
+  // EVERYONE CAN ACCESS EVERYTHING
+  const canSellProducts = true; // All users can sell
+  const canEarnCommissions = true; // All users can earn
 
   useEffect(() => {
     if (user) {
