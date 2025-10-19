@@ -3,18 +3,16 @@ import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import StoreCustomization from './StoreCustomization';
-import APIIntegrationManager from './APIIntegrationManager';
 import UniversalIntegrationsPage from './UniversalIntegrationsPage';
 import StripeSellerDashboard from './StripeSellerDashboard';
 import StripeAffiliateDashboard from './StripeAffiliateDashboard';
-import MonetizationHelper from './MonetizationHelper';
 
 import {
-  LayoutDashboard, Package, ShoppingCart, BarChart3, Settings, DollarSign, 
-  TrendingUp, Users, Link, QrCode, Store, Zap, CreditCard, Truck, 
-  Target, Award, BookOpen, MessageSquare, Calendar, ExternalLink,
-  Plus, Edit, Trash2, Eye, Copy, Download, Search, Filter,
-  AlertTriangle, CheckCircle, Clock, Box, Star, Heart
+  LayoutDashboard, Package, ShoppingCart, BarChart3, DollarSign, 
+  Users, Link, QrCode, Store, Zap, CreditCard,
+  Award, MessageSquare,
+  Plus, Edit, Trash2, Copy,
+  Clock
 } from 'lucide-react';
 
 interface Product {
@@ -68,6 +66,9 @@ const UnifiedMegaDashboard: React.FC = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   
+  // Debug log to verify component is loading
+  console.log('🎉 UnifiedMegaDashboard loaded! User:', user?.email, 'Role:', profile?.role);
+  
   // All state management
   const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'earnings' | 'affiliate' | 'analytics' | 'store' | 'integrations' | 'payments'>('overview');
   const [products, setProducts] = useState<Product[]>([]);
@@ -85,7 +86,6 @@ const UnifiedMegaDashboard: React.FC = () => {
     active_links: 0
   });
   const [loading, setLoading] = useState(false);
-  const [showProductForm, setShowProductForm] = useState(false);
 
   // User role checks
   const isSeller = profile?.role === 'seller';
