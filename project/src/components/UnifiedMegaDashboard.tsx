@@ -298,6 +298,11 @@ const UnifiedMegaDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/30 to-purple-50/30">
+      {/* OBVIOUS BANNER TO VERIFY NEW DASHBOARD LOADED */}
+      <div className="bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 text-white text-center py-3 font-bold text-lg animate-pulse">
+        🎉 NEW UNIFIED MEGA DASHBOARD LOADED! 🚀 All Features in One Place!
+      </div>
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
