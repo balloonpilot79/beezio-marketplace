@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import AffiliateLink from './AffiliateLink';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import ProductAffiliateQRCode from './ProductAffiliateQRCode';
+import AddToAffiliateStoreButton from './AddToAffiliateStoreButton';
 import { SAMPLE_PRODUCTS } from '../lib/sampleData';
 import StarRating from './StarRating';
 import SocialShareButton from './SocialShareButton';
@@ -392,6 +393,21 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                   />
                 </div>
               </div>
+
+              {/* Add to Affiliate Store Button - for affiliates */}
+              {(userRole === 'affiliate' || userRole === 'fundraiser') && (
+                <div className="mt-3 mb-2">
+                  <AddToAffiliateStoreButton
+                    productId={product.id}
+                    sellerId={product.seller_id}
+                    productTitle={product.title}
+                    productPrice={product.price}
+                    defaultCommissionRate={product.commission_rate}
+                    size="sm"
+                    variant="button"
+                  />
+                </div>
+              )}
 
               {/* Affiliate Link for this product - only for affiliates */}
               {userRole === 'affiliate' && (

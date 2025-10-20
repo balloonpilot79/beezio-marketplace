@@ -4,6 +4,7 @@ import { ArrowLeft, Star, Heart, Share2, ShoppingCart } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAffiliate } from '../contexts/AffiliateContext';
 import ProductReviews from '../components/ProductReviews';
+import AddToAffiliateStoreButton from '../components/AddToAffiliateStoreButton';
 import { SampleProduct, products as sampleProducts } from '../data/sampleProducts';
 import { isProductSampleDataEnabled } from '../config/sampleDataConfig';
 import { fetchProductById } from '../services/productService';
@@ -210,6 +211,19 @@ const ProductDetailPageSimple: React.FC = () => {
                   <ShoppingCart className="w-5 h-5 mr-2" />
                   Add to Cart
                 </button>
+
+                {/* Affiliate Promotion Button */}
+                <div className="w-full">
+                  <AddToAffiliateStoreButton
+                    productId={product.id}
+                    sellerId={product.sellerId || product.seller || 'unknown'}
+                    productTitle={product.name}
+                    productPrice={product.price}
+                    defaultCommissionRate={product.commission_rate || 25}
+                    size="lg"
+                    variant="card"
+                  />
+                </div>
 
                 <div className="flex gap-4">
                   <button className="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center justify-center">
