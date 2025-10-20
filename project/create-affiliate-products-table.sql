@@ -10,15 +10,13 @@ CREATE TABLE IF NOT EXISTS public.affiliate_products (
     product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
     seller_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     
-    -- Custom affiliate settings for this product
-    custom_commission_rate DECIMAL(5,2), -- Override default commission
-    custom_price DECIMAL(10,2), -- Affiliate can set their own price
+    -- Affiliate display settings (NO commission/price changes - seller controls that!)
     is_featured BOOLEAN DEFAULT false, -- Pin to top of affiliate store
-    is_active BOOLEAN DEFAULT true, -- Affiliate can pause promotion
+    is_active BOOLEAN DEFAULT true, -- Affiliate can pause promotion of this product
     
-    -- Affiliate's custom content
+    -- Affiliate's custom content (for their own marketing)
     affiliate_description TEXT, -- Affiliate can write their own description
-    affiliate_tags TEXT[], -- Additional tags
+    affiliate_tags TEXT[], -- Additional tags for their store
     custom_images TEXT[], -- Affiliate can add their own promotional images
     
     -- Performance tracking
@@ -159,15 +157,12 @@ SELECT
     ap.*,
     p.title,
     p.description,
-    p.price as original_price,
+    p.price,
     p.images,
     p.category_id,
     p.stock_quantity,
-    p.is_active as product_is_active,
-    p.commission_rate as default_commission_rate,
-    p.commission_type as affiliate_commission_type,
-    COALESCE(ap.custom_commission_rate, p.commission_rate) as effective_commission_rate,
-    COALESCE(ap.custom_price, p.price) as effective_price,
+    p.commission_rate,
+    p.commission_type,
     seller.full_name as seller_name,
     seller.email as seller_email,
     affiliate.full_name as affiliate_name,
