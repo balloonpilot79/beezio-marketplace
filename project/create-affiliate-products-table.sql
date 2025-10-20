@@ -157,7 +157,7 @@ SELECT
     p.description,
     p.price as original_price,
     p.images,
-    p.category,
+    p.category_id,
     p.stock_quantity,
     p.is_active as product_is_active,
     p.affiliate_commission_rate as default_commission_rate,
