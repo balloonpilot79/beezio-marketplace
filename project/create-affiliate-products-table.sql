@@ -75,11 +75,14 @@ CREATE POLICY "Affiliates can remove products from their store"
     FOR DELETE
     USING (auth.uid() = affiliate_id);
 
--- Anyone can view active promoted products (for generating affiliate links)
+-- Anyone can view affiliate products that are active
 CREATE POLICY "Public can view active affiliate products"
     ON public.affiliate_products
     FOR SELECT
-    USING (is_active = true);
+    USING (
+        -- Check if the affiliate_products row is active (ap.is_active)
+        is_active = true
+    );
 
 -- Trigger to update updated_at
 CREATE OR REPLACE FUNCTION update_affiliate_products_updated_at()
