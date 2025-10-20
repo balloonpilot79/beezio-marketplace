@@ -142,9 +142,7 @@ CREATE TRIGGER update_product_affiliate_count
     EXECUTE FUNCTION update_product_affiliate_count();
 
 -- View for easy querying of affiliate stores with full product details
--- Drop if exists as table or view
 DROP TABLE IF EXISTS affiliate_store_products CASCADE;
-DROP VIEW IF EXISTS affiliate_store_products CASCADE;
 
 CREATE VIEW affiliate_store_products AS
 SELECT 
