@@ -440,15 +440,23 @@ const UniversalIntegrationsPage: React.FC = () => {
   );
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          {roleTitle} Integrations
-        </h1>
-        <p className="text-gray-600">
-          Connect your existing stores and platforms to import products automatically
-        </p>
+    <div className="max-w-6xl mx-auto px-2 py-4">
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="text-3xl font-bold">{filteredIntegrations.filter(i => i.isConnected).length}</div>
+          <div className="text-sm text-blue-100">Connected Platforms</div>
+        </div>
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="text-3xl font-bold">
+            {filteredIntegrations.reduce((sum, i) => sum + (i.productCount || 0), 0)}
+          </div>
+          <div className="text-sm text-green-100">Imported Products</div>
+        </div>
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="text-3xl font-bold">{filteredIntegrations.length}</div>
+          <div className="text-sm text-purple-100">Available Integrations</div>
+        </div>
       </div>
 
       {/* Integration Grid */}
@@ -580,14 +588,50 @@ const UniversalIntegrationsPage: React.FC = () => {
                 </>
               )}
               
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Setup Instructions:</strong><br />
-                  1. Log into your {selectedIntegration.name} account<br />
-                  2. Navigate to API settings or developer section<br />
-                  3. Generate a new API key with read permissions<br />
-                  4. Copy and paste the key above
-                </p>
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-900 font-semibold mb-2">📖 Setup Instructions for {selectedIntegration.name}:</p>
+                <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                  {selectedIntegration.id === 'printify' && (
+                    <>
+                      <li>Go to <a href="https://printify.com/app/account/api" target="_blank" rel="noopener noreferrer" className="underline font-medium">Printify API Settings</a></li>
+                      <li>Click "Generate New Token"</li>
+                      <li>Copy the Personal Access Token</li>
+                      <li>Paste it in the API Key field above</li>
+                    </>
+                  )}
+                  {selectedIntegration.id === 'printful' && (
+                    <>
+                      <li>Visit <a href="https://www.printful.com/dashboard/store" target="_blank" rel="noopener noreferrer" className="underline font-medium">Printful Store Settings</a></li>
+                      <li>Go to "Store Settings" → "API"</li>
+                      <li>Enable API access and copy your API key</li>
+                      <li>Paste it above to connect</li>
+                    </>
+                  )}
+                  {selectedIntegration.id === 'shopify' && (
+                    <>
+                      <li>Go to your Shopify Admin → Apps</li>
+                      <li>Click "Develop apps" → "Create an app"</li>
+                      <li>Configure Admin API scopes (read_products, read_inventory)</li>
+                      <li>Install app and copy the Admin API access token</li>
+                    </>
+                  )}
+                  {selectedIntegration.id === 'etsy' && (
+                    <>
+                      <li>Visit <a href="https://www.etsy.com/developers/your-apps" target="_blank" rel="noopener noreferrer" className="underline font-medium">Etsy Developer Portal</a></li>
+                      <li>Create a new app or select existing</li>
+                      <li>Copy your API Key (also called Keystring)</li>
+                      <li>Paste it above</li>
+                    </>
+                  )}
+                  {!['printify', 'printful', 'shopify', 'etsy'].includes(selectedIntegration.id) && (
+                    <>
+                      <li>Log into your {selectedIntegration.name} account</li>
+                      <li>Navigate to API settings or developer section</li>
+                      <li>Generate a new API key with read permissions</li>
+                      <li>Copy and paste the key above</li>
+                    </>
+                  )}
+                </ol>
               </div>
             </div>
             <div className="p-6 border-t flex space-x-3">

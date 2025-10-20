@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Save, Eye, Palette, Globe, Settings } from 'lucide-react';
+import { Save, Eye, Palette, Globe, Settings, Zap } from 'lucide-react';
 import CustomDomainManager from './CustomDomainManager';
+import UniversalIntegrationsPage from './UniversalIntegrationsPage';
 
 interface StoreSettings {
   store_name?: string;
@@ -107,7 +108,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
           </div>
           <div className="flex items-center gap-4">
             <a
-              href={storeUrl}
+              href={`/store/${userId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-5 py-3 border border-orange-200 rounded-xl bg-white/80 hover:bg-orange-50 text-orange-700 font-semibold shadow transition-all"
@@ -134,6 +135,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
             {[
               { id: 'general', name: 'General', icon: Settings },
               { id: 'appearance', name: 'Appearance', icon: Palette },
+              { id: 'integrations', name: 'API Integrations', icon: Zap },
               { id: 'domain', name: 'Domain', icon: Globe }
             ].map(tab => {
               const Icon = tab.icon;
@@ -322,6 +324,35 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                   ))}
                 </select>
               </div>
+            </div>
+          )}
+
+          {/* API Integrations Tab */}
+          {activeTab === 'integrations' && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 mb-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">🚀 Import Products from Other Platforms</h3>
+                <p className="text-gray-700 mb-4">
+                  Connect your existing stores and platforms to automatically import products. 
+                  Save time by syncing inventory from Printify, Shopify, Etsy, and more!
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                    ✅ One-Click Import
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                    ✅ Auto-Sync Products
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                    ✅ Bulk Upload
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                    ✅ 10+ Platforms
+                  </span>
+                </div>
+              </div>
+              
+              <UniversalIntegrationsPage />
             </div>
           )}
 
