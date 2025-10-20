@@ -241,9 +241,3 @@ $$ LANGUAGE plpgsql;
 COMMENT ON TABLE public.affiliate_products IS 'Products that affiliates have added to their personal store for promotion';
 COMMENT ON TABLE public.affiliate_links IS 'Individual affiliate tracking links with performance metrics';
 COMMENT ON FUNCTION generate_affiliate_link_code() IS 'Generates unique 8-character codes for affiliate links';
-
--- Add public viewing policy for active affiliate products (added at end after table exists)
-CREATE POLICY "Public can view active affiliate products"
-    ON public.affiliate_products
-    FOR SELECT
-    USING (is_active = true);
