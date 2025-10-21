@@ -4,41 +4,67 @@
 export interface PricingBreakdown {
   sellerAmount: number;        // What seller wants to make
   affiliateAmount: number;     // Affiliate commission
-  platformFee: number;         // Beezio 10% platform fee
-  stripeFee: number;          // Stripe 3% processing fee
+  referralAmount: number;      // Referral commission (2-5% for referring the seller/affiliate)
+  platformFee: number;         // Beezio 10-15% platform fee (configurable)
+  stripeFee: number;          // Stripe 2.9% + $0.60 processing fee
   listingPrice: number;       // Final price customer pays
   taxAmount?: number;         // Fixed tax amount included in listing
   affiliateRate: number;      // Affiliate commission rate/amount
   affiliateType: 'percentage' | 'flat_rate';
+  referralRate: number;       // Referral commission rate (2-5%)
+  platformFeeRate: number;    // Platform fee rate (10-15%)
 }
 
 export interface PricingInput {
   sellerDesiredAmount: number;
   affiliateRate: number;
   affiliateType: 'percentage' | 'flat_rate';
+  referralRate?: number;          // Optional: 2-5% for users who were referred
+  platformFeeRate?: number;       // Optional: 10-15% Beezio fee (default 10%)
 }
 
 // Platform constants
-export const PLATFORM_FEE_RATE = 0.10; // 10% platform fee (Beezio) - NOT USED in new formula
-export const STRIPE_FEE_RATE = 0.03;   // 3% Stripe fee
-export const STRIPE_FEE_FIXED = 0.60;  // $0.60 fixed Stripe fee
-// Fixed sales tax applied to orders (flat $0.07 per order)
+export const DEFAULT_PLATFORM_FEE_RATE = 0.10;  // 10% default Beezio fee (configurable 10-15%)
+export const MIN_PLATFORM_FEE_RATE = 0.10;      // Minimum 10%
+export const MAX_PLATFORM_FEE_RATE = 0.15;      // Maximum 15%
+export const STRIPE_FEE_RATE = 0.029;           // 2.9% Stripe fee (was 3%)
+export const STRIPE_FEE_FIXED = 0.60;           // $0.60 fixed Stripe fee
+export const DEFAULT_REFERRAL_RATE = 0.03;      // 3% default referral commission
+export const MIN_REFERRAL_RATE = 0.02;          // Minimum 2%
+export const MAX_REFERRAL_RATE = 0.05;          // Maximum 5%
 // Sales tax rate (7% = 0.07)
 export const TAX_RATE = 0.07;
 
 /**
- * Calculate complete pricing breakdown (CORRECTED FORMULA)
- * Formula: Listing Price = (Seller + Affiliate + Stripe) + Beezio
- * Where: Beezio = 10% of (Seller + Affiliate + Stripe)
- *
+ * Calculate complete pricing breakdown (UPDATED WITH REFERRAL TIER)
+ * Formula: Listing Price = (Seller + Affiliate + Referral + Stripe) + Beezio + Tax
+ * 
+ * Multi-tier commission structure:
  * 1. Seller gets 100% of their desired amount (no fees deducted)
  * 2. Affiliate commission: seller's choice % or flat rate (added on top)
- * 3. Stripe fee: 3% of (seller + affiliate) + $0.60 (added on top)
- * 4. Beezio platform fee: 10% of (seller + affiliate + stripe)
- * 5. Final listing price = (seller + affiliate + stripe) + Beezio
+ * 3. Referral commission: 2-5% if affiliate was referred by someone (added on top)
+ * 4. Stripe fee: 2.9% of (seller + affiliate + referral) + $0.60 (added on top)
+ * 5. Beezio platform fee: 10-15% of (seller + affiliate + referral + stripe)
+ * 6. Tax: 7% of (seller + affiliate)
+ * 7. Final listing price = sum of all above
+ * 
+ * Example: Seller wants $100, 15% affiliate, 3% referral, 10% Beezio
+ * - Seller: $100.00
+ * - Affiliate (15%): $15.00
+ * - Referral (3% of $115): $3.45
+ * - Stripe (2.9% of $118.45 + $0.60): $4.04
+ * - Beezio (10% of $122.49): $12.25
+ * - Tax (7% of $115): $8.05
+ * - Total: $142.79
  */
 export const calculatePricing = (input: PricingInput): PricingBreakdown => {
-  const { sellerDesiredAmount, affiliateRate, affiliateType } = input;
+  const { 
+    sellerDesiredAmount, 
+    affiliateRate, 
+    affiliateType,
+    referralRate = 0,
+    platformFeeRate = DEFAULT_PLATFORM_FEE_RATE
+  } = input;
 
   // Step 1: Seller amount (they get 100% of what they want)
   const sellerAmount = sellerDesiredAmount;
@@ -51,34 +77,39 @@ export const calculatePricing = (input: PricingInput): PricingBreakdown => {
     affiliateAmount = affiliateRate; // Flat rate
   }
 
-  // Step 3: Stripe fee (3% of seller+affiliate + $0.60)
-  const stripeBase = sellerAmount + affiliateAmount;
+  // Step 3: Referral commission (2-5% of total sale if seller was referred)
+  // Referral is calculated on the base sale amount (seller + affiliate)
+  const baseAmount = sellerAmount + affiliateAmount;
+  const referralAmount = baseAmount * (referralRate / 100);
+
+  // Step 4: Stripe fee (2.9% of seller+affiliate+referral + $0.60)
+  const stripeBase = sellerAmount + affiliateAmount + referralAmount;
   const stripeFee = stripeBase * STRIPE_FEE_RATE + STRIPE_FEE_FIXED;
 
-  // Step 4: Beezio gets 10% of (seller + affiliate + stripe)
-  const totalBeforePlatform = sellerAmount + affiliateAmount + stripeFee;
-  const platformFee = totalBeforePlatform * 0.10; // Beezio gets 10%
+  // Step 5: Beezio gets 10-15% of (seller + affiliate + referral + stripe)
+  const totalBeforePlatform = sellerAmount + affiliateAmount + referralAmount + stripeFee;
+  const platformFee = totalBeforePlatform * platformFeeRate;
 
-  // Step 5: Final listing price = (seller + affiliate + stripe) + Beezio
-  // compute tax on subtotal (before platform fee): typically tax applies to goods+affiliate but not platform markup; here we apply tax to (seller + affiliate + stripe?)
-  // Common approach: tax applies to the taxable amount (seller + affiliate). We'll compute tax on (seller + affiliate).
+  // Step 6: Tax (7% of taxable amount: seller + affiliate)
   const taxableBase = sellerAmount + affiliateAmount;
   const rawTax = taxableBase * TAX_RATE;
-  // round to cents
   const taxAmount = Math.round(rawTax * 100) / 100;
 
+  // Step 7: Final listing price
   const listingPrice = totalBeforePlatform + platformFee + taxAmount;
 
   return {
     sellerAmount,
     affiliateAmount,
+    referralAmount,
     platformFee,
     stripeFee,
     taxAmount,
-    // Note: listingPrice now includes the tax amount
     listingPrice,
     affiliateRate,
     affiliateType,
+    referralRate,
+    platformFeeRate,
   };
 };
 
@@ -105,48 +136,55 @@ export const calculatePlatformRevenue = (breakdown: PricingBreakdown): number =>
 
 /**
  * Reverse calculate seller amount from listing price
- * New Formula: Listing Price = (Seller + Affiliate + Stripe) × 1.10
- * Where: Beezio = 10% of (Seller + Affiliate + Stripe)
+ * Updated Formula: Listing Price = (Seller + Affiliate + Referral + Stripe) × (1 + platformFeeRate) + Tax
  * Solve for Seller amount when given listing price
  */
 export const reverseCalculateFromListingPrice = (
   listingPrice: number,
   affiliateRate: number,
-  affiliateType: 'percentage' | 'flat_rate'
+  affiliateType: 'percentage' | 'flat_rate',
+  referralRate: number = 0,
+  platformFeeRate: number = DEFAULT_PLATFORM_FEE_RATE
 ): PricingBreakdown => {
-  // listing_price = (seller + affiliate + stripe) × 1.10
-  // So: seller + affiliate + stripe = listing_price / 1.10
-  const totalCosts = listingPrice / 1.10;
-  let sellerAmount: number;
+  // This is complex due to tax, so we'll use iterative approximation
+  let sellerAmount: number = 0; // Initialize to 0
+  
+  // Initial estimate: work backwards ignoring tax
+  const estimatedBeforeTax = listingPrice * 0.93; // rough estimate removing 7% tax
+  const totalCosts = estimatedBeforeTax / (1 + platformFeeRate);
 
   if (affiliateType === 'flat_rate') {
     const affiliateAmount = affiliateRate;
-    // totalCosts = seller + affiliate + stripe
-    // stripe = (seller + affiliate) * 0.03 + 0.60
-    // So: seller = totalCosts - affiliate - stripe
-    // But stripe depends on seller, so we need to solve iteratively
+    // totalCosts = seller + affiliate + referral + stripe
+    // referral = (seller + affiliate) * referralRate/100
+    // stripe = (seller + affiliate + referral) * 0.029 + 0.60
+    
+    // Iterative solution
     let estimatedSeller = totalCosts - affiliateAmount;
-    let stripeFee = (estimatedSeller + affiliateAmount) * STRIPE_FEE_RATE + STRIPE_FEE_FIXED;
-    sellerAmount = totalCosts - affiliateAmount - stripeFee;
-
-    // Refine the calculation
-    for (let i = 0; i < 5; i++) {
-      stripeFee = (sellerAmount + affiliateAmount) * STRIPE_FEE_RATE + STRIPE_FEE_FIXED;
-      sellerAmount = totalCosts - affiliateAmount - stripeFee;
+    for (let i = 0; i < 10; i++) {
+      const refAmount = (estimatedSeller + affiliateAmount) * (referralRate / 100);
+      const stripeFee = (estimatedSeller + affiliateAmount + refAmount) * STRIPE_FEE_RATE + STRIPE_FEE_FIXED;
+      sellerAmount = totalCosts - affiliateAmount - refAmount - stripeFee;
+      estimatedSeller = sellerAmount;
     }
   } else {
     // Percentage affiliate commission
-    // totalCosts = seller + (seller * affiliateRate/100) + ((seller + seller*affiliateRate/100) * 0.03 + 0.60)
-    // totalCosts = seller * (1 + affiliateRate/100) + (seller * (1 + affiliateRate/100)) * 0.03 + 0.60
-    // totalCosts = seller * (1 + affiliateRate/100) * 1.03 + 0.60
-    const multiplier = (1 + affiliateRate/100) * 1.03;
-    sellerAmount = (totalCosts - STRIPE_FEE_FIXED) / multiplier;
+    // totalCosts = seller * (1 + affiliateRate/100) * (1 + referralRate/100) * (1 + 0.029) + 0.60
+    const affiliateMultiplier = (1 + affiliateRate / 100);
+    const referralMultiplier = (1 + referralRate / 100);
+    const stripeMultiplier = (1 + STRIPE_FEE_RATE);
+    const combinedMultiplier = affiliateMultiplier * referralMultiplier * stripeMultiplier;
+    
+    sellerAmount = (totalCosts - STRIPE_FEE_FIXED) / combinedMultiplier;
   }
 
+  // Calculate full breakdown with the derived seller amount
   return calculatePricing({
     sellerDesiredAmount: sellerAmount,
     affiliateRate,
     affiliateType,
+    referralRate,
+    platformFeeRate,
   });
 };
 
@@ -159,6 +197,7 @@ export const formatPricingBreakdown = (
 ): {
   seller: string;
   affiliate: string;
+  referral: string;
   platform: string;
   stripe: string;
   tax: string;
@@ -172,6 +211,7 @@ export const formatPricingBreakdown = (
   return {
     seller: formatter.format(breakdown.sellerAmount),
     affiliate: formatter.format(breakdown.affiliateAmount),
+    referral: formatter.format(breakdown.referralAmount),
     platform: formatter.format(breakdown.platformFee),
     stripe: formatter.format(breakdown.stripeFee),
     tax: formatter.format(breakdown.taxAmount || 0),
