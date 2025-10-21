@@ -325,7 +325,7 @@ const ProductDetailPage: React.FC = () => {
           )}
 
           {/* Main Media Display */}
-          <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+          <div className="w-full h-96 lg:h-[500px] rounded-lg overflow-hidden bg-gray-100">
             {selectedImageIndex < product.images.length ? (
               // Display Image
               <img
