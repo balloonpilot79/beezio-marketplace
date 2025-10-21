@@ -38,9 +38,42 @@ const AffiliateStorePage: React.FC = () => {
   };
 
   const fetchProducts = async () => {
-    // Show all products with commission for this affiliate
-    const { data } = await supabase.from('products').select('*').gt('commission_rate', 0).eq('is_active', true);
-    setProducts(data || [
+    // Fetch ONLY products this affiliate is actively promoting (from affiliate_products table)
+    const { data } = await supabase
+      .from('affiliate_store_products')
+      .select('*')
+      .eq('affiliate_id', affiliateId)
+      .eq('is_active', true);
+    
+    // Transform data to hide commission info from buyers (they only see final price)
+    const buyerFacingProducts = data?.map(product => ({
+      id: product.product_id,
+      title: product.title,
+      description: product.affiliate_description || product.description, // Use affiliate's custom description if available
+      price: product.price, // Final price buyer pays
+      images: product.custom_images?.length > 0 ? product.custom_images : product.images, // Use affiliate's custom images if available
+      category_id: product.category_id,
+      stock_quantity: product.stock_quantity,
+      seller_name: product.seller_name,
+      // DO NOT expose commission_rate or commission_type to buyers!
+      // Tracking happens server-side when they purchase
+    })) || [];
+    
+    // Track views (server-side)
+    if (data && data.length > 0) {
+      data.forEach(async (product) => {
+        await supabase.rpc('increment_affiliate_product_metric', {
+          p_affiliate_id: affiliateId,
+          p_product_id: product.product_id,
+          p_metric: 'views'
+        });
+      });
+    }
+    
+    // Store affiliate ID in localStorage so cart knows who gets credit for sale
+    localStorage.setItem('affiliate_referral', affiliateId || '');
+    
+    setProducts(buyerFacingProducts || [
       {
         id: '1',
         name: 'Premium Wireless Headphones',
@@ -241,7 +274,7 @@ const AffiliateStorePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Social Proof & Stats */}
+        {/* Social Proof & Stats - HIDE earnings from buyers, show trust signals */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3 mb-3">
@@ -249,11 +282,11 @@ const AffiliateStorePage: React.FC = () => {
                 <Star className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">$2,450</p>
-                <p className="text-sm text-gray-600">This Month's Earnings</p>
+                <p className="text-2xl font-bold text-gray-900">{products.length}</p>
+                <p className="text-sm text-gray-600">Curated Products</p>
               </div>
             </div>
-            <p className="text-sm text-green-600 font-medium">↑ 23% from last month</p>
+            <p className="text-sm text-green-600 font-medium">Hand-picked for quality</p>
           </div>
 
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -347,7 +380,7 @@ const AffiliateStorePage: React.FC = () => {
           </div>
         )}
 
-        {/* Store Stats */}
+        {/* Store Stats - HIDE commission info from buyers */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 text-center">
             <div className="text-3xl font-bold text-purple-600 mb-2">{products.length}</div>
@@ -355,9 +388,9 @@ const AffiliateStorePage: React.FC = () => {
           </div>
           <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 text-center">
             <div className="text-3xl font-bold text-green-600 mb-2">
-              {products.length > 0 ? `${Math.round(products.reduce((acc, p) => acc + p.commission_rate, 0) / products.length)}%` : '0%'}
+              <Heart className="w-8 h-8 inline text-red-500" />
             </div>
-            <div className="text-gray-600 font-medium">Avg Commission</div>
+            <div className="text-gray-600 font-medium">Curated Selection</div>
           </div>
           <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 text-center">
             <div className="text-3xl font-bold text-orange-600 mb-2">
@@ -379,7 +412,7 @@ const AffiliateStorePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Call to Action Banner */}
+          {/* Call to Action Banner - Transparent about affiliate support */}
           <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6 mb-6">
             <div className="flex items-center justify-between">
               <div>
@@ -387,8 +420,8 @@ const AffiliateStorePage: React.FC = () => {
                   🎯 Support Quality Content & Great Products
                 </h3>
                 <p className="text-gray-700 text-sm mb-3">
-                  When you shop through my affiliate links, you're not just getting amazing products -
-                  you're also supporting independent creators and content makers like myself.
+                  When you shop through my store, you're getting amazing products AND
+                  supporting independent creators like myself at no extra cost to you!
                 </p>
                 <div className="flex items-center gap-4 text-sm text-gray-600">
                   <span className="flex items-center gap-1">
@@ -401,7 +434,7 @@ const AffiliateStorePage: React.FC = () => {
                   </span>
                   <span className="flex items-center gap-1">
                     <Award className="w-4 h-4 text-purple-500" />
-                    Best Commissions
+                    Same Prices
                   </span>
                 </div>
               </div>
