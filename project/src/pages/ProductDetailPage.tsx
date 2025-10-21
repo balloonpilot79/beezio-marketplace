@@ -613,44 +613,52 @@ const ProductDetailPage: React.FC = () => {
             )}
 
             <div className="space-y-3">
-              {/* Main Action Button */}
-              <div className="flex space-x-4">
-                <button 
-                  onClick={handleAffiliateAction}
-                  className="flex-1 bg-amber-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-amber-700 transition-colors flex items-center justify-center space-x-2"
-                >
-                  {!user ? (
-                    <>
-                      <DollarSign className="w-5 h-5" />
-                      <span>Sign In to Start Selling</span>
-                    </>
-                  ) : profile?.role === 'affiliate' ? (
-                    <>
-                      <TrendingUp className="w-5 h-5" />
-                      <span>Start Selling - Earn ${calculateCommission().toFixed(2)}</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="w-5 h-5" />
-                      <span>Buy Now</span>
-                    </>
-                  )}
-                </button>
-                
-                <button className="border border-gray-300 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Heart className="w-5 h-5 text-gray-600" />
-                </button>
-              </div>
-
-              {/* Secondary Action for Non-Affiliates */}
-              {user && profile?.role !== 'affiliate' && product.commission_rate > 0 && (
-                <button 
-                  onClick={() => addToCampaign()}
-                  className="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
-                >
-                  <TrendingUp className="w-5 h-5" />
-                  <span>Become an Affiliate - Earn ${calculateCommission().toFixed(2)} per sale</span>
-                </button>
+              {/* Main Action Buttons */}
+              {profile?.role === 'affiliate' ? (
+                // Affiliate sees: Start Selling button
+                <div className="flex space-x-4">
+                  <button 
+                    onClick={handleAffiliateAction}
+                    className="flex-1 bg-amber-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-amber-700 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <TrendingUp className="w-5 h-5" />
+                    <span>Start Selling - Earn ${calculateCommission().toFixed(2)}</span>
+                  </button>
+                  
+                  <button className="border border-gray-300 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <Heart className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+              ) : user ? (
+                // Logged-in buyers see: Buy Now button (no affiliate clutter)
+                <div className="flex space-x-4">
+                  <button 
+                    onClick={handleAffiliateAction}
+                    className="flex-1 bg-amber-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-amber-700 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    <span>Buy Now</span>
+                  </button>
+                  
+                  <button className="border border-gray-300 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <Heart className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+              ) : (
+                // Not logged in: Sign in button
+                <div className="flex space-x-4">
+                  <button 
+                    onClick={handleAffiliateAction}
+                    className="flex-1 bg-amber-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-amber-700 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <DollarSign className="w-5 h-5" />
+                    <span>Sign In to Shop</span>
+                  </button>
+                  
+                  <button className="border border-gray-300 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <Heart className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
               )}
 
               {/* Sign Up Prompt for Non-Users */}
@@ -693,13 +701,16 @@ const ProductDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Related Products / AI Recommendations */}
+      {/* Related Products / AI Recommendations - Only show if products exist */}
       {product && (
         <div className="mt-16">
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold text-gray-900">You might also like</h2>
+          </div>
           <RecommendationEngine
             type="product_detail"
             contextProductId={product.id}
-            title="You might also like"
+            title=""
             className=""
           />
         </div>
