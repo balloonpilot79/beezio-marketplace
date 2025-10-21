@@ -313,21 +313,27 @@ const AffiliateProductsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Price and Commission */}
-                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-gray-600">Product Price:</span>
-                      <span className="font-semibold text-gray-900">${product.price}</span>
+                  {/* Price and Commission - Side by Side */}
+                  <div className="mb-4">
+                    <div className="flex items-end justify-between mb-3">
+                      <div>
+                        <div className="text-xs text-gray-500 mb-1">Product Price</div>
+                        <div className="text-2xl font-bold text-gray-900">${product.price}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-green-600 font-medium mb-1">Commission Rate</div>
+                        <div className="text-3xl font-bold text-green-600">{product.commission_rate}%</div>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-semibold text-green-800">Commission Rate:</span>
-                      <span className="font-bold text-green-600">{product.commission_rate}%</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-green-300">
-                      <span className="text-sm font-medium text-gray-900">Your Earnings:</span>
-                      <span className="font-bold text-blue-600">
-                        ${calculateEarnings(product.price, product.commission_rate)}
-                      </span>
+                    
+                    {/* Your Earnings Banner */}
+                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">You Earn Per Sale:</span>
+                        <span className="text-xl font-bold">
+                          ${calculateEarnings(product.price, product.commission_rate)}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
