@@ -69,8 +69,7 @@ SELECT
   p.description,
   p.price,
   p.images,
-  prof.full_name as seller_name,
-  prof.store_name
+  prof.full_name as seller_name
 FROM affiliate_products ap
 INNER JOIN products p ON ap.product_id = p.id
 LEFT JOIN profiles prof ON p.seller_id = prof.id
