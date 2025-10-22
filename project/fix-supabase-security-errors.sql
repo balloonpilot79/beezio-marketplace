@@ -238,39 +238,7 @@ BEGIN
 END;
 $$;
 
--- Fix generate_store_slug function
-DROP FUNCTION IF EXISTS public.generate_store_slug(uuid);
-CREATE OR REPLACE FUNCTION public.generate_store_slug(user_id uuid)
-RETURNS text
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  base_slug text;
-  final_slug text;
-  counter int := 0;
-BEGIN
-  -- Get username or full_name from profiles
-  SELECT COALESCE(username, full_name, 'store') 
-  INTO base_slug
-  FROM public.profiles 
-  WHERE id = user_id;
-  
-  -- Convert to lowercase and replace spaces/special chars with hyphens
-  base_slug := lower(regexp_replace(base_slug, '[^a-zA-Z0-9]+', '-', 'g'));
-  base_slug := trim(both '-' from base_slug);
-  final_slug := base_slug;
-  
-  -- Check for existing slugs and append number if needed
-  WHILE EXISTS (SELECT 1 FROM public.stores WHERE slug = final_slug) LOOP
-    counter := counter + 1;
-    final_slug := base_slug || '-' || counter;
-  END LOOP;
-  
-  RETURN final_slug;
-END;
-$$;
+-- Skip generate_store_slug function - stores table does not exist
 
 -- Fix set_product_slug function
 DROP FUNCTION IF EXISTS public.set_product_slug() CASCADE;
@@ -288,21 +256,7 @@ BEGIN
 END;
 $$;
 
--- Fix set_store_slug function
-DROP FUNCTION IF EXISTS public.set_store_slug() CASCADE;
-CREATE OR REPLACE FUNCTION public.set_store_slug()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NEW.slug IS NULL OR NEW.slug = '' THEN
-    NEW.slug := public.generate_store_slug(NEW.seller_id);
-  END IF;
-  RETURN NEW;
-END;
-$$;
+-- Skip set_store_slug function - stores table does not exist
 
 -- Fix generate_referral_code_fn function
 DROP FUNCTION IF EXISTS public.generate_referral_code_fn() CASCADE;
@@ -343,11 +297,7 @@ CREATE TRIGGER set_product_slug_trigger
   FOR EACH ROW
   EXECUTE FUNCTION set_product_slug();
 
-DROP TRIGGER IF EXISTS set_store_slug_trigger ON stores;
-CREATE TRIGGER set_store_slug_trigger
-  BEFORE INSERT OR UPDATE ON stores
-  FOR EACH ROW
-  EXECUTE FUNCTION set_store_slug();
+-- Skip set_store_slug_trigger - stores table does not exist
 
 DROP TRIGGER IF EXISTS generate_referral_code_trigger ON profiles;
 CREATE TRIGGER generate_referral_code_trigger
@@ -400,9 +350,7 @@ FROM information_schema.routines
 WHERE routine_schema = 'public'
 AND routine_name IN (
   'generate_product_slug',
-  'generate_store_slug',
   'set_product_slug',
-  'set_store_slug',
   'generate_referral_code_fn'
 )
 ORDER BY routine_name;
