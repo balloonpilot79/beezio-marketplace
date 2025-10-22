@@ -35,7 +35,6 @@ SELECT
   p.full_name,
   p.email,
   p.referral_code,
-  p.referral_tier,
   p.total_referral_earnings,
   COUNT(DISTINCT r.id) as total_referrals,
   COUNT(DISTINCT CASE WHEN r.is_active = true THEN r.id END) as active_referrals,
@@ -44,7 +43,7 @@ SELECT
 FROM profiles p
 LEFT JOIN referrals r ON p.id = r.referred_by_id
 LEFT JOIN referral_earnings re ON r.id = re.referral_id
-GROUP BY p.id, p.full_name, p.email, p.referral_code, p.referral_tier, p.total_referral_earnings;
+GROUP BY p.id, p.full_name, p.email, p.referral_code, p.total_referral_earnings;
 
 COMMENT ON VIEW public.referral_dashboard IS 'Referral program dashboard (INVOKER security - fixed)';
 
