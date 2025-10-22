@@ -38,12 +38,12 @@ SELECT
   p.referral_tier,
   p.total_referral_earnings,
   COUNT(DISTINCT r.id) as total_referrals,
-  COUNT(DISTINCT CASE WHEN r.status = 'active' THEN r.id END) as active_referrals,
-  COALESCE(SUM(re.amount), 0) as total_earned,
-  COALESCE(SUM(CASE WHEN re.created_at >= NOW() - INTERVAL '30 days' THEN re.amount ELSE 0 END), 0) as earned_last_30_days
+  COUNT(DISTINCT CASE WHEN r.is_active = true THEN r.id END) as active_referrals,
+  COALESCE(SUM(re.referral_commission), 0) as total_earned,
+  COALESCE(SUM(CASE WHEN re.created_at >= NOW() - INTERVAL '30 days' THEN re.referral_commission ELSE 0 END), 0) as earned_last_30_days
 FROM profiles p
-LEFT JOIN referrals r ON p.id = r.referrer_id
-LEFT JOIN referral_earnings re ON p.id = re.referrer_id
+LEFT JOIN referrals r ON p.id = r.referred_by_id
+LEFT JOIN referral_earnings re ON r.id = re.referral_id
 GROUP BY p.id, p.full_name, p.email, p.referral_code, p.referral_tier, p.total_referral_earnings;
 
 COMMENT ON VIEW public.referral_dashboard IS 'Referral program dashboard (INVOKER security - fixed)';
@@ -139,9 +139,9 @@ DROP POLICY IF EXISTS "Referrers can delete their referrals" ON referrals;
 CREATE POLICY "Users can view relevant referrals"
 ON referrals FOR SELECT
 USING (
-  auth.uid() = referrer_id 
+  auth.uid() = referred_by_id 
   OR 
-  auth.uid() = referred_id
+  auth.uid() = user_id
 );
 
 -- INSERT: Public can create referrals (for signup tracking)
@@ -152,13 +152,13 @@ WITH CHECK (true);
 -- UPDATE: Only referrer can update
 CREATE POLICY "Referrers can update their referrals"
 ON referrals FOR UPDATE
-USING (auth.uid() = referrer_id)
-WITH CHECK (auth.uid() = referrer_id);
+USING (auth.uid() = referred_by_id)
+WITH CHECK (auth.uid() = referred_by_id);
 
 -- DELETE: Only referrer can delete
 CREATE POLICY "Referrers can delete their referrals"
 ON referrals FOR DELETE
-USING (auth.uid() = referrer_id);
+USING (auth.uid() = referred_by_id);
 
 -- =====================================================
 -- STEP 5: CREATE RLS POLICIES FOR REFERRAL_EARNINGS
@@ -175,26 +175,42 @@ DROP POLICY IF EXISTS "Users can delete their own earnings" ON referral_earnings
 DROP POLICY IF EXISTS "System can create earnings records" ON referral_earnings;
 DROP POLICY IF EXISTS "Users can update their earnings" ON referral_earnings;
 
--- SELECT: Referrers can only see their own earnings
+-- SELECT: Referrers can only see their own earnings (through referral_id)
 CREATE POLICY "Referrers can view their earnings"
 ON referral_earnings FOR SELECT
-USING (auth.uid() = referrer_id);
+USING (
+  referral_id IN (
+    SELECT id FROM referrals WHERE referred_by_id = auth.uid()
+  )
+);
 
 -- INSERT: Authenticated users can insert earnings (for commission tracking)
 CREATE POLICY "Authenticated users can insert earnings"
 ON referral_earnings FOR INSERT
 WITH CHECK (auth.role() = 'authenticated');
 
--- UPDATE: Users can update their own earnings
+-- UPDATE: Users can update their own earnings (through referral_id)
 CREATE POLICY "Users can update their own earnings"
 ON referral_earnings FOR UPDATE
-USING (auth.uid() = referrer_id)
-WITH CHECK (auth.uid() = referrer_id);
+USING (
+  referral_id IN (
+    SELECT id FROM referrals WHERE referred_by_id = auth.uid()
+  )
+)
+WITH CHECK (
+  referral_id IN (
+    SELECT id FROM referrals WHERE referred_by_id = auth.uid()
+  )
+);
 
--- DELETE: Users can delete their own earnings
+-- DELETE: Users can delete their own earnings (through referral_id)
 CREATE POLICY "Users can delete their own earnings"
 ON referral_earnings FOR DELETE
-USING (auth.uid() = referrer_id);
+USING (
+  referral_id IN (
+    SELECT id FROM referrals WHERE referred_by_id = auth.uid()
+  )
+);
 
 -- =====================================================
 -- STEP 6: FIX FUNCTION SEARCH_PATH ISSUES (WARNINGS)
