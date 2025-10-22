@@ -69,9 +69,6 @@ SELECT
   p.description,
   p.price,
   p.images,
-  p.affiliate_commission_rate,
-  p.commission_type,
-  p.flat_commission_amount,
   prof.full_name as seller_name,
   prof.store_name
 FROM affiliate_products ap
