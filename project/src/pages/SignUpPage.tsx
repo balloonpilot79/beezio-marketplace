@@ -223,7 +223,7 @@ const SignUpPage: React.FC = () => {
           {formData.role === 'affiliate' && (
             <div className="mt-3 pt-3 border-t border-yellow-300">
               <p className="text-xs text-gray-600 italic">
-                <strong>Referral Bonus:</strong> Earn 2% on everything your recruited affiliates sell - passive income for life!
+                <strong>Referral Bonus:</strong> Earn 5% on everything your recruited affiliates sell - passive income for life!
               </p>
             </div>
           )}

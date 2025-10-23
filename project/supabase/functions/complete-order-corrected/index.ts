@@ -211,15 +211,15 @@ serve(async (req) => {
           .single()
 
         if (referralData) {
-          // Calculate 2% referral commission from the TOTAL sale amount
+          // Calculate 5% referral commission from the TOTAL sale amount (UPDATED Oct 2025)
           const saleAmount = item.price * item.quantity;
-          const referralCommission = saleAmount * 0.02; // 2% of total sale
+          const referralCommission = saleAmount * 0.05; // 5% of total sale - PASSIVE INCOME!
           
           console.log(`💰 Referral commission for ${item.productId}:`, {
             referrer: referralData.referrer_id,
             referred_affiliate: item.affiliateId,
             sale_amount: `$${saleAmount.toFixed(2)}`,
-            commission: `$${referralCommission.toFixed(2)} (2%)`
+            commission: `$${referralCommission.toFixed(2)} (5% passive income!)`
           });
 
           // Create referral commission record
@@ -231,7 +231,7 @@ serve(async (req) => {
               order_id: orderId,
               sale_amount: saleAmount,
               commission_amount: referralCommission,
-              commission_rate: 2.00,
+              commission_rate: 5.00,
               status: 'pending'
             })
 
@@ -246,10 +246,10 @@ serve(async (req) => {
             .eq('referrer_id', referralData.referrer_id)
             .eq('referred_id', item.affiliateId)
 
-          // Reduce platform fee by 2% (from 10% to 8%)
+          // Reduce platform fee by 5% (from 15% to 10%)
           totalPlatformRevenue -= referralCommission;
           
-          console.log(`📉 Platform fee adjusted: -$${referralCommission.toFixed(2)} (2% goes to referrer)`);
+          console.log(`📉 Platform fee adjusted: -$${referralCommission.toFixed(2)} (5% goes to referrer for passive income)`);
         }
       }
     }
