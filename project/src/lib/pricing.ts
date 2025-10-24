@@ -37,30 +37,32 @@ export const TAX_RATE = 0.07;
 
 /**
  * Calculate complete pricing breakdown (UPDATED WITH REFERRAL TIER)
- * Formula: Listing Price = (Seller + Affiliate + Referral + Stripe) + Beezio + Tax
+ * Formula: Listing Price = (Seller + Affiliate + Stripe) + Beezio + Tax
  * 
  * Multi-tier commission structure:
  * 1. Seller gets 100% of their desired amount (no fees deducted)
  * 2. Affiliate commission: seller's choice % or flat rate (added on top)
- * 3. Referral commission: 5% ALWAYS if affiliate was referred by someone (added on top)
- * 4. Stripe fee: 2.9% of (seller + affiliate + referral) + $0.60 (added on top)
- * 5. Beezio platform fee: 15% of (seller + affiliate + referral + stripe) [UPDATED Oct 2025]
+ * 3. Stripe fee: 2.9% of (seller + affiliate) + $0.60 (added on top)
+ * 4. Beezio platform fee: 15% of (seller + affiliate + stripe) [UPDATED Oct 2025]
+ * 5. Referral commission: 5% comes OUT of Beezio's 15% (if affiliate was referred)
  * 6. Tax: 7% of (seller + affiliate)
  * 7. Final listing price = sum of all above
  * 
  * REFERRAL PASSIVE INCOME:
  * - Every affiliate who signs people up using their referral codes
- * - Earns 5% commission on EVERY sale their referrals make
+ * - Earns 5% commission on EVERY sale their referrals make (from Beezio's share)
+ * - Beezio keeps 10% when referral exists, 15% when no referral
  * - Creates ongoing passive income stream for referring affiliates
  * 
- * Example: Seller wants $100, 15% affiliate, 5% referral, 15% Beezio
+ * Example: Seller wants $100, 15% affiliate, with referral, 15% Beezio
  * - Seller: $100.00
  * - Affiliate (15%): $15.00
- * - Referral (5% of $115): $5.75
- * - Stripe (2.9% of $120.75 + $0.60): $4.10
- * - Beezio (15% of $124.85): $18.73
+ * - Stripe (2.9% of $115 + $0.60): $3.94
+ * - Beezio (15% of $118.94): $17.84
+ *   - Referral gets: $5.95 (5% of $118.94)
+ *   - Beezio keeps: $11.89 (10% of $118.94)
  * - Tax (7% of $115): $8.05
- * - Total: $151.63
+ * - Total: $144.83
  */
 export const calculatePricing = (input: PricingInput): PricingBreakdown => {
   const { 
@@ -82,18 +84,17 @@ export const calculatePricing = (input: PricingInput): PricingBreakdown => {
     affiliateAmount = affiliateRate; // Flat rate
   }
 
-  // Step 3: Referral commission (2-5% of total sale if seller was referred)
-  // Referral is calculated on the base sale amount (seller + affiliate)
-  const baseAmount = sellerAmount + affiliateAmount;
-  const referralAmount = baseAmount * (referralRate / 100);
-
-  // Step 4: Stripe fee (2.9% of seller+affiliate+referral + $0.60)
-  const stripeBase = sellerAmount + affiliateAmount + referralAmount;
+  // Step 3: Stripe fee (2.9% of seller+affiliate + $0.60)
+  const stripeBase = sellerAmount + affiliateAmount;
   const stripeFee = stripeBase * STRIPE_FEE_RATE + STRIPE_FEE_FIXED;
 
-  // Step 5: Beezio gets 10-15% of (seller + affiliate + referral + stripe)
-  const totalBeforePlatform = sellerAmount + affiliateAmount + referralAmount + stripeFee;
+  // Step 4: Beezio gets 15% of (seller + affiliate + stripe)
+  const totalBeforePlatform = sellerAmount + affiliateAmount + stripeFee;
   const platformFee = totalBeforePlatform * platformFeeRate;
+
+  // Step 5: Referral commission (5% comes OUT of Beezio's 15%)
+  // If referralRate > 0, that portion goes to referrer instead of Beezio
+  const referralAmount = referralRate > 0 ? totalBeforePlatform * (referralRate / 100) : 0;
 
   // Step 6: Tax (7% of taxable amount: seller + affiliate)
   const taxableBase = sellerAmount + affiliateAmount;

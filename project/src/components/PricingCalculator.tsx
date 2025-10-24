@@ -26,8 +26,8 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
   initialListingPrice = 129.99,
   initialAffiliateRate = 20,
   initialAffiliateType = 'percentage',
-  initialReferralRate = 5,  // NEW: Default 5% referral
-  initialPlatformFeeRate = DEFAULT_PLATFORM_FEE_RATE * 100,  // Now 15%
+  initialReferralRate = 0,
+  initialPlatformFeeRate = DEFAULT_PLATFORM_FEE_RATE * 100,
   currency = 'USD'
 }) => {
   const [input, setInput] = useState({
@@ -105,13 +105,15 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
         </p>
         <div className="text-blue-700 text-xs mt-2 space-y-1">
           <div><strong>Platform Fees:</strong></div>
-          <div>• Beezio Platform Fee: 15% (FIXED - NEW RATE)</div>
+          <div>• Beezio Platform Fee: {input.platformFeeRate}% (configurable 10-15%)</div>
           <div>• Stripe Processing: {STRIPE_FEE_RATE * 100}% + ${STRIPE_FEE_FIXED.toFixed(2)}</div>
           <div>• Sales Tax: {Math.round(TAX_RATE * 100)}% (estimated)</div>
-          <div className="text-amber-700 mt-2">
-            <Users className="h-3 w-3 inline mr-1" />
-            <strong>Referral Passive Income:</strong> 5% (FIXED - for recruiters)
-          </div>
+          {input.referralRate > 0 && (
+            <div className="text-amber-700 mt-2">
+              <Users className="h-3 w-3 inline mr-1" />
+              <strong>Referral Bonus:</strong> {input.referralRate}% (for users who refer others)
+            </div>
+          )}
         </div>
       </div>
 
@@ -220,43 +222,51 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Referral Commission Rate - FIXED AT 5% */}
+            {/* Referral Commission Rate */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Users className="h-4 w-4 inline mr-1" />
-                Referral Passive Income (FIXED at 5%)
+                Referral Commission (2-5%)
               </label>
               <div className="relative">
                 <input
                   type="number"
-                  value={5}
-                  disabled
-                  className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed text-gray-600"
+                  min="0"
+                  max="5"
+                  step="0.5"
+                  value={input.referralRate}
+                  onChange={(e) => handleInputChange('referralRate', parseFloat(e.target.value) || 0)}
+                  className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="3"
                 />
                 <span className="absolute right-3 top-2.5 text-gray-500">%</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Every affiliate who signs up using your referral code earns you 5% passive income
+                Commission for users who refer others (0% = disabled)
               </p>
             </div>
 
-            {/* Platform Fee Rate - FIXED AT 15% */}
+            {/* Platform Fee Rate */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Calculator className="h-4 w-4 inline mr-1" />
-                Beezio Platform Fee (FIXED at 15%)
+                Beezio Platform Fee (10-15%)
               </label>
               <div className="relative">
                 <input
                   type="number"
-                  value={15}
-                  disabled
-                  className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed text-gray-600"
+                  min="10"
+                  max="15"
+                  step="0.5"
+                  value={input.platformFeeRate}
+                  onChange={(e) => handleInputChange('platformFeeRate', parseFloat(e.target.value) || 10)}
+                  className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="10"
                 />
                 <span className="absolute right-3 top-2.5 text-gray-500">%</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Platform fee (NEW RATE: was 10%, now 15%)
+                Platform fee (typically 10%, contact support to adjust)
               </p>
             </div>
           </div>
