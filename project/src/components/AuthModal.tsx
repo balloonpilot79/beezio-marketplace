@@ -48,6 +48,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
     zipCode: '',
   });
 
+  // Reset form state when modal opens/closes
+  React.useEffect(() => {
+    if (isOpen) {
+      // Reset states when modal opens
+      setLoading(false);
+      setError(null);
+      setSuccess(null);
+    }
+  }, [isOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (process.env.NODE_ENV !== 'production') {
@@ -62,6 +72,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
       if (!isSupabaseConfigured()) {
         console.error('Supabase environment variables missing at runtime. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in Netlify.');
         setError('Site not configured: authentication is currently unavailable. If you are the site owner, configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify.');
+        setLoading(false);
         return;
       }
       if (mode === 'forgot') {
