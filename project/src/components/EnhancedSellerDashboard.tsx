@@ -9,7 +9,7 @@ import MonetizationHelper from './MonetizationHelper';
 import { ExternalLink, TrendingUp, DollarSign, Package, Users, ShoppingCart, BarChart3, CreditCard, AlertTriangle, Star, Truck, Target, Box, Settings, Zap, Bot, CheckCircle, Mail, Upload, FileSpreadsheet } from 'lucide-react';
 import StripeSellerDashboard from './StripeSellerDashboard';
 import { useNavigate } from 'react-router-dom';
-import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 
 interface Product {
   id: string;
@@ -724,6 +724,281 @@ const EnhancedSellerDashboard: React.FC = () => {
             Add New Product
           </button>
           {showProductForm && <ProductForm />}
+        </div>
+      )}
+
+      {activeTab === 'bulk-upload' && (
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Bulk Product Upload</h3>
+                <p className="text-gray-600 mt-1">Upload hundreds of products at once using CSV files (Excel/Google Sheets compatible)</p>
+              </div>
+              <FileSpreadsheet className="w-12 h-12 text-orange-600" />
+            </div>
+
+            {/* Step 1: Download Template */}
+            <div className="mb-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 className="font-semibold text-blue-900 mb-2">📥 Step 1: Download Template</h4>
+              <p className="text-sm text-blue-700 mb-3">Start with our pre-formatted CSV template with all required columns</p>
+              <button
+                onClick={() => {
+                  const template = [
+                    {
+                      title: 'Example Product',
+                      description: 'High quality product description here',
+                      price: 29.99,
+                      category: 'Electronics',
+                      sku: 'PROD-001',
+                      stock_quantity: 100,
+                      supplier_name: 'Supplier Inc',
+                      supplier_product_id: 'SUP-12345',
+                      supplier_url: 'https://supplier.com/product/12345',
+                      is_dropshipped: 'TRUE',
+                      shipping_cost: 5.99,
+                      image_url_1: 'https://example.com/image1.jpg',
+                      image_url_2: '',
+                      image_url_3: '',
+                      image_url_4: '',
+                      image_url_5: '',
+                      affiliate_commission_rate: 20
+                    }
+                  ];
+                  const csv = Papa.unparse(template);
+                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                  const link = document.createElement('a');
+                  link.href = URL.createObjectURL(blob);
+                  link.download = 'beezio-product-upload-template.csv';
+                  link.click();
+                }}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Download CSV Template</span>
+              </button>
+            </div>
+
+            {/* Step 2: Upload File */}
+            <div className="mb-8">
+              <h4 className="font-semibold text-gray-900 mb-3">📤 Step 2: Upload Your CSV File</h4>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setUploadFile(file);
+                      Papa.parse(file, {
+                        header: true,
+                        complete: (results) => {
+                          setUploadedProducts(results.data.filter((row: any) => row.title));
+                        },
+                        error: (error) => {
+                          alert('Error parsing CSV: ' + error.message);
+                        }
+                      });
+                    }
+                  }}
+                  className="hidden"
+                  id="bulk-upload-file"
+                />
+                <label
+                  htmlFor="bulk-upload-file"
+                  className="cursor-pointer inline-flex flex-col items-center"
+                >
+                  <Upload className="w-12 h-12 text-gray-400 mb-3" />
+                  <span className="text-sm font-medium text-gray-700">
+                    {uploadFile ? uploadFile.name : 'Click to upload CSV file'}
+                  </span>
+                  <span className="text-xs text-gray-500 mt-1">CSV files from Excel or Google Sheets</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Step 3: Preview */}
+            {uploadedProducts.length > 0 && (
+              <div className="mb-8">
+                <h4 className="font-semibold text-gray-900 mb-3">👀 Step 3: Preview ({uploadedProducts.length} products)</h4>
+                <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-100 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Title</th>
+                        <th className="px-3 py-2 text-left">Price</th>
+                        <th className="px-3 py-2 text-left">Category</th>
+                        <th className="px-3 py-2 text-left">SKU</th>
+                        <th className="px-3 py-2 text-left">Dropshipped</th>
+                        <th className="px-3 py-2 text-left">Supplier</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {uploadedProducts.slice(0, 10).map((product: any, idx: number) => (
+                        <tr key={idx} className="border-t border-gray-200">
+                          <td className="px-3 py-2">{product.title}</td>
+                          <td className="px-3 py-2">${product.price}</td>
+                          <td className="px-3 py-2">{product.category}</td>
+                          <td className="px-3 py-2">{product.sku}</td>
+                          <td className="px-3 py-2">
+                            {product.is_dropshipped === 'TRUE' ? (
+                              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Yes</span>
+                            ) : (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">No</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">{product.supplier_name || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {uploadedProducts.length > 10 && (
+                    <p className="text-xs text-gray-500 mt-3 text-center">
+                      Showing first 10 of {uploadedProducts.length} products
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Upload Button */}
+            {uploadedProducts.length > 0 && (
+              <div className="mb-8">
+                <h4 className="font-semibold text-gray-900 mb-3">🚀 Step 4: Upload to Marketplace</h4>
+                <button
+                  onClick={async () => {
+                    setUploadProgress(0);
+                    setUploadResults(null);
+                    const errors: string[] = [];
+                    let successCount = 0;
+
+                    for (let i = 0; i < uploadedProducts.length; i++) {
+                      const product = uploadedProducts[i];
+                      try {
+                        const images: string[] = [];
+                        for (let j = 1; j <= 5; j++) {
+                          const imageUrl = product[`image_url_${j}`];
+                          if (imageUrl && imageUrl.trim()) {
+                            images.push(imageUrl.trim());
+                          }
+                        }
+
+                        const supplier_info = product.is_dropshipped === 'TRUE' ? {
+                          supplier_name: product.supplier_name || '',
+                          supplier_product_id: product.supplier_product_id || '',
+                          supplier_url: product.supplier_url || '',
+                          is_dropshipped: true
+                        } : null;
+
+                        const { error } = await supabase.from('products').insert({
+                          seller_id: profile?.id,
+                          title: product.title,
+                          description: product.description,
+                          price: parseFloat(product.price),
+                          category: product.category,
+                          sku: product.sku,
+                          stock_quantity: parseInt(product.stock_quantity) || 0,
+                          shipping_cost: parseFloat(product.shipping_cost) || 0,
+                          affiliate_commission_rate: parseFloat(product.affiliate_commission_rate) || 10,
+                          images,
+                          supplier_info,
+                          status: 'active'
+                        });
+
+                        if (error) {
+                          errors.push(`Row ${i + 1} (${product.title}): ${error.message}`);
+                        } else {
+                          successCount++;
+                        }
+                      } catch (err: any) {
+                        errors.push(`Row ${i + 1} (${product.title}): ${err.message}`);
+                      }
+                      setUploadProgress(Math.round(((i + 1) / uploadedProducts.length) * 100));
+                    }
+
+                    setUploadResults({
+                      success: successCount,
+                      failed: uploadedProducts.length - successCount,
+                      errors
+                    });
+
+                    if (successCount > 0) {
+                      await fetchSellerData();
+                    }
+                  }}
+                  className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 text-lg font-semibold"
+                >
+                  <Upload className="w-5 h-5" />
+                  <span>Upload All {uploadedProducts.length} Products</span>
+                </button>
+
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="mt-4">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-600">Uploading...</span>
+                      <span className="text-gray-900 font-medium">{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div
+                        className="bg-green-600 h-3 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+
+                {uploadResults && (
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h5 className="font-semibold text-gray-900 mb-2">Upload Results</h5>
+                    <div className="flex items-center space-x-6 mb-3">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <span className="text-green-700 font-medium">{uploadResults.success} Successful</span>
+                      </div>
+                      {uploadResults.failed > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <AlertTriangle className="w-5 h-5 text-red-600" />
+                          <span className="text-red-700 font-medium">{uploadResults.failed} Failed</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {uploadResults.errors.length > 0 && (
+                      <div className="mt-3 max-h-48 overflow-auto">
+                        <p className="text-sm font-medium text-red-700 mb-2">Errors:</p>
+                        {uploadResults.errors.map((error, idx) => (
+                          <p key={idx} className="text-xs text-red-600 mb-1">• {error}</p>
+                        ))}
+                      </div>
+                    )}
+
+                    {uploadResults.success > 0 && (
+                      <button
+                        onClick={() => setActiveTab('products')}
+                        className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        View All Products
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Help Section */}
+            <div className="mt-8 p-4 bg-orange-50 rounded-lg border border-orange-200">
+              <h4 className="font-semibold text-orange-900 mb-2">💡 Tips for Bulk Upload</h4>
+              <ul className="text-sm text-orange-700 space-y-1">
+                <li>• Start with 10-20 products to test before uploading hundreds</li>
+                <li>• Make sure category names match: Electronics, Fashion, Home & Garden, etc.</li>
+                <li>• Use HTTPS image URLs from reliable sources</li>
+                <li>• Set is_dropshipped to TRUE or FALSE (not Yes/No)</li>
+                <li>• For Excel: File → Save As → CSV UTF-8 (Comma delimited)</li>
+                <li>• For Google Sheets: File → Download → Comma Separated Values (.csv)</li>
+                <li>• All prices should be numbers without $ symbols</li>
+              </ul>
+            </div>
+          </div>
         </div>
       )}
 
