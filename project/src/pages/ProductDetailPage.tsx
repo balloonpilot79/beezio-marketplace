@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Heart, ShoppingCart, Shield, Truck, RotateCcw, DollarSign, Star, Users, TrendingUp, Play, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Heart, ShoppingCart, Shield, Truck, RotateCcw, DollarSign, Star, Users, TrendingUp, Play, ExternalLink, Share2, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { SAMPLE_PRODUCTS } from '../data/sampleProducts';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useCart } from '../contexts/CartContext';
+import { useAffiliate } from '../contexts/AffiliateContext';
 import AuthModal from '../components/AuthModal';
 import BuyerRewards from '../components/BuyerRewards';
 import RecommendationEngine from '../components/RecommendationEngine';
@@ -37,8 +38,9 @@ interface Product {
 
 const ProductDetailPage: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
-  const { profile, user } = useAuth();
+  const { profile, user, hasRole } = useAuth();
   const { addToCart: addItemToCart } = useCart();
+  const { generateAffiliateLink, addProduct, isProductSelected } = useAffiliate();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -46,9 +48,13 @@ const ProductDetailPage: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [selectedShipping, setSelectedShipping] = useState<{ id: string; name: string; cost: number; estimated_days: string } | null>(null);
+  const [showAffiliateSuccess, setShowAffiliateSuccess] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   
   // Behavior tracking
   const { trackView, trackClick, trackCartAdd } = useBehaviorTracker();
+  
+  const isAffiliate = hasRole('affiliate');
 
   // Function to get embed URL from video URL
   const getVideoEmbedUrl = (url: string): string | null => {
@@ -193,7 +199,7 @@ const ProductDetailPage: React.FC = () => {
       return;
     }
 
-    if (profile?.role === 'affiliate') {
+    if (isAffiliate) {
       // Already an affiliate - add to campaign
       addToCampaign();
     } else {
@@ -204,13 +210,35 @@ const ProductDetailPage: React.FC = () => {
 
   const addToCampaign = async () => {
     // Track affiliate campaign action
-    if (product) {
+    if (product && productId) {
       trackClick(product.id, 'affiliate_campaign_add');
+      addProduct(productId);
+      setShowAffiliateSuccess(true);
+      setTimeout(() => setShowAffiliateSuccess(false), 3000);
+    }
+  };
+
+  const handlePromoteProduct = () => {
+    if (!user) {
+      setAuthMode('register');
+      setShowAuthModal(true);
+      return;
     }
     
-    // TODO: Implement add to affiliate campaign
-    console.log('Adding product to affiliate campaign:', product?.id);
-    alert('Product added to your affiliate campaign!');
+    if (productId) {
+      const affiliateLink = generateAffiliateLink(productId);
+      navigator.clipboard.writeText(affiliateLink);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    }
+  };
+
+  const handleReviewProduct = () => {
+    // Navigate to review section or open review modal
+    const reviewSection = document.getElementById('reviews');
+    if (reviewSection) {
+      reviewSection.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const addToCart = async () => {
@@ -222,6 +250,10 @@ const ProductDetailPage: React.FC = () => {
       return;
     }
     
+    // Calculate affiliate discount (5% off if user is an affiliate)
+    const affiliateDiscount = isAffiliate ? product.price * 0.05 : 0;
+    const discountedPrice = product.price - affiliateDiscount;
+    
     // Track add to cart behavior
     trackCartAdd(product.id);
     
@@ -229,7 +261,7 @@ const ProductDetailPage: React.FC = () => {
     addItemToCart({
       productId: product.id,
       title: product.title,
-      price: product.price,
+      price: discountedPrice,
       quantity: quantity,
       image: product.images[0] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=800',
       sellerId: product.seller_id,
@@ -239,7 +271,8 @@ const ProductDetailPage: React.FC = () => {
     });
     
     // Show success message or redirect to cart
-    alert(`Product added to cart! ${selectedShipping ? `Shipping: ${selectedShipping.name} (+$${selectedShipping.cost.toFixed(2)})` : ''}`);
+    const discountMsg = isAffiliate ? ` (Affiliate discount: -$${affiliateDiscount.toFixed(2)})` : '';
+    alert(`Product added to cart!${discountMsg} ${selectedShipping ? `Shipping: ${selectedShipping.name} (+$${selectedShipping.cost.toFixed(2)})` : ''}`);
   };
 
   if (loading) {
@@ -291,16 +324,16 @@ const ProductDetailPage: React.FC = () => {
         <span>Back to Products</span>
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Product Media (Images & Videos) */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Media Tabs */}
           {(product.images.length > 0 || product.videos.length > 0) && (
-            <div className="flex space-x-1 mb-4">
+            <div className="flex space-x-1 mb-2">
               {product.images.length > 0 && (
                 <button
                   onClick={() => setSelectedImageIndex(0)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg ${
                     selectedImageIndex < product.images.length 
                       ? 'bg-amber-100 text-amber-800' 
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -312,7 +345,7 @@ const ProductDetailPage: React.FC = () => {
               {product.videos.length > 0 && (
                 <button
                   onClick={() => setSelectedImageIndex(product.images.length)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg ${
                     selectedImageIndex >= product.images.length 
                       ? 'bg-amber-100 text-amber-800' 
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -325,7 +358,7 @@ const ProductDetailPage: React.FC = () => {
           )}
 
           {/* Main Media Display */}
-          <div className="w-full h-96 lg:h-[500px] rounded-lg overflow-hidden bg-gray-100">
+          <div className="w-full h-72 lg:h-80 rounded-lg overflow-hidden bg-gray-100">
             {selectedImageIndex < product.images.length ? (
               // Display Image
               <img
@@ -404,17 +437,17 @@ const ProductDetailPage: React.FC = () => {
         </div>
 
         {/* Product Info */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Title and Rating */}
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-3">{product.title}</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.title}</h1>
             
             {product.average_rating && (
-              <div className="flex items-center space-x-3 mb-4">
+              <div className="flex items-center space-x-2 mb-3">
                 <div className="flex items-center">
-                  <span className="text-yellow-400 text-lg">★★★★★</span>
+                  <span className="text-yellow-400">★★★★★</span>
                 </div>
-                <span className="text-lg text-gray-600">
+                <span className="text-sm text-gray-600">
                   {product.average_rating.toFixed(1)} ({product.review_count || 0} reviews)
                 </span>
               </div>
@@ -422,20 +455,30 @@ const ProductDetailPage: React.FC = () => {
           </div>
 
           {/* Price */}
-          <div className="space-y-2">
-            <div className="flex items-center space-x-4">
-              <span className="text-4xl font-bold text-gray-900">
+          <div className="space-y-1">
+            <div className="flex items-center space-x-3">
+              <span className="text-3xl font-bold text-gray-900">
                 ${product.price.toFixed(2)}
               </span>
               {product.requires_shipping && (
-                <span className="text-lg text-gray-600">
-                  + shipping (calculated below)
+                <span className="text-sm text-gray-600">
+                  + shipping
                 </span>
               )}
             </div>
             
-            {product.commission_rate > 0 && (
-              <div className="text-green-600 font-medium">
+            {/* Affiliate Discount Badge */}
+            {isAffiliate && (
+              <div className="inline-flex items-center px-3 py-1 bg-green-50 border border-green-200 rounded-full">
+                <DollarSign className="w-4 h-4 text-green-600 mr-1" />
+                <span className="text-sm font-medium text-green-700">
+                  Your affiliate discount: ${(product.price * 0.05).toFixed(2)} off
+                </span>
+              </div>
+            )}
+            
+            {product.commission_rate > 0 && !isAffiliate && (
+              <div className="text-sm text-green-600 font-medium">
                 {product.commission_type === 'percentage' 
                   ? `${product.commission_rate}% affiliate commission`
                   : `$${product.flat_commission_amount.toFixed(2)} affiliate commission`
@@ -446,7 +489,7 @@ const ProductDetailPage: React.FC = () => {
 
           {/* Description */}
           <div className="prose prose-gray max-w-none">
-            <p className="text-gray-700 text-lg leading-relaxed">
+            <p className="text-gray-700 leading-relaxed">
               {product.description}
             </p>
           </div>
@@ -615,29 +658,49 @@ const ProductDetailPage: React.FC = () => {
             <div className="space-y-3">
               {/* Main Action Buttons */}
               {profile?.role === 'affiliate' ? (
-                // Affiliate sees: Start Selling button
-                <div className="flex space-x-4">
+                // Affiliate sees: Promote, Add to Cart (with discount), and Review buttons
+                <div className="space-y-3">
                   <button 
-                    onClick={handleAffiliateAction}
-                    className="flex-1 bg-amber-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-amber-700 transition-colors flex items-center justify-center space-x-2"
+                    onClick={handlePromoteProduct}
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-colors flex items-center justify-center space-x-2"
                   >
-                    <TrendingUp className="w-5 h-5" />
-                    <span>Start Selling - Earn ${calculateCommission().toFixed(2)}</span>
+                    <Share2 className="w-5 h-5" />
+                    <span>Promote This Item - Earn ${calculateCommission().toFixed(2)}</span>
                   </button>
                   
-                  <button className="border border-gray-300 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                    <Heart className="w-5 h-5 text-gray-600" />
-                  </button>
+                  <div className="flex space-x-3">
+                    <button 
+                      onClick={addToCart}
+                      className="flex-1 bg-amber-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-amber-700 transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <ShoppingCart className="w-5 h-5" />
+                      <span>Add to Cart (5% off!)</span>
+                    </button>
+                    
+                    <button 
+                      onClick={handleReviewProduct}
+                      className="flex-1 border-2 border-amber-600 text-amber-600 py-3 px-6 rounded-lg font-semibold hover:bg-amber-50 transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <MessageSquare className="w-5 h-5" />
+                      <span>Review This Item</span>
+                    </button>
+                  </div>
+                  
+                  {copiedLink && (
+                    <div className="text-center text-green-600 text-sm font-medium">
+                      ✓ Affiliate link copied to clipboard!
+                    </div>
+                  )}
                 </div>
               ) : user ? (
-                // Logged-in buyers see: Buy Now button (no affiliate clutter)
+                // Logged-in buyers see: Add to Cart and Buy Now buttons
                 <div className="flex space-x-4">
                   <button 
-                    onClick={handleAffiliateAction}
+                    onClick={addToCart}
                     className="flex-1 bg-amber-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-amber-700 transition-colors flex items-center justify-center space-x-2"
                   >
                     <ShoppingCart className="w-5 h-5" />
-                    <span>Buy Now</span>
+                    <span>Add to Cart</span>
                   </button>
                   
                   <button className="border border-gray-300 p-3 rounded-lg hover:bg-gray-50 transition-colors">

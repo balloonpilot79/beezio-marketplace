@@ -26,6 +26,7 @@ interface AffiliateContextType {
   addProduct: (productId: string) => void;
   removeProduct: (productId: string) => void;
   generateAffiliateLink: (productId: string) => string;
+  generateSiteWideLink: () => string;
   trackClick: (productId: string, affiliateId: string) => void;
   trackSale: (productId: string, affiliateId: string, saleAmount: number, commission: number) => void;
   isProductSelected: (productId: string) => boolean;
@@ -127,6 +128,17 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
     return `${baseUrl}/product/${productId}?ref=${affiliateId}&utm_source=affiliate&utm_medium=link&utm_campaign=product_promotion&t=${timestamp}`;
   };
 
+  const generateSiteWideLink = (): string => {
+    if (!user) return '';
+    
+    const baseUrl = window.location.origin;
+    const affiliateId = user.id;
+    const timestamp = Date.now();
+    
+    // Create a site-wide affiliate link that tracks all purchases from this referral
+    return `${baseUrl}/marketplace?ref=${affiliateId}&utm_source=affiliate&utm_medium=sitewide&utm_campaign=marketplace_promotion&t=${timestamp}`;
+  };
+
   const trackClick = (productId: string, affiliateId: string) => {
     // In a real app, this would send data to your analytics API
     console.log(`Affiliate click tracked: Product ${productId} by Affiliate ${affiliateId}`);
@@ -186,6 +198,7 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
     addProduct,
     removeProduct,
     generateAffiliateLink,
+    generateSiteWideLink,
     trackClick,
     trackSale,
     isProductSelected,

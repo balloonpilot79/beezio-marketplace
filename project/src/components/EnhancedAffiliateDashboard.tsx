@@ -745,12 +745,12 @@ const EnhancedAffiliateDashboard: React.FC = () => {
             <div className="flex items-center space-x-2">
               <input
                 type="text"
-                value={generateAffiliateLink()}
+                value={generateSiteWideLink()}
                 readOnly
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
               />
               <button
-                onClick={() => copyToClipboard(generateAffiliateLink())}
+                onClick={() => copyToClipboard(generateSiteWideLink())}
                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
               >
                 <Copy className="w-4 h-4" />
@@ -856,15 +856,15 @@ const EnhancedAffiliateDashboard: React.FC = () => {
                 <h4 className="font-medium mb-4">Site-Wide QR Code</h4>
                 <div className="text-center p-6 bg-gray-50 rounded-lg">
                   <img 
-                    src={generateQRCode(generateAffiliateLink())} 
+                    src={generateQRCode(generateSiteWideLink())} 
                     alt="Site-wide QR Code" 
                     className="mx-auto mb-4"
                   />
-                  <p className="text-sm text-gray-600 mb-4">Scan to visit your affiliate store</p>
+                  <p className="text-sm text-gray-600 mb-4">Scan to visit the marketplace with your affiliate link</p>
                   <div className="flex space-x-2">
                     <button
                       onClick={() => {
-                        const qrUrl = generateQRCode(generateAffiliateLink());
+                        const qrUrl = generateQRCode(generateSiteWideLink());
                         const link = document.createElement('a');
                         link.href = qrUrl;
                         link.download = 'beezio-affiliate-qr.png';
@@ -876,7 +876,7 @@ const EnhancedAffiliateDashboard: React.FC = () => {
                       Download PNG
                     </button>
                     <button
-                      onClick={() => copyToClipboard(generateAffiliateLink())}
+                      onClick={() => copyToClipboard(generateSiteWideLink())}
                       className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
                     >
                       <Copy className="w-4 h-4 inline mr-2" />

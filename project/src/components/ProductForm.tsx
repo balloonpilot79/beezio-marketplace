@@ -351,6 +351,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             seller_id: profile.id,
             shipping_options: formData.shipping_options,
             requires_shipping: formData.requires_shipping,
+            status: 'active',  // ✅ Auto-publish to marketplace
+            is_active: true     // ✅ Visible to buyers & affiliates
           }])
           .select()
           .single();
