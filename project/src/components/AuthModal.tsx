@@ -93,20 +93,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         const result = await signIn(formData.email, formData.password);
         if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Sign in result:', result);
         if (result && (result.user || result.session)) {
-          setSuccess('Successfully signed in!');
+          // Close modal immediately
           onClose();
-          // Don't redirect to dashboard if user is on reset password page
-          if (window.location.pathname !== '/reset-password') {
-            console.log('AuthModal: Not on reset-password page, redirecting user after login');
-            // Redirect to dashboard after a short delay to allow profile loading
-            // The Dashboard component will automatically render the correct dashboard based on user role
-            setTimeout(() => {
-              console.log('Login redirect - redirecting to /dashboard for role-based rendering');
-              navigate('/dashboard');
-            }, 1000); // Give more time for profile to load
-          } else {
-            console.log('AuthModal: On reset-password page, not redirecting');
-          }
+          // Redirect to dashboard immediately
+          navigate('/dashboard');
         } else {
           // If no user/session returned, surface the response for debugging
           console.warn('Sign in returned no user/session:', result);
@@ -116,33 +106,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting sign up...');
         const result = await signUp(formData.email, formData.password, formData);
         if (result && result.user) {
-          setSuccess('Account created successfully!');
           // Supabase: If email confirmation is required, session will be null
           if (!result.session) {
             setSuccess('Account created! Please check your email to confirm your account before logging in.');
             return;
           }
-          // If session exists, sign in and redirect
-          try {
-            const signInResult = await signIn(formData.email, formData.password);
-            if (signInResult && (signInResult.user || signInResult.session)) {
-              onClose();
-              // Redirect based on role
-              const roleRedirects = {
-                seller: '/seller-dashboard',
-                affiliate: '/affiliate-dashboard',
-                buyer: '/buyer-dashboard',
-                fundraiser: '/seller-dashboard' // Fundraisers start with seller dashboard
-              };
-              const redirectPath = roleRedirects[formData.role as keyof typeof roleRedirects] || '/buyer-dashboard';
-              setTimeout(() => navigate(redirectPath), 100);
-            } else {
-              setError('Sign in failed after registration. Please try logging in.');
-            }
-          } catch (signInError: any) {
-            console.error('Error signing in after registration:', signInError);
-            setError(signInError.message || 'Sign in failed after registration.');
-          }
+          // If session exists, close modal and redirect to unified dashboard
+          onClose();
+          navigate('/dashboard');
         }
       }
     } catch (err: any) {

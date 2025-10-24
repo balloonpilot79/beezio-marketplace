@@ -58,9 +58,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Add timeout to prevent infinite loading
   useEffect(() => {
     const timeout = setTimeout(() => {
-      console.warn('AuthContext: Loading timeout reached, setting loading to false');
+      console.warn('AuthContext: Loading timeout reached (5s), setting loading to false');
       setLoading(false);
-    }, 10000); // 10 second timeout
+    }, 5000); // 5 second timeout (reduced from 10s)
 
     return () => clearTimeout(timeout);
   }, []);
