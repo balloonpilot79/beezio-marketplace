@@ -105,16 +105,25 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
         </p>
         <div className="text-blue-700 text-xs mt-2 space-y-1">
           <div><strong>Platform Fees:</strong></div>
-          <div>• Beezio Platform Fee: {input.platformFeeRate}% (configurable 10-15%)</div>
+          <div>• Beezio Platform Fee: 15% (fixed)</div>
           <div>• Stripe Processing: {STRIPE_FEE_RATE * 100}% + ${STRIPE_FEE_FIXED.toFixed(2)}</div>
           <div>• Sales Tax: {Math.round(TAX_RATE * 100)}% (estimated)</div>
-          {input.referralRate > 0 && (
-            <div className="text-amber-700 mt-2">
-              <Users className="h-3 w-3 inline mr-1" />
-              <strong>Referral Bonus:</strong> {input.referralRate}% (for users who refer others)
-            </div>
-          )}
         </div>
+      </div>
+
+      {/* Referral Program Info */}
+      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+        <div className="flex items-center space-x-2 mb-2">
+          <Users className="h-5 w-5 text-purple-600" />
+          <h4 className="font-semibold text-purple-900">🎁 Beezio Referral Program (Limited Time!)</h4>
+        </div>
+        <p className="text-purple-800 text-sm">
+          When you refer someone to sign up as an affiliate, <strong>you earn 5% commission</strong> on every sale they make! 
+          This 5% comes from Beezio's platform fee (we keep 10%, you get 5%). This is a limited-time launch promotion to help grow our community.
+        </p>
+        <p className="text-purple-700 text-xs mt-2">
+          <strong>Note:</strong> As a seller/affiliate, you don't control referral rates - it's automatically applied by Beezio when someone signs up through your referral link.
+        </p>
       </div>
 
       {/* Input Section */}
@@ -213,64 +222,6 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
             </div>
           )}
         </div>
-
-        {/* Advanced Settings: Referral & Platform Fee */}
-        <div className="md:col-span-2 border-t pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-semibold text-gray-700">Advanced Fee Settings</h4>
-            <span className="text-xs text-gray-500">Optional - Only change if needed</span>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Referral Commission Rate */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Users className="h-4 w-4 inline mr-1" />
-                Referral Commission (2-5%)
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  max="5"
-                  step="0.5"
-                  value={input.referralRate}
-                  onChange={(e) => handleInputChange('referralRate', parseFloat(e.target.value) || 0)}
-                  className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  placeholder="3"
-                />
-                <span className="absolute right-3 top-2.5 text-gray-500">%</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Commission for users who refer others (0% = disabled)
-              </p>
-            </div>
-
-            {/* Platform Fee Rate */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calculator className="h-4 w-4 inline mr-1" />
-                Beezio Platform Fee (10-15%)
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="10"
-                  max="15"
-                  step="0.5"
-                  value={input.platformFeeRate}
-                  onChange={(e) => handleInputChange('platformFeeRate', parseFloat(e.target.value) || 10)}
-                  className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  placeholder="10"
-                />
-                <span className="absolute right-3 top-2.5 text-gray-500">%</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Platform fee (typically 10%, contact support to adjust)
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Error Messages */}
@@ -309,12 +260,6 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
                   <span className="text-gray-600">Affiliate Commission:</span>
                   <span className="font-bold text-blue-700">${breakdown.affiliateAmount.toFixed(2)}</span>
                 </div>
-                {breakdown.referralAmount > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Referral Bonus ({breakdown.referralRate}%):</span>
-                    <span className="font-bold text-amber-700">${breakdown.referralAmount.toFixed(2)}</span>
-                  </div>
-                )}
                 <div className="border-t border-green-300 pt-2 mt-2">
                   <div className="flex justify-between font-semibold">
                     <span className="text-green-900">Total You Keep:</span>
@@ -332,7 +277,7 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Beezio Platform ({breakdown.platformFeeRate * 100}%):</span>
+                  <span className="text-gray-600">Beezio Platform (15%):</span>
                   <span className="font-bold text-red-700">${breakdown.platformFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
@@ -371,7 +316,7 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-xs text-amber-800">
               <strong>✅ Ready to save:</strong> This pricing will be automatically applied when you create your product.
-              You can always edit the affiliate commission rate later, but the platform fees are fixed.
+              You can always edit the affiliate commission rate later. Platform fees are fixed at 15%.
             </p>
           </div>
 
