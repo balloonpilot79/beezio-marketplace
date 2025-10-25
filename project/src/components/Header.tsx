@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useCart } from '../contexts/CartContext';
@@ -18,6 +18,31 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
   const [isHelpDropdownOpen, setIsHelpDropdownOpen] = useState(false);
   const [isGlobalDropdownOpen, setIsGlobalDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+
+  // Refs for detecting clicks outside
+  const helpDropdownRef = useRef<HTMLDivElement>(null);
+  const globalDropdownRef = useRef<HTMLDivElement>(null);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (helpDropdownRef.current && !helpDropdownRef.current.contains(event.target as Node)) {
+        setIsHelpDropdownOpen(false);
+      }
+      if (globalDropdownRef.current && !globalDropdownRef.current.contains(event.target as Node)) {
+        setIsGlobalDropdownOpen(false);
+      }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -79,7 +104,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 Contact
                 <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-orange-600 transition-all duration-300 group-hover:w-[calc(100%-16px)]"></span>
               </Link>
-              <div className="relative">
+              <div className="relative" ref={helpDropdownRef}>
                 <button
                   onClick={() => setIsHelpDropdownOpen(!isHelpDropdownOpen)}
                   className="text-gray-700 hover:text-purple-600 font-medium text-sm transition-colors duration-200 flex items-center space-x-1 px-2 py-1"
@@ -91,13 +116,13 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 </button>
                 {isHelpDropdownOpen && (
                   <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
-                    <Link to="/how-it-works" className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium">
+                    <Link to="/how-it-works" className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium" onClick={() => setIsHelpDropdownOpen(false)}>
                       How It Works
                     </Link>
-                    <Link to="/sellers" className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium">
+                    <Link to="/sellers" className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium" onClick={() => setIsHelpDropdownOpen(false)}>
                       For Sellers
                     </Link>
-                    <Link to="/affiliate-guide" className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium">
+                    <Link to="/affiliate-guide" className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium" onClick={() => setIsHelpDropdownOpen(false)}>
                       Affiliate Guide
                     </Link>
                   </div>
@@ -109,7 +134,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
           {/* Right side: Actions */}
           <div className="flex items-center space-x-4">
             {/* Global Settings Dropdown */}
-            <div className="hidden md:block relative">
+            <div className="hidden md:block relative" ref={globalDropdownRef}>
               <button
                 onClick={() => setIsGlobalDropdownOpen(!isGlobalDropdownOpen)}
                 className="p-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200"
@@ -154,7 +179,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
               </div>
             ) : (
               /* User Profile Dropdown for authenticated users */
-              <div className="relative">
+              <div className="relative" ref={userDropdownRef}>
                 <button
                   onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
                   className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
