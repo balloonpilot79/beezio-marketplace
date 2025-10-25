@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContextMultiRole';
+import { supabase } from '../lib/supabase';
 
 export interface AffiliateProduct {
   productId: string;
@@ -23,6 +24,7 @@ export interface AffiliateStats {
 interface AffiliateContextType {
   selectedProducts: AffiliateProduct[];
   affiliateStats: AffiliateStats;
+  referralCode: string | null;
   addProduct: (productId: string) => void;
   removeProduct: (productId: string) => void;
   generateAffiliateLink: (productId: string) => string;
@@ -48,8 +50,9 @@ interface AffiliateProviderProps {
 }
 
 export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [selectedProducts, setSelectedProducts] = useState<AffiliateProduct[]>([]);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const [affiliateStats, setAffiliateStats] = useState<AffiliateStats>({
     totalProducts: 0,
     totalClicks: 0,
@@ -57,6 +60,32 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
     totalEarnings: 0,
     conversionRate: 0
   });
+
+  // Fetch referral code when user/profile loads
+  useEffect(() => {
+    const fetchReferralCode = async () => {
+      if (user && profile) {
+        // Try to get from profile first
+        if (profile.referral_code) {
+          setReferralCode(profile.referral_code);
+          return;
+        }
+
+        // Otherwise fetch from database
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('referral_code')
+          .eq('user_id', user.id)
+          .single();
+
+        if (data?.referral_code) {
+          setReferralCode(data.referral_code);
+        }
+      }
+    };
+
+    fetchReferralCode();
+  }, [user, profile]);
 
   // Load affiliate data from localStorage
   useEffect(() => {
@@ -132,11 +161,12 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
     if (!user) return '';
     
     const baseUrl = window.location.origin;
-    const affiliateId = user.id;
-    const timestamp = Date.now();
     
-    // Create a site-wide affiliate link that tracks all purchases from this referral
-    return `${baseUrl}/marketplace?ref=${affiliateId}&utm_source=affiliate&utm_medium=sitewide&utm_campaign=marketplace_promotion&t=${timestamp}`;
+    // Use referral_code if available (e.g., "JOHN2024"), otherwise fallback to user.id
+    const refParam = referralCode || user.id;
+    
+    // Create a site-wide affiliate link that tracks signups and purchases
+    return `${baseUrl}/signup?ref=${refParam}`;
   };
 
   const trackClick = (productId: string, affiliateId: string) => {
@@ -195,6 +225,7 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
   const value: AffiliateContextType = {
     selectedProducts,
     affiliateStats,
+    referralCode,
     addProduct,
     removeProduct,
     generateAffiliateLink,

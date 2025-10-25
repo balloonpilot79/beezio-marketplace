@@ -35,11 +35,12 @@ const SignUpPage: React.FC = () => {
 
   const validateReferralCode = async (code: string) => {
     try {
+      // Query profiles table to find the referrer by their referral_code
       const { data, error } = await supabase
-        .from('users')
-        .select('email, referral_code')
+        .from('profiles')
+        .select('user_id, email, full_name, referral_code, primary_role')
         .eq('referral_code', code.toUpperCase())
-        .eq('current_role', 'affiliate')
+        .or('primary_role.eq.affiliate,primary_role.eq.fundraiser')
         .single();
 
       if (error || !data) {
@@ -50,7 +51,7 @@ const SignUpPage: React.FC = () => {
 
       setReferralCode(code.toUpperCase());
       setReferralValid(true);
-      setReferrerName(data.email.split('@')[0]);
+      setReferrerName(data.full_name || data.email.split('@')[0]);
       
       // Auto-select affiliate role if referred
       setFormData(prev => ({ ...prev, role: 'affiliate' }));
@@ -80,29 +81,34 @@ const SignUpPage: React.FC = () => {
         // If there's a referral code, store it and create referral relationship
         if (referralCode && referralValid) {
           try {
-            // Update user with referred_by_code
-            await supabase
-              .from('users')
-              .update({ referred_by_code: referralCode })
-              .eq('id', result.user.id);
-
-            // Get referrer's ID
+            // Get referrer's user_id from profiles table
             const { data: referrer } = await supabase
-              .from('users')
-              .select('id')
+              .from('profiles')
+              .select('user_id')
               .eq('referral_code', referralCode)
               .single();
 
             if (referrer) {
+              // Update new user's profile with referred_by info
+              await supabase
+                .from('profiles')
+                .update({ 
+                  referred_by: referrer.user_id,
+                  referral_code_used: referralCode 
+                })
+                .eq('user_id', result.user.id);
+
               // Create affiliate_referrals record
               await supabase
                 .from('affiliate_referrals')
                 .insert({
-                  referrer_id: referrer.id,
-                  referred_id: result.user.id,
+                  referrer_affiliate_id: referrer.user_id,
+                  referred_affiliate_id: result.user.id,
                   referral_code: referralCode,
                   status: 'active'
                 });
+              
+              console.log('✅ Referral relationship created:', referrer.user_id, '→', result.user.id);
             }
           } catch (refErr) {
             console.error('Error saving referral relationship:', refErr);
@@ -304,6 +310,47 @@ const SignUpPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">ZIP Code (Optional)</label>
             <input type="text" name="zipCode" value={formData.zipCode} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
           </div>
+          
+          {/* Referral Code Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Referral Code (Optional)
+              <span className="text-xs text-gray-500 ml-2">Have a friend's code? Enter it here!</span>
+            </label>
+            <input 
+              type="text" 
+              value={referralCode || ''} 
+              onChange={(e) => {
+                const code = e.target.value.toUpperCase();
+                if (code) {
+                  validateReferralCode(code);
+                } else {
+                  setReferralCode(null);
+                  setReferralValid(null);
+                  setReferrerName('');
+                }
+              }}
+              placeholder="Enter code (e.g., JOHN2024)"
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                referralValid === true 
+                  ? 'border-green-400 bg-green-50' 
+                  : referralValid === false 
+                  ? 'border-red-400 bg-red-50' 
+                  : 'border-gray-300'
+              }`}
+            />
+            {referralValid === true && (
+              <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                ✓ Valid code! You'll earn 5% on everything {referrerName} sells
+              </p>
+            )}
+            {referralValid === false && (
+              <p className="text-xs text-red-600 mt-1">
+                Invalid code. Check the spelling or leave blank to skip.
+              </p>
+            )}
+          </div>
+          
           <button type="submit" disabled={loading} className="w-full bg-amber-500 text-white py-3 px-4 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 font-medium">
             {loading ? 'Please wait...' : 'Create Account'}
           </button>

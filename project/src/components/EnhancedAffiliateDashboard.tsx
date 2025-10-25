@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import { useAffiliate } from '../contexts/AffiliateContext';
 import { supabase } from '../lib/supabase';
 import UniversalIntegrationsPage from './UniversalIntegrationsPage';
 import StripeAffiliateDashboard from './StripeAffiliateDashboard';
@@ -43,6 +44,7 @@ interface TrafficSource {
 
 const EnhancedAffiliateDashboard: React.FC = () => {
   const { user, profile } = useAuth();
+  const { referralCode, generateSiteWideLink: getSiteWideLink } = useAffiliate();
   const isFundraiser = profile?.role === 'fundraiser';
   const [stats, setStats] = useState<AffiliateStats>({
     total_earnings: 0,
@@ -207,9 +209,8 @@ const EnhancedAffiliateDashboard: React.FC = () => {
   };
 
   const generateSiteWideLink = () => {
-    const baseUrl = window.location.origin;
-    const affiliateId = profile?.id;
-    return `${baseUrl}/marketplace?ref=${affiliateId}`;
+    // Use the referral code from AffiliateContext
+    return getSiteWideLink();
   };
 
   const generateQRCode = (url: string) => {
@@ -741,7 +742,26 @@ const EnhancedAffiliateDashboard: React.FC = () => {
 
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h3 className="text-lg font-semibold mb-4">Site-Wide Affiliate Link</h3>
-            <p className="text-gray-600 mb-4">Use this link to earn commission on any product sold through your referral based on each seller's individual commission rate</p>
+            <p className="text-gray-600 mb-4">Use this link to recruit new affiliates and earn 5% on everything they sell!</p>
+            
+            {/* Referral Code Display */}
+            {referralCode && (
+              <div className="mb-4 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-300 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Your Referral Code</p>
+                    <p className="text-2xl font-bold text-yellow-600 font-mono tracking-wider">{referralCode}</p>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(referralCode)}
+                    className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm"
+                  >
+                    Copy Code
+                  </button>
+                </div>
+              </div>
+            )}
+            
             <div className="flex items-center space-x-2">
               <input
                 type="text"
@@ -761,6 +781,14 @@ const EnhancedAffiliateDashboard: React.FC = () => {
               >
                 <QrCode className="w-4 h-4" />
               </button>
+            </div>
+            
+            {/* Referral Program Info */}
+            <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <p className="text-sm text-purple-800">
+                <strong>💰 Passive Income:</strong> When someone signs up using your code/link and makes sales, 
+                you earn <strong>5%</strong> of the platform fee on every sale they make - forever!
+              </p>
             </div>
           </div>
 
