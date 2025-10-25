@@ -718,7 +718,7 @@ const EnhancedSellerDashboard: React.FC = () => {
       {activeTab === 'products' && (
         <div>
           <button
-            onClick={() => navigate('/dashboard/products/add')}
+            onClick={() => navigate('/add-product')}
             className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 mb-4"
           >
             Add New Product

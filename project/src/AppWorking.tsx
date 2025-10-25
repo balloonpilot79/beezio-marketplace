@@ -14,6 +14,7 @@ import AuthModal from './components/AuthModal';
 import SimpleSignupModal from './components/SimpleSignupModal';
 import PaymentForm from './components/PaymentForm';
 import ProductForm from './components/ProductForm';
+import AddProductPage from './pages/AddProductPage';
 import HowItWorksPage from './pages/HowItWorksPage';
 import SellersPage from './pages/SellersPage';
 import AffiliatePageNew from './pages/AffiliatePageNew';
@@ -319,6 +320,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/affiliate/products" element={<AffiliateProductsPage />} />
                     <Route path="/affiliate/dashboard" element={<AffiliateDashboardPage />} />
                     <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/add-product" element={<AddProductPage />} />
                     <Route path="/dashboard-preview" element={<DashboardPreview />} />
                     <Route path="/affiliate-dashboard-preview" element={<AffiliateDashboardPreview />} />
                     <Route path="/buyer-dashboard-preview" element={<BuyerDashboardPreview />} />
