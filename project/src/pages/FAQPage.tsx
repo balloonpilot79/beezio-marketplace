@@ -185,28 +185,28 @@ const FAQPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-16">
+      <section className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-12 sm:py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">Frequently Asked Questions</h1>
-          <p className="text-xl md:text-2xl opacity-90">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 sm:mb-6">Frequently Asked Questions</h1>
+          <p className="text-base sm:text-xl md:text-2xl opacity-90">
             Everything you need to know about selling, affiliate marketing, and fundraising on Beezio
           </p>
         </div>
       </section>
 
       {/* FAQ Categories */}
-      <section className="py-16">
+      <section className="py-8 sm:py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {categories.map((category, categoryIndex) => (
-            <div key={categoryIndex} className="mb-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">
+            <div key={categoryIndex} className="mb-8 sm:mb-12">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">
                 {category.name}
               </h2>
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {faqs.slice(category.start, category.end + 1).map((faq, idx) => (
-                  <div key={idx} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">{faq.question}</h3>
-                    <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
+                  <div key={idx} className="bg-white rounded-lg shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">{faq.question}</h3>
+                    <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{faq.answer}</p>
                   </div>
                 ))}
               </div>
@@ -216,33 +216,33 @@ const FAQPage: React.FC = () => {
       </section>
 
       {/* Contact Section */}
-      <section className="py-16 bg-gradient-to-r from-gray-100 to-gray-200">
+      <section className="py-8 sm:py-16 bg-gradient-to-r from-gray-100 to-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Still Have Questions?</h2>
-          <p className="text-xl text-gray-600 mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">Still Have Questions?</h2>
+          <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8">
             Our support team is here to help you succeed
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="font-bold text-gray-900 mb-2">Email Support</h3>
-              <p className="text-gray-600 mb-4">Get detailed answers to your questions</p>
-              <a href="mailto:support@beezio.co" className="text-blue-600 font-semibold hover:text-blue-700">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-2">Email Support</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-4">Get detailed answers to your questions</p>
+              <a href="mailto:support@beezio.co" className="text-sm sm:text-base text-blue-600 font-semibold hover:text-blue-700 break-all">
                 support@beezio.co
               </a>
             </div>
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="font-bold text-gray-900 mb-2">Live Chat</h3>
-              <p className="text-gray-600 mb-4">Quick answers during business hours</p>
-              <button className="text-blue-600 font-semibold hover:text-blue-700">
-                Start Chat
-              </button>
+            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-2">Contact Us</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-4">View all contact options</p>
+              <a href="/contact" className="text-sm sm:text-base text-blue-600 font-semibold hover:text-blue-700">
+                Contact Page
+              </a>
             </div>
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="font-bold text-gray-900 mb-2">Help Center</h3>
-              <p className="text-gray-600 mb-4">Browse guides and tutorials</p>
-              <button className="text-blue-600 font-semibold hover:text-blue-700">
-                View Guides
-              </button>
+            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-2">How It Works</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-4">Learn about our platform</p>
+              <a href="/how-it-works" className="text-sm sm:text-base text-blue-600 font-semibold hover:text-blue-700">
+                View Guide
+              </a>
             </div>
           </div>
         </div>

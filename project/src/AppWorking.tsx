@@ -49,6 +49,10 @@ import FundraiserSlider from './components/FundraiserSlider';
 import RevolutionaryShowcaseSimple from './components/RevolutionaryShowcaseSimple';
 import TestPage from './components/TestPage';
 import ContactPage from './pages/ContactPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
+import FAQPage from './pages/FAQPage';
+import Footer from './components/Footer';
 import SellerProductFormPage from './pages/SellerProductFormPage';
 import ProfileCompletion from './components/ProfileCompletion';
 import TestingDashboard from './components/TestingDashboard';
@@ -335,6 +339,9 @@ const AppWorking: React.FC = () => {
                     <Route path="/profile" element={<ProfileCompletion />} />
                     <Route path="/earnings" element={<EarningsDashboard />} />
                     <Route path="/contact" element={<ContactPage />} />
+                    <Route path="/privacy" element={<PrivacyPage />} />
+                    <Route path="/terms" element={<TermsPage />} />
+                    <Route path="/faq" element={<FAQPage />} />
                     <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                     <Route path="/admin/platform" element={<AdminRoute><PlatformAdminDashboard /></AdminRoute>} />
                     <Route path="/admin/settings" element={<AdminRoute><PlatformSettings /></AdminRoute>} />
@@ -348,6 +355,9 @@ const AppWorking: React.FC = () => {
                     <Route path="/write-review/:productId" element={<WriteReview />} />
                   </Routes>
                 </main>
+
+                {/* Footer */}
+                <Footer />
 
                 {/* <ChatBot /> */}
 
