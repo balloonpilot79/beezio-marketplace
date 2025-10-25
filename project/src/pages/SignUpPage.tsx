@@ -208,26 +208,26 @@ const SignUpPage: React.FC = () => {
   const currentBenefits = roleBenefits[formData.role as keyof typeof roleBenefits] || roleBenefits.buyer;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Create Your Account</h2>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-6 px-4 sm:py-12">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-4 sm:p-6 md:p-8">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 text-center">Create Your Account</h2>
         
         {/* Role Benefits Section */}
-        <div className="mb-6 bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-lg p-5">
-          <div className="text-center mb-3">
-            <span className="text-3xl mb-2 inline-block">{currentBenefits.icon}</span>
-            <h3 className="text-lg font-bold text-gray-900">{currentBenefits.title}</h3>
+        <div className="mb-4 sm:mb-6 bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-lg p-3 sm:p-5">
+          <div className="text-center mb-2 sm:mb-3">
+            <span className="text-2xl sm:text-3xl mb-1 sm:mb-2 inline-block">{currentBenefits.icon}</span>
+            <h3 className="text-base sm:text-lg font-bold text-gray-900">{currentBenefits.title}</h3>
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-1.5 sm:space-y-2">
             {currentBenefits.benefits.map((benefit, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                <span className="text-yellow-600 font-bold mt-0.5">✓</span>
+              <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-gray-700">
+                <span className="text-yellow-600 font-bold mt-0.5 flex-shrink-0">✓</span>
                 <span>{benefit}</span>
               </li>
             ))}
           </ul>
           {formData.role === 'affiliate' && (
-            <div className="mt-3 pt-3 border-t border-yellow-300">
+            <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-yellow-300">
               <p className="text-xs text-gray-600 italic">
                 <strong>Referral Bonus:</strong> Earn 5% on everything your recruited affiliates sell - passive income for life!
               </p>
@@ -237,15 +237,15 @@ const SignUpPage: React.FC = () => {
         
         {/* Referral Banner */}
         {referralValid && referralCode && (
-          <div className="mb-6 bg-gradient-to-r from-yellow-50 to-yellow-100 border-2 border-yellow-300 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Gift className="h-6 w-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div className="mb-4 sm:mb-6 bg-gradient-to-r from-yellow-50 to-yellow-100 border-2 border-yellow-300 rounded-lg p-3 sm:p-4">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <Gift className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-gray-900">You've been referred!</p>
-                <p className="text-sm text-gray-700 mt-1">
+                <p className="text-sm sm:text-base font-semibold text-gray-900">You've been referred!</p>
+                <p className="text-xs sm:text-sm text-gray-700 mt-1">
                   <strong>{referrerName}</strong> invited you to join Beezio as an affiliate.
                 </p>
-                <p className="text-xs text-gray-600 mt-2">
+                <p className="text-xs text-gray-600 mt-1 sm:mt-2">
                   Code: <span className="font-mono font-bold text-yellow-600">{referralCode}</span>
                 </p>
               </div>
@@ -254,8 +254,8 @@ const SignUpPage: React.FC = () => {
         )}
         
         {referralValid === false && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-sm text-red-600">
+          <div className="mb-4 sm:mb-6 bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
+            <p className="text-xs sm:text-sm text-red-600">
               Invalid or expired referral code. You can still sign up normally.
             </p>
           </div>
@@ -315,7 +315,7 @@ const SignUpPage: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Referral Code (Optional)
-              <span className="text-xs text-gray-500 ml-2">Have a friend's code? Enter it here!</span>
+              <span className="block sm:inline sm:ml-2 text-xs text-gray-500 mt-1 sm:mt-0">Have a friend's code? Enter it here!</span>
             </label>
             <input 
               type="text" 
@@ -331,7 +331,7 @@ const SignUpPage: React.FC = () => {
                 }
               }}
               placeholder="Enter code (e.g., JOHN2024)"
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+              className={`w-full px-3 py-2 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                 referralValid === true 
                   ? 'border-green-400 bg-green-50' 
                   : referralValid === false 
@@ -340,8 +340,9 @@ const SignUpPage: React.FC = () => {
               }`}
             />
             {referralValid === true && (
-              <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                ✓ Valid code! You'll earn 5% on everything {referrerName} sells
+              <p className="text-xs text-green-600 mt-1 flex items-start gap-1">
+                <span className="flex-shrink-0">✓</span>
+                <span>Valid code! You'll earn 5% on everything {referrerName} sells</span>
               </p>
             )}
             {referralValid === false && (
@@ -351,14 +352,14 @@ const SignUpPage: React.FC = () => {
             )}
           </div>
           
-          <button type="submit" disabled={loading} className="w-full bg-amber-500 text-white py-3 px-4 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 font-medium">
+          <button type="submit" disabled={loading} className="w-full bg-amber-500 text-white py-3 px-4 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 font-medium text-base sm:text-lg">
             {loading ? 'Please wait...' : 'Create Account'}
           </button>
         </form>
         
         {/* Login Link */}
-        <div className="mt-6 text-center">
-          <p className="text-gray-600">
+        <div className="mt-4 sm:mt-6 text-center">
+          <p className="text-sm sm:text-base text-gray-600">
             Already have an account?{' '}
             <button 
               type="button"

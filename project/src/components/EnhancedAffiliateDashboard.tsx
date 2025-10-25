@@ -219,16 +219,16 @@ const EnhancedAffiliateDashboard: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="p-8">Loading...</div>;
+    return <div className="p-4 sm:p-8">Loading...</div>;
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
           {isFundraiser ? 'Fundraiser Dashboard' : 'Affiliate Dashboard'}
         </h1>
-        <p className="text-gray-600">
+        <p className="text-sm sm:text-base text-gray-600">
           {isFundraiser 
             ? 'Raise money for your cause by promoting products - all commissions go to your fundraising goal!'
             : 'Track your earnings and manage your affiliate links'
@@ -237,17 +237,17 @@ const EnhancedAffiliateDashboard: React.FC = () => {
       </div>
 
       {/* Enhanced Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">
+              <p className="text-xs sm:text-sm font-medium text-gray-600">
                 {isFundraiser ? 'Total Raised' : 'Total Earnings'}
               </p>
-              <p className="text-2xl font-bold text-gray-900">${stats.total_earnings.toLocaleString()}</p>
-              <p className="text-sm text-green-600 mt-1">+12.5% this month</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">${stats.total_earnings.toLocaleString()}</p>
+              <p className="text-xs sm:text-sm text-green-600 mt-1">+12.5% this month</p>
             </div>
-            <DollarSign className="w-8 h-8 text-green-600" />
+            <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
           </div>
         </div>
         
@@ -746,15 +746,15 @@ const EnhancedAffiliateDashboard: React.FC = () => {
             
             {/* Referral Code Display */}
             {referralCode && (
-              <div className="mb-4 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-300 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
+              <div className="mb-4 p-3 sm:p-4 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-300 rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex-1">
                     <p className="text-xs text-gray-600 mb-1">Your Referral Code</p>
-                    <p className="text-2xl font-bold text-yellow-600 font-mono tracking-wider">{referralCode}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-yellow-600 font-mono tracking-wider break-all">{referralCode}</p>
                   </div>
                   <button
                     onClick={() => copyToClipboard(referralCode)}
-                    className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm"
+                    className="w-full sm:w-auto px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm whitespace-nowrap"
                   >
                     Copy Code
                   </button>
@@ -762,53 +762,55 @@ const EnhancedAffiliateDashboard: React.FC = () => {
               </div>
             )}
             
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <input
                 type="text"
                 value={generateSiteWideLink()}
                 readOnly
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-xs sm:text-sm"
               />
-              <button
-                onClick={() => copyToClipboard(generateSiteWideLink())}
-                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setActiveTab('qr-codes')}
-                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
-              >
-                <QrCode className="w-4 h-4" />
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => copyToClipboard(generateSiteWideLink())}
+                  className="flex-1 sm:flex-none px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                >
+                  <Copy className="w-4 h-4 mx-auto" />
+                </button>
+                <button
+                  onClick={() => setActiveTab('qr-codes')}
+                  className="flex-1 sm:flex-none px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+                >
+                  <QrCode className="w-4 h-4 mx-auto" />
+                </button>
+              </div>
             </div>
             
             {/* Referral Program Info */}
             <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-              <p className="text-sm text-purple-800">
+              <p className="text-xs sm:text-sm text-purple-800">
                 <strong>💰 Passive Income:</strong> When someone signs up using your code/link and makes sales, 
                 you earn <strong>5%</strong> of the platform fee on every sale they make - forever!
               </p>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">My Promoted Products ({products.length})</h3>
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+              <h3 className="text-base sm:text-lg font-semibold">My Promoted Products ({products.length})</h3>
               <button
                 onClick={() => setActiveTab('products')}
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium text-left sm:text-right"
               >
                 + Add More Products
               </button>
             </div>
-            <p className="text-gray-600 mb-4">Create specific links for individual products with higher conversion rates</p>
+            <p className="text-sm sm:text-base text-gray-600 mb-4">Create specific links for individual products with higher conversion rates</p>
             
             {products.length === 0 ? (
-              <div className="text-center py-8">
-                <ShoppingBag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h4 className="font-semibold text-gray-900 mb-2">No products selected yet</h4>
-                <p className="text-gray-600 mb-4">Browse our product catalog and start promoting products to earn commissions.</p>
+              <div className="text-center py-6 sm:py-8">
+                <ShoppingBag className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">No products selected yet</h4>
+                <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">Browse our product catalog and start promoting products to earn commissions.</p>
                 <button
                   onClick={() => setActiveTab('products')}
                   className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors"
