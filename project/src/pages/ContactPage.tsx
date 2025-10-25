@@ -81,10 +81,10 @@ const ContactPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 py-12 sm:py-16 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold mb-4">Contact Us</h1>
-            <p className="text-xl text-blue-100 max-w-2xl mx-auto">
+            <h1 className="text-3xl sm:text-4xl font-bold mb-4">Contact Us</h1>
+            <p className="text-lg sm:text-xl text-blue-100 max-w-2xl mx-auto">
               We're here to help you succeed. Whether you're a seller, affiliate, or buyer, 
               our team is ready to support your journey.
             </p>
@@ -92,29 +92,29 @@ const ContactPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:py-16 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-12">
           
           {/* Contact Information */}
           <div className="lg:col-span-2">
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-8">Get in Touch</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="mb-8 sm:mb-12">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 sm:mb-8">Get in Touch</h2>
+              <div className="grid grid-cols-1 gap-4 sm:gap-6">
                 {contactInfo.map((contact, index) => (
-                  <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                    <div className="flex items-start space-x-4">
-                      <div className={`p-3 rounded-lg ${contact.color === 'blue' ? 'bg-blue-100' : contact.color === 'green' ? 'bg-green-100' : contact.color === 'purple' ? 'bg-purple-100' : 'bg-orange-100'}`}>
-                        <contact.icon className={`w-6 h-6 ${getIconColorClasses(contact.color)}`} />
+                  <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 hover:shadow-md transition-shadow">
+                    <div className="flex flex-col sm:flex-row sm:items-start space-y-3 sm:space-y-0 sm:space-x-4">
+                      <div className={`p-3 rounded-lg flex-shrink-0 ${contact.color === 'blue' ? 'bg-blue-100' : contact.color === 'green' ? 'bg-green-100' : contact.color === 'purple' ? 'bg-purple-100' : 'bg-orange-100'}`}>
+                        <contact.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${getIconColorClasses(contact.color)}`} />
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{contact.department}</h3>
-                        <p className="text-gray-600 text-sm mb-3">{contact.description}</p>
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">{contact.department}</h3>
+                        <p className="text-gray-600 text-xs sm:text-sm mb-3">{contact.description}</p>
                         <a 
                           href={`mailto:${contact.email}`}
-                          className={`inline-flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium border transition-colors hover:opacity-80 ${getColorClasses(contact.color)}`}
+                          className={`inline-flex items-center space-x-2 px-3 py-2 rounded-md text-xs sm:text-sm font-medium border transition-colors hover:opacity-80 ${getColorClasses(contact.color)}`}
                         >
-                          <Mail className="w-4 h-4" />
-                          <span>{contact.email}</span>
+                          <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span className="break-all">{contact.email}</span>
                         </a>
                       </div>
                     </div>
@@ -124,8 +124,8 @@ const ContactPage: React.FC = () => {
             </div>
 
             {/* Contact Form */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">Send us a Message</h3>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 md:p-8">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Send us a Message</h3>
               
               {isSubmitted && (
                 <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
