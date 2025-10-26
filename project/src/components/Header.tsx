@@ -116,13 +116,37 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 </button>
                 {isHelpDropdownOpen && (
                   <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
-                    <Link to="/how-it-works" className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium" onClick={() => setIsHelpDropdownOpen(false)}>
+                    <Link 
+                      to="/how-it-works" 
+                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium" 
+                      onClick={() => {
+                        setIsHelpDropdownOpen(false);
+                        setIsGlobalDropdownOpen(false);
+                        setIsUserDropdownOpen(false);
+                      }}
+                    >
                       How It Works
                     </Link>
-                    <Link to="/sellers" className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium" onClick={() => setIsHelpDropdownOpen(false)}>
+                    <Link 
+                      to="/sellers" 
+                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium" 
+                      onClick={() => {
+                        setIsHelpDropdownOpen(false);
+                        setIsGlobalDropdownOpen(false);
+                        setIsUserDropdownOpen(false);
+                      }}
+                    >
                       For Sellers
                     </Link>
-                    <Link to="/affiliate-guide" className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium" onClick={() => setIsHelpDropdownOpen(false)}>
+                    <Link 
+                      to="/affiliate-guide" 
+                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium" 
+                      onClick={() => {
+                        setIsHelpDropdownOpen(false);
+                        setIsGlobalDropdownOpen(false);
+                        setIsUserDropdownOpen(false);
+                      }}
+                    >
                       Affiliate Guide
                     </Link>
                   </div>

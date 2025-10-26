@@ -554,8 +554,7 @@ const EnhancedSellerDashboard: React.FC = () => {
             { id: 'products', label: 'Products', icon: Package },
             { id: 'bulk-upload', label: 'Bulk Upload', icon: Upload },
             { id: 'orders', label: 'Orders', icon: ShoppingCart },
-            { id: 'fulfillment', label: 'Fulfillment', icon: Truck },
-            { id: 'inventory', label: 'Inventory', icon: Box },
+            { id: 'fulfillment', label: 'Orders & Shipping', icon: Truck },
             { id: 'customers', label: 'Customers', icon: Users },
             { id: 'analytics', label: 'Analytics', icon: TrendingUp },
             { id: 'financials', label: 'Financials', icon: CreditCard },
@@ -1267,6 +1266,58 @@ const EnhancedSellerDashboard: React.FC = () => {
                 <li>Customer receives tracking notification automatically</li>
               </ol>
             </div>
+
+            {/* Inventory Management Section */}
+            <div className="mt-6 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Inventory Tracking</h3>
+                  <p className="text-gray-600 mt-1">Monitor stock levels for your products</p>
+                </div>
+                <Box className="w-12 h-12 text-orange-600" />
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {products.slice(0, 5).map((product) => {
+                      const stock = product.stock_quantity || 0;
+                      const status = stock > 10 ? 'In Stock' : stock > 0 ? 'Low Stock' : 'Out of Stock';
+                      const statusColor = stock > 10 ? 'text-green-600 bg-green-50' : stock > 0 ? 'text-yellow-600 bg-yellow-50' : 'text-red-600 bg-red-50';
+                      
+                      return (
+                        <tr key={product.id}>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{product.title}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{product.sku || 'N/A'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{stock} units</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                              {status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              
+              {products.length === 0 && (
+                <div className="text-center py-12">
+                  <Box className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No products to track</p>
+                  <p className="text-sm text-gray-400 mt-1">Add products to see inventory levels</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1312,82 +1363,6 @@ const EnhancedSellerDashboard: React.FC = () => {
                 <p className="font-medium">Texas</p>
                 <p className="text-sm text-gray-600">22% of sales</p>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'inventory' && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Inventory Management</h3>
-            <div className="flex space-x-2">
-              <button className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors">
-                Bulk Upload
-              </button>
-              <button className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors">
-                Export Inventory
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="bg-white p-4 rounded-lg border border-gray-200 text-center">
-              <AlertTriangle className="w-8 h-8 text-red-600 mx-auto mb-2" />
-              <p className="font-medium text-red-600">Low Stock</p>
-              <p className="text-2xl font-bold">{salesData.low_stock_items}</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200 text-center">
-              <Package className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <p className="font-medium text-green-600">In Stock</p>
-              <p className="text-2xl font-bold">{products.length - salesData.low_stock_items}</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200 text-center">
-              <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <p className="font-medium text-blue-600">Total Value</p>
-              <p className="text-2xl font-bold">$12,450</p>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="p-6 border-b border-gray-200">
-              <h4 className="font-semibold">Product Inventory</h4>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {products.map((product, index) => (
-                    <tr key={product.id}>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{product.title}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">SKU-{product.id}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{Math.floor(Math.random() * 100) + 1}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">${product.price}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          index < salesData.low_stock_items 
-                            ? 'bg-red-100 text-red-800' 
-                            : 'bg-green-100 text-green-800'
-                        }`}>
-                          {index < salesData.low_stock_items ? 'Low Stock' : 'In Stock'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button className="text-blue-600 hover:text-blue-700 text-sm">Restock</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </div>
         </div>

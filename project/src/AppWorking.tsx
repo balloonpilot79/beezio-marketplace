@@ -56,6 +56,7 @@ import Footer from './components/Footer';
 import SellerProductFormPage from './pages/SellerProductFormPage';
 import ProfileCompletion from './components/ProfileCompletion';
 import TestingDashboard from './components/TestingDashboard';
+import AffiliateGuide from './pages/AffiliateGuide';
 
 // Protect admin route
 const ADMIN_EMAIL = "balloonpilot79@gmail.com";
@@ -342,6 +343,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/privacy" element={<PrivacyPage />} />
                     <Route path="/terms" element={<TermsPage />} />
                     <Route path="/faq" element={<FAQPage />} />
+                    <Route path="/affiliate-guide" element={<AffiliateGuide />} />
                     <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                     <Route path="/admin/platform" element={<AdminRoute><PlatformAdminDashboard /></AdminRoute>} />
                     <Route path="/admin/settings" element={<AdminRoute><PlatformSettings /></AdminRoute>} />
