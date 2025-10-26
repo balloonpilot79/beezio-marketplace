@@ -56,7 +56,7 @@ const EnhancedAffiliateDashboard: React.FC = () => {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [trafficSources, setTrafficSources] = useState<TrafficSource[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'links' | 'qr-codes' | 'analytics' | 'optimization' | 'earnings' | 'community' | 'training' | 'payments' | 'integrations'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'links' | 'qr-codes' | 'analytics' | 'optimization' | 'earnings' | 'community' | 'training' | 'payments' | 'integrations' | 'campaigns'>('overview');
   const [loading, setLoading] = useState(false); // Changed to false to prevent loading screen
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   const [productFilter, setProductFilter] = useState<{
@@ -303,6 +303,7 @@ const EnhancedAffiliateDashboard: React.FC = () => {
         <nav className="flex space-x-6 overflow-x-auto">
           {[
             { id: 'overview', label: 'Overview', icon: BarChart3 },
+            ...(isFundraiser ? [{ id: 'campaigns', label: 'My Campaigns', icon: Heart }] : []),
             { id: 'products', label: 'Browse Products', icon: Target },
             { id: 'links', label: 'My Links', icon: ExternalLink },
             { id: 'qr-codes', label: 'QR Codes', icon: QrCode },
@@ -1536,6 +1537,184 @@ const EnhancedAffiliateDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Fundraiser Campaigns Tab */}
+      {activeTab === 'campaigns' && isFundraiser && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-pink-500 to-purple-500 p-6 rounded-xl shadow-lg text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-bold mb-2">💝 My Fundraising Campaigns</h3>
+                <p className="text-pink-100">Create and manage campaigns for your cause</p>
+              </div>
+              <Heart className="w-16 h-16 opacity-20" />
+            </div>
+          </div>
+
+          {/* Create New Campaign Button */}
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-gray-900">Active Campaigns</h2>
+            <button
+              onClick={() => window.location.href = '/fundraisers'}
+              className="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-pink-600 hover:to-purple-600 transition-all duration-200 flex items-center space-x-2"
+            >
+              <Heart className="w-5 h-5" />
+              <span>Create New Campaign</span>
+            </button>
+          </div>
+
+          {/* Campaign Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Raised</p>
+                  <p className="text-3xl font-bold text-gray-900">${stats.total_earnings.toLocaleString()}</p>
+                  <p className="text-sm text-green-600 mt-1">Across all campaigns</p>
+                </div>
+                <DollarSign className="w-12 h-12 text-green-600" />
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Active Campaigns</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.active_links}</p>
+                  <p className="text-sm text-blue-600 mt-1">Currently running</p>
+                </div>
+                <Heart className="w-12 h-12 text-pink-600" />
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Supporters</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.total_sales}</p>
+                  <p className="text-sm text-purple-600 mt-1">People who donated</p>
+                </div>
+                <Users className="w-12 h-12 text-purple-600" />
+              </div>
+            </div>
+          </div>
+
+          {/* Campaign Management Info */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2">
+              <Heart className="w-5 h-5 text-pink-600" />
+              <span>How Fundraising Works</span>
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-start space-x-3">
+                <div className="bg-pink-100 rounded-full p-2 mt-1">
+                  <span className="text-pink-600 font-bold">1</span>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">Create Your Campaign</h4>
+                  <p className="text-sm text-gray-600">Tell your story, set a fundraising goal, and add images to inspire supporters</p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <div className="bg-purple-100 rounded-full p-2 mt-1">
+                  <span className="text-purple-600 font-bold">2</span>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">Promote Products</h4>
+                  <p className="text-sm text-gray-600">Share product links and your custom fundraiser page. When people buy, you earn commissions for your cause</p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <div className="bg-green-100 rounded-full p-2 mt-1">
+                  <span className="text-green-600 font-bold">3</span>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">Receive Donations</h4>
+                  <p className="text-sm text-gray-600">All commissions from your affiliate links automatically count towards your fundraising goal. Get paid weekly to your Stripe account</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sample Campaign Cards (to be replaced with real data) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-semibold text-gray-900">Sample Campaign 1</h4>
+                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">Active</span>
+              </div>
+              
+              <p className="text-sm text-gray-600 mb-4">Help us raise funds for our community project...</p>
+              
+              <div className="space-y-2 mb-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Goal:</span>
+                  <span className="font-semibold text-gray-900">$5,000</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-gradient-to-r from-pink-500 to-purple-500 h-2 rounded-full" style={{width: '60%'}}></div>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Raised: $3,000</span>
+                  <span className="text-gray-600">60%</span>
+                </div>
+              </div>
+
+              <div className="flex space-x-2">
+                <button className="flex-1 bg-pink-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-pink-700 transition-colors text-sm">
+                  View Campaign
+                </button>
+                <button className="flex-1 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors text-sm">
+                  Edit
+                </button>
+              </div>
+            </div>
+
+            {/* Create Campaign Card */}
+            <button
+              onClick={() => window.location.href = '/fundraisers'}
+              className="bg-gradient-to-br from-pink-50 to-purple-50 p-6 rounded-xl shadow-sm border-2 border-dashed border-pink-300 hover:border-pink-500 transition-all group cursor-pointer"
+            >
+              <div className="text-center">
+                <div className="bg-pink-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 group-hover:bg-pink-200 transition-colors">
+                  <Heart className="w-8 h-8 text-pink-600" />
+                </div>
+                <h4 className="font-semibold text-gray-900 mb-2">Create New Campaign</h4>
+                <p className="text-sm text-gray-600">Start raising funds for your cause today</p>
+              </div>
+            </button>
+          </div>
+
+          {/* Resources Section */}
+          <div className="bg-purple-50 border border-purple-200 p-6 rounded-xl">
+            <h3 className="font-semibold text-purple-900 mb-3 flex items-center space-x-2">
+              <Lightbulb className="w-5 h-5" />
+              <span>Fundraising Tips</span>
+            </h3>
+            <ul className="space-y-2 text-sm text-purple-800">
+              <li className="flex items-start space-x-2">
+                <span className="text-purple-600">•</span>
+                <span>Share your campaign on social media with compelling stories and updates</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <span className="text-purple-600">•</span>
+                <span>Promote high-commission products that align with your cause</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <span className="text-purple-600">•</span>
+                <span>Keep supporters updated with progress reports and thank you messages</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <span className="text-purple-600">•</span>
+                <span>Use QR codes on flyers and posters to drive offline donations</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'payments' && (
         <StripeAffiliateDashboard />
       )}

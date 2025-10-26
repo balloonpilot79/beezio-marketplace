@@ -269,7 +269,7 @@ const CheckoutForm: React.FC<{ onSubmit: (data: any) => void; isLoading: boolean
 
 const EnhancedCheckoutPage: React.FC = () => {
   const { items, getTotalPrice, getShippingTotal, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { trackSale } = useAffiliate();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -308,18 +308,25 @@ const EnhancedCheckoutPage: React.FC = () => {
     let affiliateCommission = 0;
     let beezioCommission = 0;
 
-    if (affiliateId) {
-      // If there's an affiliate, they get the commission
+    // Check if buyer is an affiliate or fundraiser (no affiliate fee for them)
+    const buyerIsAffiliate = profile?.primary_role === 'affiliate' || profile?.primary_role === 'fundraiser';
+
+    if (affiliateId && !buyerIsAffiliate) {
+      // If there's an affiliate AND buyer is not an affiliate/fundraiser, calculate commission
       affiliateCommission = items.reduce((sum, item) => {
+        // Skip commission if buyer is the seller of this specific item
+        if (user?.id === item.sellerId) {
+          return sum;
+        }
         return sum + (item.price * item.quantity * (item.commission_rate || 0) / 100);
       }, 0);
-      // Beezio gets a smaller platform fee when affiliate is involved
-      beezioCommission = subtotal * 0.03; // 3% platform fee
+      // Beezio gets platform fee (always charged)
+      beezioCommission = subtotal * 0.15; // 15% platform fee
     } else {
-      // No affiliate, Beezio gets full commission
-      beezioCommission = items.reduce((sum, item) => {
-        return sum + (item.price * item.quantity * (item.commission_rate || 25) / 100);
-      }, 0);
+      // No affiliate commission (buyer is affiliate/fundraiser OR no affiliate link used OR buyer is seller)
+      affiliateCommission = 0;
+      // Beezio still gets platform fee
+      beezioCommission = subtotal * 0.15; // 15% platform fee
     }
 
     const total = subtotal + shipping + tax;
@@ -477,20 +484,37 @@ const EnhancedCheckoutPage: React.FC = () => {
                 
                 {/* Commission Transparency */}
                 <div className="border-t border-gray-100 pt-2 mt-2">
-                  {affiliateId ? (
+                  {affiliateId && orderSummary.affiliateCommission > 0 ? (
                     <>
                       <div className="flex justify-between text-sm">
                         <span className="text-blue-600">Affiliate Commission</span>
                         <span className="text-blue-600">${orderSummary.affiliateCommission.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Platform Fee</span>
+                        <span className="text-gray-600">Platform Fee (15%)</span>
                         <span className="text-gray-600">${orderSummary.beezioCommission.toFixed(2)}</span>
                       </div>
                     </>
+                  ) : affiliateId && orderSummary.affiliateCommission === 0 ? (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-green-600">Affiliate Fee</span>
+                        <span className="text-green-600 line-through">Waived</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Platform Fee (15%)</span>
+                        <span className="text-gray-600">${orderSummary.beezioCommission.toFixed(2)}</span>
+                      </div>
+                      <p className="text-xs text-green-600 mt-1">
+                        {profile?.primary_role === 'affiliate' || profile?.primary_role === 'fundraiser' 
+                          ? '✓ Affiliates & fundraisers shop commission-free!'
+                          : '✓ No affiliate fee when buying your own products'
+                        }
+                      </p>
+                    </>
                   ) : (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Platform Commission</span>
+                      <span className="text-gray-600">Platform Fee (15%)</span>
                       <span className="text-gray-600">${orderSummary.beezioCommission.toFixed(2)}</span>
                     </div>
                   )}
@@ -526,11 +550,13 @@ const EnhancedCheckoutPage: React.FC = () => {
                 <div className="flex items-start">
                   <AlertCircle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
                   <div>
-                    <h4 className="text-sm font-semibold text-yellow-800">100% Transparent</h4>
+                    <h4 className="text-sm font-semibold text-yellow-800">100% Transparent Pricing</h4>
                     <p className="text-xs text-yellow-700 mt-1">
-                      {affiliateId 
-                        ? `This purchase supports an affiliate partner. ${orderSummary.affiliateCommission.toFixed(2)} goes to them, $${orderSummary.beezioCommission.toFixed(2)} covers platform costs.`
-                        : `No affiliate involved. $${orderSummary.beezioCommission.toFixed(2)} goes to platform operations and seller support.`
+                      {affiliateId && orderSummary.affiliateCommission > 0
+                        ? `Affiliate earns $${orderSummary.affiliateCommission.toFixed(2)}. Platform fee: $${orderSummary.beezioCommission.toFixed(2)}.`
+                        : affiliateId && orderSummary.affiliateCommission === 0
+                        ? `Affiliate fee waived! ${profile?.primary_role === 'affiliate' || profile?.primary_role === 'fundraiser' ? 'You shop commission-free as an affiliate/fundraiser.' : 'No fee on your own products.'} Platform fee: $${orderSummary.beezioCommission.toFixed(2)}.`
+                        : `No affiliate commission. Platform fee: $${orderSummary.beezioCommission.toFixed(2)} covers operations and seller support.`
                       }
                     </p>
                   </div>
