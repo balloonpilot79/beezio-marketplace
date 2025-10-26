@@ -12,7 +12,7 @@ Beezio uses a transparent, fair fee structure that rewards sellers, affiliates, 
 
 **Fees Charged:**
 - ✅ **Beezio Platform Fee:** 15% of subtotal
-- ✅ **Stripe Processing:** ~2.9% + $0.30
+- ✅ **Stripe Processing:** 2.9% + $0.60 per transaction
 - ✅ **Shipping:** Cost set by seller
 - ✅ **Sales Tax:** 8% (varies by state)
 
@@ -29,7 +29,7 @@ Beezio uses a transparent, fair fee structure that rewards sellers, affiliates, 
 **Fees Charged:**
 - ✅ **Affiliate Commission:** Varies by product (seller sets rate, e.g., 10-30%)
 - ✅ **Beezio Platform Fee:** 15% of subtotal
-- ✅ **Stripe Processing:** ~2.9% + $0.30
+- ✅ **Stripe Processing:** 2.9% + $0.60 per transaction
 - ✅ **Shipping:** Cost set by seller
 - ✅ **Sales Tax:** 8%
 
@@ -43,7 +43,7 @@ Beezio uses a transparent, fair fee structure that rewards sellers, affiliates, 
 
 **Fees Charged:**
 - ✅ **Beezio Platform Fee:** 15% of subtotal
-- ✅ **Stripe Processing:** ~2.9% + $0.30
+- ✅ **Stripe Processing:** 2.9% + $0.60 per transaction
 - ✅ **Shipping:** Cost set by seller
 - ✅ **Sales Tax:** 8%
 
@@ -59,7 +59,7 @@ Beezio uses a transparent, fair fee structure that rewards sellers, affiliates, 
 
 **Fees Charged:**
 - ✅ **Beezio Platform Fee:** 15% of subtotal
-- ✅ **Stripe Processing:** ~2.9% + $0.30
+- ✅ **Stripe Processing:** 2.9% + $0.60 per transaction
 - ✅ **Shipping:** Cost set by seller
 - ✅ **Sales Tax:** 8%
 
@@ -152,7 +152,7 @@ const calculateOrderSummary = (): OrderSummary => {
 - Seller receives: $65.00 (85% - 20% affiliate commission)
 - Affiliate receives: $20.00
 - Beezio receives: $15.00
-- Stripe receives: ~$3.27
+- Stripe receives: $3.33 (2.9% + $0.60)
 
 ---
 
@@ -169,7 +169,7 @@ const calculateOrderSummary = (): OrderSummary => {
 - Seller receives: $85.00 (full 85%, no affiliate commission deducted)
 - Affiliate receives: $0.00 (can't earn on own purchase)
 - Beezio receives: $15.00
-- Stripe receives: ~$3.27
+- Stripe receives: $3.33 (2.9% + $0.60)
 
 **Affiliate Saves:** $20.00 compared to regular customers!
 
@@ -223,7 +223,7 @@ const calculateOrderSummary = (): OrderSummary => {
    - Affiliate link was used
    - Buyer is NOT an affiliate/fundraiser
    - Buyer is NOT the seller of that item
-3. **Stripe fees are unavoidable** - payment processing costs
+3. **Stripe fees are unavoidable** (2.9% + $0.60) - payment processing costs
 4. **Shipping is pass-through** - whatever seller charges
 5. **Tax is legally required** - varies by location
 

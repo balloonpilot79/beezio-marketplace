@@ -118,8 +118,8 @@ export const processPayment = async (
     breakdown: {
       seller: `$${distribution.sellerPayout.toFixed(2)} (gets exactly what they wanted)`,
       affiliate: `$${distribution.affiliatePayout.toFixed(2)} (commission)`,
-      platform: `$${distribution.platformRevenue.toFixed(2)} (10% of seller amount)`,
-      stripe: `$${distribution.stripeFee.toFixed(2)} (3% processing)`
+      platform: `$${distribution.platformRevenue.toFixed(2)} (15% platform fee)`,
+      stripe: `$${distribution.stripeFee.toFixed(2)} (2.9% + $0.60 processing)`
     },
     itemCount: items.length,
     customer: customerInfo.email,
@@ -251,7 +251,7 @@ export const getCommissionBreakdown = (items: any[], affiliateId?: string) => {
       return sum + (item.price * item.quantity * (item.commission_rate || 25) / 100);
     }, 0);
     
-    const platformFee = subtotal * 0.03;
+    const platformFee = subtotal * 0.15; // 15% platform fee - ALWAYS
     
     return {
       type: 'affiliate',
@@ -261,22 +261,21 @@ export const getCommissionBreakdown = (items: any[], affiliateId?: string) => {
       },
       platform: {
         fee: platformFee,
-        percentage: '3.0'
+        percentage: '15.0'
       },
       transparency: `${affiliateCommission.toFixed(2)} goes to the affiliate who referred you, $${platformFee.toFixed(2)} covers platform operations.`
     };
   } else {
-    const beezioCommission = items.reduce((sum, item) => {
-      return sum + (item.price * item.quantity * (item.commission_rate || 25) / 100);
-    }, 0);
+    // No affiliate - platform still gets 15% fee
+    const platformFee = subtotal * 0.15;
     
     return {
       type: 'direct',
       platform: {
-        commission: beezioCommission,
-        percentage: (beezioCommission / subtotal * 100).toFixed(1)
+        commission: platformFee,
+        percentage: '15.0'
       },
-      transparency: `$${beezioCommission.toFixed(2)} supports platform operations, seller services, and marketplace development.`
+      transparency: `$${platformFee.toFixed(2)} supports platform operations, seller services, and marketplace development.`
     };
   }
 };
