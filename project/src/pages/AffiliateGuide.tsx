@@ -1,27 +1,28 @@
 import React from 'react';
+import { 
+  Share2, 
+  DollarSign, 
+  TrendingUp, 
+  Users, 
+  Link2, 
+  QrCode, 
+  Target,
+  BarChart3,
+  Award,
+  Zap,
+  CheckCircle,
+  ArrowRight,
+  Lightbulb,
+  Globe,
+  Trophy,
+  GamepadIcon
+} from 'lucide-react';
 
 const AffiliateGuide: React.FC = () => {
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      backgroundColor: '#9333ea',
-      padding: '40px',
-      color: 'white'
-    }}>
-      <h1 style={{ fontSize: '48px', marginBottom: '20px' }}>
-        🎉 AFFILIATE GUIDE PAGE IS WORKING! 🎉
-      </h1>
-      <p style={{ fontSize: '24px' }}>
-        If you can see this purple page with white text, the route is working correctly!
-      </p>
-      <p style={{ fontSize: '18px', marginTop: '20px' }}>
-        Route: /affiliate-guide ✓
-      </p>
-    </div>
-  );
-};
-
-export default AffiliateGuide;
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Section */}
+      <section className="bg-gradient-to-r from-purple-600 to-pink-600 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <Share2 className="h-16 w-16 mx-auto mb-6" />
           <h1 className="text-4xl md:text-6xl font-bold mb-6">Complete Affiliate Guide</h1>
