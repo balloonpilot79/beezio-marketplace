@@ -142,43 +142,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         console.log('Category fetch error, keeping defaults:', e);
       }
     })();
-  }, []);  useEffect(() => {
-    (async () => {
-      try {
-        // Try to use the helper function first
-        const { data: functionData, error: functionError } = await supabase.rpc('get_active_categories');
-        
-        if (!functionError && functionData && functionData.length > 0) {
-          console.log('✅ Categories loaded from database function');
-          setCategories(functionData.map((cat: any) => ({ id: cat.id, name: cat.name })));
-          return;
-        }
-
-        // Fallback to direct table query
-        const { data, error } = await supabase
-          .from('categories')
-          .select('id, name')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
-        
-        if (error) {
-          console.warn('Could not load categories from database, using defaults:', error.message || error);
-          setCategories(defaultCategories);
-          return;
-        }
-        
-        if (data && data.length > 0) {
-          console.log('✅ Categories loaded from database table');
-          setCategories(data);
-        } else {
-          console.log('No categories found in database, using defaults');
-          setCategories(defaultCategories);
-        }
-      } catch (e) {
-        console.warn('Category fetch error, using defaults:', e);
-        setCategories(defaultCategories);
-      }
-    })();
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
