@@ -105,8 +105,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [imageUrl, setImageUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
 
-  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
-
   // Default categories as fallback
   const defaultCategories = [
     { id: 'electronics', name: 'Electronics' },
@@ -127,11 +125,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     { id: 'food-beverages', name: 'Food & Beverages' }
   ];
 
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>(defaultCategories);
+
   useEffect(() => {
-    // Always start with default categories to ensure dropdown isn't empty
-    setCategories(defaultCategories);
-    
-    // Try to load from database in background
+    // Try to load from database, but keep defaults if it fails
     (async () => {
       try {
         const { data, error } = await supabase.from('categories').select('id, name').order('sort_order', { ascending: true });

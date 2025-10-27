@@ -33,7 +33,6 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
 
     const handleScroll = () => {
       // Close all dropdowns when scrolling
-      setIsHelpDropdownOpen(false);
       setIsGlobalDropdownOpen(false);
       setIsUserDropdownOpen(false);
     };
