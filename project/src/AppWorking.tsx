@@ -309,7 +309,7 @@ const AppWorking: React.FC = () => {
                 <Header onOpenAuthModal={setAuthModal} />
                 <UserSubHeader />
                 
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <main>
                   <Routes>
                     <Route path="/" element={<HomePage onOpenAuthModal={setAuthModal} />} />
                     <Route path="/test" element={<TestPage />} />
