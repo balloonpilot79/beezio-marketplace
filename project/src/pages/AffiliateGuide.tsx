@@ -11,7 +11,6 @@ import {
   Award,
   Zap,
   CheckCircle,
-  ArrowRight,
   Lightbulb,
   Globe,
   Trophy,
@@ -19,9 +18,6 @@ import {
 } from 'lucide-react';
 
 const AffiliateGuide: React.FC = () => {
-  // Force rebuild timestamp: 2025-10-26 20:15
-  console.log('🐝 AffiliateGuide component mounted');
-  
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}

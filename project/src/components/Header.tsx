@@ -13,21 +13,16 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isHelpDropdownOpen, setIsHelpDropdownOpen] = useState(false);
   const [isGlobalDropdownOpen, setIsGlobalDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
   // Refs for detecting clicks outside
-  const helpDropdownRef = useRef<HTMLDivElement>(null);
   const globalDropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns when clicking outside or scrolling
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (helpDropdownRef.current && !helpDropdownRef.current.contains(event.target as Node)) {
-        setIsHelpDropdownOpen(false);
-      }
       if (globalDropdownRef.current && !globalDropdownRef.current.contains(event.target as Node)) {
         setIsGlobalDropdownOpen(false);
       }
