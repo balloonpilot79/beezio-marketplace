@@ -127,6 +127,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>(defaultCategories);
 
+  // Debug: Log categories when they change
+  useEffect(() => {
+    console.log('📦 Categories state updated:', categories.length, 'categories');
+    console.log('Categories:', categories);
+  }, [categories]);
+
   useEffect(() => {
     // Try to load from database, but keep defaults if it fails
     (async () => {
