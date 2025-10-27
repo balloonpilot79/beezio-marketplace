@@ -28,19 +28,37 @@ const SellerProductFormPage: React.FC = () => {
     }
   });
 
-  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([
+    { id: 'electronics', name: 'Electronics' },
+    { id: 'fashion', name: 'Fashion & Apparel' },
+    { id: 'home-garden', name: 'Home & Garden' },
+    { id: 'books-media', name: 'Books & Media' },
+    { id: 'sports-outdoors', name: 'Sports & Outdoors' },
+    { id: 'beauty-personal-care', name: 'Beauty & Personal Care' },
+    { id: 'health-wellness', name: 'Health & Wellness' },
+    { id: 'technology', name: 'Technology' },
+    { id: 'arts-crafts', name: 'Arts & Crafts' },
+    { id: 'automotive', name: 'Automotive' },
+    { id: 'pet-supplies', name: 'Pet Supplies' },
+    { id: 'toys-games', name: 'Toys & Games' },
+    { id: 'education', name: 'Education & Courses' },
+    { id: 'services', name: 'Services' },
+    { id: 'digital-products', name: 'Digital Products' },
+    { id: 'food-beverages', name: 'Food & Beverages' }
+  ]);
 
   useEffect(() => {
     (async () => {
       try {
         const { data, error } = await supabase.from('categories').select('id, name').order('sort_order', { ascending: true });
-        if (error) {
-          console.warn('Could not load categories:', error.message || error);
-          return;
+        if (!error && data && data.length > 0) {
+          console.log('Categories loaded from database:', data.length);
+          setCategories(data);
+        } else {
+          console.log('Using fallback categories');
         }
-        setCategories(data || []);
       } catch (e) {
-        console.warn('Category fetch error:', e);
+        console.log('Category fetch error, keeping defaults:', e);
       }
     })();
   }, []);
