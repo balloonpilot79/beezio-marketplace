@@ -112,54 +112,6 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 Contact
                 <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-orange-600 transition-all duration-300 group-hover:w-[calc(100%-16px)]"></span>
               </Link>
-              <div className="relative" ref={helpDropdownRef}>
-                <button
-                  onClick={() => setIsHelpDropdownOpen(!isHelpDropdownOpen)}
-                  className="text-gray-700 hover:text-purple-600 font-medium text-sm transition-colors duration-200 flex items-center space-x-1 px-2 py-1"
-                >
-                  <span>Resources</span>
-                  <svg className="w-3 h-3 transition-transform duration-200" style={{ transform: isHelpDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {isHelpDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
-                    <Link 
-                      to="/how-it-works" 
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium" 
-                      onClick={() => {
-                        setIsHelpDropdownOpen(false);
-                        setIsGlobalDropdownOpen(false);
-                        setIsUserDropdownOpen(false);
-                      }}
-                    >
-                      How It Works
-                    </Link>
-                    <Link 
-                      to="/sellers" 
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium" 
-                      onClick={() => {
-                        setIsHelpDropdownOpen(false);
-                        setIsGlobalDropdownOpen(false);
-                        setIsUserDropdownOpen(false);
-                      }}
-                    >
-                      For Sellers
-                    </Link>
-                    <Link 
-                      to="/affiliate-guide" 
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors font-medium" 
-                      onClick={() => {
-                        setIsHelpDropdownOpen(false);
-                        setIsGlobalDropdownOpen(false);
-                        setIsUserDropdownOpen(false);
-                      }}
-                    >
-                      Affiliate Guide
-                    </Link>
-                  </div>
-                )}
-              </div>
             </nav>
           </div>
 
@@ -332,27 +284,6 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Contact
-              </Link>
-              <Link 
-                to="/how-it-works" 
-                className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                How It Works
-              </Link>
-              <Link 
-                to="/sellers" 
-                className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                For Sellers
-              </Link>
-              <Link 
-                to="/affiliate-guide" 
-                className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Affiliate Guide
               </Link>
               
               {/* Mobile Sign In/Up for non-authenticated users */}
