@@ -3,7 +3,7 @@
   base = "project"
   # Use the existing npm build script from project/package.json
   command = "npm run build"
-  # Vite output
+  # Vite output - Updated 2025-10-26
   publish = "project/dist"
 
 [context.production.environment]
