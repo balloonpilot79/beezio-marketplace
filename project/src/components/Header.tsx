@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import { useCart } from '../contexts/CartContext';
 import CartIcon from './CartIcon';
 import LanguageSwitcher from './LanguageSwitcher';
 import CurrencySwitcher from './CurrencySwitcher';
@@ -12,7 +11,6 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
   const { user, signOut } = useAuth();
-  const { items } = useCart();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHelpDropdownOpen, setIsHelpDropdownOpen] = useState(false);
@@ -24,7 +22,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
   const globalDropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdowns when clicking outside
+  // Close dropdowns when clicking outside or scrolling
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (helpDropdownRef.current && !helpDropdownRef.current.contains(event.target as Node)) {
@@ -38,9 +36,19 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
       }
     };
 
+    const handleScroll = () => {
+      // Close all dropdowns when scrolling
+      setIsHelpDropdownOpen(false);
+      setIsGlobalDropdownOpen(false);
+      setIsUserDropdownOpen(false);
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true); // Use capture phase to catch all scroll events
+    
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
     };
   }, []);
 

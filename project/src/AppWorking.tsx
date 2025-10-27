@@ -57,6 +57,7 @@ import SellerProductFormPage from './pages/SellerProductFormPage';
 import ProfileCompletion from './components/ProfileCompletion';
 import TestingDashboard from './components/TestingDashboard';
 import AffiliateGuide from './pages/AffiliateGuide';
+import ScrollToTop from './components/ScrollToTop';
 
 // Protect admin route
 const ADMIN_EMAIL = "balloonpilot79@gmail.com";
@@ -303,6 +304,7 @@ const AppWorking: React.FC = () => {
           <AffiliateProvider>
             <GamificationProvider>
               <Router>
+              <ScrollToTop />
               <div className="min-h-screen bg-gray-50">
                 <Header onOpenAuthModal={setAuthModal} />
                 <UserSubHeader />
