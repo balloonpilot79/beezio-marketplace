@@ -10,6 +10,20 @@
 # Environment variables should be set in the Netlify UI or via the Netlify CLI.
 # Do NOT store secrets here in the repo.
 
+# Force HTTPS
+[[redirects]]
+  from = "http://beezio.co/*"
+  to = "https://beezio.co/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://www.beezio.co/*"
+  to = "https://beezio.co/:splat"
+  status = 301
+  force = true
+
+# SPA fallback
 [[redirects]]
   from = "/*"
   to = "/index.html"
