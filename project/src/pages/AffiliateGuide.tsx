@@ -19,10 +19,15 @@ import {
 } from 'lucide-react';
 
 const AffiliateGuide: React.FC = () => {
+  console.log('AffiliateGuide component rendering');
+  
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      <div style={{ padding: '20px', background: 'red', color: 'white', fontSize: '24px' }}>
+        TEST - If you see this, the component is rendering!
+      </div>
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-purple-600 to-pink-600 text-white py-16">
+      <section style={{ background: 'linear-gradient(to right, #9333ea, #ec4899)', color: 'white', padding: '4rem 0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <Share2 className="h-16 w-16 mx-auto mb-6" />
           <h1 className="text-4xl md:text-6xl font-bold mb-6">Complete Affiliate Guide</h1>
