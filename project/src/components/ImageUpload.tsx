@@ -81,11 +81,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       });
 
     if (error) {
+      console.error('Upload error:', error);
       throw new Error(`Upload failed: ${error.message}`);
     }
 
-    const { publicUrl } = supabase.storage.from(bucket).getPublicUrl(fileName);
-    return publicUrl;
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+    return urlData.publicUrl;
   };
 
   const handleFileUpload = async (files: File[]) => {
@@ -148,6 +149,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         return url;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+        console.error('Image upload error:', error);
         
         setUploadingFiles(prev =>
           prev.map(f =>
