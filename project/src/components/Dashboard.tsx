@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import UnifiedMegaDashboard from './UnifiedMegaDashboard';
@@ -6,17 +6,6 @@ import UnifiedMegaDashboard from './UnifiedMegaDashboard';
 const Dashboard: React.FC = () => {
   const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [localLoading, setLocalLoading] = useState(true);
-
-  // Timeout to prevent infinite loading - reduced to 2 seconds
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      console.log('Dashboard: Loading timeout reached, forcing load');
-      setLocalLoading(false);
-    }, 2000); // 2 second timeout
-
-    return () => clearTimeout(timeout);
-  }, []);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -27,16 +16,10 @@ const Dashboard: React.FC = () => {
       navigate('/');
       return;
     }
-    
-    // If auth is loaded, stop local loading immediately
-    if (!authLoading && user) {
-      console.log('Dashboard: Auth loaded, showing dashboard');
-      setLocalLoading(false);
-    }
   }, [user, authLoading, navigate, profile]);
 
-  // Only show loading if both auth is loading AND we haven't timed out
-  if ((authLoading || localLoading) && localLoading) {
+  // Show loading only while auth is loading AND we don't have a user yet
+  if (authLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -47,6 +30,7 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  // If we have a user, show the dashboard even if auth is still loading
   if (!user) {
     return null;
   }
