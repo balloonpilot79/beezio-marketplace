@@ -8,31 +8,35 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [localLoading, setLocalLoading] = useState(true);
 
-  // Timeout to prevent infinite loading
+  // Timeout to prevent infinite loading - reduced to 2 seconds
   useEffect(() => {
     const timeout = setTimeout(() => {
       console.log('Dashboard: Loading timeout reached, forcing load');
       setLocalLoading(false);
-    }, 5000); // 5 second timeout
+    }, 2000); // 2 second timeout
 
     return () => clearTimeout(timeout);
   }, []);
 
   // Redirect if not authenticated
   useEffect(() => {
+    console.log('Dashboard: Auth state -', { user: !!user, authLoading, profile: !!profile });
+    
     if (!authLoading && !user) {
       console.log('Dashboard: No user found, redirecting to home');
       navigate('/');
       return;
     }
     
-    // If auth is loaded, stop local loading
-    if (!authLoading) {
+    // If auth is loaded, stop local loading immediately
+    if (!authLoading && user) {
+      console.log('Dashboard: Auth loaded, showing dashboard');
       setLocalLoading(false);
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, profile]);
 
-  if (authLoading || localLoading) {
+  // Only show loading if both auth is loading AND we haven't timed out
+  if ((authLoading || localLoading) && localLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
