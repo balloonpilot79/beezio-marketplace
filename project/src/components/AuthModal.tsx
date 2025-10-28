@@ -104,10 +104,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         const result = await signIn(formData.email, formData.password);
         if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Sign in result:', result);
         if (result && (result.user || result.session)) {
-          // Close modal immediately
-          onClose();
-          // Redirect to dashboard immediately
+          if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Login successful, redirecting...');
+          // Give auth context a moment to update
+          await new Promise(resolve => setTimeout(resolve, 300));
+          // Navigate first, then close modal
           navigate('/dashboard');
+          // Close modal after navigation starts
+          setTimeout(() => {
+            onClose();
+          }, 100);
         } else {
           // If no user/session returned, surface the response for debugging
           console.warn('Sign in returned no user/session:', result);
@@ -122,9 +127,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
             setSuccess('Account created! Please check your email to confirm your account before logging in.');
             return;
           }
-          // If session exists, close modal and redirect to unified dashboard
-          onClose();
+          // If session exists, give auth context time to update
+          await new Promise(resolve => setTimeout(resolve, 300));
+          // Navigate first, then close modal
           navigate('/dashboard');
+          setTimeout(() => {
+            onClose();
+          }, 100);
         }
       }
     } catch (err: any) {
@@ -195,6 +204,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                 value={formData.email}
                 onChange={handleChange}
                 required
+                autoComplete="email"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -211,6 +221,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                     onChange={handleChange}
                     required
                     minLength={6}
+                    autoComplete="current-password"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                   <button
