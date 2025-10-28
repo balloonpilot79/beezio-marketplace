@@ -60,9 +60,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (process.env.NODE_ENV !== 'production') {
-      console.debug('AuthModal: Form submitted, mode:', mode, 'email:', formData.email);
-    }
+    console.log('AuthModal: Form submitted, mode:', mode, 'email:', formData.email);
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -76,7 +74,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         return;
       }
       if (mode === 'forgot') {
-        if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting password reset...');
+        console.log('AuthModal: Attempting password reset...');
 
         // Wrap reset in a timeout promise so the UI doesn't spin forever
         const resetPromise = resetPassword(formData.email);
@@ -97,43 +95,44 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
             } else {
               setError(err?.message || 'Failed to send password reset email.');
             }
+          })
+          .finally(() => {
+            setLoading(false);
           });
+        return;
 
       } else if (mode === 'login') {
-        if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting sign in...');
+        console.log('AuthModal: Attempting sign in...');
         const result = await signIn(formData.email, formData.password);
-        if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Sign in result:', result);
+        console.log('AuthModal: Sign in result:', result);
         if (result && (result.user || result.session)) {
-          if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Login successful, redirecting...');
-          // Give auth context a moment to update
-          await new Promise(resolve => setTimeout(resolve, 300));
-          // Navigate first, then close modal
-          navigate('/dashboard');
-          // Close modal after navigation starts
-          setTimeout(() => {
-            onClose();
-          }, 100);
+          console.log('AuthModal: Login successful, user:', result.user?.email);
+          setLoading(false);
+          // Close modal immediately - navigation will happen from auth state change
+          onClose();
+          // Navigate to dashboard
+          navigate('/dashboard', { replace: true });
         } else {
           // If no user/session returned, surface the response for debugging
           console.warn('Sign in returned no user/session:', result);
           setError('Sign in failed. Please check your credentials and try again.');
+          setLoading(false);
         }
       } else {
-        if (process.env.NODE_ENV !== 'production') console.debug('AuthModal: Attempting sign up...');
+        console.log('AuthModal: Attempting sign up...');
         const result = await signUp(formData.email, formData.password, formData);
         if (result && result.user) {
           // Supabase: If email confirmation is required, session will be null
           if (!result.session) {
             setSuccess('Account created! Please check your email to confirm your account before logging in.');
+            setLoading(false);
             return;
           }
-          // If session exists, give auth context time to update
-          await new Promise(resolve => setTimeout(resolve, 300));
-          // Navigate first, then close modal
-          navigate('/dashboard');
-          setTimeout(() => {
-            onClose();
-          }, 100);
+          // If session exists, close modal and navigate
+          console.log('AuthModal: Signup successful, user:', result.user?.email);
+          setLoading(false);
+          onClose();
+          navigate('/dashboard', { replace: true });
         }
       }
     } catch (err: any) {
@@ -154,7 +153,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
       } else {
         setError(msg || 'An error occurred during authentication');
       }
-    } finally {
       setLoading(false);
     }
   };
