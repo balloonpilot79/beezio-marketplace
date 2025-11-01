@@ -108,10 +108,19 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         if (result && (result.user || result.session)) {
           console.log('AuthModal: Login successful, user:', result.user?.email);
           setLoading(false);
-          // Close modal immediately - navigation will happen from auth state change
+          
+          // Wait a tiny bit for auth context to update
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Close modal first
+          console.log('AuthModal: Closing modal and navigating');
           onClose();
-          // Navigate to dashboard
-          navigate('/dashboard', { replace: true });
+          
+          // Navigate after a brief delay to ensure modal closes
+          setTimeout(() => {
+            console.log('AuthModal: Navigating to dashboard');
+            navigate('/dashboard', { replace: true });
+          }, 50);
         } else {
           // If no user/session returned, surface the response for debugging
           console.warn('Sign in returned no user/session:', result);
@@ -131,8 +140,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           // If session exists, close modal and navigate
           console.log('AuthModal: Signup successful, user:', result.user?.email);
           setLoading(false);
+          
+          // Wait for auth context to update
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
           onClose();
-          navigate('/dashboard', { replace: true });
+          setTimeout(() => {
+            navigate('/dashboard', { replace: true });
+          }, 50);
         }
       }
     } catch (err: any) {
