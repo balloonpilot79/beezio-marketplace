@@ -105,31 +105,22 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         console.log('AuthModal: Attempting sign in...');
         const result = await signIn(formData.email, formData.password);
         console.log('AuthModal: Sign in result:', result);
+        
         if (result && (result.user || result.session)) {
           console.log('AuthModal: Login successful, user:', result.user?.email);
-          setLoading(false);
           
-          // Wait a tiny bit for auth context to update
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          // Close modal first
-          console.log('AuthModal: Closing modal and navigating');
+          // Success! Just close and navigate
           onClose();
-          
-          // Navigate after a brief delay to ensure modal closes
-          setTimeout(() => {
-            console.log('AuthModal: Navigating to dashboard');
-            navigate('/dashboard', { replace: true });
-          }, 50);
+          navigate('/dashboard');
         } else {
-          // If no user/session returned, surface the response for debugging
           console.warn('Sign in returned no user/session:', result);
           setError('Sign in failed. Please check your credentials and try again.');
-          setLoading(false);
         }
+        setLoading(false);
       } else {
         console.log('AuthModal: Attempting sign up...');
         const result = await signUp(formData.email, formData.password, formData);
+        
         if (result && result.user) {
           // Supabase: If email confirmation is required, session will be null
           if (!result.session) {
@@ -137,18 +128,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
             setLoading(false);
             return;
           }
-          // If session exists, close modal and navigate
+          
+          // Success! Just close and navigate
           console.log('AuthModal: Signup successful, user:', result.user?.email);
-          setLoading(false);
-          
-          // Wait for auth context to update
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
           onClose();
-          setTimeout(() => {
-            navigate('/dashboard', { replace: true });
-          }, 50);
+          navigate('/dashboard');
         }
+        setLoading(false);
       }
     } catch (err: any) {
       console.error('Auth error:', err);
