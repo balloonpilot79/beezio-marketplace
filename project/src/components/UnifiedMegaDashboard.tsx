@@ -289,16 +289,16 @@ const UnifiedMegaDashboard: React.FC = () => {
     { id: 'payments', label: 'Payments', icon: CreditCard, show: true }
   ].filter(tab => tab.show);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/30 to-purple-50/30">
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/30 to-purple-50/30">
+      {loading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+            <p className="text-gray-700 font-medium">Updating your dashboard…</p>
+          </div>
+        </div>
+      )}
       {/* OBVIOUS BANNER TO VERIFY NEW DASHBOARD LOADED */}
       <div className="bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 text-white text-center py-3 font-bold text-lg animate-pulse">
         🎉 NEW UNIFIED MEGA DASHBOARD LOADED! 🚀 All Features in One Place!
