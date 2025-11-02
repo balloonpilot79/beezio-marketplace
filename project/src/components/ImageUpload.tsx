@@ -151,6 +151,11 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           )
         );
 
+        // Remove the completed upload row after showing the success state briefly
+        setTimeout(() => {
+          setUploadingFiles(prev => prev.filter(f => f.id !== uploadingFile.id));
+        }, 1200);
+
         return url;
       } catch (error) {
         // Always clear progress interval on error
