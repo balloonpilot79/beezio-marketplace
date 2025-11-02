@@ -73,20 +73,39 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   const uploadFile = async (file: File): Promise<string> => {
     const fileName = generateFileName(file);
 
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
+    try {
+      console.log('Uploading to bucket=%s path=%s size=%d type=%s', bucket, fileName, file.size, file.type);
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
 
-    if (error) {
-      console.error('Upload error:', error);
-      throw new Error(`Upload failed: ${error.message}`);
+      if (error) {
+        console.error('Upload error (storage.upload):', error);
+        throw new Error(`Upload failed: ${error.message}`);
+      }
+
+      // data may contain a path property (returned by Supabase)
+      const path = (data as any)?.path || fileName;
+
+      try {
+        const { data: urlData, error: urlError } = supabase.storage.from(bucket).getPublicUrl(path);
+        if (urlError) {
+          console.warn('getPublicUrl returned error:', urlError);
+        }
+        const publicUrl = (urlData as any)?.publicUrl || '';
+        console.log('Upload complete, publicUrl=', publicUrl);
+        return publicUrl;
+      } catch (err) {
+        console.error('getPublicUrl exception:', err);
+        return '';
+      }
+    } catch (err) {
+      console.error('uploadFile unexpected error:', err);
+      throw err;
     }
-
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
-    return urlData.publicUrl;
   };
 
   const handleFileUpload = async (files: File[]) => {
