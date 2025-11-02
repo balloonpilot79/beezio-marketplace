@@ -439,6 +439,87 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 placeholder="Describe your product"
               />
             </div>
+
+            {/* Product Images - Upload Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-4">
+                Product Images
+              </label>
+
+              {/* Image Gallery for existing products */}
+              {currentProductId && productImages.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Current Images</h4>
+                  <ImageGallery
+                    productId={currentProductId}
+                    images={productImages}
+                    onImagesChange={setProductImages}
+                    canEdit={true}
+                  />
+                </div>
+              )}
+
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                  Upload from your device
+                </h4>
+                <ImageUpload
+                  bucket="product-images"
+                  folder={currentProductId ? `products/${currentProductId}` : 'new-products'}
+                  productId={currentProductId ?? undefined}
+                  onUploadComplete={handleImageUploadSuccess}
+                  maxFiles={10}
+                  allowedTypes={['image/jpeg', 'image/png', 'image/webp']}
+                />
+                {!currentProductId && (
+                  <p className="mt-3 text-xs text-gray-500">
+                    We immediately store your uploads so they are ready when the product is saved.
+                  </p>
+                )}
+              </div>
+
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Add by URL</h4>
+                <div className="flex space-x-2 mb-2">
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="Enter image URL"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={addImage}
+                    className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                
+                {formData.images.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    {formData.images.map((image, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={image}
+                          alt={`Product ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Category *
@@ -807,86 +888,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   </button>
                 </div>
               )}
-            </div>
-
-            {/* Product Images - Advanced System */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-4">
-                Product Images
-              </label>
-
-              {/* Image Gallery for existing products */}
-              {currentProductId && productImages.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Current Images</h4>
-                  <ImageGallery
-                    productId={currentProductId}
-                    images={productImages}
-                    onImagesChange={setProductImages}
-                    canEdit={true}
-                  />
-                </div>
-              )}
-
-              <div className="mb-6">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
-                  Upload from your device
-                </h4>
-                <ImageUpload
-                  bucket="product-images"
-                  folder={currentProductId ? `products/${currentProductId}` : 'new-products'}
-                  productId={currentProductId ?? undefined}
-                  onUploadComplete={handleImageUploadSuccess}
-                  maxFiles={10}
-                  allowedTypes={['image/jpeg', 'image/png', 'image/webp']}
-                />
-                {!currentProductId && (
-                  <p className="mt-3 text-xs text-gray-500">
-                    We immediately store your uploads so they are ready when the product is saved.
-                  </p>
-                )}
-              </div>
-
-              <div className="border-t pt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Add by URL</h4>
-                <div className="flex space-x-2 mb-2">
-                  <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="Enter image URL"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={addImage}
-                    className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
-                
-                {formData.images.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2 mt-3">
-                    {formData.images.map((image, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={image}
-                          alt={`Product ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Video URLs */}
