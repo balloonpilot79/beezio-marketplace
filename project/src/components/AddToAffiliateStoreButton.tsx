@@ -38,25 +38,31 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
 
   // Check if user is affiliate and if they already added this product
   const isAffiliate = profile?.role === 'affiliate' || profile?.role === 'fundraiser';
-  const isOwnProduct = user?.id === sellerId;
+  const affiliateProfileId = profile?.id;
+  const isOwnProduct = Boolean(
+    (affiliateProfileId && affiliateProfileId === sellerId) ||
+    (user?.id && user.id === sellerId)
+  );
 
   useEffect(() => {
-    if (user && isAffiliate) {
-      checkIfAdded();
+    if (affiliateProfileId && isAffiliate) {
+      checkIfAdded(affiliateProfileId);
     }
-  }, [user, productId, isAffiliate]);
+  }, [affiliateProfileId, productId, isAffiliate]);
 
-  const checkIfAdded = async () => {
-    if (!user) return;
+  const checkIfAdded = async (currentAffiliateId: string) => {
+    try {
+      const { data } = await supabase
+        .from('affiliate_products')
+        .select('id, is_active')
+        .eq('affiliate_id', currentAffiliateId)
+        .eq('product_id', productId)
+        .maybeSingle();
 
-    const { data } = await supabase
-      .from('affiliate_products')
-      .select('id, is_active')
-      .eq('affiliate_id', user.id)
-      .eq('product_id', productId)
-      .maybeSingle();
-
-    setIsAdded(!!data?.is_active);
+      setIsAdded(!!data?.is_active);
+    } catch (error) {
+      console.error('Error checking affiliate product status:', error);
+    }
   };
 
   const handleAddToStore = async () => {
@@ -70,17 +76,27 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
       return;
     }
 
+    if (!affiliateProfileId) {
+      alert('We could not find your affiliate profile. Please refresh and try again.');
+      return;
+    }
+
     setShowModal(true);
   };
 
   const handleConfirmAdd = async () => {
+    if (!affiliateProfileId) {
+      alert('We could not find your affiliate profile. Please refresh and try again.');
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Add product to affiliate's store
       const { data: affiliateProduct, error } = await supabase
         .from('affiliate_products')
         .insert({
-          affiliate_id: user!.id,
+          affiliate_id: affiliateProfileId,
           product_id: productId,
           seller_id: sellerId,
           custom_commission_rate: customSettings.customCommissionRate,
@@ -108,10 +124,10 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
       const { data: linkData, error: linkError } = await supabase
         .from('affiliate_links')
         .insert({
-          affiliate_id: user!.id,
+          affiliate_id: affiliateProfileId,
           product_id: productId,
           link_code: linkCode,
-          full_url: `${window.location.origin}/product/${productId}?ref=${user!.id}&code=${linkCode}`,
+          full_url: `${window.location.origin}/product/${productId}?ref=${affiliateProfileId}&code=${linkCode}`,
           is_active: true
         })
         .select()
@@ -133,7 +149,7 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
         products_imported: 1,
         metadata: {
           product_id: productId,
-          affiliate_id: user!.id,
+          affiliate_id: affiliateProfileId,
           commission_rate: customSettings.customCommissionRate
         }
       });
@@ -146,6 +162,11 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
   };
 
   const handleRemoveFromStore = async () => {
+    if (!affiliateProfileId) {
+      alert('We could not find your affiliate profile. Please refresh and try again.');
+      return;
+    }
+
     if (!confirm('Remove this product from your store?')) return;
 
     setIsLoading(true);
@@ -153,7 +174,7 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
       const { error } = await supabase
         .from('affiliate_products')
         .delete()
-        .eq('affiliate_id', user!.id)
+        .eq('affiliate_id', affiliateProfileId)
         .eq('product_id', productId);
 
       if (error) throw error;
@@ -479,7 +500,7 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
 
                 <div className="grid grid-cols-2 gap-3">
                   <button
-                    onClick={() => window.open(`/affiliate/${user?.id}`, '_blank')}
+                    onClick={() => window.open(`/affiliate/${affiliateProfileId ?? user?.id ?? ''}`, '_blank')}
                     className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                   >
                     <ExternalLink className="w-4 h-4" />

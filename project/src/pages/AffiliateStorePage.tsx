@@ -3,116 +3,153 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ProductGrid from '../components/ProductGrid';
 import AffiliateStoreCustomization from '../components/AffiliateStoreCustomization';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 import { Settings, User, Award, Heart, Star, Globe, Share2, Facebook, Instagram, Twitter, Youtube, ExternalLink } from 'lucide-react';
 
 const AffiliateStorePage: React.FC = () => {
   const { affiliateId } = useParams<{ affiliateId: string }>();
+  const { profile, user } = useAuth();
   const [affiliate, setAffiliate] = useState<any>(null);
   const [storeSettings, setStoreSettings] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isOwner, setIsOwner] = useState(false);
+  const [canonicalAffiliateId, setCanonicalAffiliateId] = useState<string | null>(null);
   const [showCustomization, setShowCustomization] = useState(false);
 
   useEffect(() => {
     if (!affiliateId) return;
-    checkCurrentUser();
-    fetchAffiliate();
-    fetchStoreSettings();
-    fetchProducts();
+
+    const loadAffiliateStore = async () => {
+      try {
+        const { data: affiliateRecord, error: affiliateError } = await supabase
+          .from('profiles')
+          .select('*')
+          .or(`id.eq.${affiliateId},user_id.eq.${affiliateId}`)
+          .maybeSingle();
+
+        if (affiliateError) {
+          throw affiliateError;
+        }
+
+        if (!affiliateRecord) {
+          setAffiliate(null);
+          setProducts([]);
+          setStoreSettings(null);
+          return;
+        }
+
+        setAffiliate(affiliateRecord);
+        setCanonicalAffiliateId(affiliateRecord.id);
+
+        const canonicalId = affiliateRecord.id;
+
+        const [{ data: storeSettingsData }, { data: productRows }] = await Promise.all([
+          supabase
+            .from('affiliate_store_settings')
+            .select('*')
+            .eq('affiliate_id', canonicalId)
+            .maybeSingle(),
+          supabase
+            .from('affiliate_store_products')
+            .select('*')
+            .eq('affiliate_id', canonicalId)
+            .eq('is_active', true)
+        ]);
+
+        if (storeSettingsData) {
+          setStoreSettings(storeSettingsData);
+        } else {
+          setStoreSettings(null);
+        }
+
+        const buyerFacingProducts = productRows?.map(product => ({
+          id: product.product_id,
+          title: product.title,
+          description: product.affiliate_description || product.description,
+          price: product.price,
+          images: product.custom_images?.length > 0 ? product.custom_images : product.images,
+          category_id: product.category_id,
+          stock_quantity: product.stock_quantity,
+          seller_name: product.seller_name,
+        })) || [];
+
+        if (buyerFacingProducts.length > 0) {
+          setProducts(buyerFacingProducts);
+
+          await Promise.all(
+            (productRows || []).map(product =>
+              supabase.rpc('increment_affiliate_product_metric', {
+                p_affiliate_id: canonicalId,
+                p_product_id: product.product_id,
+                p_metric: 'views'
+              }).catch(() => undefined)
+            )
+          );
+        } else {
+          setProducts([
+            {
+              id: 'sample-1',
+              title: 'Premium Wireless Headphones',
+              price: 199.99,
+              images: ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400'],
+              description: 'High-quality wireless headphones with noise cancellation',
+              category_id: null,
+              stock_quantity: 10,
+              seller_name: 'Demo Seller',
+            },
+            {
+              id: 'sample-2',
+              title: 'Smart Fitness Watch',
+              price: 299.99,
+              images: ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400'],
+              description: 'Advanced fitness tracking with heart rate monitor',
+              category_id: null,
+              stock_quantity: 15,
+              seller_name: 'Demo Seller',
+            },
+            {
+              id: 'sample-3',
+              title: 'Bluetooth Speaker',
+              price: 89.99,
+              images: ['https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400'],
+              description: 'Portable speaker with amazing sound quality',
+              category_id: null,
+              stock_quantity: 20,
+              seller_name: 'Demo Seller',
+            },
+            {
+              id: 'sample-4',
+              title: 'Professional Camera Lens',
+              price: 549.99,
+              images: ['https://images.unsplash.com/photo-1606983340126-99ab4feaa64a?w=400'],
+              description: 'High-quality lens for professional photography',
+              category_id: null,
+              stock_quantity: 5,
+              seller_name: 'Demo Seller',
+            }
+          ]);
+        }
+
+        localStorage.setItem('affiliate_referral', canonicalId);
+      } catch (error) {
+        console.error('Error loading affiliate store:', error);
+        setAffiliate(null);
+        setProducts([]);
+        setStoreSettings(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAffiliateStore();
   }, [affiliateId]);
 
-  const checkCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setIsOwner(user?.id === affiliateId);
-  };
-
-  const fetchAffiliate = async () => {
-    const { data } = await supabase.from('profiles').select('*').eq('id', affiliateId).single();
-    setAffiliate(data);
-  };
-
-  const fetchStoreSettings = async () => {
-    const { data } = await supabase.from('affiliate_store_settings').select('*').eq('affiliate_id', affiliateId).single();
-    setStoreSettings(data);
-  };
-
-  const fetchProducts = async () => {
-    // Fetch ONLY products this affiliate is actively promoting (from affiliate_products table)
-    const { data } = await supabase
-      .from('affiliate_store_products')
-      .select('*')
-      .eq('affiliate_id', affiliateId)
-      .eq('is_active', true);
-    
-    // Transform data to hide commission info from buyers (they only see final price)
-    const buyerFacingProducts = data?.map(product => ({
-      id: product.product_id,
-      title: product.title,
-      description: product.affiliate_description || product.description, // Use affiliate's custom description if available
-      price: product.price, // Final price buyer pays
-      images: product.custom_images?.length > 0 ? product.custom_images : product.images, // Use affiliate's custom images if available
-      category_id: product.category_id,
-      stock_quantity: product.stock_quantity,
-      seller_name: product.seller_name,
-      // DO NOT expose commission_rate or commission_type to buyers!
-      // Tracking happens server-side when they purchase
-    })) || [];
-    
-    // Track views (server-side)
-    if (data && data.length > 0) {
-      data.forEach(async (product) => {
-        await supabase.rpc('increment_affiliate_product_metric', {
-          p_affiliate_id: affiliateId,
-          p_product_id: product.product_id,
-          p_metric: 'views'
-        });
-      });
-    }
-    
-    // Store affiliate ID in localStorage so cart knows who gets credit for sale
-    localStorage.setItem('affiliate_referral', affiliateId || '');
-    
-    setProducts(buyerFacingProducts || [
-      {
-        id: '1',
-        name: 'Premium Wireless Headphones',
-        price: 199.99,
-        image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400',
-        description: 'High-quality wireless headphones with noise cancellation',
-        commission_rate: 15,
-        is_active: true
-      },
-      {
-        id: '2',
-        name: 'Smart Fitness Watch',
-        price: 299.99,
-        image_url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400',
-        description: 'Advanced fitness tracking with heart rate monitor',
-        commission_rate: 12,
-        is_active: true
-      },
-      {
-        id: '3',
-        name: 'Bluetooth Speaker',
-        price: 89.99,
-        image_url: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400',
-        description: 'Portable speaker with amazing sound quality',
-        commission_rate: 20,
-        is_active: true
-      },
-      {
-        id: '4',
-        name: 'Professional Camera Lens',
-        price: 549.99,
-        image_url: 'https://images.unsplash.com/photo-1606983340126-99ab4feaa64a?w=400',
-        description: 'High-quality lens for professional photography',
-        commission_rate: 10,
-        is_active: true
-      }
-    ]);
-    setLoading(false);
-  };
+  const resolvedAffiliateId = canonicalAffiliateId || affiliateId || '';
+  const isOwner = Boolean(
+    (profile?.id && resolvedAffiliateId && profile.id === resolvedAffiliateId) ||
+    (profile?.user_id && affiliateId && profile.user_id === affiliateId) ||
+    (user?.id && affiliateId && user.id === affiliateId)
+  );
 
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex items-center justify-center">
@@ -145,7 +182,7 @@ const AffiliateStorePage: React.FC = () => {
               ← Back to Store
             </button>
           </div>
-          <AffiliateStoreCustomization affiliateId={affiliateId!} />
+          <AffiliateStoreCustomization affiliateId={resolvedAffiliateId || affiliateId || ''} />
         </div>
       </div>
     );
@@ -170,7 +207,7 @@ const AffiliateStorePage: React.FC = () => {
     }
   };
 
-  const storeUrl = `${window.location.origin}/affiliate/${affiliateId}`;
+  const storeUrl = `${window.location.origin}/affiliate/${resolvedAffiliateId}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">

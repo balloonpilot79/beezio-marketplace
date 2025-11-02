@@ -20,8 +20,11 @@ const AddProductPage: React.FC = () => {
   const handleBulkUpload = async () => {
   if (!bulkFile || !user) return;
 
-  const sellerId = profile?.user_id || profile?.id || user.id;
-  if (!sellerId) return;
+  const sellerProfileId = profile?.id;
+  if (!sellerProfileId) {
+    setUploadResults({ success: 0, failed: 0, errors: ['We could not find your seller profile. Please complete your profile and try again.'] });
+    return;
+  }
 
     setUploading(true);
     setUploadProgress(0);
@@ -52,7 +55,7 @@ const AddProductPage: React.FC = () => {
               category_id: product.category_id || null,
               category_name: product.category || 'Uncategorized',
               images: product.images ? product.images.split('|').filter(Boolean) : [],
-              seller_id: sellerId,
+              seller_id: sellerProfileId,
               commission_rate: parseFloat(product.commission_rate) || 20,
               commission_type: product.commission_type || 'percentage',
               stock_quantity: parseInt(product.stock_quantity) || 0,

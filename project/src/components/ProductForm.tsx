@@ -57,7 +57,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   React.useEffect(() => {
     if (editMode) {
       const url = window.location.pathname;
-      const match = url.match(/\/edit\/(\w+)/);
+      const match = url.match(/\/edit\/([\w-]+)/);
       const productId = match ? match[1] : null;
       if (productId) {
         setCurrentProductId(productId);
@@ -239,9 +239,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
 
-    const sellerId = profile?.user_id || profile?.id || user.id;
-    if (!sellerId) {
-      setError('We could not match your seller account. Please refresh and try again.');
+    const sellerProfileId = profile?.id;
+    if (!sellerProfileId) {
+      setError('We could not find your seller profile. Please refresh or complete your profile.');
       return;
     }
 
@@ -331,7 +331,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             seller_amount: pricingBreakdown.sellerAmount,
             platform_fee: pricingBreakdown.platformFee,
             stripe_fee: pricingBreakdown.stripeFee,
-            seller_id: sellerId,
+            seller_id: sellerProfileId,
             shipping_options: formData.shipping_options,
             requires_shipping: formData.requires_shipping,
             status: 'active',  // ✅ Auto-publish to marketplace
@@ -439,7 +439,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 placeholder="Describe your product"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Category *

@@ -76,19 +76,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       .map(segment => encodeURIComponent(segment))
       .join('/');
 
-  const uploadFile = async (file: File): Promise<string> => {
-    const storagePath = generateFileName(file);
-
-    console.log(
-      'Uploading to bucket=%s path=%s size=%d type=%s (token present=%s)',
-      bucket,
-      storagePath,
-      file.size,
-      file.type,
-      Boolean(sessionData?.session?.access_token)
-    );
-
-    // Ensure we have a fresh access token for direct REST upload
+  const uploadWithFetch = async (storagePath: string, file: File) => {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) {
       console.error('Failed to fetch session for upload:', sessionError);
@@ -99,6 +87,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     if (!accessToken) {
       throw new Error('No active session. Please sign in again.');
     }
+
+    console.log(
+      'Fallback upload via REST bucket=%s path=%s size=%d type=%s',
+      bucket,
+      storagePath,
+      file.size,
+      file.type
+    );
 
     const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${encodeStoragePath(storagePath)}`;
 
@@ -119,20 +115,44 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       throw new Error('Network error while uploading. Please check your connection and try again.');
     }
 
-    console.log('Upload response status', response.status, response.statusText);
-
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
       console.error('Direct upload failed:', response.status, errorText);
       throw new Error(`Upload failed (${response.status}): ${errorText || response.statusText}`);
     }
+  };
 
-    const uploadResult = await response.json().catch(() => ({ Key: `${bucket}/${storagePath}` }));
-    const resolvedPath = typeof uploadResult?.Key === 'string'
-      ? uploadResult.Key.replace(`${bucket}/`, '')
-      : storagePath;
+  const uploadFile = async (file: File): Promise<string> => {
+    const storagePath = generateFileName(file);
 
-    const { data: urlData, error: urlError } = supabase.storage.from(bucket).getPublicUrl(resolvedPath);
+    console.log(
+      'Uploading via storage client bucket=%s path=%s size=%d type=%s',
+      bucket,
+      storagePath,
+      file.size,
+      file.type
+    );
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(storagePath, file, {
+        upsert: false,
+        contentType: file.type || 'application/octet-stream',
+      });
+
+    if (uploadError) {
+      console.error('Storage client upload failed:', uploadError);
+      const message = uploadError.message || 'Upload failed';
+
+      if (message.includes("Cannot access 'q' before initialization")) {
+        console.warn('Encountered Supabase storage q-initialization bug, retrying with REST upload.');
+        await uploadWithFetch(storagePath, file);
+      } else {
+        throw new Error(message);
+      }
+    }
+
+    const { data: urlData, error: urlError } = supabase.storage.from(bucket).getPublicUrl(storagePath);
     if (urlError) {
       console.error('Public URL retrieval failed:', urlError);
       throw new Error(`Upload succeeded but retrieving the public URL failed: ${urlError.message}`);

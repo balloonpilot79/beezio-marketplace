@@ -10,11 +10,13 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isGlobalDropdownOpen, setIsGlobalDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const storeProfileId = profile?.id || user?.id || '';
+
 
   // Refs for detecting clicks outside
   const globalDropdownRef = useRef<HTMLDivElement>(null);
@@ -202,13 +204,15 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                     >
                       🏪 My Products
                     </Link>
-                    <Link
-                      to={`/store/${user.id}`}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-                      onClick={() => setIsUserDropdownOpen(false)}
-                    >
-                      My Store
-                    </Link>
+                    {storeProfileId && (
+                      <Link
+                        to={`/store/${storeProfileId}`}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                      >
+                        My Store
+                      </Link>
+                    )}
                     <Link
                       to="/earnings"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors duration-200"
@@ -330,13 +334,15 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                   >
                     🏪 My Products
                   </Link>
-                  <Link
-                    to={`/store/${user.id}`}
-                    className="block text-gray-700 hover:text-yellow-600 font-medium transition-colors duration-200"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    My Store
-                  </Link>
+                  {storeProfileId && (
+                    <Link
+                      to={`/store/${storeProfileId}`}
+                      className="block text-gray-700 hover:text-yellow-600 font-medium transition-colors duration-200"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      My Store
+                    </Link>
+                  )}
                   <Link
                     to="/earnings"
                     className="block text-gray-700 hover:text-green-600 font-medium transition-colors duration-200"

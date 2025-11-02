@@ -8,15 +8,17 @@ interface StoreLinksProps {
 }
 
 const StoreLinks: React.FC<StoreLinksProps> = ({ userRole, className = '' }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+
+  const profileId = profile?.id || user?.id || '';
 
   const storeUrl = userRole === 'seller' 
-    ? `${window.location.origin}/store/${user?.id}`
-    : `${window.location.origin}/affiliate/${user?.id}`;
+    ? `${window.location.origin}/store/${profileId}`
+    : `${window.location.origin}/affiliate/${profileId}`;
 
   const storePath = userRole === 'seller' 
-    ? `/store/${user?.id}`
-    : `/affiliate/${user?.id}`;
+    ? `/store/${profileId}`
+    : `/affiliate/${profileId}`;
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -50,16 +52,18 @@ const StoreLinks: React.FC<StoreLinksProps> = ({ userRole, className = '' }) => 
         </h3>
         <div className="flex space-x-2">
           <button
-            onClick={() => copyToClipboard(storeUrl)}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            onClick={() => profileId && copyToClipboard(storeUrl)}
+            className={`p-2 rounded-lg transition-colors ${profileId ? 'text-gray-500 hover:text-gray-700 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'}`}
             title="Copy store URL"
+            disabled={!profileId}
           >
             <Copy className="w-4 h-4" />
           </button>
           <button
-            onClick={shareStore}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            onClick={() => profileId && shareStore()}
+            className={`p-2 rounded-lg transition-colors ${profileId ? 'text-gray-500 hover:text-gray-700 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'}`}
             title="Share store"
+            disabled={!profileId}
           >
             <Share className="w-4 h-4" />
           </button>
@@ -71,17 +75,19 @@ const StoreLinks: React.FC<StoreLinksProps> = ({ userRole, className = '' }) => 
           <label className="block text-sm font-medium text-gray-600 mb-1">Store URL</label>
           <div className="flex items-center space-x-2">
             <code className="flex-1 bg-gray-50 px-3 py-2 rounded-lg text-sm font-mono border">
-              {storePath}
+              {profileId ? storePath : 'Profile still loading'}
             </code>
-            <a
-              href={storePath}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span>Visit</span>
-            </a>
+            {profileId && (
+              <a
+                href={storePath}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Visit</span>
+              </a>
+            )}
           </div>
         </div>
         

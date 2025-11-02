@@ -8,9 +8,10 @@ import { Star, MapPin, Clock, Package, Award, ExternalLink, Share2, Settings, Ed
 
 const SellerStorePage: React.FC = () => {
   const { sellerId } = useParams<{ sellerId: string }>();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [seller, setSeller] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
+  const [canonicalSellerId, setCanonicalSellerId] = useState<string | null>(null);
   const [storeStats, setStoreStats] = useState({
     totalProducts: 0,
     totalSales: 0,
@@ -22,20 +23,21 @@ const SellerStorePage: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [isCustomizing, setIsCustomizing] = useState(false);
   
-  // Check if current user owns this store
-  const isOwner = user && user.id === sellerId;
-
   useEffect(() => {
     if (!sellerId) return;
     
     const fetchSellerData = async () => {
       try {
-        // Try to fetch seller profile first
-        const { data: sellerData } = await supabase
+        // Try to fetch seller profile by profile id or auth user id
+        const { data: sellerData, error: sellerError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', sellerId)
-          .single();
+          .or(`id.eq.${sellerId},user_id.eq.${sellerId}`)
+          .maybeSingle();
+
+        if (sellerError) {
+          throw sellerError;
+        }
 
         // If no seller found, create sample seller data for demo
         if (!sellerData) {
@@ -101,52 +103,57 @@ const SellerStorePage: React.FC = () => {
             reviewCount: 156
           }));
 
+          setCanonicalSellerId(sellerId);
           setLoading(false);
           return;
         }
 
+        setCanonicalSellerId(sellerData.id);
         setSeller(sellerData);
 
         // Fetch store settings
-      const { data: storeSettingsData } = await supabase
-        .from('store_settings')
-        .select('*')
-        .eq('seller_id', sellerId)
-        .single();
+        const canonicalId = sellerData.id;
 
-      if (storeSettingsData) {
-        // Override seller data with store settings
-        setSeller((prev: any) => ({
+        const { data: storeSettingsData } = await supabase
+          .from('store_settings')
+          .select('*')
+          .eq('seller_id', canonicalId)
+          .maybeSingle();
+
+        if (storeSettingsData) {
+          // Override seller data with store settings
+          setSeller((prev: any) => ({
+            ...prev,
+            full_name: storeSettingsData.store_name || prev?.full_name,
+            bio: storeSettingsData.store_description || prev?.bio,
+            store_banner: storeSettingsData.store_banner,
+            store_logo: storeSettingsData.store_logo,
+            store_theme: storeSettingsData.store_theme || 'modern',
+            social_links: storeSettingsData.social_links || {},
+            business_hours: storeSettingsData.business_hours,
+            shipping_policy: storeSettingsData.shipping_policy,
+            return_policy: storeSettingsData.return_policy
+          }));
+        }
+
+        // Fetch products
+        const { data: productsData } = await supabase
+          .from('products')
+          .select('*')
+          .eq('seller_id', canonicalId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+
+        setProducts(productsData || []);
+
+        // Update stats
+        setStoreStats(prev => ({
           ...prev,
-          full_name: storeSettingsData.store_name || prev?.full_name,
-          bio: storeSettingsData.store_description || prev?.bio,
-          store_banner: storeSettingsData.store_banner,
-          store_logo: storeSettingsData.store_logo,
-          store_theme: storeSettingsData.store_theme || 'modern',
-          social_links: storeSettingsData.social_links || {},
-          business_hours: storeSettingsData.business_hours,
-          shipping_policy: storeSettingsData.shipping_policy,
-          return_policy: storeSettingsData.return_policy
+          totalProducts: productsData?.length || 0
         }));
-      }
 
-      // Fetch products
-      const { data: productsData } = await supabase
-        .from('products')
-        .select('*')
-        .eq('seller_id', sellerId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-      setProducts(productsData || []);
-
-      // Update stats
-      setStoreStats(prev => ({
-        ...prev,
-        totalProducts: productsData?.length || 0
-      }));
-
-      setLoading(false);
-    } catch (error) {
+        setLoading(false);
+      } catch (error) {
       console.error('Error fetching seller data:', error);
       setLoading(false);
     }
@@ -155,13 +162,20 @@ const SellerStorePage: React.FC = () => {
     fetchSellerData();
   }, [sellerId]);
 
+  const resolvedSellerId = canonicalSellerId || sellerId || '';
+  const isOwner = Boolean(
+    (profile?.id && resolvedSellerId && profile.id === resolvedSellerId) ||
+    (profile?.user_id && sellerId && profile.user_id === sellerId) ||
+    (user?.id && sellerId && user.id === sellerId)
+  );
+
   const categories = ['all', ...new Set(products.map(p => p.category).filter(Boolean))];
   const filteredProducts = activeCategory === 'all' 
     ? products 
     : products.filter(p => p.category === activeCategory);
 
   const handleShare = async () => {
-    const storeUrl = `${window.location.origin}/store/${sellerId}`;
+    const storeUrl = `${window.location.origin}/store/${resolvedSellerId}`;
     if (navigator.share) {
       await navigator.share({
         title: `${seller?.full_name}'s Store`,
@@ -305,7 +319,7 @@ const SellerStorePage: React.FC = () => {
                 <span>Share Store</span>
               </button>
               <Link
-                to={`/contact-seller/${sellerId}`}
+                to={`/contact-seller/${resolvedSellerId}`}
                 className="flex items-center space-x-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
@@ -394,7 +408,7 @@ const SellerStorePage: React.FC = () => {
         {isOwner && isCustomizing && (
           <div className="mt-8 border-t pt-8">
             <h3 className="text-xl font-semibold text-gray-900 mb-6">Customize Your Store</h3>
-            <StoreCustomization userId={sellerId!} role="seller" />
+            <StoreCustomization userId={resolvedSellerId || sellerId || ''} role="seller" />
           </div>
         )}
       </div>
