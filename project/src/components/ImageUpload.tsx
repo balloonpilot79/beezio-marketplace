@@ -113,6 +113,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
     // Upload files one by one
     const uploadPromises = newUploadingFiles.map(async (uploadingFile) => {
+      let progressInterval: NodeJS.Timeout | null = null;
+      
       try {
         // Validate file
         const validationError = validateFile(uploadingFile.file);
@@ -121,7 +123,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         }
 
         // Simulate progress (since Supabase doesn't provide upload progress)
-        const progressInterval = setInterval(() => {
+        progressInterval = setInterval(() => {
           setUploadingFiles(prev =>
             prev.map(f =>
               f.id === uploadingFile.id
@@ -135,7 +137,10 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         const url = await uploadFile(uploadingFile.file);
 
         // Clear progress interval
-        clearInterval(progressInterval);
+        if (progressInterval) {
+          clearInterval(progressInterval);
+          progressInterval = null;
+        }
 
         // Update file status
         setUploadingFiles(prev =>
@@ -148,6 +153,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
         return url;
       } catch (error) {
+        // Always clear progress interval on error
+        if (progressInterval) {
+          clearInterval(progressInterval);
+          progressInterval = null;
+        }
+        
         const errorMessage = error instanceof Error ? error.message : 'Upload failed';
         console.error('Image upload error:', error);
         
