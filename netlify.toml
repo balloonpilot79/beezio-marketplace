@@ -3,10 +3,9 @@
   base = "project"
   # Use the existing npm build script from project/package.json
   command = "npm run build"
-  # Vite output - Updated 2025-10-26
-  publish = "project/dist"
+  # Vite output directory relative to base
+  publish = "dist"
 
-[context.production.environment]
 # Environment variables should be set in the Netlify UI or via the Netlify CLI.
 # Do NOT store secrets here in the repo.
 
