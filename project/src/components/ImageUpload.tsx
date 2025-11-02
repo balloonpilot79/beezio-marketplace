@@ -79,7 +79,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   const uploadFile = async (file: File): Promise<string> => {
     const storagePath = generateFileName(file);
 
-    console.log('Uploading to bucket=%s path=%s size=%d type=%s', bucket, storagePath, file.size, file.type);
+    console.log(
+      'Uploading to bucket=%s path=%s size=%d type=%s (token present=%s)',
+      bucket,
+      storagePath,
+      file.size,
+      file.type,
+      Boolean(sessionData?.session?.access_token)
+    );
 
     // Ensure we have a fresh access token for direct REST upload
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -95,16 +102,24 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
     const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${encodeStoragePath(storagePath)}`;
 
-    const response = await fetch(uploadUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        apikey: supabaseAnonKey,
-        'Content-Type': file.type || 'application/octet-stream',
-        'x-upsert': 'false',
-      },
-      body: file,
-    });
+    let response: Response;
+    try {
+      response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          apikey: supabaseAnonKey,
+          'Content-Type': file.type || 'application/octet-stream',
+          'x-upsert': 'false',
+        },
+        body: file,
+      });
+    } catch (networkError) {
+      console.error('Network error while uploading to Supabase storage:', networkError);
+      throw new Error('Network error while uploading. Please check your connection and try again.');
+    }
+
+    console.log('Upload response status', response.status, response.statusText);
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
