@@ -13,6 +13,7 @@ const SellerProductFormPage: React.FC = () => {
     title: '',
     description: '',
     price: 0,
+    stock_quantity: 0,
     category_id: '',
     product_type: 'one_time' as 'one_time' | 'subscription',
     subscription_interval: 'monthly' as 'monthly' | 'yearly',
@@ -89,6 +90,11 @@ const SellerProductFormPage: React.FC = () => {
 
     if (newProduct.price <= 0) {
       alert('Please enter a valid price.');
+      return;
+    }
+
+    if (newProduct.stock_quantity < 0) {
+      alert('Inventory cannot be negative.');
       return;
     }
 
@@ -240,6 +246,24 @@ const SellerProductFormPage: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     required
                     placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Inventory (Units) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newProduct.stock_quantity}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value, 10);
+                      handleInputChange('stock_quantity', Number.isNaN(value) ? 0 : Math.max(0, value));
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    required
+                    placeholder="0"
                   />
                 </div>
               </div>
