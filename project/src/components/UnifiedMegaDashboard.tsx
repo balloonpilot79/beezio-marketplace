@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -86,6 +86,7 @@ const UnifiedMegaDashboard: React.FC = () => {
     active_links: 0
   });
   const [loading, setLoading] = useState(false);
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // User role checks - ALL USERS GET FULL ACCESS
   const isSeller = profile?.role === 'seller';
@@ -100,6 +101,28 @@ const UnifiedMegaDashboard: React.FC = () => {
       fetchAllData();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (loading) {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+      loadingTimeoutRef.current = setTimeout(() => {
+        console.warn('Dashboard: loading forced to false after timeout');
+        setLoading(false);
+      }, 3000);
+    } else if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
+    }
+
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+    };
+  }, [loading]);
 
   const fetchAllData = async () => {
     setLoading(true);
