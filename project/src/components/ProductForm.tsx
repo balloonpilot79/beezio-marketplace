@@ -25,7 +25,7 @@ interface ProductFormProps {
 }
 
 const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode, product }) => {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -209,22 +209,39 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     }));
   };
 
-  const handleImageUploadSuccess = (uploadedImages: any[]) => {
+  const handleImageUploadSuccess = (uploadedImages: string[]) => {
+    if (!uploadedImages || uploadedImages.length === 0) {
+      return;
+    }
+
+    setFormData(prev => {
+      const newImages = uploadedImages.filter(url => url && !prev.images.includes(url));
+      if (newImages.length === 0) {
+        return prev;
+      }
+      return {
+        ...prev,
+        images: [...prev.images, ...newImages],
+      };
+    });
+
     if (currentProductId) {
-      // For editing mode, we'll refresh the images from the database
-      // This will be handled by the ImageGallery component
+      // For editing mode, allow gallery refresh while Supabase metadata catches up
       setProductImages(prev => [...prev, ...uploadedImages]);
-    } else {
-      // For new products, we'll handle this after product creation
-      console.log('Images uploaded for new product:', uploadedImages);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!profile) {
+    if (!user) {
       setError('You must be logged in to create a product');
+      return;
+    }
+
+    const sellerId = profile?.user_id || profile?.id || user.id;
+    if (!sellerId) {
+      setError('We could not match your seller account. Please refresh and try again.');
       return;
     }
 
@@ -314,7 +331,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             seller_amount: pricingBreakdown.sellerAmount,
             platform_fee: pricingBreakdown.platformFee,
             stripe_fee: pricingBreakdown.stripeFee,
-            seller_id: profile.id,
+            seller_id: sellerId,
             shipping_options: formData.shipping_options,
             requires_shipping: formData.requires_shipping,
             status: 'active',  // ✅ Auto-publish to marketplace
@@ -326,8 +343,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         if (error) throw error;
         
         // Set the product ID for image uploads
-        setCurrentProductId(newProduct.id);
-        if (error) throw error;
+        if (newProduct?.id) {
+          setCurrentProductId(newProduct.id);
+        }
       }
 
       setSuccess('Product created successfully!');
@@ -797,7 +815,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               <label className="block text-sm font-medium text-gray-700 mb-4">
                 Product Images
               </label>
-              
+
               {/* Image Gallery for existing products */}
               {currentProductId && productImages.length > 0 && (
                 <div className="mb-6">
@@ -811,25 +829,27 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 </div>
               )}
 
-              {/* Image Upload Component */}
-              {currentProductId && (
-                <div className="mb-6">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">
-                    {productImages.length === 0 ? 'Upload Images' : 'Add More Images'}
-                  </h4>
-                  <ImageUpload
-                    bucket="product-images"
-                    productId={currentProductId}
-                    onUploadComplete={handleImageUploadSuccess}
-                    maxFiles={10}
-                    allowedTypes={['image/jpeg', 'image/png', 'image/webp']}
-                  />
-                </div>
-              )}
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                  Upload from your device
+                </h4>
+                <ImageUpload
+                  bucket="product-images"
+                  folder={currentProductId ? `products/${currentProductId}` : 'new-products'}
+                  productId={currentProductId ?? undefined}
+                  onUploadComplete={handleImageUploadSuccess}
+                  maxFiles={10}
+                  allowedTypes={['image/jpeg', 'image/png', 'image/webp']}
+                />
+                {!currentProductId && (
+                  <p className="mt-3 text-xs text-gray-500">
+                    We immediately store your uploads so they are ready when the product is saved.
+                  </p>
+                )}
+              </div>
 
-              {/* Legacy URL input for backward compatibility */}
               <div className="border-t pt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Add by URL (Legacy)</h4>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Add by URL</h4>
                 <div className="flex space-x-2 mb-2">
                   <input
                     type="url"
@@ -868,15 +888,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   </div>
                 )}
               </div>
-
-              {!currentProductId && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-sm text-yellow-800">
-                    <strong>Note:</strong> Advanced image upload will be available after you create the product. 
-                    You can add images using URLs for now, then use the powerful image management system when editing.
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Video URLs */}

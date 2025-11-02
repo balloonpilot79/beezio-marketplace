@@ -10,7 +10,7 @@ type UploadMode = 'single' | 'bulk';
 
 const AddProductPage: React.FC = () => {
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [mode, setMode] = useState<UploadMode | null>(null);
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -18,7 +18,10 @@ const AddProductPage: React.FC = () => {
   const [uploadResults, setUploadResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
 
   const handleBulkUpload = async () => {
-    if (!bulkFile || !profile) return;
+  if (!bulkFile || !user) return;
+
+  const sellerId = profile?.user_id || profile?.id || user.id;
+  if (!sellerId) return;
 
     setUploading(true);
     setUploadProgress(0);
@@ -49,7 +52,7 @@ const AddProductPage: React.FC = () => {
               category_id: product.category_id || null,
               category_name: product.category || 'Uncategorized',
               images: product.images ? product.images.split('|').filter(Boolean) : [],
-              seller_id: profile.id,
+              seller_id: sellerId,
               commission_rate: parseFloat(product.commission_rate) || 20,
               commission_type: product.commission_type || 'percentage',
               stock_quantity: parseInt(product.stock_quantity) || 0,
