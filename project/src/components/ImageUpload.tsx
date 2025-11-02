@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2, Check, AlertCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 
 interface ImageUploadProps {
@@ -70,42 +70,66 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     return `${userId}/${timestamp}-${random}.${extension}`;
   };
 
+  const encodeStoragePath = (path: string) =>
+    path
+      .split('/')
+      .map(segment => encodeURIComponent(segment))
+      .join('/');
+
   const uploadFile = async (file: File): Promise<string> => {
-    const fileName = generateFileName(file);
+    const storagePath = generateFileName(file);
 
-    try {
-      console.log('Uploading to bucket=%s path=%s size=%d type=%s', bucket, fileName, file.size, file.type);
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
+    console.log('Uploading to bucket=%s path=%s size=%d type=%s', bucket, storagePath, file.size, file.type);
 
-      if (error) {
-        console.error('Upload error (storage.upload):', error);
-        throw new Error(`Upload failed: ${error.message}`);
-      }
-
-      // data may contain a path property (returned by Supabase)
-      const path = (data as any)?.path || fileName;
-
-      try {
-        const { data: urlData, error: urlError } = supabase.storage.from(bucket).getPublicUrl(path);
-        if (urlError) {
-          console.warn('getPublicUrl returned error:', urlError);
-        }
-        const publicUrl = (urlData as any)?.publicUrl || '';
-        console.log('Upload complete, publicUrl=', publicUrl);
-        return publicUrl;
-      } catch (err) {
-        console.error('getPublicUrl exception:', err);
-        return '';
-      }
-    } catch (err) {
-      console.error('uploadFile unexpected error:', err);
-      throw err;
+    // Ensure we have a fresh access token for direct REST upload
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error('Failed to fetch session for upload:', sessionError);
+      throw new Error('Unable to authenticate upload. Please sign in again.');
     }
+
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      throw new Error('No active session. Please sign in again.');
+    }
+
+    const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${encodeStoragePath(storagePath)}`;
+
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: supabaseAnonKey,
+        'Content-Type': file.type || 'application/octet-stream',
+        'x-upsert': 'false',
+      },
+      body: file,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      console.error('Direct upload failed:', response.status, errorText);
+      throw new Error(`Upload failed (${response.status}): ${errorText || response.statusText}`);
+    }
+
+    const uploadResult = await response.json().catch(() => ({ Key: `${bucket}/${storagePath}` }));
+    const resolvedPath = typeof uploadResult?.Key === 'string'
+      ? uploadResult.Key.replace(`${bucket}/`, '')
+      : storagePath;
+
+    const { data: urlData, error: urlError } = supabase.storage.from(bucket).getPublicUrl(resolvedPath);
+    if (urlError) {
+      console.error('Public URL retrieval failed:', urlError);
+      throw new Error(`Upload succeeded but retrieving the public URL failed: ${urlError.message}`);
+    }
+
+    const publicUrl = (urlData as any)?.publicUrl;
+    if (!publicUrl) {
+      throw new Error('Upload succeeded but no public URL was returned');
+    }
+
+    console.log('Upload complete, publicUrl=', publicUrl);
+    return publicUrl;
   };
 
   const handleFileUpload = async (files: File[]) => {
