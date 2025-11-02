@@ -176,6 +176,56 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenAuthModal }) => {
         {/* Fundraiser Slider */}
         <FundraiserSlider />
 
+        {/* Featured Fundraisers Section */}
+        <section className="py-12 bg-gradient-to-r from-purple-50 via-white to-amber-50 border-y border-purple-100">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-3">Fundraisers That Spark Change</h2>
+                <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                  Beezio fundraisers combine product sales with purpose. Organizations launch their own storefront, earn commissions on every purchase, and invite their supporters to shop products they already love.
+                </p>
+                <ul className="space-y-2 text-sm text-gray-700 mb-6">
+                  <li className="flex items-start gap-2"><span className="text-purple-500 mt-0.5">•</span> Zero sign-up cost and instant access to premium products</li>
+                  <li className="flex items-start gap-2"><span className="text-purple-500 mt-0.5">•</span> Supporters earn optional affiliate bonuses while helping the cause</li>
+                  <li className="flex items-start gap-2"><span className="text-purple-500 mt-0.5">•</span> Real-time dashboards show progress, earnings, and top supporters</li>
+                </ul>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => window.location.href = '/fundraisers'}
+                    className="bg-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold text-sm hover:bg-purple-700 transition-all shadow"
+                  >
+                    Explore Active Fundraisers
+                  </button>
+                  <button
+                    onClick={() => window.location.href = '/signup?role=fundraiser'}
+                    className="bg-white border border-purple-300 text-purple-600 px-6 py-2.5 rounded-lg font-semibold text-sm hover:bg-purple-100 transition-all"
+                  >
+                    Launch Your Fundraiser
+                  </button>
+                </div>
+              </div>
+              <div className="bg-white border border-purple-100 rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">How It Works</h3>
+                <div className="space-y-4 text-sm text-gray-700">
+                  <div>
+                    <p className="font-medium text-purple-600">1. Create your campaign</p>
+                    <p>Publish your mission, set earnings goals, and select featured products in minutes.</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-purple-600">2. Activate your supporters</p>
+                    <p>Share your custom link; every order earns instant commissions for your cause.</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-purple-600">3. Celebrate the impact</p>
+                    <p>Track every dollar raised inside the unified dashboard and withdraw funds fast.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Compact 3-Card Section */}
         <div className="py-12 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
