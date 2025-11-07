@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Save, Eye, Palette, Globe, Settings, Zap } from 'lucide-react';
-// import CustomDomainManager from './CustomDomainManager';
+import CustomDomainManager from './CustomDomainManager';
 import UniversalIntegrationsPage from './UniversalIntegrationsPage';
 
 interface StoreSettings {
@@ -358,9 +358,11 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
 
           {/* Domain Tab */}
           {activeTab === 'domain' && (
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <p className="text-gray-600">Custom domain management temporarily disabled for deployment.</p>
-            </div>
+            <CustomDomainManager 
+              userId={userId} 
+              role={role} 
+              currentDomain={storeSettings.custom_domain}
+            />
           )}
         </div>
       </div>

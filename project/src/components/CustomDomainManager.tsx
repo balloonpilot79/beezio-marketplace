@@ -363,16 +363,8 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
                 </button>
               </div>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* DNS Setup Steps - this section is outside the conditional */}
-      {domain && showInstructions && (
-        <div className="mt-6">
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-2">Step 1: Access Your Domain Provider</h4>
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Step 1: Access Your Domain Provider</h4>
                 <p className="text-sm text-gray-600">
                   Log in to your domain registrar (GoDaddy, Namecheap, Google Domains, etc.)
                 </p>
@@ -411,7 +403,7 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
                 </p>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

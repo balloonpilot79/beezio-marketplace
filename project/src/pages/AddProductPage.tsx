@@ -267,7 +267,7 @@ const AddProductPage: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <div className="flex justify-center mb-4">
-            <img src="/bee-mascot.png" alt="BZO Bee" className="w-12 h-12 bzo-mascot" />
+            <div className="bzo-mascot text-4xl">🐝</div>
           </div>
           <h1 className="text-5xl font-bold text-bzo-black mb-4">Add Products</h1>
           <p className="text-xl text-gray-600">Choose how you want to buzz your products into the hive</p>

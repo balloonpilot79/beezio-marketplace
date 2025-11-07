@@ -361,7 +361,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       <div className="text-center">
         <div className="flex justify-center mb-4">
           <div className="bzo-mascot">
-            <img src="/bee-mascot.png" alt="BZO Bee" className="w-12 h-12" />
+            <div className="text-4xl">🐝</div>
           </div>
         </div>
         <h1 className="text-4xl font-bold text-bzo-black mb-2">Add New Product</h1>

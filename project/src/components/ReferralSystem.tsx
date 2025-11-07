@@ -94,7 +94,7 @@ const ReferralSystem: React.FC = () => {
     if (navigator.share) {
       navigator.share({
         title: 'Join Beezio with my referral link!',
-        text: 'Sign up for Beezio using my referral link and start earning together!',
+        text: 'Sign up for Beezio using my referral link and start earning together! 🐝',
         url: referralUrl
       });
     } else {
