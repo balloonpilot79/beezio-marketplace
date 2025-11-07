@@ -63,18 +63,13 @@ const HomePage: React.FC<{
             </div>
 
             {/* Right - BZO Mascot */}
-            <div className="flex justify-center">
+            <div className="flex justify-center items-center">
               <div className="bzo-mascot">
-                <div className="w-80 h-80 relative">
-                  {/* BZO SVG Placeholder - We'll add the actual image later */}
-                  <div className="w-full h-full bg-gradient-to-br from-bzo-yellow-primary to-bzo-yellow-secondary rounded-full flex items-center justify-center shadow-2xl">
-                    <div className="text-center">
-                      <img src="/bee-mascot.png" alt="BZO Bee Mascot" className="w-16 h-16 mb-4 mx-auto" />
-                      <div className="text-2xl font-bold text-bzo-black">BZO</div>
-                      <div className="text-sm text-bzo-black opacity-75">the bee</div>
-                    </div>
-                  </div>
-                </div>
+                <img 
+                  src="/bee-mascot.png" 
+                  alt="BZO Bee Mascot" 
+                  className="w-64 h-64 object-contain drop-shadow-2xl" 
+                />
               </div>
             </div>
           </div>

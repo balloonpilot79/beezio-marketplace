@@ -68,8 +68,8 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-3 group">
               {/* BZO Bee Logo */}
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200 bzo-mascot p-1">
-                <img src="/bee-mascot.png" alt="BZO Bee Mascot" className="w-full h-full object-contain" />
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200 p-1">
+                <img src="/bee-mascot.png" alt="BZO Bee Mascot" className="w-10 h-10 object-contain" />
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-bzo-black group-hover:text-bzo-yellow-primary transition-colors duration-200">
@@ -94,10 +94,7 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
           </nav>
 
           {/* Right side: Actions */}
-          <div className="flex items-center space-x-4">
-            {/* Cart */}
-            <CartIcon />
-
+          <div className="flex items-center space-x-3">
             {/* Language & Currency */}
             <div className="hidden lg:flex items-center space-x-2">
               <LanguageSwitcher />
@@ -106,7 +103,10 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
 
             {/* Auth Section */}
             {user ? (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                {/* Cart - close to user when logged in */}
+                <CartIcon />
+                
                 {/* User Dropdown */}
                 <div className="relative" ref={userDropdownRef}>
                   <button
@@ -162,15 +162,19 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
               </div>
             ) : (
               <div className="flex items-center space-x-3">
+                {/* Cart - always show */}
+                <CartIcon />
+                
+                {/* Login/Signup buttons */}
                 <button
                   onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
-                  className="btn-bzo-outline px-6 py-2 rounded-full font-medium"
+                  className="px-4 py-2 text-bzo-black hover:text-bzo-yellow-primary font-medium transition-colors duration-200"
                 >
                   Sign In
                 </button>
                 <button
                   onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
-                  className="btn-bzo-primary px-6 py-2 rounded-full font-medium"
+                  className="bg-bzo-yellow-primary hover:bg-bzo-yellow-secondary text-bzo-black px-6 py-2 rounded-full font-semibold shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   Sign Up
                 </button>
