@@ -126,12 +126,12 @@
 }
 
 .bg-bzo-gradient {
-  background: linear-gradient(135deg, var(--bzo-yellow-light) 0%, var(--bzo-white) 100%);
+  background: var(--bzo-white);
 }
 
 /* BZO Hero Section */
 .hero-bzo {
-  background: linear-gradient(135deg, var(--bzo-yellow-light) 0%, var(--bzo-white) 50%, var(--bzo-yellow-light) 100%);
+  background: var(--bzo-white);
   position: relative;
   overflow: hidden;
 }

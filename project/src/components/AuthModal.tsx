@@ -324,7 +324,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-amber-500 text-white py-3 px-4 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 font-medium"
+              className="w-full btn-bzo-primary py-3 px-4 rounded-lg transition-colors disabled:opacity-50 font-medium"
             >
               {loading ? 'Please wait...' : 
                mode === 'login' ? 'Sign In' : 
@@ -373,7 +373,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                 <button
                   type="button"
                   onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-                  className="ml-1 text-amber-600 hover:text-amber-700 font-medium"
+                  className="ml-1 text-bzo-yellow-primary hover:text-bzo-yellow-secondary font-medium"
                 >
                   {mode === 'login' ? 'Sign Up' : 'Sign In'}
                 </button>

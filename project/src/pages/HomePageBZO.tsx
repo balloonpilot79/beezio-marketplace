@@ -7,19 +7,19 @@ const HomePage: React.FC<{
 }> = ({ onOpenAuthModal, onOpenSimpleSignup }) => {
   const features = [
     {
-      icon: <ShoppingBag className="w-12 h-12 text-bzo-yellow-primary" />,
+      icon: <img src="/bee-mascot.png" alt="Sell Products" className="w-12 h-12" />,
       title: "Join as a Seller",
       description: "List your products and set commission rates.",
       action: "Start Selling"
     },
     {
-      icon: <Megaphone className="w-12 h-12 text-bzo-yellow-primary" />,
+      icon: <img src="/bee-mascot.png" alt="Promote Products" className="w-12 h-12" />,
       title: "Promote & Earn", 
       description: "Choose from a variety of products to promote",
       action: "Start Promoting"
     },
     {
-      icon: <Heart className="w-12 h-12 text-bzo-yellow-primary" />,
+      icon: <img src="/bee-mascot.png" alt="Refer Others" className="w-12 h-12" />,
       title: "Raise Funds",
       description: "Create campaigns and receive support",
       action: "Start Campaign"
@@ -69,7 +69,7 @@ const HomePage: React.FC<{
                   {/* BZO SVG Placeholder - We'll add the actual image later */}
                   <div className="w-full h-full bg-gradient-to-br from-bzo-yellow-primary to-bzo-yellow-secondary rounded-full flex items-center justify-center shadow-2xl">
                     <div className="text-center">
-                      <div className="text-6xl mb-4">🐝</div>
+                      <img src="/bee-mascot.png" alt="BZO Bee Mascot" className="w-16 h-16 mb-4 mx-auto" />
                       <div className="text-2xl font-bold text-bzo-black">BZO</div>
                       <div className="text-sm text-bzo-black opacity-75">the bee</div>
                     </div>

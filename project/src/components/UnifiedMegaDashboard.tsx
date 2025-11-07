@@ -334,7 +334,7 @@ const UnifiedMegaDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-4xl font-bold mb-4 text-bzo-black flex items-center gap-3">
-                  <div className="bzo-mascot text-3xl">🐝</div>
+                  <img src="/bee-mascot.png" alt="BZO Bee" className="w-8 h-8 bzo-mascot" />
                   Welcome back, {profile?.full_name || user?.email?.split('@')[0] || 'User'}!
                 </h1>
                 <p className="text-gray-700 text-lg mb-4">
@@ -354,7 +354,7 @@ const UnifiedMegaDashboard: React.FC = () => {
               </div>
               <div className="hidden lg:block">
                 <div className="w-32 h-32 bg-bzo-yellow-primary/20 rounded-full flex items-center justify-center backdrop-blur-sm bzo-mascot">
-                  <div className="text-6xl">🐝</div>
+                  <img src="/bee-mascot.png" alt="BZO Bee" className="w-16 h-16" />
                 </div>
               </div>
             </div>

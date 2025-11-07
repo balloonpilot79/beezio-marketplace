@@ -68,8 +68,8 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-3 group">
               {/* BZO Bee Logo */}
-              <div className="w-12 h-12 bg-gradient-to-br from-bzo-yellow-primary to-bzo-yellow-secondary rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200 bzo-mascot">
-                <span className="text-2xl">🐝</span>
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200 bzo-mascot p-1">
+                <img src="/bee-mascot.png" alt="BZO Bee Mascot" className="w-full h-full object-contain" />
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-bzo-black group-hover:text-bzo-yellow-primary transition-colors duration-200">
