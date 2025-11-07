@@ -7,19 +7,19 @@ const HomePage: React.FC<{
 }> = ({ onOpenAuthModal, onOpenSimpleSignup }) => {
   const features = [
     {
-      icon: <DollarSign className="w-10 h-10 text-bzo-yellow-primary" />,
+      icon: <DollarSign className="w-10 h-10 text-bzo-primary" />,
       title: "Join as a Seller",
       description: "List products and earn commissions",
       action: "Start Selling"
     },
     {
-      icon: <Users className="w-10 h-10 text-bzo-yellow-primary" />,
+      icon: <Users className="w-10 h-10 text-bzo-primary" />,
       title: "Promote & Earn", 
       description: "Promote products for commission",
       action: "Start Promoting"
     },
     {
-      icon: <TrendingUp className="w-10 h-10 text-bzo-yellow-primary" />,
+      icon: <TrendingUp className="w-10 h-10 text-bzo-primary" />,
       title: "Raise Funds",
       description: "Create fundraising campaigns",
       action: "Start Campaign"
@@ -48,14 +48,14 @@ const HomePage: React.FC<{
             <div className="flex flex-col sm:flex-row gap-4">
               <button
                 onClick={onOpenSimpleSignup}
-                className="bg-gradient-to-r from-bzo-yellow-primary to-bzo-yellow-secondary hover:from-bzo-yellow-secondary hover:to-bzo-yellow-primary text-black px-10 py-4 rounded-full text-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                className="btn-bzo-primary px-10 py-4 rounded-full text-xl font-bold flex items-center justify-center gap-2"
               >
                 🚀 Join the Hive Today
                 <ArrowRight className="w-6 h-6" />
               </button>
               <button
                 onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
-                className="bg-gradient-to-r from-bzo-yellow-secondary to-bzo-yellow-primary hover:from-bzo-yellow-primary hover:to-bzo-yellow-secondary text-black px-8 py-4 rounded-full text-xl font-semibold shadow-md hover:shadow-lg transition-all duration-200"
+                className="btn-bzo-outline px-8 py-4 rounded-full text-xl font-semibold"
               >
                 Sign In
               </button>
@@ -82,15 +82,8 @@ const HomePage: React.FC<{
             </div>
           </div>
 
-          {/* Right - Smaller Bee */}
-          <div className="lg:col-span-1 flex justify-center items-center">
-            <img 
-              src="/bee-mascot.png" 
-              alt="BZO Bee Mascot" 
-              className="w-48 h-48 lg:w-56 lg:h-56 object-contain" 
-              style={{ filter: 'brightness(1.1) contrast(1.1)' }}
-            />
-          </div>
+          {/* Right - Visual space reserved (no mascot) */}
+          <div className="lg:col-span-1"></div>
         </div>
       </div>
 
@@ -104,7 +97,11 @@ const HomePage: React.FC<{
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {features.map((feature, index) => (
-              <div key={index} className="bg-white border-2 border-bzo-yellow-primary rounded-xl p-6 text-center hover:shadow-lg transition-all duration-200">
+              <div
+                key={index}
+                className="bg-white border-2 rounded-xl p-6 text-center hover:shadow-lg transition-all duration-200"
+                style={{ borderColor: 'var(--bzo-yellow-primary)' }}
+              >
                 <div className="flex justify-center mb-4">
                   {feature.icon}
                 </div>
@@ -116,7 +113,7 @@ const HomePage: React.FC<{
                 </p>
                 <button 
                   onClick={onOpenSimpleSignup}
-                  className="bg-gradient-to-r from-bzo-yellow-primary to-bzo-yellow-secondary hover:from-bzo-yellow-secondary hover:to-bzo-yellow-primary text-black px-6 py-3 rounded-full font-bold w-full shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                  className="btn-bzo-primary px-6 py-3 rounded-full font-bold w-full"
                 >
                   {feature.action}
                 </button>
@@ -159,7 +156,7 @@ const HomePage: React.FC<{
           <div className="text-center mt-12">
             <button
               onClick={onOpenSimpleSignup}
-              className="bg-gradient-to-r from-bzo-yellow-primary to-bzo-yellow-secondary hover:from-bzo-yellow-secondary hover:to-bzo-yellow-primary text-black px-12 py-4 rounded-full text-xl font-bold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              className="btn-bzo-primary px-12 py-4 rounded-full text-xl font-bold"
             >
               Start Earning Today →
             </button>
