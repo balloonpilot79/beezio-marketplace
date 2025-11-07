@@ -78,7 +78,6 @@ const StreamlinedAddProducts: React.FC = () => {
     newProducts[index] = { ...newProducts[index], [field]: value };
     setProducts(newProducts);
   };
-  };
 
   const handleImageUpload = (urls: string[]) => {
     updateProduct(currentProductIndex, 'images', [...products[currentProductIndex].images, ...urls]);
@@ -356,120 +355,6 @@ const StreamlinedAddProducts: React.FC = () => {
                 </div>
               </div>
             </label>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default StreamlinedAddProducts;
-                  label="Inventory"
-                  placeholder="1"
-                  value={currentProduct.inventory.toString()}
-                  onChange={(value) => updateProduct(currentProductIndex, 'inventory', parseInt(value) || 1)}
-                  required
-                />
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-sm font-semibold text-bzo-black mb-2">
-                  Category
-                </label>
-                <select
-                  value={currentProduct.category_id}
-                  onChange={(e) => updateProduct(currentProductIndex, 'category_id', e.target.value)}
-                  className="input-bzo w-full"
-                >
-                  <option value="">Select category</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-sm font-semibold text-bzo-black mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={currentProduct.description}
-                  onChange={(e) => updateProduct(currentProductIndex, 'description', e.target.value)}
-                  placeholder="Describe your product features, benefits, and specifications..."
-                  rows={4}
-                  className="input-bzo w-full resize-none"
-                />
-              </div>
-            </div>
-
-            {/* Images Card */}
-            <div className="card-bzo p-6">
-              <h3 className="text-xl font-bold text-bzo-black mb-4 flex items-center gap-2">
-                <Upload className="w-6 h-6 text-bzo-yellow-primary" />
-                Product Images
-              </h3>
-
-              {currentProduct.images.length > 0 && (
-                <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mb-4">
-                  {currentProduct.images.map((image, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={image}
-                        alt={`Product ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                      />
-                      <button
-                        onClick={() => {
-                          const newImages = currentProduct.images.filter((_, i) => i !== index);
-                          updateProduct(currentProductIndex, 'images', newImages);
-                        }}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <ImageUpload
-                bucket="product-images"
-                folder="new-products"
-                onUploadComplete={handleImageUpload}
-                maxFiles={5}
-                allowedTypes={['image/jpeg', 'image/png', 'image/webp']}
-              />
-            </div>
-
-            {/* Affiliate Settings Card */}
-            <div className="card-bzo p-6">
-              <h3 className="text-xl font-bold text-bzo-black mb-4">Sales Settings</h3>
-              
-              <div className="space-y-4">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={currentProduct.affiliate_enabled}
-                    onChange={(e) => updateProduct(currentProductIndex, 'affiliate_enabled', e.target.checked)}
-                    className="w-5 h-5 text-bzo-yellow-primary focus:ring-bzo-yellow-primary rounded"
-                  />
-                  <div>
-                    <div className="font-semibold text-bzo-black">Enable Affiliate Marketing</div>
-                    <div className="text-sm text-gray-600">
-                      Allow others to promote this product and earn commissions
-                    </div>
-                  </div>
-                </label>
-
-                {!currentProduct.affiliate_enabled && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    <p className="text-sm text-yellow-800">
-                      <strong>Store-Only Mode:</strong> This product will only appear in your custom store and won't be available for affiliates to promote.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </div>
