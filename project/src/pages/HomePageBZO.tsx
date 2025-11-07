@@ -29,7 +29,16 @@ const HomePage: React.FC<{
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section (condensed to keep cards above the fold) */}
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-6 py-8 relative">
+        {/* Subtle mascot only on homepage */}
+        <div className="hidden md:block absolute right-6 top-6">
+          <img
+            src="/bee-mascot.png"
+            alt="Beezio mascot"
+            className="w-16 h-16 object-contain bzo-mascot-static"
+          />
+        </div>
+
         {/* Single column to reduce height */}
         <div className="max-w-5xl">
             <div className="space-y-4">
@@ -38,9 +47,9 @@ const HomePage: React.FC<{
                 <br />
                 <span className="text-bzo-yellow-primary">with Affiliate Marketing</span>
               </h1>
-              <p className="text-xl text-black max-w-2xl">
-                Connect with sellers, promote products, and earn commissions. Join thousands already earning with Beezio's transparent marketplace.
-              </p>
+            <p className="text-xl text-black max-w-2xl">
+              Connect with sellers, promote products, and earn commissions.
+            </p>
             </div>
 
             {/* CTA moved below cards */}
