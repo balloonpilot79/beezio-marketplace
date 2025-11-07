@@ -43,22 +43,7 @@ const HomePage: React.FC<{
               </p>
             </div>
 
-            {/* Main Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={onOpenSimpleSignup}
-                className="btn-bzo-primary px-10 py-4 rounded-full text-xl font-bold flex items-center justify-center gap-2"
-              >
-                🚀 Join the Hive Today
-                <ArrowRight className="w-6 h-6" />
-              </button>
-              <button
-                onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
-              className="btn-bzo-primary px-8 py-4 rounded-full text-xl font-semibold"
-              >
-                Sign In
-              </button>
-            </div>
+            {/* CTA moved below cards */}
         </div>
       </div>
 
@@ -95,32 +80,27 @@ const HomePage: React.FC<{
               </div>
             ))}
           </div>
-        </div>
-      </div>
 
-      {/* Stats moved below the three cards */}
-      <div className="bg-white py-8">
-        <div className="container mx-auto px-6">
-          <div className="flex flex-row flex-wrap gap-8 justify-center">
-            <div className="text-center min-w-[120px]">
-              <div className="text-3xl font-bold text-black">10K+</div>
-              <div className="text-base text-black">Active Users</div>
-            </div>
-            <div className="text-center min-w-[120px]">
-              <div className="text-3xl font-bold text-black">$2M+</div>
-              <div className="text-base text-black">Total Earned</div>
-            </div>
-            <div className="text-center min-w-[120px]">
-              <div className="text-3xl font-bold text-black">500+</div>
-              <div className="text-base text-black">Products</div>
-            </div>
-            <div className="text-center min-w-[120px]">
-              <div className="text-3xl font-bold text-black">24/7</div>
-              <div className="text-base text-black">Support</div>
-            </div>
+          {/* Primary CTAs placed under the three cards */}
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={onOpenSimpleSignup}
+              className="btn-bzo-primary px-10 py-4 rounded-full text-xl font-bold flex items-center justify-center gap-2"
+            >
+              🚀 Join the Hive Today
+              <ArrowRight className="w-6 h-6" />
+            </button>
+            <button
+              onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
+              className="btn-bzo-primary px-8 py-4 rounded-full text-xl font-semibold"
+            >
+              Sign In
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Stats removed (not live yet) */}
 
       {/* What Makes Beezio Different */}
       <div className="py-12 bg-white">
