@@ -64,13 +64,12 @@ const HomePage: React.FC<{
 
             {/* Right - BZO Mascot */}
             <div className="flex justify-center items-center">
-              <div className="bzo-mascot">
-                <img 
-                  src="/bee-mascot.png" 
-                  alt="BZO Bee Mascot" 
-                  className="w-64 h-64 object-contain drop-shadow-2xl" 
-                />
-              </div>
+              <img 
+                src="/bee-mascot.png" 
+                alt="BZO Bee Mascot" 
+                className="w-64 h-64 object-contain bzo-mascot-static" 
+                style={{ filter: 'brightness(1.1) contrast(1.1)' }}
+              />
             </div>
           </div>
         </div>

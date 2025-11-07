@@ -167,3 +167,8 @@
 .bzo-mascot:hover {
   animation: bzoBounce 0.6s infinite;
 }
+
+.bzo-mascot-static {
+  /* No animation - stationary mascot */
+  filter: drop-shadow(0 0 0 transparent);
+}

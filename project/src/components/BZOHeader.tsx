@@ -68,8 +68,8 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-3 group">
               {/* BZO Bee Logo */}
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200 p-1">
-                <img src="/bee-mascot.png" alt="BZO Bee Mascot" className="w-10 h-10 object-contain" />
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center group-hover:bg-bzo-yellow-light transition-all duration-200 p-1">
+                <img src="/bee-mascot.png" alt="BZO Bee Mascot" className="w-10 h-10 object-contain" style={{ filter: 'brightness(1.1)' }} />
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-bzo-black group-hover:text-bzo-yellow-primary transition-colors duration-200">
@@ -165,16 +165,16 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 {/* Cart - always show */}
                 <CartIcon />
                 
-                {/* Login/Signup buttons */}
+                {/* Login/Signup buttons - Both Gold for Attraction */}
                 <button
                   onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
-                  className="px-4 py-2 text-bzo-black hover:text-bzo-yellow-primary font-medium transition-colors duration-200"
+                  className="bg-gradient-to-r from-bzo-yellow-primary to-bzo-yellow-secondary hover:from-bzo-yellow-secondary hover:to-bzo-yellow-primary text-bzo-black px-5 py-2 rounded-full font-semibold shadow-md hover:shadow-lg transition-all duration-200 border-2 border-bzo-yellow-primary"
                 >
                   Sign In
                 </button>
                 <button
                   onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
-                  className="bg-bzo-yellow-primary hover:bg-bzo-yellow-secondary text-bzo-black px-6 py-2 rounded-full font-semibold shadow-md hover:shadow-lg transition-all duration-200"
+                  className="bg-gradient-to-r from-bzo-yellow-secondary to-bzo-yellow-primary hover:from-bzo-yellow-primary hover:to-bzo-yellow-secondary text-bzo-black px-6 py-2 rounded-full font-bold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 border-2 border-bzo-yellow-secondary"
                 >
                   Sign Up
                 </button>
