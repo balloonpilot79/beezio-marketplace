@@ -7,6 +7,8 @@ import { AffiliateProvider } from './contexts/AffiliateContext';
 import { GlobalProvider } from './contexts/GlobalContext';
 import { GamificationProvider } from './contexts/GamificationContext';
 import Header from './components/Header';
+import BZOHeader from './components/BZOHeader';
+import HomePageBZO from './pages/HomePageBZO';
 import UserSubHeader from './components/UserSubHeader';
 import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/AdminDashboard';
@@ -15,6 +17,7 @@ import SimpleSignupModal from './components/SimpleSignupModal';
 import PaymentForm from './components/PaymentForm';
 import ProductForm from './components/ProductForm';
 import AddProductPage from './pages/AddProductPage';
+import StreamlinedAddProducts from './pages/StreamlinedAddProducts';
 import HowItWorksPage from './pages/HowItWorksPage';
 import SellersPage from './pages/SellersPage';
 import AffiliatePageNew from './pages/AffiliatePageNew';
@@ -355,13 +358,13 @@ const AppWorking: React.FC = () => {
             <GamificationProvider>
               <Router>
               <ScrollToTop />
-              <div className="min-h-screen bg-gray-50">
-                <Header onOpenAuthModal={setAuthModal} />
+              <div className="min-h-screen bg-bzo-gradient">
+                <BZOHeader onOpenAuthModal={setAuthModal} />
                 <UserSubHeader />
                 
                 <main>
                   <Routes>
-                    <Route path="/" element={<HomePage onOpenAuthModal={setAuthModal} />} />
+                    <Route path="/" element={<HomePageBZO onOpenAuthModal={setAuthModal} onOpenSimpleSignup={() => setShowSimpleSignup(true)} />} />
                     <Route path="/test" element={<TestPage />} />
                     <Route path="/testing" element={<TestingDashboard />} />
                     <Route path="/revolutionary" element={<RevolutionaryShowcaseSimple />} />
@@ -377,7 +380,8 @@ const AppWorking: React.FC = () => {
                     <Route path="/affiliate/products" element={<AffiliateProductsPage />} />
                     <Route path="/affiliate/dashboard" element={<AffiliateDashboardPage />} />
                     <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/add-product" element={<AddProductPage />} />
+                    <Route path="/add-product" element={<StreamlinedAddProducts />} />
+                    <Route path="/add-product-old" element={<AddProductPage />} />
                     <Route path="/dashboard-preview" element={<DashboardPreview />} />
                     <Route path="/affiliate-dashboard-preview" element={<AffiliateDashboardPreview />} />
                     <Route path="/buyer-dashboard-preview" element={<BuyerDashboardPreview />} />

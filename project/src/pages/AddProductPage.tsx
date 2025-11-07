@@ -263,23 +263,26 @@ const AddProductPage: React.FC = () => {
 
   // Mode selection screen
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-bzo-gradient py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Add Products</h1>
-          <p className="text-lg text-gray-600">Choose how you want to add your products</p>
+          <div className="flex justify-center mb-4">
+            <div className="bzo-mascot text-4xl">🐝</div>
+          </div>
+          <h1 className="text-5xl font-bold text-bzo-black mb-4">Add Products</h1>
+          <p className="text-xl text-gray-600">Choose how you want to buzz your products into the hive</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Single Product */}
           <div
             onClick={() => setMode('single')}
-            className="bg-white rounded-xl shadow-lg p-8 cursor-pointer hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border-2 border-transparent hover:border-orange-500"
+            className="card-bzo p-8 cursor-pointer group"
           >
-            <div className="bg-gradient-to-br from-orange-500 to-red-500 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Package className="w-10 h-10 text-white" />
+            <div className="bg-gradient-to-br from-bzo-yellow-primary to-bzo-yellow-secondary w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-200">
+              <Package className="w-10 h-10 text-bzo-black" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 text-center mb-4">
+            <h2 className="text-2xl font-bold text-bzo-black text-center mb-4">
               Add Single Product
             </h2>
             <p className="text-gray-600 text-center mb-6">

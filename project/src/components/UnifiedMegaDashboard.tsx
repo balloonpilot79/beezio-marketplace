@@ -313,7 +313,7 @@ const UnifiedMegaDashboard: React.FC = () => {
   ].filter(tab => tab.show);
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/30 to-purple-50/30">
+    <div className="relative min-h-screen bg-bzo-gradient">
       {loading && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm">
           <div className="text-center">
@@ -322,56 +322,57 @@ const UnifiedMegaDashboard: React.FC = () => {
           </div>
         </div>
       )}
-      {/* OBVIOUS BANNER TO VERIFY NEW DASHBOARD LOADED */}
-      <div className="bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 text-white text-center py-3 font-bold text-lg animate-pulse">
-        🎉 NEW UNIFIED MEGA DASHBOARD LOADED! 🚀 All Features in One Place!
+      {/* BZO Welcome Banner */}
+      <div className="bg-gradient-to-r from-bzo-yellow-primary to-bzo-yellow-secondary text-bzo-black text-center py-4 font-bold text-lg shadow-lg">
+        🐝 BZO Dashboard - Your Hive of Success! 🚀
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+        {/* BZO Header */}
         <div className="mb-8">
-          <div className="bg-gradient-to-r from-orange-500 to-purple-600 rounded-2xl shadow-2xl p-8 text-white">
+          <div className="card-bzo p-8 bg-gradient-to-r from-bzo-yellow-light to-bzo-white border-2 border-bzo-yellow-primary/30">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-4xl font-bold mb-2">
-                  Welcome back, {profile?.full_name || user?.email?.split('@')[0] || 'User'}! 👋
+                <h1 className="text-4xl font-bold mb-4 text-bzo-black flex items-center gap-3">
+                  <div className="bzo-mascot text-3xl">🐝</div>
+                  Welcome back, {profile?.full_name || user?.email?.split('@')[0] || 'User'}!
                 </h1>
-                <p className="text-orange-100 text-lg">
-                  {isSeller && 'Manage your products, orders, and grow your business'}
-                  {isAffiliate && 'Track your commissions and promote products'}
-                  {isBuyer && 'View your orders and track purchases'}
-                  {!profile && 'Access all features - sell products, earn commissions, and more!'}
+                <p className="text-gray-700 text-lg mb-4">
+                  {isSeller && 'Manage your products, orders, and grow your business with BZO'}
+                  {isAffiliate && 'Track your commissions and promote products in the hive'}
+                  {isBuyer && 'View your orders and discover amazing products'}
+                  {!profile && 'Access all features - sell products, earn commissions, and buzz with success!'}
                 </p>
-                <div className="mt-4 flex items-center gap-4">
-                  <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-white/20 backdrop-blur-sm">
+                <div className="flex items-center gap-4">
+                  <span className="inline-flex items-center px-6 py-2 rounded-full text-sm font-semibold bg-bzo-yellow-primary text-bzo-black">
                     {profile?.role === 'fundraiser' ? '💝 Fundraiser' : profile?.role ? `${profile.role.charAt(0).toUpperCase()}${profile.role.slice(1)}` : '👤 User'}
                   </span>
-                  <span className="text-sm text-orange-100">
+                  <span className="text-sm text-gray-600">
                     Member since {new Date(user?.created_at || Date.now()).toLocaleDateString()}
                   </span>
                 </div>
               </div>
               <div className="hidden lg:block">
-                <div className="w-32 h-32 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
-                  <Users className="w-16 h-16 text-white/80" />
+                <div className="w-32 h-32 bg-bzo-yellow-primary/20 rounded-full flex items-center justify-center backdrop-blur-sm bzo-mascot">
+                  <div className="text-6xl">🐝</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* BZO Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {canSellProducts && (
             <>
-              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+              <div className="card-bzo p-6 border-l-4 border-bzo-yellow-primary hover:border-bzo-yellow-secondary">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Total Sales</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total_sales}</p>
+                    <p className="text-sm font-semibold text-gray-600">Total Sales</p>
+                    <p className="text-3xl font-bold text-bzo-black mt-2">{stats.total_sales}</p>
                   </div>
-                  <div className="bg-blue-100 rounded-full p-3">
-                    <ShoppingCart className="w-8 h-8 text-blue-600" />
+                  <div className="bg-bzo-yellow-light rounded-full p-3">
+                    <ShoppingCart className="w-8 h-8 text-bzo-yellow-primary" />
                   </div>
                 </div>
               </div>

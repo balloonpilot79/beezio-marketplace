@@ -247,9 +247,132 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
           </button>
 
           {showInstructions && (
-            <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Step 1: Access Your Domain Provider</h4>
+            <div className="bg-bzo-yellow-light rounded-xl p-6 space-y-6">
+              <div className="flex items-start gap-3">
+                <div className="bg-bzo-yellow-primary rounded-full p-2">
+                  <Globe className="w-5 h-5 text-bzo-black" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-bzo-black mb-2">DNS Configuration for {domain}</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    To use your custom domain with Beezio, configure these DNS records with your domain provider:
+                  </p>
+                </div>
+              </div>
+
+              {/* DNS Records */}
+              <div className="space-y-4">
+                <div className="bg-bzo-white p-4 rounded-lg border border-bzo-yellow-primary/30">
+                  <h5 className="font-medium text-bzo-black mb-2">Required DNS Records</h5>
+                  <div className="space-y-3 text-sm">
+                    <div className="grid grid-cols-4 gap-2 font-medium text-gray-700 border-b pb-2">
+                      <span>Type</span>
+                      <span>Name</span>
+                      <span>Value</span>
+                      <span>TTL</span>
+                    </div>
+                    
+                    {/* CNAME for subdomain OR A record for root domain */}
+                    {domain.includes('.') && !domain.startsWith('www.') && domain.split('.').length === 2 ? (
+                      // Root domain (e.g., mystore.com)
+                      <>
+                        <div className="grid grid-cols-4 gap-2 text-gray-800">
+                          <span className="font-mono bg-gray-100 px-2 py-1 rounded">A</span>
+                          <span className="font-mono bg-gray-100 px-2 py-1 rounded">@</span>
+                          <span className="font-mono bg-gray-100 px-2 py-1 rounded">104.198.14.52</span>
+                          <span className="font-mono bg-gray-100 px-2 py-1 rounded">3600</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 text-gray-800">
+                          <span className="font-mono bg-gray-100 px-2 py-1 rounded">CNAME</span>
+                          <span className="font-mono bg-gray-100 px-2 py-1 rounded">www</span>
+                          <span className="font-mono bg-gray-100 px-2 py-1 rounded">beezio-marketplace.netlify.app</span>
+                          <span className="font-mono bg-gray-100 px-2 py-1 rounded">3600</span>
+                        </div>
+                      </>
+                    ) : (
+                      // Subdomain (e.g., shop.mydomain.com)
+                      <div className="grid grid-cols-4 gap-2 text-gray-800">
+                        <span className="font-mono bg-gray-100 px-2 py-1 rounded">CNAME</span>
+                        <span className="font-mono bg-gray-100 px-2 py-1 rounded">{domain.split('.')[0]}</span>
+                        <span className="font-mono bg-gray-100 px-2 py-1 rounded">beezio-marketplace.netlify.app</span>
+                        <span className="font-mono bg-gray-100 px-2 py-1 rounded">3600</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Provider-specific instructions */}
+                <div className="bg-bzo-white p-4 rounded-lg border border-bzo-yellow-primary/30">
+                  <h5 className="font-medium text-bzo-black mb-2">Popular DNS Providers</h5>
+                  <div className="grid md:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="font-medium text-gray-700">Cloudflare:</p>
+                      <p className="text-gray-600">DNS → Records → Add record</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-700">GoDaddy:</p>
+                      <p className="text-gray-600">DNS Management → Add Record</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-700">Namecheap:</p>
+                      <p className="text-gray-600">Advanced DNS → Add New Record</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-700">Google Domains:</p>
+                      <p className="text-gray-600">DNS → Custom records</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SSL Certificate info */}
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                    <div>
+                      <h5 className="font-medium text-green-800 mb-1">Free SSL Certificate</h5>
+                      <p className="text-sm text-green-700">
+                        Beezio automatically provides free SSL certificates for all custom domains. 
+                        Your store will be accessible via HTTPS once DNS propagation is complete.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Timeline */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h5 className="font-medium text-blue-800 mb-1">Propagation Time</h5>
+                      <p className="text-sm text-blue-700">
+                        DNS changes typically take 5-30 minutes to propagate, but can take up to 48 hours. 
+                        Your domain will work once propagation is complete.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Help section */}
+              <div className="border-t border-bzo-yellow-primary/30 pt-4">
+                <p className="text-sm text-gray-600">
+                  Need help? Contact our support team with your domain name and we'll assist with the setup.
+                </p>
+                <button className="mt-2 text-sm text-bzo-yellow-primary hover:text-bzo-yellow-secondary font-medium">
+                  Contact Support →
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* DNS Setup Steps - this section is outside the conditional */}
+      {domain && showInstructions && (
+        <div className="mt-6">
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Step 1: Access Your Domain Provider</h4>
                 <p className="text-sm text-gray-600">
                   Log in to your domain registrar (GoDaddy, Namecheap, Google Domains, etc.)
                 </p>
@@ -288,7 +411,7 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
                 </p>
               </div>
             </div>
-          )}
+          </div>
         </div>
       )}
 

@@ -76,54 +76,78 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       .map(segment => encodeURIComponent(segment))
       .join('/');
 
-  const uploadWithFetch = async (storagePath: string, file: File) => {
-    console.log('🔄 Starting REST fallback upload...');
+  const uploadWithFetch = async (storagePath: string, file: File, retryCount = 0): Promise<void> => {
+    const maxRetries = 2;
+    console.log(`🔄 Starting REST upload (attempt ${retryCount + 1}/${maxRetries + 1})...`);
     
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) {
-      console.error('❌ Failed to fetch session for upload:', sessionError);
-      throw new Error('Unable to authenticate upload. Please sign in again.');
-    }
-
-    const accessToken = sessionData?.session?.access_token;
-    if (!accessToken) {
-      throw new Error('No active session. Please sign in again.');
-    }
-
-    console.log(
-      '📤 REST upload bucket=%s path=%s size=%d type=%s',
-      bucket,
-      storagePath,
-      file.size,
-      file.type
-    );
-
-    const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${encodeStoragePath(storagePath)}`;
-
-    let response: Response;
     try {
-      response = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          apikey: supabaseAnonKey,
-          'Content-Type': file.type || 'application/octet-stream',
-          'x-upsert': 'false',
-        },
-        body: file,
-      });
-    } catch (networkError) {
-      console.error('❌ Network error while uploading to Supabase storage:', networkError);
-      throw new Error('Network error while uploading. Please check your connection and try again.');
-    }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error('❌ Failed to fetch session for upload:', sessionError);
+        throw new Error('Unable to authenticate upload. Please sign in again.');
+      }
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
-      console.error('❌ Direct upload failed:', response.status, errorText);
-      throw new Error(`Upload failed (${response.status}): ${errorText || response.statusText}`);
-    }
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        throw new Error('No active session. Please sign in again.');
+      }
 
-    console.log('✅ REST upload succeeded');
+      console.log(
+        '📤 REST upload bucket=%s path=%s size=%d type=%s',
+        bucket,
+        storagePath,
+        file.size,
+        file.type
+      );
+
+      const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${encodeStoragePath(storagePath)}`;
+
+      let response: Response;
+      try {
+        // Add 30 second timeout to REST upload too
+        const restUploadPromise = fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            apikey: supabaseAnonKey,
+            'Content-Type': file.type || 'application/octet-stream',
+            'x-upsert': 'false',
+          },
+          body: file,
+        });
+
+        const restTimeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('REST upload timeout after 30 seconds')), 30000)
+        );
+
+        response = await Promise.race([restUploadPromise, restTimeoutPromise]);
+      } catch (networkError) {
+        console.error('❌ Network error during REST upload:', networkError);
+        throw new Error(`REST upload failed: ${networkError instanceof Error ? networkError.message : 'Network error'}`);
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        console.error('❌ REST upload failed:', response.status, errorText);
+        throw new Error(`Upload failed (${response.status}): ${errorText || response.statusText}`);
+      }
+
+      console.log('✅ REST upload succeeded');
+      return;
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`❌ REST upload attempt ${retryCount + 1} failed:`, errorMessage);
+      
+      // Retry if we haven't exceeded max retries and it's a timeout/network error
+      if (retryCount < maxRetries && (errorMessage.includes('timeout') || errorMessage.includes('Network error'))) {
+        console.log(`🔄 Retrying REST upload in 2 seconds... (${retryCount + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return uploadWithFetch(storagePath, file, retryCount + 1);
+      }
+      
+      throw error;
+    }
   };
 
   const uploadFile = async (file: File): Promise<string> => {
@@ -145,9 +169,9 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           contentType: file.type || 'application/octet-stream',
         });
 
-      // Add 15 second timeout
+      // Add 30 second timeout (doubled for slower connections)
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Upload timeout after 15 seconds')), 15000)
+        setTimeout(() => reject(new Error('Upload timeout after 30 seconds')), 30000)
       );
 
       const { error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]) as any;

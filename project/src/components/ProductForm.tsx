@@ -42,6 +42,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     stock_quantity: product?.stock_quantity || 1,
     is_subscription: product?.is_subscription || false,
     subscription_interval: product?.subscription_interval || '',
+    affiliate_enabled: true, // DEFAULT TO TRUE - Business preference
     shipping_options: [
       { name: 'Standard Shipping', cost: 0, estimated_days: '3-5 business days' },
       { name: 'Express Shipping', cost: 0, estimated_days: '1-2 business days' },
@@ -76,6 +77,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 stock_quantity: data.stock_quantity || 1,
                 is_subscription: data.is_subscription || false,
                 subscription_interval: data.subscription_interval || '',
+                affiliate_enabled: data.affiliate_enabled !== false, // Default to true if not set
                 shipping_options: data.shipping_options || [
                   { name: 'Standard Shipping', cost: 0, estimated_days: '3-5 business days' },
                   { name: 'Express Shipping', cost: 0, estimated_days: '1-2 business days' },
@@ -269,6 +271,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             stripe_fee: pricingBreakdown.stripeFee,
             shipping_options: formData.shipping_options,
             requires_shipping: formData.requires_shipping,
+            affiliate_enabled: formData.affiliate_enabled,
+            status: formData.affiliate_enabled ? 'active' : 'store_only',
           })
           .eq('id', productId)
           .select()
@@ -298,8 +302,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             seller_id: sellerProfileId,
             shipping_options: formData.shipping_options,
             requires_shipping: formData.requires_shipping,
-            status: 'active',  // ✅ Auto-publish to marketplace
-            is_active: true     // ✅ Visible to buyers & affiliates
+            affiliate_enabled: formData.affiliate_enabled,
+            status: formData.affiliate_enabled ? 'active' : 'store_only',  // Business logic: marketplace vs store-only
+            is_active: true     // ✅ Always visible in seller's store
           }])
           .select()
           .single();
@@ -325,6 +330,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         stock_quantity: 1,
         is_subscription: false,
         subscription_interval: '',
+        affiliate_enabled: true, // DEFAULT TO TRUE - Business preference
         shipping_options: [
           { name: 'Standard Shipping', cost: 0, estimated_days: '3-5 business days' },
           { name: 'Express Shipping', cost: 0, estimated_days: '1-2 business days' },
@@ -351,32 +357,46 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
+    <div className="max-w-4xl mx-auto p-6 space-y-8 bg-bzo-gradient min-h-screen">
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Add New Product</h1>
-        <p className="text-gray-600">Set your desired profit and we'll calculate the final price</p>
+        <div className="flex justify-center mb-4">
+          <div className="bzo-mascot">
+            <div className="text-4xl">🐝</div>
+          </div>
+        </div>
+        <h1 className="text-4xl font-bold text-bzo-black mb-2">Add New Product</h1>
+        <p className="text-gray-600">Set your desired profit and we'll calculate the final price with BZO</p>
       </div>
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
+        <div className="bg-error-light border-2 border-error text-error px-6 py-4 rounded-xl card-bzo">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">⚠️</span>
+            <span className="font-medium">{error}</span>
+          </div>
         </div>
       )}
 
       {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-          {success}
+        <div className="bg-success-light border-2 border-success text-success px-6 py-4 rounded-xl card-bzo">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">✅</span>
+            <span className="font-medium">{success}</span>
+          </div>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Product Details Form */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Product Details</h2>
+        <div className="card-bzo p-8">
+          <h2 className="text-2xl font-bold text-bzo-black mb-6 flex items-center gap-2">
+            <span className="text-2xl">📝</span>
+            Product Details
+          </h2>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-bzo-black mb-3">
                 Product Title *
               </label>
               <input
@@ -385,13 +405,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 value={formData.title}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                placeholder="Enter product title"
+                className="input-bzo w-full"
+                placeholder="Enter your amazing product title"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-bzo-black mb-3">
                 Description
               </label>
               <textarea
@@ -399,14 +419,15 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                placeholder="Describe your product"
+                className="input-bzo w-full resize-none"
+                placeholder="Tell buyers why they'll love this product"
               />
             </div>
 
             {/* Product Images - Upload Section */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-4">
+              <label className="block text-sm font-semibold text-bzo-black mb-4 flex items-center gap-2">
+                <span className="text-lg">📸</span>
                 Product Images
               </label>
 
@@ -439,7 +460,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-bzo-black mb-3 flex items-center gap-2">
+                <span className="text-lg">🏷️</span>
                 Category *
               </label>
               <select
@@ -447,7 +469,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 value={formData.category_id}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="input-bzo w-full"
               >
                 <option value="">Select a category</option>
                 {categories.map((c) => (
@@ -458,15 +480,82 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               </select>
             </div>
 
+            {/* Affiliate Preference - KEY BUSINESS MODEL CHOICE */}
+            <div className="bg-gradient-to-r from-bzo-yellow-light to-bzo-white rounded-xl p-6 border-2 border-bzo-yellow-primary shadow-lg">
+              <label className="block text-sm font-semibold text-bzo-black mb-4 flex items-center gap-2">
+                <span className="text-2xl">🤝</span>
+                Do you want affiliates to promote this product? *
+              </label>
+              <p className="text-sm text-gray-600 mb-6">
+                <strong>Recommended:</strong> Let affiliates help you sell for bigger reach and more sales. You set the commission rate.
+              </p>
+              
+              <div className="space-y-4">
+                {/* Affiliate Enabled - PREFERRED/DEFAULT */}
+                <label className="flex items-start space-x-4 p-6 bg-gradient-to-r from-bzo-yellow-primary/20 to-bzo-yellow-secondary/20 rounded-xl border-3 border-bzo-yellow-primary cursor-pointer hover:shadow-md transition-all duration-200">
+                  <input
+                    type="radio"
+                    name="affiliate_enabled"
+                    value="yes"
+                    checked={formData.affiliate_enabled === true}
+                    onChange={() => setFormData(prev => ({ ...prev, affiliate_enabled: true }))}
+                    className="mt-1 text-bzo-yellow-primary focus:ring-bzo-yellow-primary scale-125"
+                  />
+                  <div className="flex-1">
+                    <div className="font-bold text-bzo-black text-lg flex items-center gap-2">
+                      🚀 YES - Enable Affiliates (Recommended)
+                      <span className="bg-bzo-yellow-primary text-bzo-black px-3 py-1 rounded-full text-xs font-bold">POPULAR</span>
+                    </div>
+                    <div className="text-sm text-gray-700 mt-2">
+                      • Product appears in <strong>marketplace</strong> for affiliates to discover<br/>
+                      • Affiliates can add to their custom stores with one click<br/>
+                      • <strong>Bigger reach = more sales</strong> with zero marketing effort<br/>
+                      • You set the commission rate (we recommend 20-30%)
+                    </div>
+                  </div>
+                </label>
+
+                {/* No Affiliates - Shopify-like */}
+                <label className="flex items-start space-x-4 p-6 bg-white rounded-xl border-2 border-gray-300 cursor-pointer hover:border-gray-400 hover:shadow-md transition-all duration-200">
+                  <input
+                    type="radio"
+                    name="affiliate_enabled"
+                    value="no"
+                    checked={formData.affiliate_enabled === false}
+                    onChange={() => setFormData(prev => ({ ...prev, affiliate_enabled: false }))}
+                    className="mt-1 text-gray-400 focus:ring-gray-400 scale-125"
+                  />
+                  <div className="flex-1">
+                    <div className="font-bold text-gray-700 text-lg">
+                      🏪 NO - Just My Store (Shopify-style)
+                    </div>
+                    <div className="text-sm text-gray-600 mt-2">
+                      • Product only appears in <strong>your custom store</strong><br/>
+                      • You handle all marketing and promotion yourself<br/>
+                      • Still uses Beezio secure checkout system<br/>
+                      • You can get a custom domain for your store
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              <div className="mt-4 p-4 bg-bzo-yellow-primary/10 rounded-lg border border-bzo-yellow-primary/30">
+                <p className="text-xs text-gray-700">
+                  <strong>💡 Beezio Tip:</strong> Most successful sellers use affiliates to 3x their sales volume. You can always change this later in your dashboard.
+                </p>
+              </div>
+            </div>
+
             {/* Sale Type - Clear and Simple */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+            <div className="bg-bzo-yellow-light rounded-xl p-6 border-2 border-bzo-yellow-primary/30">
+              <label className="block text-sm font-semibold text-bzo-black mb-4 flex items-center gap-2">
+                <span className="text-lg">💡</span>
                 How do you want to sell this product? *
               </label>
               
               <div className="space-y-3">
                 {/* One-Time Purchase Option */}
-                <label className="flex items-start space-x-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors">
+                <label className="flex items-start space-x-3 p-4 bg-bzo-white rounded-xl border-2 border-gray-200 cursor-pointer hover:border-bzo-yellow-primary hover:bg-bzo-yellow-light/50 transition-all duration-200">
                   <input
                     type="radio"
                     name="sale_type"
@@ -477,10 +566,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                       is_subscription: false,
                       subscription_interval: ''
                     }))}
-                    className="mt-1 text-blue-500 focus:ring-blue-500"
+                    className="mt-1 text-bzo-yellow-primary focus:ring-bzo-yellow-primary"
                   />
                   <div>
-                    <div className="font-medium text-gray-900">
+                    <div className="font-semibold text-bzo-black">
                       💰 One-Time Purchase (Recommended)
                     </div>
                     <div className="text-sm text-gray-600">
@@ -850,20 +939,29 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               </div>
             </div>
 
-            <div className="flex space-x-4 pt-4">
+            <div className="flex space-x-4 pt-6">
               <button
                 type="submit"
                 disabled={loading || !pricingBreakdown}
-                className="flex-1 bg-amber-500 text-white py-3 px-4 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                className="flex-1 btn-bzo-primary py-4 px-6 rounded-full text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {loading ? 'Creating Product...' : 'Create Product'}
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-bzo-black/30 border-t-bzo-black rounded-full animate-spin"></div>
+                    Creating Product...
+                  </>
+                ) : (
+                  <>
+                    🚀 Create Product
+                  </>
+                )}
               </button>
               
               {onCancel ? (
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="btn-bzo-secondary px-8 py-4 rounded-full font-semibold"
                 >
                   Cancel
                 </button>
@@ -871,9 +969,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 <button
                   type="button"
                   onClick={() => navigate('/dashboard')}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="btn-bzo-outline px-8 py-4 rounded-full font-semibold"
                 >
-                  Back to Dashboard
+                  ← Back to Dashboard
                 </button>
               )}
             </div>
