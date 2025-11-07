@@ -15,7 +15,6 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
-  // Force cache refresh
   const storeProfileId = profile?.id || user?.id || '';
 
   // Refs for detecting clicks outside
@@ -55,27 +54,23 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
   };
 
   const navigationLinks = [
-    { to: '/marketplace', label: 'Marketplace', hover: 'hover:text-bzo-yellow-primary' },
-    { to: '/fundraisers', label: 'Fundraisers', hover: 'hover:text-bzo-yellow-primary' },
-    { to: '/dashboard', label: 'Dashboard', hover: 'hover:text-bzo-yellow-primary' }
+    { to: '/', label: 'Home', hover: 'hover:text-[#FFD700]' },
+    { to: '/sellers', label: 'Sellers', hover: 'hover:text-[#FFD700]' },
+    { to: '/affiliates', label: 'Affiliates', hover: 'hover:text-[#FFD700]' },
+    { to: '/fundraisers', label: 'Fundraisers', hover: 'hover:text-[#FFD700]' },
+    { to: '/contact', label: 'Contact', hover: 'hover:text-[#FFD700]' }
   ];
 
   return (
-    <header className="bg-bzo-white/95 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-50 shadow-sm">
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           
-          {/* Left side: BZO Logo */}
+          {/* Left side: Beezio Logo */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-3 group">
-              {/* BZO Bee Logo */}
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center group-hover:bg-bzo-yellow-light transition-all duration-200 p-1">
-                <img src="/bee-mascot.png" alt="BZO Bee Mascot" className="w-10 h-10 object-contain" style={{ filter: 'brightness(1.1)' }} />
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-bzo-black group-hover:text-bzo-yellow-primary transition-colors duration-200">
-                  BEEZIO
-                </div>
+            <Link to="/" className="flex items-center space-x-2 group">
+              <div className="text-2xl font-bold text-gray-900 group-hover:text-[#FFD700] transition-colors duration-200">
+                BEEZIO
               </div>
             </Link>
           </div>
@@ -86,16 +81,18 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`text-bzo-black ${link.hover} font-medium transition-colors duration-200 relative group`}
+                className={`text-gray-700 ${link.hover} font-medium transition-colors duration-200`}
               >
                 {link.label}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-bzo-yellow-primary transition-all duration-300 group-hover:w-full"></span>
               </Link>
             ))}
           </nav>
 
           {/* Right side: Actions */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4">
+            {/* Cart */}
+            <CartIcon />
+
             {/* Language & Currency */}
             <div className="hidden lg:flex items-center space-x-2">
               <LanguageSwitcher />
@@ -104,10 +101,7 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
 
             {/* Auth Section */}
             {user ? (
-              <div className="flex items-center space-x-2">
-                {/* Cart - close to user when logged in */}
-                <CartIcon />
-                
+              <div className="flex items-center space-x-3">
                 {/* User Dropdown */}
                 <div className="relative" ref={userDropdownRef}>
                   <button
@@ -163,19 +157,15 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
               </div>
             ) : (
               <div className="flex items-center space-x-3">
-                {/* Cart - always show */}
-                <CartIcon />
-                
-                {/* Login/Signup buttons - Both Gold for Attraction */}
                 <button
                   onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
-                  className="bg-gradient-to-r from-bzo-yellow-primary to-bzo-yellow-secondary hover:from-bzo-yellow-secondary hover:to-bzo-yellow-primary text-bzo-black px-5 py-2 rounded-full font-semibold shadow-md hover:shadow-lg transition-all duration-200 border-2 border-bzo-yellow-primary"
+                  className="bg-transparent border-2 border-gray-300 hover:border-[#FFD700] text-gray-900 px-6 py-2 rounded-lg font-semibold transition-all duration-200"
                 >
-                  Sign In
+                  Login
                 </button>
                 <button
                   onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
-                  className="bg-gradient-to-r from-bzo-yellow-secondary to-bzo-yellow-primary hover:from-bzo-yellow-primary hover:to-bzo-yellow-secondary text-bzo-black px-6 py-2 rounded-full font-bold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 border-2 border-bzo-yellow-secondary"
+                  className="bg-[#FFD700] hover:bg-[#FFC700] text-gray-900 px-6 py-2 rounded-lg font-bold shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   Sign Up
                 </button>
