@@ -28,11 +28,10 @@ const HomePage: React.FC<{
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Hero Section */}
-      <div className="container mx-auto px-6 py-12">
-        <div className="grid lg:grid-cols-3 gap-8 items-center">
-          {/* Left Content - 2/3 width */}
-          <div className="lg:col-span-2 space-y-8">
+      {/* Hero Section (condensed to keep cards above the fold) */}
+      <div className="container mx-auto px-6 py-8">
+        {/* Single column to reduce height */}
+        <div className="max-w-5xl">
             <div className="space-y-4">
               <h1 className="text-5xl lg:text-6xl font-bold text-black leading-tight">
                 Boost Your Income
@@ -55,35 +54,11 @@ const HomePage: React.FC<{
               </button>
               <button
                 onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
-                className="btn-bzo-outline px-8 py-4 rounded-full text-xl font-semibold"
+              className="btn-bzo-primary px-8 py-4 rounded-full text-xl font-semibold"
               >
                 Sign In
               </button>
             </div>
-
-            {/* Stats */}
-            <div className="flex flex-row gap-8 pt-4">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-black">10K+</div>
-                <div className="text-base text-black">Active Users</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-black">$2M+</div>
-                <div className="text-base text-black">Total Earned</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-black">500+</div>
-                <div className="text-base text-black">Products</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-black">24/7</div>
-                <div className="text-base text-black">Support</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right - Visual space reserved (no mascot) */}
-          <div className="lg:col-span-1"></div>
         </div>
       </div>
 
@@ -119,6 +94,30 @@ const HomePage: React.FC<{
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Stats moved below the three cards */}
+      <div className="bg-white py-8">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-row flex-wrap gap-8 justify-center">
+            <div className="text-center min-w-[120px]">
+              <div className="text-3xl font-bold text-black">10K+</div>
+              <div className="text-base text-black">Active Users</div>
+            </div>
+            <div className="text-center min-w-[120px]">
+              <div className="text-3xl font-bold text-black">$2M+</div>
+              <div className="text-base text-black">Total Earned</div>
+            </div>
+            <div className="text-center min-w-[120px]">
+              <div className="text-3xl font-bold text-black">500+</div>
+              <div className="text-base text-black">Products</div>
+            </div>
+            <div className="text-center min-w-[120px]">
+              <div className="text-3xl font-bold text-black">24/7</div>
+              <div className="text-base text-black">Support</div>
+            </div>
           </div>
         </div>
       </div>
