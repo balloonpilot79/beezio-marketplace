@@ -54,23 +54,23 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
   };
 
   const navigationLinks = [
-    { to: '/', label: 'Home', hover: 'hover:text-[#FFD700]' },
-    { to: '/sellers', label: 'Sellers', hover: 'hover:text-[#FFD700]' },
-    { to: '/affiliates', label: 'Affiliates', hover: 'hover:text-[#FFD700]' },
-    { to: '/fundraisers', label: 'Fundraisers', hover: 'hover:text-[#FFD700]' },
-    { to: '/contact', label: 'Contact', hover: 'hover:text-[#FFD700]' }
+    { to: '/', label: 'Home', hover: 'hover:text-[#ffcc00]' },
+    { to: '/marketplace', label: 'Marketplace', hover: 'hover:text-[#ffcc00]' },
+    { to: '/sellers', label: 'Sellers', hover: 'hover:text-[#ffcc00]' },
+    { to: '/affiliates', label: 'Affiliates', hover: 'hover:text-[#ffcc00]' },
+    { to: '/contact', label: 'Contact', hover: 'hover:text-[#ffcc00]' }
   ];
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="bg-black sticky top-0 z-50 shadow-md">
+      <div className="max-w-7xl mx-auto px-12">
         <div className="flex justify-between items-center h-16">
           
           {/* Left side: Beezio Logo */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2 group">
-              <div className="text-2xl font-bold text-gray-900 group-hover:text-[#FFD700] transition-colors duration-200">
-                BEEZIO
+            <Link to="/" className="flex items-center group">
+              <div className="text-3xl font-bold text-[#ffcc00] transition-colors duration-200">
+                Beezio
               </div>
             </Link>
           </div>
@@ -81,7 +81,7 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`text-gray-700 ${link.hover} font-medium transition-colors duration-200`}
+                className={`text-white ${link.hover} font-medium transition-colors duration-200`}
               >
                 {link.label}
               </Link>
@@ -159,13 +159,13 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
-                  className="bg-transparent border-2 border-gray-300 hover:border-[#FFD700] text-gray-900 px-6 py-2 rounded-lg font-semibold transition-all duration-200"
+                  className="bg-white text-black px-5 py-2 rounded font-semibold transition-all duration-200 hover:bg-gray-200"
                 >
-                  Login
+                  Log In
                 </button>
                 <button
                   onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
-                  className="bg-[#FFD700] hover:bg-[#FFC700] text-gray-900 px-6 py-2 rounded-lg font-bold shadow-md hover:shadow-lg transition-all duration-200"
+                  className="bg-[#ffcc00] text-black px-5 py-2 rounded font-semibold transition-all duration-200 hover:bg-[#e6b800]"
                 >
                   Sign Up
                 </button>
