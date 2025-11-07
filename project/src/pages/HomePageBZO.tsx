@@ -29,13 +29,13 @@ const HomePage: React.FC<{
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section (condensed to keep cards above the fold) */}
-      <div className="container mx-auto px-6 py-8 relative">
-        {/* Subtle mascot only on homepage */}
-        <div className="hidden md:block absolute right-6 top-6">
+      <div className="container mx-auto px-6 pt-10 pb-6 relative">
+        {/* Enlarged mascot to fill top-right space */}
+        <div className="hidden md:block absolute right-4 top-4 flex flex-col items-center">
           <img
             src="/bee-mascot.png"
             alt="Beezio mascot"
-            className="w-16 h-16 object-contain bzo-mascot-static"
+            className="w-32 h-32 object-contain bzo-mascot-static drop-shadow-md"
           />
         </div>
 
@@ -47,8 +47,8 @@ const HomePage: React.FC<{
                 <br />
                 <span className="text-bzo-yellow-primary">with Affiliate Marketing</span>
               </h1>
-            <p className="text-xl text-black max-w-2xl">
-              Connect with sellers, promote products, and earn commissions.
+            <p className="text-lg text-black max-w-2xl leading-relaxed">
+              A growing commerce platform where you can list products, promote others, or launch a cause — all in one place. Build early momentum, learn what works, and prepare for scale. No hype, just tools.
             </p>
             </div>
 
@@ -91,20 +91,30 @@ const HomePage: React.FC<{
           </div>
 
           {/* Primary CTAs placed under the three cards */}
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={onOpenSimpleSignup}
-              className="btn-bzo-primary px-10 py-4 rounded-full text-xl font-bold flex items-center justify-center gap-2"
-            >
-              🚀 Join the Hive Today
-              <ArrowRight className="w-6 h-6" />
-            </button>
-            <button
-              onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
-              className="btn-bzo-primary px-8 py-4 rounded-full text-xl font-semibold"
-            >
-              Sign In
-            </button>
+          <div className="mt-10 flex flex-col items-center gap-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button
+                onClick={onOpenSimpleSignup}
+                className="btn-bzo-primary px-12 py-5 rounded-full text-lg font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all"
+              >
+                🚀 Join the Hive Today
+                <ArrowRight className="w-6 h-6" />
+              </button>
+              <button
+                onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
+                className="btn-bzo-outline px-10 py-5 rounded-full text-lg font-semibold shadow-sm hover:shadow-md transition-all"
+              >
+                Sign In
+              </button>
+            </div>
+            {/* Subtext row for clarity */}
+            <div className="flex flex-col sm:flex-row gap-3 text-sm text-gray-600 text-center">
+              <span>Sell products</span>
+              <span className="hidden sm:inline">•</span>
+              <span>Promote & earn</span>
+              <span className="hidden sm:inline">•</span>
+              <span>Launch a fundraiser</span>
+            </div>
           </div>
         </div>
       </div>
