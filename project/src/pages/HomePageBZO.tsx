@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, Megaphone, Heart, ArrowRight } from 'lucide-react';
+import { ArrowRight, DollarSign, Users, TrendingUp } from 'lucide-react';
 
 const HomePage: React.FC<{
   onOpenAuthModal: (modal: { isOpen: boolean; mode: 'login' | 'register' }) => void;
@@ -7,117 +7,107 @@ const HomePage: React.FC<{
 }> = ({ onOpenAuthModal, onOpenSimpleSignup }) => {
   const features = [
     {
-      icon: <img src="/bee-mascot.png" alt="Sell Products" className="w-12 h-12" />,
+      icon: <DollarSign className="w-8 h-8 text-bzo-black" />,
       title: "Join as a Seller",
-      description: "List your products and set commission rates.",
+      description: "List products and earn",
       action: "Start Selling"
     },
     {
-      icon: <img src="/bee-mascot.png" alt="Promote Products" className="w-12 h-12" />,
+      icon: <Users className="w-8 h-8 text-bzo-black" />,
       title: "Promote & Earn", 
-      description: "Choose from a variety of products to promote",
+      description: "Promote products for commission",
       action: "Start Promoting"
     },
     {
-      icon: <img src="/bee-mascot.png" alt="Refer Others" className="w-12 h-12" />,
+      icon: <TrendingUp className="w-8 h-8 text-bzo-black" />,
       title: "Raise Funds",
-      description: "Create campaigns and receive support",
+      description: "Create fundraising campaigns",
       action: "Start Campaign"
     }
   ];
 
   return (
-    <div className="min-h-screen bg-bzo-gradient">
-      {/* Hero Section */}
-      <div className="hero-bzo">
-        <div className="container mx-auto px-6 py-20">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
-            <div className="space-y-8">
-              <div className="space-y-6">
-                <h1 className="text-5xl md:text-6xl font-bold text-bzo-black leading-tight">
-                  Boost Your Income
-                  <br />
-                  <span className="text-bzo-yellow-primary">with Affiliate Marketing</span>
-                </h1>
-                <p className="text-xl text-gray-600 max-w-lg">
-                  Connect with sellers, promote products, and earn commissions.
-                </p>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={onOpenSimpleSignup}
-                  className="btn-bzo-primary px-8 py-4 rounded-full text-lg font-semibold flex items-center justify-center gap-2 group"
-                >
-                  Get Started
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </button>
-                <button
-                  onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
-                  className="btn-bzo-outline px-8 py-4 rounded-full text-lg font-semibold"
-                >
-                  Sign In
-                </button>
-              </div>
+    <div className="min-h-screen bg-white flex items-center">
+      <div className="container mx-auto px-6 py-8">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Left Content */}
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h1 className="text-4xl lg:text-5xl font-bold text-black leading-tight">
+                Boost Your Income
+                <br />
+                <span className="text-bzo-yellow-primary">with Affiliate Marketing</span>
+              </h1>
+              <p className="text-lg text-black max-w-lg">
+                Connect with sellers, promote products, and earn commissions.
+              </p>
             </div>
-
-            {/* Right - BZO Mascot */}
-            <div className="flex justify-center items-center">
-              <img 
-                src="/bee-mascot.png" 
-                alt="BZO Bee Mascot" 
-                className="w-64 h-64 object-contain bzo-mascot-static" 
-                style={{ filter: 'brightness(1.1) contrast(1.1)' }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Features Section */}
-      <div className="py-20 bg-white">
-        <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <div key={index} className="card-bzo p-8 text-center group">
-                <div className="flex justify-center mb-6">
-                  {feature.icon}
+            
+            {/* Three Feature Cards in One Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-8">
+              {features.map((feature, index) => (
+                <div key={index} className="bg-white border-2 border-bzo-yellow-primary rounded-xl p-4 text-center">
+                  <div className="flex justify-center mb-2">
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-sm font-bold text-black mb-1">
+                    {feature.title}
+                  </h3>
+                  <p className="text-xs text-black mb-3">
+                    {feature.description}
+                  </p>
+                  <button 
+                    onClick={onOpenSimpleSignup}
+                    className="bg-gradient-to-r from-bzo-yellow-primary to-bzo-yellow-secondary hover:from-bzo-yellow-secondary hover:to-bzo-yellow-primary text-black px-4 py-2 rounded-full font-semibold w-full shadow-md hover:shadow-lg transition-all duration-200"
+                  >
+                    {feature.action}
+                  </button>
                 </div>
-                <h3 className="text-2xl font-bold text-bzo-black mb-4">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 mb-6 leading-relaxed">
-                  {feature.description}
-                </p>
-                <button 
-                  onClick={onOpenSimpleSignup}
-                  className="btn-bzo-outline px-6 py-3 rounded-full font-semibold w-full group-hover:btn-bzo-primary transition-all duration-300"
-                >
-                  {feature.action}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+              ))}
+            </div>
 
-      {/* CTA Section */}
-      <div className="py-20 bg-bzo-black text-center">
-        <div className="container mx-auto px-6">
-          <div className="max-w-3xl mx-auto space-y-8">
-            <h2 className="text-4xl font-bold text-bzo-white">
-              Ready to Start Your Journey with BZO?
-            </h2>
-            <p className="text-xl text-gray-300">
-              Join thousands of sellers and affiliates already earning with Beezio's marketplace.
-            </p>
-            <button
-              onClick={onOpenSimpleSignup}
-              className="btn-bzo-primary px-10 py-4 rounded-full text-xl font-semibold"
-            >
-              🚀 Join the Hive Today
-            </button>
+            {/* Main Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button
+                onClick={onOpenSimpleSignup}
+                className="bg-gradient-to-r from-bzo-yellow-primary to-bzo-yellow-secondary hover:from-bzo-yellow-secondary hover:to-bzo-yellow-primary text-black px-8 py-4 rounded-full text-lg font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              >
+                🚀 Join the Hive Today
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button
+                onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
+                className="bg-gradient-to-r from-bzo-yellow-secondary to-bzo-yellow-primary hover:from-bzo-yellow-primary hover:to-bzo-yellow-secondary text-black px-8 py-4 rounded-full text-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200"
+              >
+                Sign In
+              </button>
+            </div>
+
+            {/* Stats */}
+            <div className="flex flex-row gap-6 pt-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-black">10K+</div>
+                <div className="text-sm text-black">Active Users</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-black">$2M+</div>
+                <div className="text-sm text-black">Earned</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-black">500+</div>
+                <div className="text-sm text-black">Products</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right - Bigger BZO Mascot */}
+          <div className="flex justify-center items-center">
+            <img 
+              src="/bee-mascot.png" 
+              alt="BZO Bee Mascot" 
+              className="w-80 h-80 lg:w-96 lg:h-96 object-contain" 
+              style={{ filter: 'brightness(1.1) contrast(1.1)' }}
+            />
           </div>
         </div>
       </div>
