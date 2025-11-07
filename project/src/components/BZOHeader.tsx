@@ -15,6 +15,7 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  // Force cache refresh
   const storeProfileId = profile?.id || user?.id || '';
 
   // Refs for detecting clicks outside
