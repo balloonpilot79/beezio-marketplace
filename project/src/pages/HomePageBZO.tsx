@@ -9,32 +9,32 @@ const HomePage: React.FC<{
 
   const slides = [
     {
-      icon: <Store className="w-16 h-16 text-[#ffcc00]" />,
+      icon: <Store className="w-12 h-12 text-[#ffcc00]" />,
       title: "Build Your Online Store",
       description: "Create a professional marketplace with your own custom domain and branding"
     },
     {
-      icon: <Users className="w-16 h-16 text-[#ffcc00]" />,
+      icon: <Users className="w-12 h-12 text-[#ffcc00]" />,
       title: "Affiliate Marketing Platform",
       description: "Enable affiliates to promote your products and earn lifetime commissions"
     },
     {
-      icon: <TrendingUp className="w-16 h-16 text-[#ffcc00]" />,
+      icon: <TrendingUp className="w-12 h-12 text-[#ffcc00]" />,
       title: "Grow Your Revenue",
       description: "Leverage our commission structure to scale your business with affiliates"
     },
     {
-      icon: <Globe className="w-16 h-16 text-[#ffcc00]" />,
+      icon: <Globe className="w-12 h-12 text-[#ffcc00]" />,
       title: "Custom Domains",
       description: "Use your own domain or get a free Beezio subdomain for your store"
     },
     {
-      icon: <Package className="w-16 h-16 text-[#ffcc00]" />,
+      icon: <Package className="w-12 h-12 text-[#ffcc00]" />,
       title: "Product Management",
       description: "Easy-to-use tools for uploading products, managing inventory, and tracking orders"
     },
     {
-      icon: <Zap className="w-16 h-16 text-[#ffcc00]" />,
+      icon: <Zap className="w-12 h-12 text-[#ffcc00]" />,
       title: "Launch in Minutes",
       description: "Get your marketplace up and running quickly with our streamlined setup process"
     }
@@ -51,10 +51,10 @@ const HomePage: React.FC<{
   return (
     <div className="min-h-screen bg-white">
       {/* HERO SLIDER SECTION */}
-      <section className="bg-white text-black px-5 py-16 relative overflow-hidden">
-        <div className="max-w-4xl mx-auto">
+      <section className="bg-white text-black px-5 py-10 relative overflow-hidden">
+        <div className="max-w-3xl mx-auto">
           {/* Slider */}
-          <div className="relative h-64 flex items-center justify-center">
+          <div className="relative h-48 flex items-center justify-center">
             {slides.map((slide, index) => (
               <div
                 key={index}
@@ -66,9 +66,9 @@ const HomePage: React.FC<{
                     : 'opacity-0 translate-x-full'
                 }`}
               >
-                <div className="mb-4">{slide.icon}</div>
-                <h2 className="text-3xl font-bold mb-3">{slide.title}</h2>
-                <p className="text-lg max-w-2xl mx-auto leading-relaxed text-gray-700">
+                <div className="mb-3">{React.cloneElement(slide.icon as React.ReactElement, { className: 'w-12 h-12 text-[#ffcc00]' })}</div>
+                <h2 className="text-2xl font-bold mb-2">{slide.title}</h2>
+                <p className="text-base max-w-xl mx-auto leading-relaxed text-gray-700">
                   {slide.description}
                 </p>
               </div>
@@ -76,7 +76,7 @@ const HomePage: React.FC<{
           </div>
 
           {/* Slide Indicators */}
-          <div className="flex justify-center gap-2 mt-6">
+          <div className="flex justify-center gap-2 mt-4">
             {slides.map((_, index) => (
               <button
                 key={index}
@@ -92,10 +92,10 @@ const HomePage: React.FC<{
           </div>
 
           {/* CTA Button */}
-          <div className="flex justify-center mt-8">
+          <div className="flex justify-center mt-6">
             <button 
               onClick={onOpenSimpleSignup}
-              className="bg-[#ffcc00] hover:bg-[#e6b800] text-black font-semibold text-lg px-8 py-3 rounded transition-all duration-300 shadow-md hover:shadow-lg"
+              className="bg-[#ffcc00] hover:bg-[#e6b800] text-black font-semibold text-base px-6 py-2.5 rounded transition-all duration-300 shadow-md hover:shadow-lg"
             >
               Get Started Free
             </button>
