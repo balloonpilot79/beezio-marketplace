@@ -54,6 +54,7 @@ export const fetchMarketplaceProducts = async (limit?: number): Promise<Marketpl
     .from('products')
     .select(baseSelect)
     .eq('is_active', true)
+    .eq('affiliate_enabled', true) // Only show products opted-in for affiliate marketing
     .order('created_at', { ascending: false });
 
   if (typeof limit === 'number') {
