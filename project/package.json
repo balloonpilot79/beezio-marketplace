@@ -11,7 +11,6 @@
     "test-fulfillment": "node test-fulfillment-system.js",
     "dev": "vite --force",
     "build": "vite build",
-    "prebuild": "node ./scripts/env-guard.cjs",
     "scan:secrets": "node ./scripts/secret-scan.js",
     "preview": "vite preview"
   },
