@@ -357,36 +357,177 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8 bg-bzo-gradient min-h-screen">
-      <div className="text-center">
-        <div className="flex justify-center mb-4">
-          <div className="bzo-mascot">
-            <div className="text-4xl">🐝</div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Clean Header */}
+      <div className="bg-[#ffcc00] border-b border-gray-200">
+        <div className="max-w-3xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-black">Add New Product</h1>
+              <p className="text-sm text-gray-700">Fill out the information below</p>
+            </div>
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200"
+            >
+              {loading ? 'Saving...' : editMode ? 'Update Product' : 'Save Product'}
+            </button>
           </div>
         </div>
-        <h1 className="text-4xl font-bold text-bzo-black mb-2">Add New Product</h1>
-        <p className="text-gray-600">Set your desired profit and we'll calculate the final price with BZO</p>
       </div>
 
+      {/* Alerts */}
       {error && (
-        <div className="bg-error-light border-2 border-error text-error px-6 py-4 rounded-xl card-bzo">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">⚠️</span>
-            <span className="font-medium">{error}</span>
+        <div className="max-w-3xl mx-auto px-6 pt-6">
+          <div className="bg-red-50 border-2 border-red-500 text-red-700 px-6 py-4 rounded-lg">
+            ⚠️ {error}
           </div>
         </div>
       )}
 
       {success && (
-        <div className="bg-success-light border-2 border-success text-success px-6 py-4 rounded-xl card-bzo">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">✅</span>
-            <span className="font-medium">{success}</span>
+        <div className="max-w-3xl mx-auto px-6 pt-6">
+          <div className="bg-green-50 border-2 border-green-500 text-green-700 px-6 py-4 rounded-lg">
+            ✅ {success}
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Main Form - Single Column */}
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 space-y-6">
+          
+          {/* Product Title */}
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Product Title <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleInputChange}
+              required
+              placeholder="e.g., Wireless Headphones"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              rows={4}
+              placeholder="Describe your product features and benefits..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20 resize-none"
+            />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Category <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="category_id"
+              value={formData.category_id}
+              onChange={handleInputChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
+            >
+              <option value="">Select a category...</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Stock Quantity */}
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Stock Quantity
+            </label>
+            <input
+              type="number"
+              name="stock_quantity"
+              value={formData.stock_quantity}
+              onChange={handleInputChange}
+              min="0"
+              placeholder="1"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
+            />
+          </div>
+
+          {/* Product Images */}
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-3">
+              Product Images
+            </label>
+            
+            {currentProductId && productImages.length > 0 && (
+              <div className="mb-4">
+                <ImageGallery
+                  productId={currentProductId}
+                  images={productImages}
+                  onImagesChange={setProductImages}
+                  canEdit={true}
+                />
+              </div>
+            )}
+
+            <ImageUpload
+              bucket="product-images"
+              folder={currentProductId ? `products/${currentProductId}` : 'new-products'}
+              productId={currentProductId ?? undefined}
+              onUploadComplete={handleImageUploadSuccess}
+              maxFiles={10}
+              allowedTypes={['image/jpeg', 'image/png', 'image/webp']}
+            />
+          </div>
+
+          {/* Pricing Calculator */}
+          <div className="border-t border-gray-200 pt-6">
+            <label className="block text-sm font-bold text-gray-900 mb-3">
+              Pricing <span className="text-red-500">*</span>
+            </label>
+            <PricingCalculator
+              onPricingChange={(breakdown) => setPricingBreakdown(breakdown)}
+              initialBreakdown={pricingBreakdown}
+            />
+          </div>
+
+          {/* Affiliate Marketing Toggle */}
+          <div className="border-t border-gray-200 pt-6">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={formData.affiliate_enabled}
+                onChange={(e) => setFormData(prev => ({ ...prev, affiliate_enabled: e.target.checked }))}
+                className="mt-1 w-5 h-5 text-[#ffcc00] border-gray-300 rounded focus:ring-[#ffcc00]"
+              />
+              <div>
+                <div className="font-bold text-gray-900 group-hover:text-[#ffcc00] transition-colors">
+                  Enable affiliate marketing for this product
+                </div>
+                <div className="text-sm text-gray-600 mt-1">
+                  Allow affiliates to promote this product and earn commissions on sales
+                </div>
+              </div>
+            </label>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  );
         {/* Product Details Form */}
         <div className="card-bzo p-8">
           <h2 className="text-2xl font-bold text-bzo-black mb-6 flex items-center gap-2">
@@ -984,12 +1125,5 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             onPricingChange={setPricingBreakdown}
             initialSellerAmount={100}
             initialAffiliateRate={20}
-            initialAffiliateType="percentage"
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default ProductForm;
