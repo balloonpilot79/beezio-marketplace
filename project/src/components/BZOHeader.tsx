@@ -107,44 +107,44 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 <div className="relative" ref={userDropdownRef}>
                   <button
                     onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-                    className="flex items-center space-x-2 bg-bzo-yellow-light hover:bg-bzo-yellow-primary/20 p-2 rounded-full transition-all duration-200 group"
+                    className="flex items-center space-x-2 bg-white hover:bg-gray-100 p-2 rounded-full transition-all duration-200 group"
                   >
-                    <div className="w-8 h-8 bg-bzo-yellow-primary rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-bzo-black" />
+                    <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-[#ffcc00]" />
                     </div>
-                    <span className="hidden lg:block text-bzo-black font-medium group-hover:text-bzo-yellow-primary transition-colors">
+                    <span className="hidden lg:block text-black font-medium">
                       {user.email?.split('@')[0] || 'User'}
                     </span>
-                    <ChevronDown className={`w-4 h-4 text-bzo-black transition-transform duration-200 ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-black transition-transform duration-200 ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
 
                   {/* User Dropdown Menu */}
                   {isUserDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-bzo-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
-                      <div className="px-4 py-3 border-b border-gray-100">
-                        <p className="text-sm font-medium text-bzo-black">{user.email}</p>
-                        <p className="text-xs text-gray-500">
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border-2 border-[#ffcc00] py-2 z-50">
+                      <div className="px-4 py-3 border-b border-gray-200">
+                        <p className="text-sm font-medium text-black">{user.email}</p>
+                        <p className="text-xs text-gray-600">
                           {profile?.role === 'seller' ? '🏪 Seller Account' : 
                            profile?.role === 'affiliate' ? '🤝 Affiliate Account' : 
                            '👤 User Account'}
                         </p>
                       </div>
                       
-                      <Link to="/dashboard" className="block px-4 py-2 text-sm text-bzo-black hover:bg-bzo-yellow-light transition-colors">
+                      <Link to="/dashboard" className="block px-4 py-2 text-sm text-black hover:bg-[#ffcc00] transition-colors">
                         📊 Dashboard
                       </Link>
                       
                       {storeProfileId && (
-                        <Link to={`/store/${storeProfileId}`} className="block px-4 py-2 text-sm text-bzo-black hover:bg-bzo-yellow-light transition-colors">
+                        <Link to={`/store/${storeProfileId}`} className="block px-4 py-2 text-sm text-black hover:bg-[#ffcc00] transition-colors">
                           🏪 My Store
                         </Link>
                       )}
                       
-                      <Link to="/profile" className="block px-4 py-2 text-sm text-bzo-black hover:bg-bzo-yellow-light transition-colors">
+                      <Link to="/profile" className="block px-4 py-2 text-sm text-black hover:bg-[#ffcc00] transition-colors">
                         ⚙️ Settings
                       </Link>
                       
-                      <hr className="my-2 border-gray-100" />
+                      <hr className="my-2 border-gray-200" />
                       
                       <button
                         onClick={handleLogout}
