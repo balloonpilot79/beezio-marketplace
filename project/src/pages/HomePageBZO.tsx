@@ -52,9 +52,8 @@ const HomePage: React.FC<{
     <div className="min-h-screen bg-white">
       {/* HERO SLIDER SECTION */}
       <section className="bg-white text-black px-5 py-8 relative overflow-hidden">
-        {/* Decorative Bees */}
-        <img src="/bzobee.png" alt="" className="absolute top-4 left-8 w-16 h-16 opacity-30" />
-        <img src="/bzobee.png" alt="" className="absolute top-8 right-12 w-14 h-14 opacity-25" />
+        {/* Decorative Bee */}
+        <img src="/bzobee.png" alt="" className="absolute top-1/2 -translate-y-1/2 right-8 w-20 h-20" />
         
         <div className="max-w-3xl mx-auto relative z-10">
           {/* Slider */}
@@ -109,10 +108,6 @@ const HomePage: React.FC<{
 
       {/* ABOUT SECTION */}
       <section className="bg-[#f9d900] text-center px-5 py-10 relative overflow-hidden">
-        {/* Decorative Bees */}
-        <img src="/bzobee.png" alt="" className="absolute bottom-6 left-16 w-20 h-20 opacity-25" />
-        <img src="/bzobee.png" alt="" className="absolute top-6 right-20 w-14 h-14 opacity-30" />
-        
         <div className="max-w-4xl mx-auto relative z-10">
           <h2 className="text-2xl font-bold mb-3">What is Beezio?</h2>
           <p className="text-base leading-relaxed">
