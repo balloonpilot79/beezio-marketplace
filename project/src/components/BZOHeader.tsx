@@ -66,8 +66,9 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
       <div className="max-w-7xl mx-auto px-12">
         <div className="flex justify-between items-center h-16">
           
-          {/* Left side: Beezio Logo */}
-          <div className="flex items-center">
+          {/* Left side: Bee + Beezio Logo */}
+          <div className="flex items-center gap-2">
+            <img src="/bzobee.png" alt="Beezio Bee" className="w-10 h-10" />
             <Link to="/" className="flex items-center group">
               <div className="text-3xl font-bold text-black transition-colors duration-200">
                 Beezio

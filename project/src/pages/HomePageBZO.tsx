@@ -52,9 +52,6 @@ const HomePage: React.FC<{
     <div className="min-h-screen bg-white">
       {/* HERO SLIDER SECTION */}
       <section className="bg-white text-black px-5 py-8 relative overflow-hidden">
-        {/* Decorative Bee */}
-        <img src="/bzobee.png" alt="" className="absolute top-1/2 -translate-y-1/2 right-8 w-20 h-20" />
-        
         <div className="max-w-3xl mx-auto relative z-10">
           {/* Slider */}
           <div className="relative h-40 flex items-center justify-center">
