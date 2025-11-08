@@ -136,190 +136,141 @@ const StreamlinedAddProducts: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Clean Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-6 py-6">
+      <div className="bg-[#ffcc00] border-b border-gray-200">
+        <div className="max-w-3xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                <span className="font-medium">Back</span>
-              </button>
-              <div className="border-l border-gray-300 pl-4">
-                <h1 className="text-2xl font-bold text-gray-900">Add Product</h1>
-                <p className="text-sm text-gray-500">Fill in the details below</p>
-              </div>
+            <div>
+              <h1 className="text-2xl font-bold text-black">Add New Product</h1>
+              <p className="text-sm text-gray-700">Fill out the information below</p>
             </div>
             <button
               onClick={saveAllProducts}
               disabled={saving}
-              className="bg-[#FFD700] hover:bg-[#FFC700] disabled:bg-gray-300 text-gray-900 px-8 py-3 rounded-lg font-bold shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+              className="bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200"
             >
-              <Save className="w-5 h-5" />
-              {saving ? 'Saving...' : `Save ${products.filter(p => p.name.trim()).length > 1 ? 'All' : 'Product'}`}
+              {saving ? 'Saving...' : 'Save Product'}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Product Tabs (if multiple products) */}
-      {products.length > 1 && (
-        <div className="bg-white border-b border-gray-200">
-          <div className="max-w-5xl mx-auto px-6">
-            <div className="flex gap-2 overflow-x-auto py-3">
-              {products.map((product, index) => (
-                <button
-                  key={product.id}
-                  onClick={() => setCurrentProductIndex(index)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
-                    currentProductIndex === index
-                      ? 'bg-[#FFD700] text-gray-900'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {product.name || `Product ${index + 1}`}
-                  {products.length > 1 && (
-                    <X
-                      className="w-4 h-4 hover:text-red-600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeProduct(index);
-                      }}
-                    />
-                  )}
-                </button>
-              ))}
-              <button
-                onClick={addNewProduct}
-                className="flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add Another
-              </button>
-            </div>
+      {/* Main Form - Single Column */}
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 space-y-6">
+          
+          {/* Product Name */}
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Product Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g., Wireless Headphones"
+              value={currentProduct.name}
+              onChange={(e) => updateProduct(currentProductIndex, 'name', e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
+            />
           </div>
-        </div>
-      )}
 
-      {/* Main Form - Full Width, Clean */}
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-          {/* Product Name & Price - Most Important */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
-                Product Name <span className="text-red-500">*</span>
-              </label>
+          {/* Price */}
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Price <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
               <input
-                type="text"
-                placeholder="e.g., Wireless Headphones"
-                value={currentProduct.name}
-                onChange={(e) => updateProduct(currentProductIndex, 'name', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#FFD700] focus:ring-2 focus:ring-[#FFD700]/20 transition-all"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={currentProduct.price || ''}
+                onChange={(e) => updateProduct(currentProductIndex, 'price', parseFloat(e.target.value) || 0)}
+                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
               />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
-                Price <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={currentProduct.price || ''}
-                  onChange={(e) => updateProduct(currentProductIndex, 'price', parseFloat(e.target.value) || 0)}
-                  className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#FFD700] focus:ring-2 focus:ring-[#FFD700]/20 transition-all"
-                />
-              </div>
             </div>
           </div>
 
           {/* Description */}
-          <div className="mb-8">
+          <div>
             <label className="block text-sm font-bold text-gray-900 mb-2">
               Description
             </label>
             <textarea
-              placeholder="Describe your product..."
+              placeholder="Describe your product features and benefits..."
               value={currentProduct.description}
               onChange={(e) => updateProduct(currentProductIndex, 'description', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#FFD700] focus:ring-2 focus:ring-[#FFD700]/20 transition-all resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20 resize-none"
             />
           </div>
 
-          {/* Secondary Details */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
-                SKU (Optional)
-              </label>
-              <input
-                type="text"
-                placeholder="e.g., WH-001"
-                value={currentProduct.sku}
-                onChange={(e) => updateProduct(currentProductIndex, 'sku', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#FFD700] focus:ring-2 focus:ring-[#FFD700]/20 transition-all"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
-                Stock
-              </label>
-              <input
-                type="number"
-                min="0"
-                placeholder="1"
-                value={currentProduct.inventory || ''}
-                onChange={(e) => updateProduct(currentProductIndex, 'inventory', parseInt(e.target.value) || 1)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#FFD700] focus:ring-2 focus:ring-[#FFD700]/20 transition-all"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
-                Category
-              </label>
-              <select
-                value={currentProduct.category_id}
-                onChange={(e) => updateProduct(currentProductIndex, 'category_id', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#FFD700] focus:ring-2 focus:ring-[#FFD700]/20 transition-all"
-              >
-                <option value="">Select...</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-            </div>
+          {/* SKU */}
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              SKU (Optional)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g., WH-001"
+              value={currentProduct.sku}
+              onChange={(e) => updateProduct(currentProductIndex, 'sku', e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
+            />
+          </div>
+
+          {/* Stock Quantity */}
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Stock Quantity
+            </label>
+            <input
+              type="number"
+              min="0"
+              placeholder="1"
+              value={currentProduct.inventory || ''}
+              onChange={(e) => updateProduct(currentProductIndex, 'inventory', parseInt(e.target.value) || 1)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
+            />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Category
+            </label>
+            <select
+              value={currentProduct.category_id}
+              onChange={(e) => updateProduct(currentProductIndex, 'category_id', e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
+            >
+              <option value="">Select a category...</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Images */}
-          <div className="mb-8">
-            <label className="block text-sm font-bold text-gray-900 mb-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-3">
               Product Images
             </label>
             
             {currentProduct.images.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-3 gap-3 mb-4">
                 {currentProduct.images.map((image, index) => (
                   <div key={index} className="relative group">
                     <img
                       src={image}
                       alt={`Product ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                      className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
                     />
                     <button
                       onClick={() => {
                         const newImages = currentProduct.images.filter((_, i) => i !== index);
                         updateProduct(currentProductIndex, 'images', newImages);
                       }}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -337,25 +288,26 @@ const StreamlinedAddProducts: React.FC = () => {
             />
           </div>
 
-          {/* Affiliate Settings */}
+          {/* Affiliate Marketing Toggle */}
           <div className="border-t border-gray-200 pt-6">
             <label className="flex items-start gap-3 cursor-pointer group">
               <input
                 type="checkbox"
                 checked={currentProduct.affiliate_enabled}
                 onChange={(e) => updateProduct(currentProductIndex, 'affiliate_enabled', e.target.checked)}
-                className="mt-1 w-5 h-5 text-[#FFD700] border-gray-300 rounded focus:ring-[#FFD700]"
+                className="mt-1 w-5 h-5 text-[#ffcc00] border-gray-300 rounded focus:ring-[#ffcc00]"
               />
               <div>
-                <div className="font-bold text-gray-900 group-hover:text-[#FFD700] transition-colors">
-                  Enable affiliate marketing
+                <div className="font-bold text-gray-900 group-hover:text-[#ffcc00] transition-colors">
+                  Enable affiliate marketing for this product
                 </div>
-                <div className="text-sm text-gray-600">
-                  Allow others to promote this product and earn commissions
+                <div className="text-sm text-gray-600 mt-1">
+                  Allow affiliates to promote this product and earn commissions on sales
                 </div>
               </div>
             </label>
           </div>
+
         </div>
       </div>
     </div>
