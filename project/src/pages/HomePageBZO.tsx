@@ -1,24 +1,105 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Store, Users, TrendingUp, Globe, Package, Zap } from 'lucide-react';
 
 const HomePage: React.FC<{
   onOpenAuthModal: (modal: { isOpen: boolean; mode: 'login' | 'register' }) => void;
   onOpenSimpleSignup: () => void;
 }> = ({ onOpenAuthModal, onOpenSimpleSignup }) => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const slides = [
+    {
+      icon: <Store className="w-16 h-16 text-[#ffcc00]" />,
+      title: "Build Your Online Store",
+      description: "Create a professional marketplace with your own custom domain and branding"
+    },
+    {
+      icon: <Users className="w-16 h-16 text-[#ffcc00]" />,
+      title: "Affiliate Marketing Platform",
+      description: "Enable affiliates to promote your products and earn lifetime commissions"
+    },
+    {
+      icon: <TrendingUp className="w-16 h-16 text-[#ffcc00]" />,
+      title: "Grow Your Revenue",
+      description: "Leverage our commission structure to scale your business with affiliates"
+    },
+    {
+      icon: <Globe className="w-16 h-16 text-[#ffcc00]" />,
+      title: "Custom Domains",
+      description: "Use your own domain or get a free Beezio subdomain for your store"
+    },
+    {
+      icon: <Package className="w-16 h-16 text-[#ffcc00]" />,
+      title: "Product Management",
+      description: "Easy-to-use tools for uploading products, managing inventory, and tracking orders"
+    },
+    {
+      icon: <Zap className="w-16 h-16 text-[#ffcc00]" />,
+      title: "Launch in Minutes",
+      description: "Get your marketplace up and running quickly with our streamlined setup process"
+    }
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 4000); // Change slide every 4 seconds
+
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
   return (
     <div className="min-h-screen bg-white">
-      {/* HERO SECTION */}
-      <section className="bg-white text-black text-center px-5 py-16">
+      {/* HERO SLIDER SECTION */}
+      <section className="bg-white text-black px-5 py-16 relative overflow-hidden">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl font-bold mb-3">Create an Online Marketplace with Beezio</h1>
-          <p className="text-lg max-w-3xl mx-auto mb-6 leading-relaxed">
-            Sell products and run your own store on a customizable marketplace platform — or earn passive income as an affiliate.
-          </p>
-          <button 
-            onClick={onOpenSimpleSignup}
-            className="bg-[#ffcc00] hover:bg-[#e6b800] text-black font-semibold text-lg px-6 py-3 rounded transition-all duration-300"
-          >
-            Get Started
-          </button>
+          {/* Slider */}
+          <div className="relative h-64 flex items-center justify-center">
+            {slides.map((slide, index) => (
+              <div
+                key={index}
+                className={`absolute inset-0 flex flex-col items-center justify-center text-center transition-all duration-700 ${
+                  index === currentSlide
+                    ? 'opacity-100 translate-x-0'
+                    : index < currentSlide
+                    ? 'opacity-0 -translate-x-full'
+                    : 'opacity-0 translate-x-full'
+                }`}
+              >
+                <div className="mb-4">{slide.icon}</div>
+                <h2 className="text-3xl font-bold mb-3">{slide.title}</h2>
+                <p className="text-lg max-w-2xl mx-auto leading-relaxed text-gray-700">
+                  {slide.description}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Slide Indicators */}
+          <div className="flex justify-center gap-2 mt-6">
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  index === currentSlide
+                    ? 'w-8 bg-[#ffcc00]'
+                    : 'w-2 bg-gray-300 hover:bg-gray-400'
+                }`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
+
+          {/* CTA Button */}
+          <div className="flex justify-center mt-8">
+            <button 
+              onClick={onOpenSimpleSignup}
+              className="bg-[#ffcc00] hover:bg-[#e6b800] text-black font-semibold text-lg px-8 py-3 rounded transition-all duration-300 shadow-md hover:shadow-lg"
+            >
+              Get Started Free
+            </button>
+          </div>
         </div>
       </section>
 
