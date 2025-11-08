@@ -363,46 +363,6 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
                 </button>
               </div>
             </div>
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Step 1: Access Your Domain Provider</h4>
-                <p className="text-sm text-gray-600">
-                  Log in to your domain registrar (GoDaddy, Namecheap, Google Domains, etc.)
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Step 2: Add DNS Records</h4>
-                <p className="text-sm text-gray-600 mb-3">
-                  Add the following DNS records:
-                </p>
-                
-                <div className="bg-white border rounded p-3 mb-2">
-                  <div className="grid grid-cols-3 gap-2 text-xs font-medium text-gray-500 mb-2">
-                    <div>Type</div>
-                    <div>Name</div>
-                    <div>Value</div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-sm">
-                    <div className="font-mono">CNAME</div>
-                    <div className="font-mono">{domain.includes('.') ? domain.split('.')[0] : '@'}</div>
-                    <div className="font-mono text-blue-600">beezio-marketplace.netlify.app</div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Step 3: Wait for DNS Propagation</h4>
-                <p className="text-sm text-gray-600">
-                  DNS changes can take 5-48 hours to fully propagate. Your custom domain will be active once DNS is configured correctly.
-                </p>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Contact support at support@beezio.co if you need help setting up your custom domain.
-                </p>
-              </div>
-            </div>
           )}
         </div>
       )}
