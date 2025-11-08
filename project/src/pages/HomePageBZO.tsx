@@ -52,10 +52,6 @@ const HomePage: React.FC<{
     <div className="min-h-screen bg-white">
       {/* HERO SLIDER SECTION */}
       <section className="bg-white text-black px-5 py-8 relative overflow-hidden">
-        {/* Decorative Bees */}
-        <img src="/bumblebee.svg" alt="" className="absolute top-4 left-8 w-12 h-12 opacity-20" />
-        <img src="/bumblebee.svg" alt="" className="absolute top-8 right-12 w-10 h-10 opacity-15" />
-        
         <div className="max-w-3xl mx-auto relative z-10">
           {/* Slider */}
           <div className="relative h-40 flex items-center justify-center">
@@ -109,10 +105,6 @@ const HomePage: React.FC<{
 
       {/* ABOUT SECTION */}
       <section className="bg-[#f9d900] text-center px-5 py-10 relative overflow-hidden">
-        {/* Decorative Bees */}
-        <img src="/bumblebee.svg" alt="" className="absolute bottom-6 left-16 w-14 h-14 opacity-15" />
-        <img src="/bumblebee.svg" alt="" className="absolute top-6 right-20 w-10 h-10 opacity-20" />
-        
         <div className="max-w-4xl mx-auto relative z-10">
           <h2 className="text-2xl font-bold mb-3">What is Beezio?</h2>
           <p className="text-base leading-relaxed">
