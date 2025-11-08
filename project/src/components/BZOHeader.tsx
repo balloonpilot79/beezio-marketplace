@@ -54,22 +54,22 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
   };
 
   const navigationLinks = [
-    { to: '/', label: 'Home', hover: 'hover:text-[#ffcc00]' },
-    { to: '/marketplace', label: 'Marketplace', hover: 'hover:text-[#ffcc00]' },
-    { to: '/sellers', label: 'Sellers', hover: 'hover:text-[#ffcc00]' },
-    { to: '/affiliates', label: 'Affiliates', hover: 'hover:text-[#ffcc00]' },
-    { to: '/contact', label: 'Contact', hover: 'hover:text-[#ffcc00]' }
+    { to: '/', label: 'Home', hover: 'hover:text-white' },
+    { to: '/marketplace', label: 'Marketplace', hover: 'hover:text-white' },
+    { to: '/sellers', label: 'Sellers', hover: 'hover:text-white' },
+    { to: '/affiliates', label: 'Affiliates', hover: 'hover:text-white' },
+    { to: '/contact', label: 'Contact', hover: 'hover:text-white' }
   ];
 
   return (
-    <header className="bg-black sticky top-0 z-50 shadow-md">
+    <header className="bg-[#ffcc00] sticky top-0 z-50 shadow-md">
       <div className="max-w-7xl mx-auto px-12">
         <div className="flex justify-between items-center h-16">
           
           {/* Left side: Beezio Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center group">
-              <div className="text-3xl font-bold text-[#ffcc00] transition-colors duration-200">
+              <div className="text-3xl font-bold text-black transition-colors duration-200">
                 Beezio
               </div>
             </Link>
@@ -81,7 +81,7 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`text-white ${link.hover} font-medium transition-colors duration-200`}
+                className={`text-black ${link.hover} font-medium transition-colors duration-200`}
               >
                 {link.label}
               </Link>

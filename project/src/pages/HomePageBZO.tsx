@@ -7,10 +7,10 @@ const HomePage: React.FC<{
   return (
     <div className="min-h-screen bg-white">
       {/* HERO SECTION */}
-      <section className="bg-[#111] text-white text-center px-5 py-32">
+      <section className="bg-white text-black text-center px-5 py-16">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-5xl font-bold mb-4">Create an Online Marketplace with Beezio</h1>
-          <p className="text-xl max-w-3xl mx-auto mb-8 leading-relaxed">
+          <h1 className="text-4xl font-bold mb-3">Create an Online Marketplace with Beezio</h1>
+          <p className="text-lg max-w-3xl mx-auto mb-6 leading-relaxed">
             Sell products and run your own store on a customizable marketplace platform — or earn passive income as an affiliate.
           </p>
           <button 
