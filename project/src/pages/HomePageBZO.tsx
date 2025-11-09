@@ -74,11 +74,11 @@ const HomePage: React.FC<{
           {/* Slider with Glass Effect and Bee Mascot */}
           <div className="relative h-40 flex items-center justify-between bg-white/40 backdrop-blur-md rounded-3xl shadow-2xl border border-white/50 p-6">
             {/* Slider Content */}
-            <div className="flex-1">
+            <div className="flex-1 relative pr-6">
               {slides.map((slide, index) => (
                 <div
                   key={index}
-                  className={`absolute left-6 right-64 flex flex-col items-start justify-center text-left transition-all duration-700 ${
+                  className={`flex flex-col items-start justify-center text-left transition-all duration-700 ${
                     index === currentSlide
                       ? 'opacity-100 translate-x-0 scale-100'
                       : index < currentSlide
@@ -100,7 +100,7 @@ const HomePage: React.FC<{
             </div>
             
             {/* Bee Mascot */}
-            <div className="flex-shrink-0 w-56 h-full flex items-center justify-center">
+            <div className="flex-shrink-0 w-56 h-full flex items-center justify-center relative z-10">
               <img 
                 src="/bzobee.png" 
                 alt="Beezio Mascot" 
