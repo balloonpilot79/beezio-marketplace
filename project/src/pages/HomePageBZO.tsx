@@ -71,14 +71,14 @@ const HomePage: React.FC<{
             </div>
           </div>
 
-          {/* Slider with Glass Effect and Bee Mascot */}
-          <div className="relative h-40 flex items-center bg-white/40 backdrop-blur-md rounded-3xl shadow-2xl border border-white/50 p-6 overflow-hidden">
-            {/* Slider Content - positioned absolutely but contained in left area */}
-            <div className="flex-1 relative h-full">
+          {/* Slider and Bee Container */}
+          <div className="flex items-center gap-6">
+            {/* Slider with Glass Effect */}
+            <div className="relative h-40 flex-1 flex items-center bg-white/40 backdrop-blur-md rounded-3xl shadow-2xl border border-white/50 p-6 overflow-hidden">
               {slides.map((slide, index) => (
                 <div
                   key={index}
-                  className={`absolute inset-0 flex flex-col items-start justify-center text-left transition-all duration-700 pr-6 ${
+                  className={`absolute inset-6 flex flex-col items-start justify-center text-left transition-all duration-700 ${
                     index === currentSlide
                       ? 'opacity-100 translate-x-0 scale-100'
                       : index < currentSlide
@@ -99,8 +99,8 @@ const HomePage: React.FC<{
               ))}
             </div>
             
-            {/* Bee Mascot - stays fixed */}
-            <div className="absolute right-6 top-0 bottom-0 w-56 flex items-center justify-center pointer-events-none">
+            {/* Bee Mascot - separate element */}
+            <div className="w-56 h-40 flex items-center justify-center flex-shrink-0">
               <img 
                 src="/bzobee.png" 
                 alt="Beezio Mascot" 
