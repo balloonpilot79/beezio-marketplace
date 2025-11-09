@@ -49,336 +49,215 @@ const HomePage: React.FC<{
   }, [slides.length]);
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* HERO SECTION WITH VISUALS */}
-      <section className="bg-gradient-to-br from-white via-yellow-50 to-white text-black px-5 py-12 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            
-            {/* Left: Text Content with Slider */}
-            <div className="text-center lg:text-left">
-              <div className="inline-block bg-[#ffcc00] text-black text-xs font-bold px-3 py-1 rounded-full mb-4">
-                🚀 Launch Your Store in Minutes
-              </div>
-              
-              {/* Slider */}
-              <div className="relative h-32 mb-6">
-                {slides.map((slide, index) => (
-                  <div
-                    key={index}
-                    className={`absolute inset-0 flex flex-col justify-center transition-all duration-700 ${
-                      index === currentSlide
-                        ? 'opacity-100 translate-x-0'
-                        : index < currentSlide
-                        ? 'opacity-0 -translate-x-full'
-                        : 'opacity-0 translate-x-full'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      {React.cloneElement(slide.icon as React.ReactElement, { className: 'w-11 h-11 text-[#ffcc00]' })}
-                      <h2 className="text-3xl font-bold">{slide.title}</h2>
-                    </div>
-                    <p className="text-base text-gray-700 leading-relaxed">
-                      {slide.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Slide Indicators */}
-              <div className="flex justify-center lg:justify-start gap-2 mb-6">
-                {slides.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentSlide(index)}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      index === currentSlide
-                        ? 'w-7 bg-[#ffcc00]'
-                        : 'w-1.5 bg-gray-300 hover:bg-gray-400'
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                  />
-                ))}
-              </div>
-
-              {/* CTA Button */}
-              <button 
-                onClick={onOpenSimpleSignup}
-                className="bg-[#ffcc00] hover:bg-[#e6b800] text-black font-bold text-base px-8 py-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
-              >
-                Start Selling Free →
-              </button>
-              
-              {/* Trust Indicators */}
-              <div className="mt-6 flex flex-wrap justify-center lg:justify-start gap-6 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <span className="text-green-600 font-bold">✓</span> No Setup Fees
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-green-600 font-bold">✓</span> Instant Payouts
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-green-600 font-bold">✓</span> 24/7 Support
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Dashboard Screenshot Mockup */}
-            <div className="relative">
-              {/* Browser Window Frame */}
-              <div className="bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
-                {/* Browser Chrome */}
-                <div className="bg-gray-100 px-4 py-3 flex items-center gap-2 border-b border-gray-200">
-                  <div className="flex gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                  </div>
-                  <div className="flex-1 bg-white rounded px-3 py-1 text-xs text-gray-500">
-                    beezio.com/dashboard
-                  </div>
-                </div>
-                
-                {/* Dashboard Preview */}
-                <div className="bg-gradient-to-br from-gray-50 to-white p-6">
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="h-6 bg-gray-200 rounded w-32"></div>
-                      <div className="h-8 bg-[#ffcc00] rounded w-24"></div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-white p-4 rounded-lg shadow border border-gray-100">
-                        <div className="text-2xl font-bold text-gray-900">$2,847</div>
-                        <div className="text-xs text-gray-500">Total Sales</div>
-                      </div>
-                      <div className="bg-white p-4 rounded-lg shadow border border-gray-100">
-                        <div className="text-2xl font-bold text-gray-900">156</div>
-                        <div className="text-xs text-gray-500">Products</div>
-                      </div>
-                      <div className="bg-white p-4 rounded-lg shadow border border-gray-100">
-                        <div className="text-2xl font-bold text-gray-900">89</div>
-                        <div className="text-xs text-gray-500">Affiliates</div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Product Cards Preview */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white rounded-lg p-3 shadow border border-gray-100">
-                      <div className="bg-gradient-to-br from-blue-100 to-purple-100 rounded h-24 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-100 rounded w-1/2"></div>
-                    </div>
-                    <div className="bg-white rounded-lg p-3 shadow border border-gray-100">
-                      <div className="bg-gradient-to-br from-yellow-100 to-orange-100 rounded h-24 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-100 rounded w-1/2"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Floating Badge */}
-              <div className="absolute -top-4 -right-4 bg-green-500 text-white px-4 py-2 rounded-full shadow-lg font-bold text-sm animate-bounce">
-                Live Demo!
-              </div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50">
+      {/* HERO SLIDER SECTION */}
+      <section className="relative px-5 py-16 overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-yellow-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
+          <div className="absolute top-40 right-10 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-20 left-1/2 w-72 h-72 bg-yellow-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
         </div>
-      </section>
 
-      {/* ABOUT SECTION */}
-      <section className="bg-[#f9d900] text-center px-5 py-10 relative overflow-hidden">
         <div className="max-w-4xl mx-auto relative z-10">
-          <h2 className="text-2xl font-bold mb-3">What is Beezio?</h2>
-          <p className="text-base leading-relaxed">
-            Beezio is an online marketplace that empowers sellers to build their own stores, list products, and manage affiliates — all in one platform. Affiliates earn lifetime commissions, fundraisers can raise money through custom stores, and buyers shop easily from verified sellers.
-          </p>
+          {/* Floating Badge */}
+          <div className="flex justify-center mb-6">
+            <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-yellow-300 rounded-full px-5 py-2 shadow-lg animate-float">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+              </span>
+              <span className="text-sm font-semibold text-gray-800">🚀 Launch Your Store in Minutes</span>
+            </div>
+          </div>
+
+          {/* Slider with Glass Effect */}
+          <div className="relative h-52 flex items-center justify-center bg-white/40 backdrop-blur-md rounded-3xl shadow-2xl border border-white/50 p-8">
+            {slides.map((slide, index) => (
+              <div
+                key={index}
+                className={`absolute inset-0 flex flex-col items-center justify-center text-center transition-all duration-700 p-8 ${
+                  index === currentSlide
+                    ? 'opacity-100 translate-x-0 scale-100'
+                    : index < currentSlide
+                    ? 'opacity-0 -translate-x-full scale-95'
+                    : 'opacity-0 translate-x-full scale-95'
+                }`}
+              >
+                <div className="mb-4 transform transition-transform duration-500 hover:scale-110">
+                  {React.cloneElement(slide.icon as React.ReactElement, { className: 'w-14 h-14 text-[#ffcc00] drop-shadow-lg' })}
+                </div>
+                <h2 className="text-2xl font-bold mb-3 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+                  {slide.title}
+                </h2>
+                <p className="text-base max-w-2xl mx-auto leading-relaxed text-gray-700 font-medium">
+                  {slide.description}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Slide Indicators */}
+          <div className="flex justify-center gap-2 mt-6">
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`h-2 rounded-full transition-all duration-500 shadow-sm ${
+                  index === currentSlide
+                    ? 'w-10 bg-gradient-to-r from-[#ffcc00] to-[#ffd700] shadow-yellow-300'
+                    : 'w-2 bg-gray-300 hover:bg-gray-400 hover:w-6'
+                }`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
+
+          {/* CTA Button with Glow Effect */}
+          <div className="flex justify-center mt-8 gap-4">
+            <button 
+              onClick={onOpenSimpleSignup}
+              className="group relative bg-gradient-to-r from-[#ffcc00] to-[#ffd700] hover:from-[#ffd700] hover:to-[#ffcc00] text-black font-bold text-base px-8 py-4 rounded-xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-yellow-300/50 hover:scale-105 transform"
+            >
+              <span className="relative z-10">Start Earning Today - It's Free</span>
+              <div className="absolute inset-0 rounded-xl bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* VISUAL FEATURES SHOWCASE */}
-      <section className="px-5 py-16 bg-white">
+      {/* ABOUT SECTION with Glassmorphism */}
+      <section className="relative px-5 py-16 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#ffcc00] via-[#ffd700] to-[#ffcc00]"></div>
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0)',
+          backgroundSize: '40px 40px'
+        }}></div>
+        
+        <div className="max-w-5xl mx-auto relative z-10">
+          <div className="bg-white/20 backdrop-blur-lg rounded-3xl p-10 shadow-2xl border border-white/30">
+      {/* FEATURES GRID with Hover Effects */}
+      <section className="px-12 py-20 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-3">See How It Works</h2>
-            <p className="text-gray-600">Everything you need to run your marketplace</p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
-            {/* Feature 1: Seller Dashboard */}
-            <div className="order-2 lg:order-1">
-              <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-8 shadow-lg border border-gray-100">
-                <div className="bg-white rounded-lg p-4 mb-4">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-[#ffcc00] rounded-full flex items-center justify-center">
-                      <Package className="w-5 h-5 text-black" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="h-3 bg-gray-200 rounded w-32 mb-1"></div>
-                      <div className="h-2 bg-gray-100 rounded w-20"></div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="h-20 bg-gradient-to-br from-yellow-100 to-orange-100 rounded"></div>
-                    <div className="h-20 bg-gradient-to-br from-green-100 to-blue-100 rounded"></div>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="inline-block bg-green-500 text-white px-3 py-1 rounded text-xs font-bold">
-                    ✓ Product Added
-                  </div>
-                </div>
+          <h2 className="text-3xl font-bold text-center mb-12 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+            Everything You Need to Succeed
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* For Sellers */}
+            <div className="group bg-white border-2 border-yellow-300 p-8 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-yellow-200/50 transition-all duration-300 hover:-translate-y-2 hover:border-yellow-400">
+              <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <Store className="w-6 h-6 text-white" />
               </div>
-            </div>
-            <div className="order-1 lg:order-2">
-              <h3 className="text-2xl font-bold mb-4">Add Products in Seconds</h3>
-              <p className="text-gray-700 mb-4">
-                Upload products with our simple form. Add images, set prices, and enable affiliate marketing with one click.
-              </p>
-              <ul className="space-y-2">
+              <h3 className="text-xl font-bold mb-4 text-gray-900">For Sellers</h3>
+              <ul className="list-none space-y-3 text-sm text-gray-700">
                 <li className="flex items-start gap-2">
-                  <span className="text-[#ffcc00] font-bold">✓</span>
-                  <span className="text-sm">Drag & drop image uploads</span>
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>Custom storefronts under your domain</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-[#ffcc00] font-bold">✓</span>
-                  <span className="text-sm">Automatic pricing calculator</span>
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>Stripe checkout through Beezio</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-[#ffcc00] font-bold">✓</span>
-                  <span className="text-sm">One-click affiliate toggle</span>
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>Optional affiliate system with flexible commissions</span>
                 </li>
               </ul>
             </div>
-          </div>
 
-          <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
-            {/* Feature 2: Affiliate Links */}
-            <div>
-              <h3 className="text-2xl font-bold mb-4">Generate Affiliate Links Instantly</h3>
-              <p className="text-gray-700 mb-4">
-                Affiliates can browse the marketplace, select products, and get unique tracking links in seconds.
-              </p>
-              <ul className="space-y-2">
+            {/* For Affiliates */}
+            <div className="group bg-white border-2 border-yellow-300 p-8 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-yellow-200/50 transition-all duration-300 hover:-translate-y-2 hover:border-yellow-400">
+              <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-4 text-gray-900">For Affiliates</h3>
+              <ul className="list-none space-y-3 text-sm text-gray-700">
                 <li className="flex items-start gap-2">
-                  <span className="text-[#ffcc00] font-bold">✓</span>
-                  <span className="text-sm">Site-wide referral links</span>
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>5% lifetime commissions sitewide</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-[#ffcc00] font-bold">✓</span>
-                  <span className="text-sm">Product-specific tracking</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#ffcc00] font-bold">✓</span>
-                  <span className="text-sm">QR code generation</span>
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>Earn more with seller-defined bonuses</span>
                 </li>
               </ul>
             </div>
-            <div>
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-8 shadow-lg border border-gray-100">
-                <div className="bg-white rounded-lg p-4 mb-3">
-                  <div className="text-xs text-gray-500 mb-2">Your Referral Link</div>
-                  <div className="flex items-center gap-2 bg-gray-50 p-3 rounded border border-gray-200">
-                    <div className="flex-1 text-xs text-gray-700 font-mono truncate">
-                      beezio.com?ref=YOURCODE
-                    </div>
-                    <div className="bg-[#ffcc00] px-3 py-1 rounded text-xs font-bold whitespace-nowrap">
-                      Copy
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white p-3 rounded-lg">
-                    <div className="text-xl font-bold text-gray-900">$847</div>
-                    <div className="text-xs text-gray-500">Earned</div>
-                  </div>
-                  <div className="bg-white p-3 rounded-lg">
-                    <div className="text-xl font-bold text-gray-900">234</div>
-                    <div className="text-xs text-gray-500">Clicks</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Feature 3: Store Customization */}
-            <div className="order-2 lg:order-1">
-              <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-8 shadow-lg border border-gray-100">
-                <div className="bg-white rounded-lg overflow-hidden">
-                  <div className="bg-[#ffcc00] p-4 text-center">
-                    <div className="text-lg font-bold">My Awesome Store</div>
-                  </div>
-                  <div className="p-4">
-                    <div className="grid grid-cols-3 gap-2 mb-3">
-                      <div className="h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded"></div>
-                      <div className="h-16 bg-gradient-to-br from-blue-100 to-cyan-100 rounded"></div>
-                      <div className="h-16 bg-gradient-to-br from-yellow-100 to-orange-100 rounded"></div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="h-2 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-2 bg-gray-100 rounded w-1/2"></div>
-                    </div>
-                  </div>
-                </div>
+            {/* For Fundraisers */}
+            <div className="group bg-white border-2 border-yellow-300 p-8 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-yellow-200/50 transition-all duration-300 hover:-translate-y-2 hover:border-yellow-400">
+              <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <TrendingUp className="w-6 h-6 text-white" />
               </div>
+              <h3 className="text-xl font-bold mb-4 text-gray-900">For Fundraisers</h3>
+              <ul className="list-none space-y-3 text-sm text-gray-700">
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>Launch cause-based stores (shirts, merch, donations)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>All affiliate earnings go toward your cause</span>
+                </li>
+              </ul>
             </div>
-            <div className="order-1 lg:order-2">
-              <h3 className="text-2xl font-bold mb-4">Customize Your Store</h3>
-              <p className="text-gray-700 mb-4">
-                Make your store unique with custom branding, themes, and your own domain.
-              </p>
-              <ul className="space-y-2">
+
+            {/* For Buyers */}
+            <div className="group bg-white border-2 border-yellow-300 p-8 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-yellow-200/50 transition-all duration-300 hover:-translate-y-2 hover:border-yellow-400">
+              <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <Package className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-4 text-gray-900">For Buyers</h3>
+              <ul className="list-none space-y-3 text-sm text-gray-700">
                 <li className="flex items-start gap-2">
-                  <span className="text-[#ffcc00] font-bold">✓</span>
-                  <span className="text-sm">6 professional themes</span>
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>Shop safely from trusted sellers</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-[#ffcc00] font-bold">✓</span>
-                  <span className="text-sm">Custom domain support</span>
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>Support fundraisers and affiliates</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Custom Stores & Domains */}
+            <div className="group bg-white border-2 border-yellow-300 p-8 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-yellow-200/50 transition-all duration-300 hover:-translate-y-2 hover:border-yellow-400">
+              <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <Globe className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-4 text-gray-900">Custom Stores & Domains</h3>
+              <ul className="list-none space-y-3 text-sm text-gray-700">
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>Bring your own domain or use Beezio subdomain</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-[#ffcc00] font-bold">✓</span>
-                  <span className="text-sm">Logo & banner uploads</span>
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>Flexible design options</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* API Integrations */}
+            <div className="group bg-white border-2 border-yellow-300 p-8 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-yellow-200/50 transition-all duration-300 hover:-translate-y-2 hover:border-yellow-400">
+              <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-4 text-gray-900">API Integrations</h3>
+              <ul className="list-none space-y-3 text-sm text-gray-700">
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>Connect with Beezio's API for automation</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-500 font-bold">✓</span>
+                  <span>Import or sync external products</span>
                 </li>
               </ul>
             </div>
           </div>
         </div>
-      </section>
-
-      {/* FEATURES GRID */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-12 py-16 bg-white">
-        {/* For Sellers */}
-        <div className="bg-white border-2 border-[#ffcc00] p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-          <h3 className="text-xl font-bold mb-3 text-black">For Sellers</h3>
-          <ul className="list-none space-y-2 text-sm text-gray-700">
-            <li>✓ Custom storefronts under your domain</li>
-            <li>✓ Stripe checkout through Beezio</li>
-            <li>✓ Optional affiliate system with flexible commissions</li>
-          </ul>
-        </div>
-
-        {/* For Affiliates */}
-        <div className="bg-white border-2 border-[#ffcc00] p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-          <h3 className="text-xl font-bold mb-3 text-black">For Affiliates</h3>
-          <ul className="list-none space-y-2 text-sm text-gray-700">
-            <li>✓ 5% lifetime commissions sitewide</li>
-            <li>✓ Earn more with seller-defined bonuses</li>
-          </ul>
-        </div>
-
-        {/* For Fundraisers */}
-        <div className="bg-white border-2 border-[#ffcc00] p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-          <h3 className="text-xl font-bold mb-3 text-black">For Fundraisers</h3>
-          <ul className="list-none space-y-2 text-sm text-gray-700">
-            <li>✓ Launch cause-based stores (shirts, merch, donations)</li>
-            <li>✓ All affiliate earnings go toward your cause</li>
-          </ul>
-        </div>
-
-        {/* For Buyers */}
+      </section>Buyers */}
         <div className="bg-white border-2 border-[#ffcc00] p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
           <h3 className="text-xl font-bold mb-3 text-black">For Buyers</h3>
           <ul className="list-none space-y-2 text-sm text-gray-700">
