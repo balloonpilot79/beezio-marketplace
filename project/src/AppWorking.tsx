@@ -37,6 +37,7 @@ import SignUpPage from './pages/SignUpPage';
 import CausesPage from './pages/CausesPage';
 import SellerStorePage from './pages/SellerStorePage';
 import AffiliateStorePage from './pages/AffiliateStorePage';
+import CustomPageView from './pages/CustomPageView';
 import CartPage from './pages/CartPage';
 import WriteReview from './pages/WriteReview';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
@@ -387,6 +388,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/buyer-dashboard-preview" element={<BuyerDashboardPreview />} />
                     <Route path="/store/:sellerId" element={<SellerStorePage />} />
                     <Route path="/affiliate/:affiliateId" element={<AffiliateStorePage />} />
+                    <Route path="/:ownerType/:username/:pageSlug" element={<CustomPageView />} />
                     <Route path="/dashboard/:role" element={<Dashboard />} />
                     <Route path="/dashboard/products/add" element={<ProductForm />} />
                     <Route path="/dashboard/products/edit/:id" element={<ProductForm editMode={true} />} />
