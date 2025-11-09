@@ -59,7 +59,7 @@ const HomePage: React.FC<{
           <div className="absolute -bottom-20 left-1/2 w-72 h-72 bg-yellow-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
         </div>
 
-        <div className="max-w-4xl mx-auto relative z-10">
+        <div className="max-w-6xl mx-auto relative z-10">
           {/* Floating Badge */}
           <div className="flex justify-center mb-4">
             <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-yellow-300 rounded-full px-4 py-1.5 shadow-lg animate-float">
@@ -71,30 +71,42 @@ const HomePage: React.FC<{
             </div>
           </div>
 
-          {/* Slider with Glass Effect */}
-          <div className="relative h-40 flex items-center justify-center bg-white/40 backdrop-blur-md rounded-3xl shadow-2xl border border-white/50 p-6">
-            {slides.map((slide, index) => (
-              <div
-                key={index}
-                className={`absolute inset-0 flex flex-col items-center justify-center text-center transition-all duration-700 p-8 ${
-                  index === currentSlide
-                    ? 'opacity-100 translate-x-0 scale-100'
-                    : index < currentSlide
-                    ? 'opacity-0 -translate-x-full scale-95'
-                    : 'opacity-0 translate-x-full scale-95'
-                }`}
-              >
-                <div className="mb-3 transform transition-transform duration-500 hover:scale-110">
-                  {React.cloneElement(slide.icon as React.ReactElement, { className: 'w-10 h-10 text-[#ffcc00] drop-shadow-lg' })}
+          {/* Slider with Glass Effect and Bee Mascot */}
+          <div className="relative h-40 flex items-center justify-between bg-white/40 backdrop-blur-md rounded-3xl shadow-2xl border border-white/50 p-6">
+            {/* Slider Content */}
+            <div className="flex-1">
+              {slides.map((slide, index) => (
+                <div
+                  key={index}
+                  className={`absolute left-6 right-64 flex flex-col items-start justify-center text-left transition-all duration-700 ${
+                    index === currentSlide
+                      ? 'opacity-100 translate-x-0 scale-100'
+                      : index < currentSlide
+                      ? 'opacity-0 -translate-x-full scale-95'
+                      : 'opacity-0 translate-x-full scale-95'
+                  }`}
+                >
+                  <div className="mb-3 transform transition-transform duration-500 hover:scale-110">
+                    {React.cloneElement(slide.icon as React.ReactElement, { className: 'w-10 h-10 text-[#ffcc00] drop-shadow-lg' })}
+                  </div>
+                  <h2 className="text-xl font-bold mb-2 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+                    {slide.title}
+                  </h2>
+                  <p className="text-sm max-w-xl leading-relaxed text-gray-700 font-medium">
+                    {slide.description}
+                  </p>
                 </div>
-                <h2 className="text-xl font-bold mb-2 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
-                  {slide.title}
-                </h2>
-                <p className="text-sm max-w-2xl mx-auto leading-relaxed text-gray-700 font-medium">
-                  {slide.description}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
+            
+            {/* Bee Mascot */}
+            <div className="flex-shrink-0 w-56 h-full flex items-center justify-center">
+              <img 
+                src="/bzobee.png" 
+                alt="Beezio Mascot" 
+                className="w-full h-auto object-contain drop-shadow-2xl animate-float"
+              />
+            </div>
           </div>
 
           {/* Slide Indicators */}
