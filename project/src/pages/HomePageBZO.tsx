@@ -10,33 +10,39 @@ const HomePage: React.FC<{
   const slides = [
     {
       icon: <Store className="w-11 h-11 text-[#ffcc00]" />,
-      title: "Build Your Online Store",
-      description: "Create a professional marketplace with your own custom domain and branding"
+      title: "Sell Anything, Anywhere",
+      description: "Launch your custom storefront in minutes. Stripe checkout, your domain, zero inventory required.",
+      badge: "For Sellers"
     },
     {
       icon: <Users className="w-11 h-11 text-[#ffcc00]" />,
-      title: "Affiliate Marketing Platform",
-      description: "Enable affiliates to promote your products and earn lifetime commissions"
+      title: "Earn 5% Lifetime Commissions",
+      description: "Share products, earn forever. One link gets you 5% on every sale + seller bonuses.",
+      badge: "For Affiliates"
     },
     {
       icon: <TrendingUp className="w-11 h-11 text-[#ffcc00]" />,
-      title: "Grow Your Revenue",
-      description: "Leverage our commission structure to scale your business with affiliates"
+      title: "Fundraise with Zero Effort",
+      description: "Turn supporters into salespeople. Launch a cause-based store and earn while they share.",
+      badge: "For Fundraisers"
     },
     {
       icon: <Globe className="w-11 h-11 text-[#ffcc00]" />,
-      title: "Custom Domains",
-      description: "Use your own domain or get a free Beezio subdomain for your store"
+      title: "Your Brand, Your Domain",
+      description: "Bring your own domain or use ours. Full customization, no tech skills needed.",
+      badge: "Custom Stores"
     },
     {
       icon: <Package className="w-11 h-11 text-[#ffcc00]" />,
-      title: "Product Management",
-      description: "Easy-to-use tools for uploading products, managing inventory, and tracking orders"
+      title: "Dropship-Ready Marketplace",
+      description: "Opt products into affiliate promotion or keep them private. You control the distribution.",
+      badge: "Smart Inventory"
     },
     {
       icon: <Zap className="w-11 h-11 text-[#ffcc00]" />,
-      title: "Launch in Minutes",
-      description: "Get your marketplace up and running quickly with our streamlined setup process"
+      title: "15% Platform Fee, That's It",
+      description: "No hidden costs. Sellers keep 85% after commissions. We handle payments, tracking, and automation.",
+      badge: "Transparent Pricing"
     }
   ];
 
@@ -86,12 +92,20 @@ const HomePage: React.FC<{
                       : 'opacity-0 translate-x-full scale-95'
                   }`}
                 >
-                  <div className="mb-3 transform transition-transform duration-500 hover:scale-110">
-                    {React.cloneElement(slide.icon as React.ReactElement, { className: 'w-10 h-10 text-[#ffcc00] drop-shadow-lg' })}
+                  {/* Badge */}
+                  <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-[#ffcc00] to-[#ffd700] px-3 py-1 rounded-full mb-3">
+                    <div className="mb-0 transform transition-transform duration-500">
+                      {React.cloneElement(slide.icon as React.ReactElement, { className: 'w-4 h-4 text-gray-900' })}
+                    </div>
+                    <span className="text-xs font-bold text-gray-900">{slide.badge}</span>
                   </div>
-                  <h2 className="text-xl font-bold mb-2 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+                  
+                  {/* Title */}
+                  <h2 className="text-2xl font-black mb-2 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent leading-tight">
                     {slide.title}
                   </h2>
+                  
+                  {/* Description */}
                   <p className="text-sm max-w-xl leading-relaxed text-gray-700 font-medium">
                     {slide.description}
                   </p>
