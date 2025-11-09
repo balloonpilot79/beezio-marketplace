@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Save, Eye, Palette, Globe, Settings, Zap, FileText } from 'lucide-react';
+import { Save, Eye, Palette, Globe, Settings, Zap, FileText, ArrowUpDown } from 'lucide-react';
 import CustomDomainManager from './CustomDomainManager';
 import UniversalIntegrationsPage from './UniversalIntegrationsPage';
 import ImageUploader from './ImageUploader';
 import CustomPageBuilder from './CustomPageBuilder';
+import ProductOrderManager from './ProductOrderManager';
 
 interface StoreSettings {
   store_name?: string;
@@ -138,6 +139,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
               { id: 'general', name: 'General', icon: Settings },
               { id: 'appearance', name: 'Appearance', icon: Palette },
               { id: 'custom-pages', name: 'Custom Pages', icon: FileText },
+              { id: 'product-order', name: 'Product Order', icon: ArrowUpDown },
               { id: 'integrations', name: 'API Integrations', icon: Zap },
               { id: 'domain', name: 'Domain', icon: Globe }
             ].map(tab => {
@@ -331,6 +333,13 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
           {activeTab === 'custom-pages' && (
             <div>
               <CustomPageBuilder ownerType={role} />
+            </div>
+          )}
+
+          {/* Product Order Tab */}
+          {activeTab === 'product-order' && (
+            <div>
+              <ProductOrderManager sellerId={userId} />
             </div>
           )}
 

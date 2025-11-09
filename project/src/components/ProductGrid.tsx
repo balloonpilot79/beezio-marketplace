@@ -223,7 +223,15 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                 />
                 
                 {/* Affiliate Status Badge - Top Left */}
-                <div className="absolute top-2 left-2">
+                <div className="absolute top-2 left-2 flex flex-col gap-1">
+                  {/* Featured Badge */}
+                  {(product as any).is_featured && (
+                    <span className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 shadow-md">
+                      ⭐ Featured
+                    </span>
+                  )}
+                  
+                  {/* Marketplace/Store Badge */}
                   {product.affiliate_enabled ? (
                     <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 shadow-md">
                       <ShoppingBag className="w-3 h-3" /> Marketplace

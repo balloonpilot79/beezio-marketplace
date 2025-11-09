@@ -39,15 +39,35 @@ CREATE TABLE IF NOT EXISTS affiliate_products (
 );
 
 -- 4. Add product_order column to products table for global ordering
-ALTER TABLE products ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'products') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_name = 'products' AND column_name = 'display_order'
+    ) THEN
+      ALTER TABLE products ADD COLUMN display_order INTEGER DEFAULT 0;
+    END IF;
+  END IF;
+END $$;
 
 -- 5. Add theme_settings JSON column for advanced customization
-ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS theme_settings JSONB DEFAULT '{
-  "primary_color": "#ffcc00",
-  "secondary_color": "#000000",
-  "font_family": "Poppins",
-  "layout": "grid"
-}'::jsonb;
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'store_settings') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_name = 'store_settings' AND column_name = 'theme_settings'
+    ) THEN
+      ALTER TABLE store_settings ADD COLUMN theme_settings JSONB DEFAULT '{
+        "primary_color": "#ffcc00",
+        "secondary_color": "#000000",
+        "font_family": "Poppins",
+        "layout": "grid"
+      }'::jsonb;
+    END IF;
+  END IF;
+END $$;
 
 -- 6. Add affiliate_store_settings table if it doesn't exist
 CREATE TABLE IF NOT EXISTS affiliate_store_settings (
@@ -75,7 +95,11 @@ ALTER TABLE seller_product_order ENABLE ROW LEVEL SECURITY;
 ALTER TABLE affiliate_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE affiliate_store_settings ENABLE ROW LEVEL SECURITY;
 
--- 8. RLS Policies for custom_pages
+-- 8. Drop existing policies if they exist, then create new ones for custom_pages
+DROP POLICY IF EXISTS "Users can view their own pages" ON custom_pages;
+DROP POLICY IF EXISTS "Public can view active pages" ON custom_pages;
+DROP POLICY IF EXISTS "Users can manage their own pages" ON custom_pages;
+
 CREATE POLICY "Users can view their own pages" ON custom_pages
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM profiles WHERE profiles.id = owner_id AND profiles.user_id = auth.uid())
@@ -89,7 +113,10 @@ CREATE POLICY "Users can manage their own pages" ON custom_pages
     EXISTS (SELECT 1 FROM profiles WHERE profiles.id = owner_id AND profiles.user_id = auth.uid())
   );
 
--- 9. RLS Policies for seller_product_order
+-- 9. Drop existing policies if they exist, then create new ones for seller_product_order
+DROP POLICY IF EXISTS "Sellers can manage their product order" ON seller_product_order;
+DROP POLICY IF EXISTS "Public can view product order" ON seller_product_order;
+
 CREATE POLICY "Sellers can manage their product order" ON seller_product_order
   FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE profiles.id = seller_id AND profiles.user_id = auth.uid())
@@ -98,7 +125,10 @@ CREATE POLICY "Sellers can manage their product order" ON seller_product_order
 CREATE POLICY "Public can view product order" ON seller_product_order
   FOR SELECT USING (true);
 
--- 10. RLS Policies for affiliate_products
+-- 10. Drop existing policies if they exist, then create new ones for affiliate_products
+DROP POLICY IF EXISTS "Affiliates can manage their products" ON affiliate_products;
+DROP POLICY IF EXISTS "Public can view affiliate products" ON affiliate_products;
+
 CREATE POLICY "Affiliates can manage their products" ON affiliate_products
   FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE profiles.id = affiliate_id AND profiles.user_id = auth.uid())
@@ -107,7 +137,10 @@ CREATE POLICY "Affiliates can manage their products" ON affiliate_products
 CREATE POLICY "Public can view affiliate products" ON affiliate_products
   FOR SELECT USING (true);
 
--- 11. RLS Policies for affiliate_store_settings
+-- 11. Drop existing policies if they exist, then create new ones for affiliate_store_settings
+DROP POLICY IF EXISTS "Affiliates can manage their store settings" ON affiliate_store_settings;
+DROP POLICY IF EXISTS "Public can view affiliate store settings" ON affiliate_store_settings;
+
 CREATE POLICY "Affiliates can manage their store settings" ON affiliate_store_settings
   FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE profiles.id = affiliate_id AND profiles.user_id = auth.uid())
@@ -116,11 +149,21 @@ CREATE POLICY "Affiliates can manage their store settings" ON affiliate_store_se
 CREATE POLICY "Public can view affiliate store settings" ON affiliate_store_settings
   FOR SELECT USING (true);
 
--- 12. Create indexes for performance
+-- 12. Create indexes for performance (AFTER columns are added)
 CREATE INDEX IF NOT EXISTS idx_custom_pages_owner ON custom_pages(owner_id, owner_type);
 CREATE INDEX IF NOT EXISTS idx_custom_pages_slug ON custom_pages(page_slug);
 CREATE INDEX IF NOT EXISTS idx_seller_product_order ON seller_product_order(seller_id, display_order);
 CREATE INDEX IF NOT EXISTS idx_affiliate_products ON affiliate_products(affiliate_id, display_order);
-CREATE INDEX IF NOT EXISTS idx_products_display_order ON products(display_order);
+
+-- 13. Create index on products.display_order (only if column exists)
+DO $$ 
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'display_order'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_products_display_order ON products(display_order);
+  END IF;
+END $$;
 
 -- Done! Enhanced store system ready.

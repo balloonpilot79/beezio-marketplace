@@ -145,7 +145,31 @@ const SellerStorePage: React.FC = () => {
           .eq('is_active', true)
           .order('created_at', { ascending: false });
 
-        setProducts(productsData || []);
+        // Fetch product order settings
+        const { data: orderData } = await supabase
+          .from('seller_product_order')
+          .select('product_id, display_order, is_featured')
+          .eq('seller_id', canonicalId);
+
+        // Merge products with order settings and sort
+        let orderedProducts = productsData?.map(product => {
+          const orderSetting = orderData?.find(o => o.product_id === product.id);
+          return {
+            ...product,
+            display_order: orderSetting?.display_order ?? 999,
+            is_featured: orderSetting?.is_featured ?? false
+          };
+        }) || [];
+
+        // Sort: featured first, then by display_order, then by created_at
+        orderedProducts.sort((a, b) => {
+          if (a.is_featured && !b.is_featured) return -1;
+          if (!a.is_featured && b.is_featured) return 1;
+          if (a.display_order !== b.display_order) return a.display_order - b.display_order;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        setProducts(orderedProducts);
 
         // Update stats
         setStoreStats(prev => ({
