@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Save, Eye, Palette, Globe, Settings, Zap } from 'lucide-react';
+import { Save, Eye, Palette, Globe, Settings, Zap, FileText } from 'lucide-react';
 import CustomDomainManager from './CustomDomainManager';
 import UniversalIntegrationsPage from './UniversalIntegrationsPage';
+import ImageUploader from './ImageUploader';
+import CustomPageBuilder from './CustomPageBuilder';
 
 interface StoreSettings {
   store_name?: string;
@@ -135,6 +137,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
             {[
               { id: 'general', name: 'General', icon: Settings },
               { id: 'appearance', name: 'Appearance', icon: Palette },
+              { id: 'custom-pages', name: 'Custom Pages', icon: FileText },
               { id: 'integrations', name: 'API Integrations', icon: Zap },
               { id: 'domain', name: 'Domain', icon: Globe }
             ].map(tab => {
@@ -260,55 +263,23 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
           {/* Appearance Tab */}
           {activeTab === 'appearance' && (
             <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Store Banner Image URL
-                </label>
-                <input
-                  type="url"
-                  value={storeSettings.store_banner || ''}
-                  onChange={(e) => handleInputChange('store_banner', e.target.value)}
-                  placeholder="https://example.com/banner-image.jpg"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                />
-                {storeSettings.store_banner && (
-                  <div className="mt-2">
-                    <img
-                      src={storeSettings.store_banner}
-                      alt="Store banner preview"
-                      className="h-32 w-full object-cover rounded-lg"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
+              <ImageUploader
+                label="Store Banner"
+                currentImageUrl={storeSettings.store_banner}
+                onImageUpload={(url) => handleInputChange('store_banner', url)}
+                bucketName="store-images"
+                folderPath="banners"
+                aspectRatio="banner"
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Store Logo URL
-                </label>
-                <input
-                  type="url"
-                  value={storeSettings.store_logo || ''}
-                  onChange={(e) => handleInputChange('store_logo', e.target.value)}
-                  placeholder="https://example.com/logo.png"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                />
-                {storeSettings.store_logo && (
-                  <div className="mt-2">
-                    <img
-                      src={storeSettings.store_logo}
-                      alt="Store logo preview"
-                      className="h-16 w-16 object-contain rounded-lg border"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
+              <ImageUploader
+                label="Store Logo"
+                currentImageUrl={storeSettings.store_logo}
+                onImageUpload={(url) => handleInputChange('store_logo', url)}
+                bucketName="store-images"
+                folderPath="logos"
+                aspectRatio="logo"
+              />
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -353,6 +324,13 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
               </div>
               
               <UniversalIntegrationsPage />
+            </div>
+          )}
+
+          {/* Custom Pages Tab */}
+          {activeTab === 'custom-pages' && (
+            <div>
+              <CustomPageBuilder ownerType={role} />
             </div>
           )}
 

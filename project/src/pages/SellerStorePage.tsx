@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import ProductGrid from '../components/ProductGrid';
 import StoreCustomization from '../components/StoreCustomization';
-import { Star, MapPin, Clock, Package, Award, ExternalLink, Share2, Settings, Edit3 } from 'lucide-react';
+import { Star, MapPin, Clock, Package, Award, ExternalLink, Share2, Settings } from 'lucide-react';
+import { applyThemeToDocument, getThemeStyles, type ThemeName } from '../utils/themes';
 
 const SellerStorePage: React.FC = () => {
   const { sellerId } = useParams<{ sellerId: string }>();
@@ -162,7 +163,16 @@ const SellerStorePage: React.FC = () => {
     fetchSellerData();
   }, [sellerId]);
 
+  // Apply theme when seller data loads
+  useEffect(() => {
+    if (seller?.store_theme) {
+      const themeName = (seller.store_theme as ThemeName) || 'modern';
+      applyThemeToDocument(themeName, seller.theme_settings);
+    }
+  }, [seller]);
+
   const resolvedSellerId = canonicalSellerId || sellerId || '';
+  const theme = seller ? getThemeStyles(seller.store_theme as ThemeName || 'modern', seller.theme_settings) : null;
   const isOwner = Boolean(
     (profile?.id && resolvedSellerId && profile.id === resolvedSellerId) ||
     (profile?.user_id && sellerId && profile.user_id === sellerId) ||
@@ -211,7 +221,7 @@ const SellerStorePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-purple-50">
+    <div className="min-h-screen" style={{ backgroundColor: theme?.colors.background || '#fef3c7' }}>
       {/* Store Banner */}
       {seller.store_banner && (
         <div className="h-64 bg-cover bg-center relative rounded-b-3xl shadow-lg overflow-hidden" style={{ backgroundImage: `url(${seller.store_banner})` }}>

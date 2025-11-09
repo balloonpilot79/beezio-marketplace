@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, Info } from 'lucide-react';
+import { TrendingUp, Info, ShoppingBag, Store } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AffiliateLink from './AffiliateLink';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -22,6 +22,7 @@ interface Product {
   commission_type: 'percentage' | 'flat_rate';
   flat_commission_amount: number;
   seller_id: string;
+  affiliate_enabled?: boolean;
   profiles?: {
     full_name: string;
     location?: string;
@@ -220,6 +221,19 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                   alt={product.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
+                
+                {/* Affiliate Status Badge - Top Left */}
+                <div className="absolute top-2 left-2">
+                  {product.affiliate_enabled ? (
+                    <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 shadow-md">
+                      <ShoppingBag className="w-3 h-3" /> Marketplace
+                    </span>
+                  ) : (
+                    <span className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 shadow-md">
+                      <Store className="w-3 h-3" /> Store Only
+                    </span>
+                  )}
+                </div>
                 
                 {/* Action Buttons */}
                 <div className="absolute top-2 right-2 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity">
