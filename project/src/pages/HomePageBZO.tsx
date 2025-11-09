@@ -126,16 +126,6 @@ const HomePage: React.FC<{
         </div>
       </section>
 
-      {/* ABOUT SECTION with Glassmorphism */}
-      <section className="relative px-5 py-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#ffcc00] via-[#ffd700] to-[#ffcc00]"></div>
-        <div className="absolute inset-0" style={{
-          backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0)',
-          backgroundSize: '40px 40px'
-        }}></div>
-        
-        <div className="max-w-5xl mx-auto relative z-10">
-          <div className="bg-white/20 backdrop-blur-lg rounded-3xl p-10 shadow-2xl border border-white/30">
       {/* FEATURES GRID with Hover Effects */}
       <section className="px-12 py-20 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto">
@@ -256,32 +246,6 @@ const HomePage: React.FC<{
               </ul>
             </div>
           </div>
-        </div>
-      </section>Buyers */}
-        <div className="bg-white border-2 border-[#ffcc00] p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-          <h3 className="text-xl font-bold mb-3 text-black">For Buyers</h3>
-          <ul className="list-none space-y-2 text-sm text-gray-700">
-            <li>✓ Shop safely from trusted sellers</li>
-            <li>✓ Support fundraisers and affiliates</li>
-          </ul>
-        </div>
-
-        {/* Custom Stores & Domains */}
-        <div className="bg-white border-2 border-[#ffcc00] p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-          <h3 className="text-xl font-bold mb-3 text-black">Custom Stores & Domains</h3>
-          <ul className="list-none space-y-2 text-sm text-gray-700">
-            <li>✓ Bring your own domain or use Beezio subdomain</li>
-            <li>✓ Flexible design options</li>
-          </ul>
-        </div>
-
-        {/* API Integrations */}
-        <div className="bg-white border-2 border-[#ffcc00] p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-          <h3 className="text-xl font-bold mb-3 text-black">API Integrations</h3>
-          <ul className="list-none space-y-2 text-sm text-gray-700">
-            <li>✓ Connect with Beezio's API for automation</li>
-            <li>✓ Import or sync external products</li>
-          </ul>
         </div>
       </section>
     </div>
