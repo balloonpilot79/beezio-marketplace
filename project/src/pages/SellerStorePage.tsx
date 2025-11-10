@@ -25,11 +25,22 @@ const SellerStorePage: React.FC = () => {
   const [isCustomizing, setIsCustomizing] = useState(false);
   
   useEffect(() => {
-    if (!sellerId) return;
+    console.log('[SellerStorePage] useEffect triggered with sellerId:', sellerId);
+    
+    if (!sellerId) {
+      console.error('[SellerStorePage] No sellerId provided');
+      setLoading(false);
+      setSeller(null);
+      return;
+    }
     
     const fetchSellerData = async () => {
       try {
+        console.log('[SellerStorePage] Starting data fetch for sellerId:', sellerId);
+        setLoading(true);
+        
         // Try to fetch seller profile by profile id or auth user id
+        console.log('[SellerStorePage] Fetching profile from database...');
         const { data: sellerData, error: sellerError } = await supabase
           .from('profiles')
           .select('*')
@@ -37,12 +48,13 @@ const SellerStorePage: React.FC = () => {
           .maybeSingle();
 
         if (sellerError) {
+          console.error('[SellerStorePage] Database error fetching profile:', sellerError);
           throw sellerError;
         }
 
         // If no seller found, create sample seller data for demo
         if (!sellerData) {
-          console.log('No seller found, using sample data for demo');
+          console.log('[SellerStorePage] No seller found in database, using sample data for demo');
           setSeller({
             id: sellerId,
             full_name: 'Demo Store',
@@ -105,23 +117,31 @@ const SellerStorePage: React.FC = () => {
           }));
 
           setCanonicalSellerId(sellerId);
+          console.log('[SellerStorePage] Demo data loaded successfully');
           setLoading(false);
           return;
         }
 
+        console.log('[SellerStorePage] Profile found:', sellerData.full_name, 'ID:', sellerData.id);
         setCanonicalSellerId(sellerData.id);
         setSeller(sellerData);
 
         // Fetch store settings
         const canonicalId = sellerData.id;
+        console.log('[SellerStorePage] Fetching store settings for:', canonicalId);
 
-        const { data: storeSettingsData } = await supabase
+        const { data: storeSettingsData, error: storeError } = await supabase
           .from('store_settings')
           .select('*')
           .eq('seller_id', canonicalId)
           .maybeSingle();
 
+        if (storeError) {
+          console.warn('[SellerStorePage] Error fetching store settings (non-fatal):', storeError);
+        }
+
         if (storeSettingsData) {
+          console.log('[SellerStorePage] Store settings found, applying customization');
           // Override seller data with store settings
           setSeller((prev: any) => ({
             ...prev,
@@ -138,18 +158,30 @@ const SellerStorePage: React.FC = () => {
         }
 
         // Fetch products
-        const { data: productsData } = await supabase
+        console.log('[SellerStorePage] Fetching products for seller:', canonicalId);
+        const { data: productsData, error: productsError } = await supabase
           .from('products')
           .select('*')
           .eq('seller_id', canonicalId)
           .eq('is_active', true)
           .order('created_at', { ascending: false });
 
+        if (productsError) {
+          console.error('[SellerStorePage] Error fetching products:', productsError);
+          // Continue anyway, just show empty products
+        }
+
+        console.log('[SellerStorePage] Found', productsData?.length || 0, 'products');
+
         // Fetch product order settings
-        const { data: orderData } = await supabase
+        const { data: orderData, error: orderError } = await supabase
           .from('seller_product_order')
           .select('product_id, display_order, is_featured')
           .eq('seller_id', canonicalId);
+
+        if (orderError) {
+          console.warn('[SellerStorePage] Error fetching product order (non-fatal):', orderError);
+        }
 
         // Merge products with order settings and sort
         let orderedProducts = productsData?.map(product => {
@@ -177,9 +209,10 @@ const SellerStorePage: React.FC = () => {
           totalProducts: productsData?.length || 0
         }));
 
+        console.log('[SellerStorePage] Data fetch complete, setting loading to false');
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching seller data:', error);
+        console.error('[SellerStorePage] CRITICAL ERROR in fetchSellerData:', error);
         setSeller(null);
         setLoading(false);
       }

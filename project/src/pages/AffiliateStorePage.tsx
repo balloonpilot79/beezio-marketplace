@@ -17,7 +17,10 @@ const AffiliateStorePage: React.FC = () => {
   const [showCustomization, setShowCustomization] = useState(false);
 
   useEffect(() => {
+    console.log('[AffiliateStorePage] useEffect triggered with affiliateId:', affiliateId);
+    
     if (!affiliateId) {
+      console.error('[AffiliateStorePage] No affiliateId provided');
       setLoading(false);
       setAffiliate(null);
       return;
@@ -25,6 +28,10 @@ const AffiliateStorePage: React.FC = () => {
 
     const loadAffiliateStore = async () => {
       try {
+        console.log('[AffiliateStorePage] Starting data fetch for affiliateId:', affiliateId);
+        setLoading(true);
+        
+        console.log('[AffiliateStorePage] Fetching affiliate profile from database...');
         const { data: affiliateRecord, error: affiliateError } = await supabase
           .from('profiles')
           .select('*')
@@ -32,14 +39,14 @@ const AffiliateStorePage: React.FC = () => {
           .maybeSingle();
 
         if (affiliateError) {
-          console.error('Error fetching affiliate:', affiliateError);
+          console.error('[AffiliateStorePage] Database error fetching profile:', affiliateError);
           setAffiliate(null);
           setLoading(false);
           return;
         }
 
         if (!affiliateRecord) {
-          console.log('No affiliate record found for:', affiliateId);
+          console.log('[AffiliateStorePage] No affiliate record found for:', affiliateId);
           setAffiliate(null);
           setProducts([]);
           setStoreSettings(null);
@@ -47,12 +54,14 @@ const AffiliateStorePage: React.FC = () => {
           return;
         }
 
+        console.log('[AffiliateStorePage] Affiliate found:', affiliateRecord.full_name, 'ID:', affiliateRecord.id);
         setAffiliate(affiliateRecord);
         setCanonicalAffiliateId(affiliateRecord.id);
 
         const canonicalId = affiliateRecord.id;
 
-        const [{ data: storeSettingsData }, { data: productRows }] = await Promise.all([
+        console.log('[AffiliateStorePage] Fetching store settings and products for:', canonicalId);
+        const [{ data: storeSettingsData, error: settingsError }, { data: productRows, error: productsError }] = await Promise.all([
           supabase
             .from('affiliate_store_settings')
             .select('*')
@@ -65,9 +74,19 @@ const AffiliateStorePage: React.FC = () => {
             .eq('is_active', true)
         ]);
 
+        if (settingsError) {
+          console.warn('[AffiliateStorePage] Error fetching store settings (non-fatal):', settingsError);
+        }
+
+        if (productsError) {
+          console.warn('[AffiliateStorePage] Error fetching products (non-fatal):', productsError);
+        }
+
         if (storeSettingsData) {
+          console.log('[AffiliateStorePage] Store settings found');
           setStoreSettings(storeSettingsData);
         } else {
+          console.log('[AffiliateStorePage] No store settings found, using defaults');
           setStoreSettings(null);
         }
 
@@ -83,18 +102,24 @@ const AffiliateStorePage: React.FC = () => {
         })) || [];
 
         if (buyerFacingProducts.length > 0) {
+          console.log('[AffiliateStorePage] Found', buyerFacingProducts.length, 'products');
           setProducts(buyerFacingProducts);
 
+          // Track views (non-fatal errors)
           await Promise.all(
             (productRows || []).map(product =>
               supabase.rpc('increment_affiliate_product_metric', {
                 p_affiliate_id: canonicalId,
                 p_product_id: product.product_id,
                 p_metric: 'views'
-              }).catch(() => undefined)
+              }).catch((err) => {
+                console.warn('[AffiliateStorePage] Could not increment view metric:', err);
+                return undefined;
+              })
             )
           );
         } else {
+          console.log('[AffiliateStorePage] No products found, using demo products');
           setProducts([
             {
               id: 'sample-1',
@@ -139,13 +164,15 @@ const AffiliateStorePage: React.FC = () => {
           ]);
         }
 
+        // Set referral in localStorage
         localStorage.setItem('affiliate_referral', canonicalId);
+        console.log('[AffiliateStorePage] Data fetch complete, setting loading to false');
+        setLoading(false);
       } catch (error) {
-        console.error('Error loading affiliate store:', error);
+        console.error('[AffiliateStorePage] CRITICAL ERROR in loadAffiliateStore:', error);
         setAffiliate(null);
         setProducts([]);
         setStoreSettings(null);
-      } finally {
         setLoading(false);
       }
     };
