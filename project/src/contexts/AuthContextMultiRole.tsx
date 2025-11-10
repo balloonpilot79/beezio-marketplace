@@ -199,27 +199,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, userData: any) => {
     try {
+      console.log('[AuthContext] Starting signUp for:', email);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[AuthContext] SignUp error:', error);
+        throw error;
+      }
 
       if (data.user) {
+        console.log('[AuthContext] User created:', data.user.id);
+        
         // Wait for auth system to fully propagate
         await new Promise(resolve => setTimeout(resolve, 500));
         
         const initialRole = userData.role || 'buyer';
         
-        // Create profile with primary role
+        // Create profile with BOTH id and user_id
+        console.log('[AuthContext] Creating profile...');
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .insert({
-            user_id: data.user.id,
+            id: data.user.id,              // ✅ FIXED: Added id column
+            user_id: data.user.id,         // Also set user_id
             email,
             full_name: userData.fullName || '',
-            role: initialRole, // Keep for backwards compatibility
+            role: initialRole,             // Keep for backwards compatibility
             primary_role: initialRole,
             phone: userData.phone || null,
             bio: null,
@@ -231,14 +240,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .single();
 
         if (profileError) {
-          console.error('Profile creation error:', profileError);
-          throw new Error(`Failed to create profile: ${profileError.message}`);
-        }
-
-        // Immediately set the profile in context so Dashboard sees it
-        if (profileData) {
-          setProfile(profileData);
-          console.log('✅ Profile created and loaded:', profileData);
+          console.error('[AuthContext] Profile creation error:', profileError);
+          // If profile already exists (from trigger), fetch it instead
+          if (profileError.code === '23505') { // Unique constraint violation
+            console.log('[AuthContext] Profile already exists, fetching...');
+            const { data: existingProfile, error: fetchError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.user.id)
+              .single();
+            
+            if (fetchError) {
+              throw new Error(`Failed to fetch existing profile: ${fetchError.message}`);
+            }
+            
+            setProfile(existingProfile);
+            console.log('✅ Existing profile loaded:', existingProfile);
+          } else {
+            throw new Error(`Failed to create profile: ${profileError.message}`);
+          }
+        } else {
+          // Immediately set the profile in context so Dashboard sees it
+          if (profileData) {
+            setProfile(profileData);
+            console.log('✅ Profile created and loaded:', profileData);
+          }
         }
 
         // Add initial role to user_roles table
