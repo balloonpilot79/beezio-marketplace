@@ -84,7 +84,11 @@ const AffiliateStorePage: React.FC = () => {
 
         if (storeSettingsData) {
           console.log('[AffiliateStorePage] Store settings found');
-          setStoreSettings(storeSettingsData);
+          setStoreSettings({
+            ...storeSettingsData,
+            subdomain: storeSettingsData.subdomain,
+            custom_domain: storeSettingsData.custom_domain
+          });
         } else {
           console.log('[AffiliateStorePage] No store settings found, using defaults');
           setStoreSettings(null);
@@ -199,7 +203,12 @@ const AffiliateStorePage: React.FC = () => {
     }
   };
 
-  const storeUrl = `${window.location.origin}/affiliate/${resolvedAffiliateId}`;
+  // Use subdomain if available, otherwise fallback to /affiliate/:id path
+  const storeUrl = storeSettings?.subdomain
+    ? `https://${storeSettings.subdomain}.beezio.co`
+    : storeSettings?.custom_domain
+    ? `https://${storeSettings.custom_domain}`
+    : `${window.location.origin}/affiliate/${resolvedAffiliateId}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">

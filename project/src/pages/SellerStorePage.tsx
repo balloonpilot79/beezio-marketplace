@@ -88,6 +88,8 @@ const SellerStorePage: React.FC = () => {
             store_banner: storeSettingsData.store_banner,
             store_logo: storeSettingsData.store_logo,
             store_theme: storeSettingsData.store_theme || 'modern',
+            subdomain: storeSettingsData.subdomain,
+            custom_domain: storeSettingsData.custom_domain,
             social_links: storeSettingsData.social_links || {},
             business_hours: storeSettingsData.business_hours,
             shipping_policy: storeSettingsData.shipping_policy,
@@ -181,7 +183,11 @@ const SellerStorePage: React.FC = () => {
     : products.filter(p => p.category === activeCategory);
 
   const handleShare = async () => {
-    const storeUrl = `${window.location.origin}/store/${resolvedSellerId}`;
+    // Use subdomain if available, otherwise fallback to /store/:id path
+    const storeUrl = seller?.subdomain 
+      ? `https://${seller.subdomain}.beezio.co`
+      : `${window.location.origin}/store/${resolvedSellerId}`;
+    
     if (navigator.share) {
       await navigator.share({
         title: `${seller?.full_name}'s Store`,

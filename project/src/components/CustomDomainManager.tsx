@@ -6,9 +6,10 @@ interface CustomDomainManagerProps {
   userId: string;
   role: 'seller' | 'affiliate';
   currentDomain?: string;
+  subdomain?: string;
 }
 
-const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role, currentDomain }) => {
+const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role, currentDomain, subdomain }) => {
   const [domain, setDomain] = useState(currentDomain || '');
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -130,6 +131,8 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
   const defaultStoreUrl = role === 'seller' 
     ? `https://beezio.co/seller/${userId}`
     : `https://beezio.co/affiliate/${userId}`;
+  
+  const subdomainUrl = subdomain ? `https://${subdomain}.beezio.co` : null;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -138,9 +141,40 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
         <h3 className="text-xl font-bold text-gray-900">Custom Domain</h3>
       </div>
 
-      {/* Current Store URL */}
+      {/* Subdomain URL (auto-generated from email) */}
+      {subdomainUrl && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+          <p className="text-sm font-medium text-gray-700 mb-2">✨ Your Custom Subdomain:</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 px-3 py-2 bg-white border border-purple-200 rounded text-sm font-semibold text-purple-700">
+              {subdomainUrl}
+            </code>
+            <button
+              onClick={() => copyToClipboard(subdomainUrl)}
+              className="p-2 hover:bg-purple-100 rounded transition-colors"
+              title="Copy URL"
+            >
+              <Copy className="w-4 h-4 text-gray-600" />
+            </button>
+            <a
+              href={subdomainUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 hover:bg-purple-100 rounded transition-colors"
+              title="Open store"
+            >
+              <ExternalLink className="w-4 h-4 text-gray-600" />
+            </a>
+          </div>
+          <p className="text-xs text-purple-600 mt-2">
+            🎉 This is your personal subdomain, auto-generated from your email! Share this link with customers.
+          </p>
+        </div>
+      )}
+
+      {/* Current Store URL (fallback path) */}
       <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-        <p className="text-sm font-medium text-gray-700 mb-2">Your Default Store URL:</p>
+        <p className="text-sm font-medium text-gray-700 mb-2">Alternative Store URL:</p>
         <div className="flex items-center gap-2">
           <code className="flex-1 px-3 py-2 bg-white border rounded text-sm text-blue-600">
             {defaultStoreUrl}
@@ -162,6 +196,9 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
             <ExternalLink className="w-4 h-4 text-gray-600" />
           </a>
         </div>
+        <p className="text-xs text-gray-500 mt-2">
+          This URL also works, but the subdomain above is shorter and more professional.
+        </p>
       </div>
 
       {/* Custom Domain Input */}

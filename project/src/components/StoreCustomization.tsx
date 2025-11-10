@@ -14,6 +14,7 @@ interface StoreSettings {
   store_logo?: string;
   store_theme?: string;
   custom_domain?: string;
+  subdomain?: string;
   social_links?: {
     [key: string]: string | undefined;
     facebook?: string;
@@ -89,7 +90,6 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
     }));
   };
 
-  const storeUrl = `${window.location.origin}/store/${userId}`;
   const themeOptions = ['modern', 'vibrant', 'minimalist', 'dark', 'classic', 'elegant'];
 
   if (loading) {
@@ -349,6 +349,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
               userId={userId} 
               role={role} 
               currentDomain={storeSettings.custom_domain}
+              subdomain={storeSettings.subdomain}
             />
           )}
         </div>
