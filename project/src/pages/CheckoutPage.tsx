@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Lock, CreditCard } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import { calculatePricing, formatPricingBreakdown, TAX_RATE } from '../lib/pricing';
+import { TAX_RATE } from '../lib/pricing';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import CheckoutForm from '../components/CheckoutForm';
@@ -107,9 +107,9 @@ const CheckoutPage: React.FC = () => {
             <Elements stripe={stripePromise}>
               <CheckoutForm
                 amount={total}
-                onSuccess={() => {
+                onSuccess={(orderId: string) => {
                   clearCart();
-                  navigate('/order-confirmation');
+                  navigate(`/order-confirmation?order=${orderId}`);
                 }}
                 onError={(error: string) => {
                   console.error('Payment error:', error);

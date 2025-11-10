@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Heart, ShoppingCart, Shield, Truck, RotateCcw, DollarSign, Star, Users, TrendingUp, Play, ExternalLink, Share2, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { SAMPLE_PRODUCTS } from '../data/sampleProducts';
@@ -11,6 +11,7 @@ import BuyerRewards from '../components/BuyerRewards';
 import RecommendationEngine from '../components/RecommendationEngine';
 import ShippingSelector from '../components/ShippingSelector';
 import { useBehaviorTracker } from '../hooks/useBehaviorTracker';
+import { trackAffiliateClick } from '../utils/affiliateTracking';
 
 interface Product {
   id: string;
@@ -38,6 +39,7 @@ interface Product {
 
 const ProductDetailPage: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
+  const location = useLocation();
   const { profile, user, hasRole } = useAuth();
   const { addToCart: addItemToCart } = useCart();
   const { generateAffiliateLink, addProduct, isProductSelected } = useAffiliate();
@@ -55,6 +57,16 @@ const ProductDetailPage: React.FC = () => {
   const { trackView, trackClick, trackCartAdd } = useBehaviorTracker();
   
   const isAffiliate = hasRole('affiliate');
+
+  // Track affiliate referral on page load
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const refCode = searchParams.get('ref');
+    
+    if (refCode) {
+      trackAffiliateClick(refCode);
+    }
+  }, [location.search]);
 
   // Function to get embed URL from video URL
   const getVideoEmbedUrl = (url: string): string | null => {

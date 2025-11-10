@@ -17,7 +17,11 @@ const AffiliateStorePage: React.FC = () => {
   const [showCustomization, setShowCustomization] = useState(false);
 
   useEffect(() => {
-    if (!affiliateId) return;
+    if (!affiliateId) {
+      setLoading(false);
+      setAffiliate(null);
+      return;
+    }
 
     const loadAffiliateStore = async () => {
       try {
@@ -28,13 +32,18 @@ const AffiliateStorePage: React.FC = () => {
           .maybeSingle();
 
         if (affiliateError) {
-          throw affiliateError;
+          console.error('Error fetching affiliate:', affiliateError);
+          setAffiliate(null);
+          setLoading(false);
+          return;
         }
 
         if (!affiliateRecord) {
+          console.log('No affiliate record found for:', affiliateId);
           setAffiliate(null);
           setProducts([]);
           setStoreSettings(null);
+          setLoading(false);
           return;
         }
 

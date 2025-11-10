@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { Link } from 'react-router-dom';
 import QRCode from 'qrcode.react';
+import AffiliateMarketingToolkit from './AffiliateMarketingToolkit';
+import AffiliateEarningsDashboard from './AffiliateEarningsDashboard';
+import RecruiterDashboard from './RecruiterDashboard';
 
 interface Payout {
   id: string;
@@ -101,6 +104,7 @@ const AffiliateDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [customLinks, setCustomLinks] = useState<{ [productId: string]: string }>({});
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Earnings and payouts
   const [earnings, setEarnings] = useState<Earnings | null>(null);
@@ -206,12 +210,35 @@ const AffiliateDashboard: React.FC = () => {
   if (loading || payoutLoading) return <div>Loading...</div>;
   if (error || payoutError) return <div className="text-red-500">{error || payoutError}</div>;
 
+  const tabs = ['overview', 'products', 'marketing', 'earnings', 'recruitment'];
+
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6">
       <h2 className="text-2xl font-bold mb-6">Affiliate Dashboard</h2>
 
-      {/* Earnings & Payouts Section */}
-      <div className="mb-8 bg-white rounded-lg shadow p-6">
+      {/* Tabs */}
+      <div className="mb-6 border-b">
+        <nav className="flex gap-8">
+          {tabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`pb-4 px-2 font-medium border-b-2 transition-colors ${
+                activeTab === tab
+                  ? 'border-yellow-500 text-yellow-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <>
+          <div className="mb-8 bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold mb-2">Earnings Overview</h3>
         {earnings ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -332,6 +359,41 @@ const AffiliateDashboard: React.FC = () => {
       {profile && products.length > 0 && (
         <AffiliateLinks affiliateId={profile.id} products={products} />
       )}
+        </>
+      )}
+
+      {/* Products Tab */}
+      {activeTab === 'products' && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-4">Promoted Products</h3>
+          {products.length === 0 ? (
+            <div className="text-gray-500">You haven't promoted any products yet.</div>
+          ) : (
+            <div className="space-y-6">
+              {products.map(product => (
+                <div key={product.id} className="bg-gray-50 rounded-lg shadow p-4 flex flex-col md:flex-row md:items-center md:space-x-6">
+                  <img src={product.images[0] || ''} alt={product.title} className="w-20 h-20 object-cover rounded mb-4 md:mb-0" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">{product.title}</h3>
+                    <p className="text-gray-600">${product.price}</p>
+                    <p className="text-xs text-amber-600">Commission: {product.commission_rate}%</p>
+                  </div>
+                  <Link to={`/product/${product.id}`} className="ml-4 text-blue-600 hover:underline">View Product</Link>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Marketing Tools Tab */}
+      {activeTab === 'marketing' && <AffiliateMarketingToolkit />}
+
+      {/* Earnings Tab */}
+      {activeTab === 'earnings' && <AffiliateEarningsDashboard />}
+
+      {/* Recruitment Tab */}
+      {activeTab === 'recruitment' && <RecruiterDashboard />}
     </div>
   );
 };

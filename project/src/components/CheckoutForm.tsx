@@ -10,10 +10,11 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { calculatePricing, formatPricingBreakdown, TAX_RATE } from '../lib/pricing';
+import { getAffiliateRef, clearAffiliateRef } from '../utils/affiliateTracking';
 
 interface CheckoutFormProps {
   amount: number;
-  onSuccess: () => void;
+  onSuccess: (orderId: string) => void;
   onError: (error: string) => void;
 }
 
@@ -118,28 +119,60 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
 
       // Payment successful - create order record and clear cart
       try {
+        // Get affiliate reference if exists
+        const affiliateRef = getAffiliateRef();
+        
+        // Add affiliate tracking data to items
+        const itemsWithAffiliateData = cartMetadata.map(item => {
+          // Calculate pricing breakdown for this item using commission rate
+          const pricing = calculatePricing({
+            sellerDesiredAmount: item.sellerDesiredAmount,
+            affiliateRate: item.commissionRate || 0,
+            affiliateType: 'percentage'
+          });
+          
+          // Add affiliate data if this order came through affiliate link
+          if (affiliateRef.id && affiliateRef.code) {
+            return {
+              ...item,
+              affiliate_id: affiliateRef.id,
+              referral_code: affiliateRef.code,
+              affiliate_commission: pricing.affiliateAmount,
+              platform_fee: pricing.platformFee,
+              seller_payout: pricing.sellerAmount, // Seller gets exactly what they wanted
+            };
+          }
+          
+          return item;
+        });
+        
         // Update order status in database
         await supabase.functions.invoke('complete-order-corrected', {
           body: {
             orderId: order_id,
             paymentIntentId: payment_intent_id,
-            items: cartMetadata,
+            items: itemsWithAffiliateData,
             billingDetails: billingDetails,
             totalPaid: amount,
             tax: taxAmount,
           },
         });
 
+        // Clear affiliate reference after successful order
+        if (affiliateRef.id) {
+          clearAffiliateRef();
+        }
+
         // Clear the cart after successful order
         localStorage.removeItem('beezio-cart');
         
         // Payment successful
-        onSuccess();
+        onSuccess(order_id);
       } catch (orderError) {
         console.error('Order completion error:', orderError);
         // Payment went through but order recording failed
         // Still call onSuccess since payment was processed
-        onSuccess();
+        onSuccess(order_id);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';

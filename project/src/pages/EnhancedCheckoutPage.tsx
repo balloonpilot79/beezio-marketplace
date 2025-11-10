@@ -269,7 +269,7 @@ const CheckoutForm: React.FC<{ onSubmit: (data: any) => void; isLoading: boolean
 
 const EnhancedCheckoutPage: React.FC = () => {
   const { items, getTotalPrice, getShippingTotal, clearCart } = useCart();
-  const { user, profile } = useAuth();
+  const { user, profile, userRoles } = useAuth();
   const { trackSale } = useAffiliate();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -306,27 +306,27 @@ const EnhancedCheckoutPage: React.FC = () => {
     const tax = subtotal * 0.08; // 8% tax rate
     
     let affiliateCommission = 0;
-    let beezioCommission = 0;
+    let beezioCommission = subtotal * 0.08; // Platform always gets 8%
 
-    // Check if buyer is an affiliate or fundraiser (no affiliate fee for them)
-    const buyerIsAffiliate = profile?.primary_role === 'affiliate' || profile?.primary_role === 'fundraiser';
+    // Check if buyer has affiliate role (they get products without affiliate commission)
+    const buyerHasAffiliateRole = userRoles.includes('affiliate') || userRoles.includes('fundraiser');
 
-    if (affiliateId && !buyerIsAffiliate) {
-      // If there's an affiliate AND buyer is not an affiliate/fundraiser, calculate commission
+    if (affiliateId && !buyerHasAffiliateRole) {
+      // Regular customer buying via affiliate link: charge affiliate commission
       affiliateCommission = items.reduce((sum, item) => {
         // Skip commission if buyer is the seller of this specific item
         if (user?.id === item.sellerId) {
           return sum;
         }
-        return sum + (item.price * item.quantity * (item.commission_rate || 0) / 100);
+        return sum + (item.price * item.quantity * (item.commission_rate || 5) / 100);
       }, 0);
-      // Beezio gets platform fee (always charged)
-      beezioCommission = subtotal * 0.15; // 15% platform fee
-    } else {
-      // No affiliate commission (buyer is affiliate/fundraiser OR no affiliate link used OR buyer is seller)
+    } else if (buyerHasAffiliateRole) {
+      // Affiliate/fundraiser buying for themselves: NO affiliate commission
+      // They get "wholesale" pricing - just pay base price + platform fee
       affiliateCommission = 0;
-      // Beezio still gets platform fee
-      beezioCommission = subtotal * 0.15; // 15% platform fee
+    } else {
+      // Regular customer buying direct (no affiliate link): NO affiliate commission
+      affiliateCommission = 0;
     }
 
     const total = subtotal + shipping + tax;
@@ -491,30 +491,35 @@ const EnhancedCheckoutPage: React.FC = () => {
                         <span className="text-blue-600">${orderSummary.affiliateCommission.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Platform Fee (15%)</span>
+                        <span className="text-gray-600">Platform Fee (8%)</span>
                         <span className="text-gray-600">${orderSummary.beezioCommission.toFixed(2)}</span>
                       </div>
                     </>
-                  ) : affiliateId && orderSummary.affiliateCommission === 0 ? (
+                  ) : userRoles.includes('affiliate') || userRoles.includes('fundraiser') ? (
                     <>
                       <div className="flex justify-between text-sm">
-                        <span className="text-green-600">Affiliate Fee</span>
-                        <span className="text-green-600 line-through">Waived</span>
+                        <span className="text-green-600 flex items-center gap-1">
+                          <CheckCircle className="w-4 h-4" />
+                          Affiliate Discount
+                        </span>
+                        <span className="text-green-600 font-semibold">$0.00</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Platform Fee (15%)</span>
+                        <span className="text-gray-600">Platform Fee (8%)</span>
                         <span className="text-gray-600">${orderSummary.beezioCommission.toFixed(2)}</span>
                       </div>
-                      <p className="text-xs text-green-600 mt-1">
-                        {profile?.primary_role === 'affiliate' || profile?.primary_role === 'fundraiser' 
-                          ? '✓ Affiliates & fundraisers shop commission-free!'
-                          : '✓ No affiliate fee when buying your own products'
-                        }
-                      </p>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-2">
+                        <p className="text-xs text-green-700 font-medium">
+                          🎉 Affiliate Perk Active!
+                        </p>
+                        <p className="text-xs text-green-600 mt-1">
+                          As an affiliate, you shop without paying affiliate commissions. You only pay the base price + platform fee. Share products with others to earn!
+                        </p>
+                      </div>
                     </>
                   ) : (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Platform Fee (15%)</span>
+                      <span className="text-gray-600">Platform Fee (8%)</span>
                       <span className="text-gray-600">${orderSummary.beezioCommission.toFixed(2)}</span>
                     </div>
                   )}
@@ -553,10 +558,10 @@ const EnhancedCheckoutPage: React.FC = () => {
                     <h4 className="text-sm font-semibold text-yellow-800">100% Transparent Pricing</h4>
                     <p className="text-xs text-yellow-700 mt-1">
                       {affiliateId && orderSummary.affiliateCommission > 0
-                        ? `Affiliate earns $${orderSummary.affiliateCommission.toFixed(2)}. Platform fee: $${orderSummary.beezioCommission.toFixed(2)}.`
-                        : affiliateId && orderSummary.affiliateCommission === 0
-                        ? `Affiliate fee waived! ${profile?.primary_role === 'affiliate' || profile?.primary_role === 'fundraiser' ? 'You shop commission-free as an affiliate/fundraiser.' : 'No fee on your own products.'} Platform fee: $${orderSummary.beezioCommission.toFixed(2)}.`
-                        : `No affiliate commission. Platform fee: $${orderSummary.beezioCommission.toFixed(2)} covers operations and seller support.`
+                        ? `Affiliate earns $${orderSummary.affiliateCommission.toFixed(2)}. Platform fee: $${orderSummary.beezioCommission.toFixed(2)} (8%).`
+                        : userRoles.includes('affiliate') || userRoles.includes('fundraiser')
+                        ? `🎉 As an affiliate, you shop commission-free! Platform fee: $${orderSummary.beezioCommission.toFixed(2)} (8%). Share products to earn commissions when others buy!`
+                        : `Direct purchase - no affiliate commission. Platform fee: $${orderSummary.beezioCommission.toFixed(2)} (8%) covers operations and seller support.`
                       }
                     </p>
                   </div>

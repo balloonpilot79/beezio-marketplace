@@ -1,7 +1,7 @@
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 
 // Submit a product review
-export async function submitProductReview(productId, buyerId, rating, review) {
+export async function submitProductReview(productId: string, buyerId: string, rating: number, review: string) {
   const { data, error } = await supabase.from('product_reviews').insert([
     { product_id: productId, buyer_id: buyerId, rating, review },
   ]);
@@ -14,7 +14,7 @@ export async function submitProductReview(productId, buyerId, rating, review) {
 }
 
 // Submit a seller review
-export async function submitSellerReview(sellerId, buyerId, rating, review) {
+export async function submitSellerReview(sellerId: string, buyerId: string, rating: number, review: string) {
   const { data, error } = await supabase.from('seller_reviews').insert([
     { seller_id: sellerId, buyer_id: buyerId, rating, review },
   ]);
@@ -27,7 +27,7 @@ export async function submitSellerReview(sellerId, buyerId, rating, review) {
 }
 
 // Fetch reviews for a product
-export async function fetchProductReviews(productId) {
+export async function fetchProductReviews(productId: string) {
   const { data, error } = await supabase
     .from('product_reviews')
     .select('*')
@@ -41,7 +41,7 @@ export async function fetchProductReviews(productId) {
 }
 
 // Fetch reviews for a seller
-export async function fetchSellerReviews(sellerId) {
+export async function fetchSellerReviews(sellerId: string) {
   const { data, error } = await supabase
     .from('seller_reviews')
     .select('*')
@@ -55,7 +55,7 @@ export async function fetchSellerReviews(sellerId) {
 }
 
 // Update tracking information for an order
-export async function updateOrderTracking(orderId, trackingNumber, trackingUrl) {
+export async function updateOrderTracking(orderId: string, trackingNumber: string, trackingUrl: string) {
   const { data, error } = await supabase
     .from('orders')
     .update({ tracking_number: trackingNumber, tracking_url: trackingUrl })

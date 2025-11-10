@@ -179,10 +179,11 @@ const SellerStorePage: React.FC = () => {
 
         setLoading(false);
       } catch (error) {
-      console.error('Error fetching seller data:', error);
-      setLoading(false);
-    }
-  };
+        console.error('Error fetching seller data:', error);
+        setSeller(null);
+        setLoading(false);
+      }
+    };
 
     fetchSellerData();
   }, [sellerId]);

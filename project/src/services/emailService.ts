@@ -457,8 +457,10 @@ export const sendOrderConfirmation = (userId: string, email: string, orderData: 
 export const sendCommissionNotification = (userId: string, email: string, commissionData: any) =>
   emailService.sendCommissionEarned(userId, email, commissionData);
 
-export const sendSaleNotification = (userId: string, email: string, saleData: any) =>
-  emailService.sendProductSold(userId, email, saleData);
+export const sendSaleNotification = async (userId: string, email: string, saleData: any) => {
+  const template = emailTemplates.product_sold(saleData);
+  return emailService.sendCustomEmail(userId, email, template.subject, template.html, 'product_sold', saleData);
+};
 
 export const sendShippingNotification = (userId: string, email: string, shippingData: any) =>
   emailService.sendOrderShipped(userId, email, shippingData);
