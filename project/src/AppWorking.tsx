@@ -76,10 +76,32 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 // Store Settings Route - requires seller role
 const StoreSettingsRoute = () => {
   const { profile } = useAuth();
-  if (!profile || profile.role !== 'seller') {
-    return <div className="max-w-xl mx-auto mt-20 text-center text-red-600 text-lg font-bold">Access denied. Sellers only.</div>;
+  
+  if (!profile) {
+    return <div className="max-w-xl mx-auto mt-20 text-center text-red-600 text-lg font-bold">Please sign in to access store settings.</div>;
   }
-  return <StoreCustomization userId={profile.id || 'default'} role="seller" />;
+
+  // Show appropriate customization based on role
+  if (profile.role === 'seller') {
+    return <StoreCustomization userId={profile.id || 'default'} role="seller" />;
+  } else if (profile.role === 'affiliate') {
+    return <AffiliateStoreCustomization affiliateId={profile.id || 'default'} />;
+  } else {
+    return (
+      <div className="max-w-xl mx-auto mt-20 text-center">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Create Your Store</h2>
+        <p className="text-gray-600 mb-6">To create a custom store, you need to be a seller or affiliate.</p>
+        <div className="space-y-3">
+          <Link to="/profile" className="block px-6 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
+            Become a Seller
+          </Link>
+          <Link to="/profile" className="block px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors">
+            Become an Affiliate
+          </Link>
+        </div>
+      </div>
+    );
+  }
 };
 
 // Beautiful Home Page Component
