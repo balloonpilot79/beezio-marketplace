@@ -52,72 +52,10 @@ const SellerStorePage: React.FC = () => {
           throw sellerError;
         }
 
-        // If no seller found, create sample seller data for demo
+        // If no seller found, show error
         if (!sellerData) {
-          console.log('[SellerStorePage] No seller found in database, using sample data for demo');
-          setSeller({
-            id: sellerId,
-            full_name: 'Demo Store',
-            email: 'demo@example.com',
-            bio: 'Welcome to our amazing store! We offer high-quality products with excellent customer service.',
-            role: 'seller',
-            store_theme: 'modern',
-            created_at: new Date().toISOString(),
-            avatar_url: null,
-            store_banner: null,
-            store_logo: null
-          });
-
-          // Add sample products for the demo
-          setProducts([
-            {
-              id: 'sample-1',
-              title: 'Premium Wireless Headphones',
-              description: 'High-quality wireless headphones with noise cancellation',
-              price: 89.99,
-              images: ['/api/placeholder/300/300'],
-              category: 'Electronics',
-              seller_id: sellerId,
-              is_active: true,
-              stock_quantity: 50,
-              created_at: new Date().toISOString()
-            },
-            {
-              id: 'sample-2', 
-              title: 'Organic Coffee Blend',
-              description: 'Premium organic coffee beans from sustainable farms',
-              price: 24.99,
-              images: ['/api/placeholder/300/300'],
-              category: 'Food & Beverages',
-              seller_id: sellerId,
-              is_active: true,
-              stock_quantity: 100,
-              created_at: new Date().toISOString()
-            },
-            {
-              id: 'sample-3',
-              title: 'Handcrafted Leather Wallet', 
-              description: 'Beautiful handcrafted leather wallet with multiple compartments',
-              price: 45.00,
-              images: ['/api/placeholder/300/300'],
-              category: 'Fashion',
-              seller_id: sellerId,
-              is_active: true,
-              stock_quantity: 25,
-              created_at: new Date().toISOString()
-            }
-          ]);
-
-          setStoreStats(prev => ({
-            ...prev,
-            totalProducts: 3,
-            totalSales: 127,
-            rating: 4.8,
-            reviewCount: 156
-          }));
-
-          setCanonicalSellerId(sellerId);
-          console.log('[SellerStorePage] Demo data loaded successfully');
+          console.log('[SellerStorePage] No seller found in database for ID:', sellerId);
+          setSeller(null);
           setLoading(false);
           return;
         }
@@ -459,14 +397,53 @@ const SellerStorePage: React.FC = () => {
 
         {/* Products Grid */}
         {filteredProducts.length === 0 ? (
-          <div className="text-center py-12">
-            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Products Found</h3>
-            <p className="text-gray-600">
-              {activeCategory === 'all' 
-                ? "This store doesn't have any products yet." 
-                : `No products found in the "${activeCategory}" category.`}
+          <div className="text-center py-12 bg-white rounded-2xl shadow-lg border border-gray-100 p-12">
+            <Package className="w-20 h-20 text-amber-400 mx-auto mb-6" />
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">
+              {isOwner ? "Welcome to Your Store!" : "No Products Yet"}
+            </h3>
+            <p className="text-gray-600 mb-8 max-w-md mx-auto">
+              {isOwner ? (
+                activeCategory === 'all'
+                  ? "Your store is ready! Start adding products to showcase your offerings to customers."
+                  : `No products in the "${activeCategory}" category yet. Add some products to get started!`
+              ) : (
+                "This store is being set up. Check back soon for amazing products!"
+              )}
             </p>
+            
+            {isOwner && (
+              <div className="space-y-4">
+                <Link
+                  to="/dashboard/products"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium shadow-lg"
+                >
+                  <Package className="w-5 h-5" />
+                  Add Your First Product
+                </Link>
+                
+                <div className="mt-8 pt-8 border-t border-gray-200">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Quick Start Guide</h4>
+                  <div className="grid md:grid-cols-3 gap-4 text-left">
+                    <div className="p-4 bg-amber-50 rounded-lg">
+                      <div className="text-2xl font-bold text-amber-600 mb-2">1</div>
+                      <h5 className="font-semibold text-gray-900 mb-1">Add Products</h5>
+                      <p className="text-sm text-gray-600">Upload your products with images and descriptions</p>
+                    </div>
+                    <div className="p-4 bg-amber-50 rounded-lg">
+                      <div className="text-2xl font-bold text-amber-600 mb-2">2</div>
+                      <h5 className="font-semibold text-gray-900 mb-1">Customize Store</h5>
+                      <p className="text-sm text-gray-600">Set up your branding, theme, and custom domain</p>
+                    </div>
+                    <div className="p-4 bg-amber-50 rounded-lg">
+                      <div className="text-2xl font-bold text-amber-600 mb-2">3</div>
+                      <h5 className="font-semibold text-gray-900 mb-1">Start Selling</h5>
+                      <p className="text-sm text-gray-600">Share your store link and start earning</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <ProductGrid products={filteredProducts} />

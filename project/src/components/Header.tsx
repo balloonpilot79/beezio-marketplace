@@ -221,11 +221,11 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                       💵 Earnings
                     </Link>
                     <Link
-                      to="/profile"
+                      to="/dashboard/store-settings"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                       onClick={() => setIsUserDropdownOpen(false)}
                     >
-                      Profile Settings
+                      ⚙️ Store Settings
                     </Link>
                     <div className="border-t border-gray-100 my-1"></div>
                     <button
@@ -351,11 +351,11 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                     💵 Earnings
                   </Link>
                   <Link
-                    to="/profile"
+                    to="/dashboard/store-settings"
                     className="block text-gray-700 hover:text-yellow-600 font-medium transition-colors duration-200"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Profile Settings
+                    ⚙️ Store Settings
                   </Link>
                   <button
                     onClick={() => {

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ProductGrid from '../components/ProductGrid';
 import AffiliateStoreCustomization from '../components/AffiliateStoreCustomization';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import { Settings, User, Award, Heart, Star, Globe, Share2, Facebook, Instagram, Twitter, Youtube, ExternalLink } from 'lucide-react';
+import { Settings, User, Award, Heart, Star, Globe, Share2, Facebook, Instagram, Twitter, Youtube, ExternalLink, Package } from 'lucide-react';
 
 const AffiliateStorePage: React.FC = () => {
   const { affiliateId } = useParams<{ affiliateId: string }>();
@@ -101,10 +101,10 @@ const AffiliateStorePage: React.FC = () => {
           seller_name: product.seller_name,
         })) || [];
 
-        if (buyerFacingProducts.length > 0) {
-          console.log('[AffiliateStorePage] Found', buyerFacingProducts.length, 'products');
-          setProducts(buyerFacingProducts);
+        console.log('[AffiliateStorePage] Found', buyerFacingProducts.length, 'products');
+        setProducts(buyerFacingProducts);
 
+        if (buyerFacingProducts.length > 0) {
           // Track views (non-fatal errors)
           await Promise.all(
             (productRows || []).map(product =>
@@ -118,50 +118,6 @@ const AffiliateStorePage: React.FC = () => {
               })
             )
           );
-        } else {
-          console.log('[AffiliateStorePage] No products found, using demo products');
-          setProducts([
-            {
-              id: 'sample-1',
-              title: 'Premium Wireless Headphones',
-              price: 199.99,
-              images: ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400'],
-              description: 'High-quality wireless headphones with noise cancellation',
-              category_id: null,
-              stock_quantity: 10,
-              seller_name: 'Demo Seller',
-            },
-            {
-              id: 'sample-2',
-              title: 'Smart Fitness Watch',
-              price: 299.99,
-              images: ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400'],
-              description: 'Advanced fitness tracking with heart rate monitor',
-              category_id: null,
-              stock_quantity: 15,
-              seller_name: 'Demo Seller',
-            },
-            {
-              id: 'sample-3',
-              title: 'Bluetooth Speaker',
-              price: 89.99,
-              images: ['https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400'],
-              description: 'Portable speaker with amazing sound quality',
-              category_id: null,
-              stock_quantity: 20,
-              seller_name: 'Demo Seller',
-            },
-            {
-              id: 'sample-4',
-              title: 'Professional Camera Lens',
-              price: 549.99,
-              images: ['https://images.unsplash.com/photo-1606983340126-99ab4feaa64a?w=400'],
-              description: 'High-quality lens for professional photography',
-              category_id: null,
-              stock_quantity: 5,
-              seller_name: 'Demo Seller',
-            }
-          ]);
         }
 
         // Set referral in localStorage
@@ -486,42 +442,91 @@ const AffiliateStorePage: React.FC = () => {
           </div>
 
           {/* Call to Action Banner - Transparent about affiliate support */}
-          <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  🎯 Support Quality Content & Great Products
-                </h3>
-                <p className="text-gray-700 text-sm mb-3">
-                  When you shop through my store, you're getting amazing products AND
-                  supporting independent creators like myself at no extra cost to you!
-                </p>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <span className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-500" />
-                    Quality Products
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Heart className="w-4 h-4 text-red-500" />
-                    Creator Support
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Award className="w-4 h-4 text-purple-500" />
-                    Same Prices
-                  </span>
+          {products.length > 0 ? (
+            <>
+              <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6 mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      🎯 Support Quality Content & Great Products
+                    </h3>
+                    <p className="text-gray-700 text-sm mb-3">
+                      When you shop through my store, you're getting amazing products AND
+                      supporting independent creators like myself at no extra cost to you!
+                    </p>
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <span className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-500" />
+                        Quality Products
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Heart className="w-4 h-4 text-red-500" />
+                        Creator Support
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Award className="w-4 h-4 text-purple-500" />
+                        Same Prices
+                      </span>
+                    </div>
+                  </div>
+                  <div className="hidden md:block">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600 mb-1">Your Purchase</div>
+                      <div className="text-sm text-gray-600">Helps creators like me</div>
+                      <div className="text-sm text-gray-600">continue making content</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="hidden md:block">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600 mb-1">Your Purchase</div>
-                  <div className="text-sm text-gray-600">Helps creators like me</div>
-                  <div className="text-sm text-gray-600">continue making content</div>
+              <ProductGrid products={products} />
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <Package className="w-20 h-20 text-purple-400 mx-auto mb-6" />
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                {isOwner ? "Start Curating Your Store!" : "Store Coming Soon"}
+              </h3>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                {isOwner 
+                  ? "Your affiliate store is ready! Browse the marketplace and add products you love to your curated collection."
+                  : "This affiliate is currently setting up their store. Check back soon for hand-picked product recommendations!"
+                }
+              </p>
+              
+              {isOwner && (
+                <div className="space-y-4">
+                  <Link
+                    to="/marketplace"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium shadow-lg"
+                  >
+                    <Globe className="w-5 h-5" />
+                    Browse Marketplace
+                  </Link>
+                  
+                  <div className="mt-8 pt-8 border-t border-gray-200">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">How It Works</h4>
+                    <div className="grid md:grid-cols-3 gap-4 text-left">
+                      <div className="p-4 bg-purple-50 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600 mb-2">1</div>
+                        <h5 className="font-semibold text-gray-900 mb-1">Find Products</h5>
+                        <p className="text-sm text-gray-600">Browse marketplace and select products you want to promote</p>
+                      </div>
+                      <div className="p-4 bg-purple-50 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600 mb-2">2</div>
+                        <h5 className="font-semibold text-gray-900 mb-1">Customize Store</h5>
+                        <p className="text-sm text-gray-600">Set your branding, bio, and custom domain</p>
+                      </div>
+                      <div className="p-4 bg-purple-50 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600 mb-2">3</div>
+                        <h5 className="font-semibold text-gray-900 mb-1">Earn Commissions</h5>
+                        <p className="text-sm text-gray-600">Share your store and earn on every sale</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
-
-          <ProductGrid products={products} />
+          )}
         </div>
       </div>
     </div>
