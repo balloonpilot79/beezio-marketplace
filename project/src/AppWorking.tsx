@@ -62,6 +62,7 @@ import ProfileCompletion from './components/ProfileCompletion';
 import TestingDashboard from './components/TestingDashboard';
 import AffiliateGuide from './pages/AffiliateGuide';
 import ScrollToTop from './components/ScrollToTop';
+import CustomDomainHandler from './components/CustomDomainHandler';
 
 // Protect admin route
 const ADMIN_EMAIL = "balloonpilot79@gmail.com";
@@ -381,6 +382,7 @@ const AppWorking: React.FC = () => {
             <GamificationProvider>
               <Router>
               <ScrollToTop />
+              <CustomDomainHandler>
               <div className="min-h-screen bg-bzo-gradient">
                 <BZOHeader onOpenAuthModal={setAuthModal} />
                 <UserSubHeader />
@@ -482,6 +484,7 @@ const AppWorking: React.FC = () => {
                   </div>
                 )}
               </div>
+              </CustomDomainHandler>
             </Router>
           </GamificationProvider>
         </AffiliateProvider>

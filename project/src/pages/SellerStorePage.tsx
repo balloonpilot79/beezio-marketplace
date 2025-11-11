@@ -7,8 +7,14 @@ import StoreCustomization from '../components/StoreCustomization';
 import { Star, MapPin, Clock, Package, Award, ExternalLink, Share2, Settings } from 'lucide-react';
 import { applyThemeToDocument, getThemeStyles, type ThemeName } from '../utils/themes';
 
-const SellerStorePage: React.FC = () => {
-  const { sellerId } = useParams<{ sellerId: string }>();
+interface SellerStorePageProps {
+  sellerId?: string;
+  isCustomDomain?: boolean;
+}
+
+const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerId, isCustomDomain = false }) => {
+  const { sellerId: paramSellerId } = useParams<{ sellerId: string }>();
+  const sellerId = propSellerId || paramSellerId;
   const { user, profile } = useAuth();
   const [seller, setSeller] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);

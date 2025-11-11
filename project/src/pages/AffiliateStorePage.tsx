@@ -6,8 +6,14 @@ import AffiliateStoreCustomization from '../components/AffiliateStoreCustomizati
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { Settings, User, Award, Heart, Star, Globe, Share2, Facebook, Instagram, Twitter, Youtube, ExternalLink, Package } from 'lucide-react';
 
-const AffiliateStorePage: React.FC = () => {
-  const { affiliateId } = useParams<{ affiliateId: string }>();
+interface AffiliateStorePageProps {
+  affiliateId?: string;
+  isCustomDomain?: boolean;
+}
+
+const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: propAffiliateId, isCustomDomain = false }) => {
+  const { affiliateId: paramAffiliateId } = useParams<{ affiliateId: string }>();
+  const affiliateId = propAffiliateId || paramAffiliateId;
   const { profile, user } = useAuth();
   const [affiliate, setAffiliate] = useState<any>(null);
   const [storeSettings, setStoreSettings] = useState<any>(null);
