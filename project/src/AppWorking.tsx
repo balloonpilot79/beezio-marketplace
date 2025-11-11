@@ -48,8 +48,6 @@ import AffiliateStoreCustomization from './components/AffiliateStoreCustomizatio
 import UniversalIntegrationsPage from './components/UniversalIntegrationsPage';
 import OrderManagement from './components/OrderManagement';
 // import ChatBot from './components/ChatBot';
-import ProductSlider from './components/ProductSlider';
-import FundraiserSlider from './components/FundraiserSlider';
 import RevolutionaryShowcaseSimple from './components/RevolutionaryShowcaseSimple';
 import TestPage from './components/TestPage';
 import ContactPage from './pages/ContactPage';
