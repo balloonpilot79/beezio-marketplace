@@ -220,9 +220,11 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Store Not Found</h1>
           <p className="text-gray-600 mb-4">The store you're looking for doesn't exist.</p>
-          <Link to="/" className="text-amber-600 hover:text-amber-700 font-medium">
-            Return to Homepage
-          </Link>
+          {!isCustomDomain && (
+            <Link to="/" className="text-amber-600 hover:text-amber-700 font-medium">
+              Return to Homepage
+            </Link>
+          )}
         </div>
       </div>
     );
@@ -230,6 +232,44 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: theme?.colors.background || '#fef3c7' }}>
+      {/* Admin Toolbar - Only visible to store owner when logged in */}
+      {isOwner && isCustomDomain && (
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-3 shadow-lg sticky top-0 z-50">
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              <span className="font-semibold">Store Owner View</span>
+              <span className="text-amber-100 text-sm">| You're viewing your custom domain store</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsCustomizing(true)}
+                className="px-4 py-1.5 bg-white text-amber-600 rounded-lg hover:bg-amber-50 transition-colors text-sm font-medium"
+              >
+                Customize Store
+              </button>
+              {!isCustomDomain && (
+                <Link
+                  to="/dashboard"
+                  className="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium"
+                >
+                  Dashboard
+                </Link>
+              )}
+              <a
+                href="https://beezio.co/dashboard"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium flex items-center gap-1"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Beezio Dashboard
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Store Banner */}
       {seller.store_banner && (
         <div className="h-64 bg-cover bg-center relative rounded-b-3xl shadow-lg overflow-hidden" style={{ backgroundImage: `url(${seller.store_banner})` }}>

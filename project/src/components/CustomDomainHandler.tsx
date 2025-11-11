@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import { checkCustomDomain, DomainRouteResult } from '../utils/customDomainRouter';
 import SellerStorePage from '../pages/SellerStorePage';
 import AffiliateStorePage from '../pages/AffiliateStorePage';
+import FundraiserStorePage from '../pages/FundraiserStorePage';
 
 /**
  * Custom Domain Handler Component
@@ -34,14 +34,30 @@ const CustomDomainHandler: React.FC<{ children: React.ReactNode }> = ({ children
     );
   }
 
-  // If custom domain detected, show the store directly
+  // If custom domain detected, show the store directly (NO header/footer)
   if (domainResult?.isCustomDomain && domainResult.userId) {
-    console.log('[CustomDomain] Rendering store for custom domain');
+    console.log('[CustomDomain] Rendering standalone store for custom domain');
     
+    // Render ONLY the store page - no beezio header, no footer, no navigation
+    // This makes it look like their own independent website
     if (domainResult.storeType === 'seller') {
-      return <SellerStorePage sellerId={domainResult.userId} isCustomDomain={true} />;
+      return (
+        <div className="min-h-screen">
+          <SellerStorePage sellerId={domainResult.userId} isCustomDomain={true} />
+        </div>
+      );
     } else if (domainResult.storeType === 'affiliate') {
-      return <AffiliateStorePage affiliateId={domainResult.userId} isCustomDomain={true} />;
+      return (
+        <div className="min-h-screen">
+          <AffiliateStorePage affiliateId={domainResult.userId} isCustomDomain={true} />
+        </div>
+      );
+    } else if (domainResult.storeType === 'fundraiser') {
+      return (
+        <div className="min-h-screen">
+          <FundraiserStorePage fundraiserId={domainResult.userId} isCustomDomain={true} />
+        </div>
+      );
     }
   }
 

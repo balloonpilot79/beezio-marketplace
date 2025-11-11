@@ -397,10 +397,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Starting sign out process...');
 
-      // Get user ID before clearing (for cart cleanup)
-      const userId = user?.id;
-
-      // Clear local state first
+      // Clear local state first (userId declared but kept for potential cart cleanup)
+      const userId = user?.id; // May be used for cart cleanup in future
       setUser(null);
       setSession(null);
       setProfile(null);

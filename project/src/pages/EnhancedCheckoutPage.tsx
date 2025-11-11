@@ -6,8 +6,6 @@ import {
   CreditCard, 
   User, 
   MapPin, 
-  Mail, 
-  Phone,
   Shield,
   CheckCircle,
   AlertCircle
@@ -17,6 +15,7 @@ import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useAffiliate } from '../contexts/AffiliateContext';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { getReferralAttribution } from '../utils/referralTracking';
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
@@ -269,19 +268,24 @@ const CheckoutForm: React.FC<{ onSubmit: (data: any) => void; isLoading: boolean
 
 const EnhancedCheckoutPage: React.FC = () => {
   const { items, getTotalPrice, getShippingTotal, clearCart } = useCart();
-  const { user, profile, userRoles } = useAuth();
+  const { user, userRoles } = useAuth();
   const { trackSale } = useAffiliate();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [affiliateId, setAffiliateId] = useState<string | null>(null);
+  const [fundraiserId, setFundraiserId] = useState<string | null>(null);
 
-  // Check for affiliate reference
+  // Check for affiliate or fundraiser reference using new referral system
   useEffect(() => {
-    const ref = searchParams.get('ref') || localStorage.getItem('affiliate_ref');
-    if (ref) {
-      setAffiliateId(ref);
-      localStorage.setItem('affiliate_ref', ref);
+    const attribution = getReferralAttribution();
+    
+    if (attribution.type === 'fundraiser' && attribution.id) {
+      setFundraiserId(attribution.id);
+      setAffiliateId(null);
+    } else if (attribution.type === 'affiliate' && attribution.id) {
+      setAffiliateId(attribution.id);
+      setFundraiserId(null);
     }
   }, [searchParams]);
 
@@ -367,6 +371,10 @@ const EnhancedCheckoutPage: React.FC = () => {
           affiliateId,
           commission: orderSummary.affiliateCommission
         } : null,
+        fundraiser: fundraiserId ? {
+          fundraiserId,
+          commission: orderSummary.affiliateCommission // Same 5% as affiliate
+        } : null,
         summary: orderSummary
       };
 
@@ -383,6 +391,21 @@ const EnhancedCheckoutPage: React.FC = () => {
             const commission = item.price * item.quantity * (item.commission_rate / 100);
             trackSale(item.productId, affiliateId, item.price * item.quantity, commission);
           }
+        });
+      }
+
+      // Track fundraiser sales and update goal progress
+      if (fundraiserId) {
+        const totalCommission = orderSummary.affiliateCommission; // 5% commission
+        
+        // Update fundraiser's current_raised amount
+        import('../lib/supabase').then(({ supabase }) => {
+          supabase.rpc('increment_fundraiser_raised', {
+            p_fundraiser_id: fundraiserId,
+            p_amount: totalCommission
+          }).then(({ error }) => {
+            if (error) console.error('Error updating fundraiser goal:', error);
+          });
         });
       }
 
@@ -422,12 +445,12 @@ const EnhancedCheckoutPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900">Secure Checkout</h1>
           </div>
           
-          {affiliateId && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+          {(affiliateId || fundraiserId) && (
+            <div className={`border rounded-lg px-4 py-2 ${fundraiserId ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}`}>
               <div className="flex items-center">
-                <CheckCircle className="w-5 h-5 text-blue-600 mr-2" />
-                <span className="text-sm font-medium text-blue-800">
-                  Referred by Affiliate
+                <CheckCircle className={`w-5 h-5 mr-2 ${fundraiserId ? 'text-green-600' : 'text-blue-600'}`} />
+                <span className={`text-sm font-medium ${fundraiserId ? 'text-green-800' : 'text-blue-800'}`}>
+                  {fundraiserId ? 'Supporting Fundraiser' : 'Referred by Affiliate'}
                 </span>
               </div>
             </div>
