@@ -26,10 +26,19 @@
     <meta name="description" content="The revolutionary affiliate marketing ecommerce platform where sellers, affiliates, and causes thrive together" />
     <meta name="keywords" content="affiliate marketing, ecommerce, sellers, fundraising, mobile commerce" />
     
-    <!-- Cache Buster: CSS styling fix deployment -->
-    <meta name="build-version" content="3.0.0" />
+    <!-- Cache Buster: Force fresh CSS load - Nov 11 2025 -->
+    <meta name="build-version" content="3.0.1" />
+    <meta name="build-timestamp" content="1731283200" />
     
     <title>Beezio - Affiliate Marketing Ecommerce Platform</title>
+    
+    <!-- Emergency inline styles to prevent blank page while CSS loads -->
+    <style>
+      /* Minimal critical CSS to prevent unstyled content flash */
+      body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
+      #root { min-height: 100vh; }
+      .loading-fallback { display: none; }
+    </style>
   </head>
   <body>
     <div id="root">

@@ -6,8 +6,24 @@
   # Vite output directory relative to base
   publish = "dist"
 
+# Cache control headers
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 # Environment variables should be set in the Netlify UI or via the Netlify CLI.
-# Do NOT store secrets here in the repo.
+# DO NOT store secrets here in the repo.
 
 # Force HTTPS
 [[redirects]]
