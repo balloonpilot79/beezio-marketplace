@@ -314,12 +314,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      console.log('[AuthContext] Starting signIn with timeout protection...');
+      
+      const signInPromise = supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Sign in timeout - please check your internet connection')), 15000)
+      );
+
+      const { data, error } = await Promise.race([signInPromise, timeoutPromise]) as any;
+
+      if (error) {
+        console.error('[AuthContext] SignIn error:', error);
+        throw error;
+      }
+      
+      console.log('[AuthContext] SignIn successful');
       return data;
     } catch (error) {
       console.error('SignIn error:', error);
