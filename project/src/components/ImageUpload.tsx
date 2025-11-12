@@ -237,7 +237,10 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   };
 
   const handleFileUpload = async (files: File[]) => {
+    console.log('🚀 handleFileUpload called with', files.length, 'files');
+    console.log('🚀 User:', user);
     if (!user) {
+      console.error('❌ No user logged in');
       onUploadError?.('You must be logged in to upload files');
       return;
     }
@@ -366,9 +369,15 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('🔍 handleFileSelect called');
+    console.log('🔍 Files selected:', e.target.files);
     const files = Array.from(e.target.files || []);
+    console.log('🔍 Files array:', files);
     if (files.length > 0) {
+      console.log('🔍 Calling handleFileUpload with', files.length, 'files');
       handleFileUpload(files);
+    } else {
+      console.warn('⚠️ No files selected');
     }
   };
 
