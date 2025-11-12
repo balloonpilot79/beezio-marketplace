@@ -201,19 +201,39 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       }
     }
 
-    const { data: urlData, error: urlError } = supabase.storage.from(bucket).getPublicUrl(storagePath);
-    if (urlError) {
-      console.error('❌ Public URL retrieval failed:', urlError);
-      throw new Error(`Upload succeeded but retrieving the public URL failed: ${urlError.message}`);
-    }
+    // Get public URL with timeout protection
+    console.log('🔗 Getting public URL for:', storagePath);
+    const urlPromise = new Promise<string>((resolve, reject) => {
+      try {
+        const { data: urlData, error: urlError } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+        if (urlError) {
+          console.error('❌ Public URL retrieval failed:', urlError);
+          reject(new Error(`Upload succeeded but retrieving the public URL failed: ${urlError.message}`));
+          return;
+        }
 
-    const publicUrl = (urlData as any)?.publicUrl;
-    if (!publicUrl) {
-      throw new Error('Upload succeeded but no public URL was returned');
-    }
+        const publicUrl = (urlData as any)?.publicUrl;
+        if (!publicUrl) {
+          reject(new Error('Upload succeeded but no public URL was returned'));
+          return;
+        }
 
-    console.log('✅ Upload complete, publicUrl=', publicUrl);
-    return publicUrl;
+        console.log('✅ Public URL retrieved:', publicUrl);
+        resolve(publicUrl);
+      } catch (err) {
+        console.error('❌ Error getting public URL:', err);
+        reject(err);
+      }
+    });
+
+    const urlTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => {
+        console.error('⏰ Get public URL timed out');
+        reject(new Error('Getting public URL timed out after 10 seconds'));
+      }, 10000)
+    );
+
+    return await Promise.race([urlPromise, urlTimeout]);
   };
 
   const handleFileUpload = async (files: File[]) => {
@@ -260,8 +280,17 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           );
         }, 200);
 
-        // Upload file
+        // Upload file with timeout protection
+        console.log('📤 Starting upload for:', uploadingFile.file.name);
+        const uploadTimeout = setTimeout(() => {
+          console.error('⏰ Upload stuck at 90% - forcing timeout');
+          if (progressInterval) clearInterval(progressInterval);
+          throw new Error('Upload timed out after 45 seconds');
+        }, 45000); // 45 second total timeout
+        
         const url = await uploadFile(uploadingFile.file);
+        clearTimeout(uploadTimeout);
+        console.log('✅ Upload completed:', url);
 
         // Clear progress interval
         if (progressInterval) {
