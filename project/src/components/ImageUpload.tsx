@@ -4,7 +4,7 @@ import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 
 interface ImageUploadProps {
-  bucket: 'product-images' | 'user-avatars' | 'store-branding';
+  bucket: 'product-images' | 'profile-avatars' | 'store-banners';
   folder?: string;
   maxFiles?: number;
   maxFileSize?: number; // in MB

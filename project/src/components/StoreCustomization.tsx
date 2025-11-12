@@ -269,7 +269,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                 label="Store Banner"
                 currentImageUrl={storeSettings.store_banner}
                 onImageUpload={(url) => handleInputChange('store_banner', url)}
-                bucketName="store-images"
+                bucketName="store-banners"
                 folderPath="banners"
                 aspectRatio="banner"
               />
@@ -278,7 +278,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                 label="Store Logo"
                 currentImageUrl={storeSettings.store_logo}
                 onImageUpload={(url) => handleInputChange('store_logo', url)}
-                bucketName="store-images"
+                bucketName="store-banners"
                 folderPath="logos"
                 aspectRatio="logo"
               />

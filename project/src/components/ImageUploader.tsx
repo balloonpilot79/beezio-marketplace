@@ -14,7 +14,7 @@ interface ImageUploaderProps {
 export default function ImageUploader({
   currentImageUrl,
   onImageUpload,
-  bucketName = 'store-images',
+  bucketName = 'store-banners',
   folderPath = 'uploads',
   label = 'Upload Image',
   aspectRatio = 'logo'
