@@ -38,10 +38,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   preview = true,
   multiple = true,
 }) => {
-  const { user } = useAuth();
+  const { user, session, profile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Use user ID from session, user, or profile - whichever is available
+  const userId = user?.id || session?.user?.id || profile?.user_id || profile?.id;
 
   const validateFile = (file: File): string | null => {
     // Check file type
@@ -62,12 +65,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2);
     const extension = file.name.split('.').pop();
-    const userId = user?.id || 'anonymous';
+    const fileUserId = userId || 'anonymous';
     
     if (folder) {
-      return `${userId}/${folder}/${timestamp}-${random}.${extension}`;
+      return `${fileUserId}/${folder}/${timestamp}-${random}.${extension}`;
     }
-    return `${userId}/${timestamp}-${random}.${extension}`;
+    return `${fileUserId}/${timestamp}-${random}.${extension}`;
   };
 
   const encodeStoragePath = (path: string) =>
@@ -239,8 +242,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   const handleFileUpload = async (files: File[]) => {
     console.log('🚀 handleFileUpload called with', files.length, 'files');
     console.log('🚀 User:', user);
-    if (!user) {
-      console.error('❌ No user logged in');
+    console.log('🚀 Session:', session);
+    console.log('🚀 Profile:', profile);
+    console.log('🚀 Resolved userId:', userId);
+    
+    if (!userId && !session) {
+      console.error('❌ No user logged in - user, session, and userId all null');
       onUploadError?.('You must be logged in to upload files');
       return;
     }
