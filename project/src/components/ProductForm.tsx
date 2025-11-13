@@ -482,13 +482,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               </div>
             )}
 
-            <ImageUpload
+            <SimpleImageUpload
               bucket="product-images"
-              folder={currentProductId ? `products/${currentProductId}` : 'new-products'}
-              productId={currentProductId ?? undefined}
               onUploadComplete={handleImageUploadSuccess}
               maxFiles={10}
-              allowedTypes={['image/jpeg', 'image/png', 'image/webp']}
+              maxFileSizeMB={10}
             />
           </div>
 
