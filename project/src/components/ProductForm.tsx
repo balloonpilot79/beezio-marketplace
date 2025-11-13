@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import PricingCalculator from './PricingCalculator';
-import ImageUpload from './ImageUpload';
+import SimpleImageUpload from './SimpleImageUpload';
 import ImageGallery from './ImageGallery';
 import { PricingBreakdown } from '../lib/pricing';
 import { useNavigate } from 'react-router-dom';
