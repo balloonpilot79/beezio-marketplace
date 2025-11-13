@@ -37,10 +37,16 @@ export default function SimpleImageUpload({
       throw new Error(`File size ${fileSizeMB.toFixed(1)}MB exceeds maximum ${maxFileSizeMB}MB`);
     }
 
-    // Generate unique filename
+    // Get authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('You must be logged in to upload images');
+    }
+
+    // Generate unique filename with user ID folder
     const fileExt = file.name.split('.').pop();
     const fileName = `${uuidv4()}.${fileExt}`;
-    const filePath = `images/${fileName}`;
+    const filePath = `${user.id}/${fileName}`;
 
     console.log(`📤 Uploading to ${bucket}/${filePath}...`);
     console.log('📦 File type:', file.type);
@@ -60,9 +66,9 @@ export default function SimpleImageUpload({
         console.error('❌ Upload error:', error);
         
         // Retry once with new UUID
-        console.log('🔄 Retrying with new filename...');
+        console.log('🔄 Retrying upload with new UUID...');
         const retryFileName = `${uuidv4()}.${fileExt}`;
-        const retryPath = `images/${retryFileName}`;
+        const retryPath = `${user.id}/${retryFileName}`;
         
         const { data: retryData, error: retryError } = await supabase.storage
           .from(bucket)
