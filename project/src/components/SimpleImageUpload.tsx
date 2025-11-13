@@ -27,8 +27,12 @@ export default function SimpleImageUpload({
   const [uploads, setUploads] = useState<UploadStatus[]>([]);
 
   const uploadFile = async (file: File): Promise<string> => {
+    console.log('🎯 uploadFile called for:', file.name);
+    
     // Validate file size
     const fileSizeMB = file.size / (1024 * 1024);
+    console.log('📊 File size:', fileSizeMB.toFixed(2), 'MB');
+    
     if (fileSizeMB > maxFileSizeMB) {
       throw new Error(`File size ${fileSizeMB.toFixed(1)}MB exceeds maximum ${maxFileSizeMB}MB`);
     }
@@ -39,50 +43,60 @@ export default function SimpleImageUpload({
     const filePath = `images/${fileName}`;
 
     console.log(`📤 Uploading to ${bucket}/${filePath}...`);
+    console.log('📦 File type:', file.type);
 
-    // Direct upload to Supabase
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
-
-    if (error) {
-      console.error('Upload error:', error);
-      
-      // Retry once with new UUID
-      console.log('🔄 Retrying with new filename...');
-      const retryFileName = `${uuidv4()}.${fileExt}`;
-      const retryPath = `images/${retryFileName}`;
-      
-      const { data: retryData, error: retryError } = await supabase.storage
+    try {
+      // Direct upload to Supabase
+      const { data, error } = await supabase.storage
         .from(bucket)
-        .upload(retryPath, file, {
+        .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false
         });
 
-      if (retryError) {
-        throw new Error(retryError.message || 'Upload failed after retry');
+      console.log('📥 Upload response:', { data, error });
+
+      if (error) {
+        console.error('❌ Upload error:', error);
+        
+        // Retry once with new UUID
+        console.log('🔄 Retrying with new filename...');
+        const retryFileName = `${uuidv4()}.${fileExt}`;
+        const retryPath = `images/${retryFileName}`;
+        
+        const { data: retryData, error: retryError } = await supabase.storage
+          .from(bucket)
+          .upload(retryPath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        console.log('📥 Retry response:', { retryData, retryError });
+
+        if (retryError) {
+          throw new Error(retryError.message || 'Upload failed after retry');
+        }
+
+        // Get public URL for retry
+        const { data: urlData } = supabase.storage
+          .from(bucket)
+          .getPublicUrl(retryPath);
+
+        console.log('✅ Upload succeeded on retry:', urlData.publicUrl);
+        return urlData.publicUrl;
       }
 
-      // Get public URL for retry
+      // Get public URL
       const { data: urlData } = supabase.storage
         .from(bucket)
-        .getPublicUrl(retryPath);
+        .getPublicUrl(filePath);
 
-      console.log('✅ Upload succeeded on retry:', urlData.publicUrl);
+      console.log('✅ Upload succeeded:', urlData.publicUrl);
       return urlData.publicUrl;
+    } catch (err: any) {
+      console.error('💥 Upload exception:', err);
+      throw err;
     }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(filePath);
-
-    console.log('✅ Upload succeeded:', urlData.publicUrl);
-    return urlData.publicUrl;
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
