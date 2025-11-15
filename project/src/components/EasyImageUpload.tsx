@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -13,7 +13,7 @@ export default function EasyImageUpload({
   bucket,
   onUploadComplete,
   maxFiles = 5,
-  maxFileSizeMB = 10
+  maxFileSizeMB = 10,
 }: EasyImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
@@ -22,7 +22,9 @@ export default function EasyImageUpload({
 
   const uploadToSupabase = async (file: File): Promise<string> => {
     // Get authenticated user
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       throw new Error('Please log in to upload images');
     }
@@ -32,25 +34,28 @@ export default function EasyImageUpload({
     const fileName = `${uuidv4()}.${fileExt}`;
     const filePath = `${user.id}/${fileName}`;
 
-    console.log(`📤 Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB) to ${bucket}/${filePath}`);
+    console.log(
+      `📤 Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(
+        2,
+      )}MB) to ${bucket}/${filePath}`,
+    );
 
-    // Upload with fetch API (more reliable than Supabase client)
-    const { data: { session } } = await supabase.auth.getSession();
+    // Upload with fetch API
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       throw new Error('No active session');
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     const uploadUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/${bucket}/${filePath}`;
-    
+
     const response = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${session.access_token}`,
       },
-      body: file, // Send file directly, not FormData
+      body: file, // Send file directly
     });
 
     if (!response.ok) {
@@ -60,9 +65,7 @@ export default function EasyImageUpload({
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(filePath);
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
 
     console.log('✅ Upload successful:', urlData.publicUrl);
     return urlData.publicUrl;
@@ -76,7 +79,7 @@ export default function EasyImageUpload({
 
     try {
       const fileArray = Array.from(files);
-      
+
       // Validate file count
       if (uploadedUrls.length + fileArray.length > maxFiles) {
         throw new Error(`Maximum ${maxFiles} images allowed`);
@@ -85,7 +88,9 @@ export default function EasyImageUpload({
       // Validate file sizes and types
       for (const file of fileArray) {
         if (file.size > maxFileSizeMB * 1024 * 1024) {
-          throw new Error(`${file.name} is too large. Maximum ${maxFileSizeMB}MB per file.`);
+          throw new Error(
+            `${file.name} is too large. Maximum ${maxFileSizeMB}MB per file.`,
+          );
         }
         if (!file.type.startsWith('image/')) {
           throw new Error(`${file.name} is not an image file`);
@@ -100,14 +105,17 @@ export default function EasyImageUpload({
           urls.push(url);
         } catch (err) {
           console.error(`Failed to upload ${file.name}:`, err);
-          throw new Error(`Failed to upload ${file.name}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          throw new Error(
+            `Failed to upload ${file.name}: ${
+              err instanceof Error ? err.message : 'Unknown error'
+            }`,
+          );
         }
       }
 
       const allUrls = [...uploadedUrls, ...urls];
       setUploadedUrls(allUrls);
       onUploadComplete(allUrls);
-
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
       console.error('Upload error:', err);
@@ -116,17 +124,17 @@ export default function EasyImageUpload({
     }
   };
 
-  const handleDrag = (e: React.DragEvent) => {
+  const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
+    if (e.type === 'dragenter' || e.type === 'dragover') {
       setDragActive(true);
-    } else if (e.type === "dragleave") {
+    } else if (e.type === 'dragleave') {
       setDragActive(false);
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -161,7 +169,7 @@ export default function EasyImageUpload({
           disabled={uploading || uploadedUrls.length >= maxFiles}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
-        
+
         {uploading ? (
           <div className="flex flex-col items-center gap-2">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -169,14 +177,24 @@ export default function EasyImageUpload({
           </div>
         ) : (
           <div className="space-y-2">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
             </svg>
             <div className="text-sm text-gray-600">
-              <label className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500">
-                <span>Click to upload</span>
-              </label>
-              <p className="pl-1">or drag and drop</p>
+              <span className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500">
+                Click to upload
+              </span>
+              <p className="pl-1 inline"> or drag and drop</p>
             </div>
             <p className="text-xs text-gray-500">
               PNG, JPG, GIF up to {maxFileSizeMB}MB ({uploadedUrls.length}/{maxFiles} uploaded)
@@ -207,7 +225,12 @@ export default function EasyImageUpload({
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                 type="button"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -218,3 +241,4 @@ export default function EasyImageUpload({
     </div>
   );
 }
+
