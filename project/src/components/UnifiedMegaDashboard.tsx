@@ -313,18 +313,18 @@ const UnifiedMegaDashboard: React.FC = () => {
   ].filter(tab => tab.show);
 
   return (
-    <div className="relative min-h-screen bg-bzo-gradient">
+    <div className="relative min-h-screen bg-gradient-to-br from-[#fff8e1] via-white to-[#fff1c0]">
       {loading && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-            <p className="text-gray-700 font-medium">Updating your dashboard…</p>
+            <p className="text-gray-700 font-medium">Updating your dashboard...</p>
           </div>
         </div>
       )}
       {/* BZO Welcome Banner */}
       <div className="bg-gradient-to-r from-bzo-yellow-primary to-bzo-yellow-secondary text-bzo-black text-center py-4 font-bold text-lg shadow-lg">
-        🐝 BZO Dashboard - Your Hive of Success! 🚀
+        🐝 BZO Dashboard - Your Hive of Success
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -345,7 +345,7 @@ const UnifiedMegaDashboard: React.FC = () => {
                 </p>
                 <div className="flex items-center gap-4">
                   <span className="inline-flex items-center px-6 py-2 rounded-full text-sm font-semibold bg-bzo-yellow-primary text-bzo-black">
-                    {profile?.role === 'fundraiser' ? '💝 Fundraiser' : profile?.role ? `${profile.role.charAt(0).toUpperCase()}${profile.role.slice(1)}` : '👤 User'}
+                    {profile?.role === 'fundraiser' ? 'Fundraiser' : profile?.role ? `${profile.role.charAt(0).toUpperCase()}${profile.role.slice(1)}` : 'User'}
                   </span>
                   <span className="text-sm text-gray-600">
                     Member since {new Date(user?.created_at || Date.now()).toLocaleDateString()}

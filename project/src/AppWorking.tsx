@@ -47,7 +47,7 @@ import StoreCustomization from './components/StoreCustomization';
 import AffiliateStoreCustomization from './components/AffiliateStoreCustomization';
 import UniversalIntegrationsPage from './components/UniversalIntegrationsPage';
 import OrderManagement from './components/OrderManagement';
-// import ChatBot from './components/ChatBot';
+import ChatBot from './components/ChatBot';
 import RevolutionaryShowcaseSimple from './components/RevolutionaryShowcaseSimple';
 import TestPage from './components/TestPage';
 import ContactPage from './pages/ContactPage';
@@ -211,7 +211,7 @@ const AppWorking: React.FC = () => {
                 {/* Footer */}
                 <Footer />
 
-                {/* <ChatBot /> */}
+                <ChatBot />
 
                 {/* Auth Modal */}
                 <AuthModal
