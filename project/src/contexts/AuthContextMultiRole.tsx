@@ -73,18 +73,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select('role')
         .eq('user_id', userId)
         .eq('is_active', true);
-      
+    
       if (error) {
         console.error('Error fetching user roles:', error);
         return [];
       }
-      
+    
       return roles?.map(r => r.role) || [];
     } catch (error) {
       console.error('Error fetching user roles:', error);
       return [];
     }
   };
+  const deriveRole = (profile: any) => profile?.primary_role || profile?.role || 'buyer';
 
   useEffect(() => {
     const getSession = async () => {
@@ -117,16 +118,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           console.log('AuthContext: Profile loaded:', profile ? 'Yes' : 'No');
           if (profile) {
+            const safeRole = deriveRole(profile);
             setProfile(profile);
-            setCurrentRole(profile.primary_role || profile.role || 'buyer');
+            setCurrentRole(safeRole);
             
             // Fetch user roles
             const roles = await fetchUserRoles(session.user.id);
-            setUserRoles(roles.length > 0 ? roles : [profile.primary_role || profile.role || 'buyer']);
+            setUserRoles(roles.length > 0 ? roles : [safeRole]);
             console.log('AuthContext: User roles:', roles);
           } else {
             console.log('AuthContext: No profile found, user may need to complete profile');
             setProfile(null);
+            setCurrentRole('buyer');
+            setUserRoles(['buyer']);
           }
         }
         
@@ -163,16 +167,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             
             if (profile) {
-              console.log('AuthContext: Auth state change - profile loaded for role:', profile.role);
+              const safeRole = deriveRole(profile);
+              console.log('AuthContext: Auth state change - profile loaded for role:', safeRole);
               setProfile(profile);
-              setCurrentRole(profile.primary_role || profile.role || 'buyer');
+              setCurrentRole(safeRole);
               
               // Fetch user roles
               const roles = await fetchUserRoles(session.user.id);
-              setUserRoles(roles.length > 0 ? roles : [profile.primary_role || profile.role || 'buyer']);
+              setUserRoles(roles.length > 0 ? roles : [safeRole]);
             } else {
               console.log('AuthContext: Auth state change - no profile found');
               setProfile(null);
+              setCurrentRole('buyer');
+              setUserRoles(['buyer']);
             }
 
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
