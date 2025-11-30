@@ -82,10 +82,10 @@ const HomePage: React.FC<{
                 Free to join • Keep what you earn
               </div>
               <h1 className="text-4xl sm:text-5xl font-black leading-tight text-white">
-                Beezio makes sure everyone keeps what they earn — with AI doing the heavy lifting.
+                Beezio makes sure everyone keeps what they earn — no hidden cuts.
               </h1>
               <p className="text-base sm:text-lg text-white/80 max-w-4xl">
-                Sellers set their price and markup. Affiliates and fundraisers earn 5% for every sale. Beezio handles platform fees, payout math, and Stripe—GPT helps with pricing, copy, and support.
+                Sellers set their price and markup. Affiliates and fundraisers earn 5% for every sale. Beezio handles platform fees, payout math, and Stripe so payouts stay whole.
               </p>
             </div>
 
@@ -154,7 +154,7 @@ const HomePage: React.FC<{
                   onClick={() => window.location.assign('/admin/ai-hub')}
                   className="bg-white/10 text-white font-semibold px-6 py-3 rounded-full border border-white/15 hover:bg-white/15 transition-all"
                 >
-                  See Beezio AI Hub
+                  See Beezio Hub
                 </button>
               </div>
             </div>
@@ -226,7 +226,7 @@ const HomePage: React.FC<{
               <h3 className="text-xl font-semibold mb-3 text-white">Custom Stores & Domains</h3>
               <ul className="space-y-2 text-sm text-white/80">
                 <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Use beezio.co/yourstore or bring your own domain</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Guided onboarding with AI tips</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Guided onboarding with smart tips</li>
               </ul>
             </div>
 
