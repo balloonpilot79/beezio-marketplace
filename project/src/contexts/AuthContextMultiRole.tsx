@@ -55,12 +55,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentRole, setCurrentRole] = useState<string>('buyer');
   const [loading, setLoading] = useState(true);
 
-  // Add timeout to prevent infinite loading
+  // Add timeout to prevent infinite loading (allow more time for profile fetch)
   useEffect(() => {
     const timeout = setTimeout(() => {
-      console.warn('AuthContext: Loading timeout reached (5s), setting loading to false');
+      console.warn('AuthContext: Loading timeout reached (10s), setting loading to false');
       setLoading(false);
-    }, 5000); // 5 second timeout (reduced from 10s)
+    }, 10000);
 
     return () => clearTimeout(timeout);
   }, []);

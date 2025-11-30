@@ -88,13 +88,14 @@ const UnifiedMegaDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // User role checks - ALL USERS GET FULL ACCESS
-  const isSeller = profile?.role === 'seller';
-  const isAffiliate = profile?.role === 'affiliate' || profile?.role === 'fundraiser';
-  const isBuyer = profile?.role === 'buyer';
-  // EVERYONE CAN ACCESS EVERYTHING
-  const canSellProducts = true; // All users can sell
-  const canEarnCommissions = true; // All users can earn
+  // Role derivation with safe fallback
+  const derivedRole = profile?.primary_role || profile?.role || 'buyer';
+  const isSeller = derivedRole === 'seller' || derivedRole === 'fundraiser';
+  const isAffiliate = derivedRole === 'affiliate' || derivedRole === 'fundraiser';
+  const isBuyer = derivedRole === 'buyer';
+  // EVERYONE CAN ACCESS EVERYTHING (business rule)
+  const canSellProducts = true;
+  const canEarnCommissions = true;
 
   useEffect(() => {
     if (user) {
