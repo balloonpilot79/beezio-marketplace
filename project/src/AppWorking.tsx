@@ -62,6 +62,7 @@ import AffiliateGuide from './pages/AffiliateGuide';
 import ScrollToTop from './components/ScrollToTop';
 import CustomDomainHandler from './components/CustomDomainHandler';
 import { initializeReferralTracking } from './utils/referralTracking';
+import AdminAIHubPage from './pages/AdminAIHubPage';
 
 // Protect admin route
 const ADMIN_EMAIL = "balloonpilot79@gmail.com";
@@ -197,6 +198,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                     <Route path="/admin/platform" element={<AdminRoute><PlatformAdminDashboard /></AdminRoute>} />
                     <Route path="/admin/settings" element={<AdminRoute><PlatformSettings /></AdminRoute>} />
+                    <Route path="/admin/ai-hub" element={<AdminRoute><AdminAIHubPage /></AdminRoute>} />
                     <Route path="/signup" element={<SignUpPage />} />
                     <Route path="/causes" element={<CausesPage />} />
                     <Route path="/cart" element={<CartPage />} />
