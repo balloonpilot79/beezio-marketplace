@@ -90,28 +90,32 @@ const HomePage: React.FC<{
             </div>
 
             {/* Bee visual */}
-            <div className="relative flex items-center justify-start lg:justify-start pl-2">
-              <div className="absolute -left-10 -top-10 w-64 h-64 bg-[#f6d243]/25 rounded-full blur-3xl" />
-              <div className="absolute -left-4 top-20 w-52 h-52 bg-[#f5a300]/20 rounded-full blur-3xl" />
+            <div className="relative flex items-center justify-start lg:justify-start -ml-8">
+              <div className="absolute -left-16 -top-10 w-72 h-72 bg-[#f6d243]/25 rounded-full blur-3xl" />
+              <div className="absolute -left-8 top-24 w-60 h-60 bg-[#f5a300]/20 rounded-full blur-3xl" />
               <div className="relative p-4 w-full max-w-[520px]">
                 <img
                   src="/bzobee.png"
                   alt="Beezio Mascot"
                   className="w-full max-w-[480px] drop-shadow-[0_30px_60px_rgba(245,194,0,0.35)] animate-float"
                 />
+                <div className="mt-3 inline-flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full text-sm font-semibold text-white/90">
+                  <Sparkles className="w-4 h-4 text-[#f6d243]" />
+                  Everyone earns on Beezio — sellers, affiliates, fundraisers.
+                </div>
               </div>
             </div>
 
             {/* Slider + CTAs */}
             <div className="space-y-6">
-              <div className="relative h-44 bg-white/5 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md">
+              <div className="relative h-48 bg-white/5 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md">
                 {slides.map((slide, index) => (
                   <div
                     key={index}
-                    className={`absolute inset-0 flex flex-col justify-center gap-2 px-6 transition-all duration-700 ${
+                    className={`absolute inset-y-0 left-0 right-0 flex flex-col justify-center gap-2 px-8 transition-all duration-700 ${
                       index === currentSlide
-                        ? 'opacity-100 translate-x-0'
-                        : index < currentSlide
+                        ? 'opacity-100 translate-x-2'
+                      : index < currentSlide
                         ? 'opacity-0 -translate-x-10'
                         : 'opacity-0 translate-x-10'
                     }`}
