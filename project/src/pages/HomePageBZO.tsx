@@ -70,43 +70,27 @@ const HomePage: React.FC<{
     <div className="min-h-screen bg-[#050915] text-white">
       {/* HERO */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0b1026] via-[#0f1735] to-[#162142]" />
-        <div className="absolute -left-20 -top-24 w-80 h-80 bg-[#f5c800]/18 blur-3xl rounded-full" />
-        <div className="absolute -right-14 top-10 w-72 h-72 bg-[#f5a300]/14 blur-3xl rounded-full" />
-        <div className="max-w-7xl mx-auto px-5 py-14 relative z-10">
-          <div className="grid lg:grid-cols-[0.95fr,1.05fr] gap-12 items-center">
-            {/* Bee visual */}
-            <div className="relative flex items-center justify-center lg:justify-start">
-              <div className="absolute -left-10 -top-14 w-64 h-64 bg-[#f6d243]/18 rounded-full blur-3xl" />
-              <div className="absolute -left-4 top-16 w-56 h-56 bg-[#f5a300]/14 rounded-full blur-3xl" />
-              <img
-                src="/bzobee.png"
-                alt="Beezio Mascot"
-                className="relative w-full max-w-[420px] drop-shadow-[0_30px_60px_rgba(245,194,0,0.35)] animate-float"
-              />
-            </div>
-
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black opacity-95" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,200,0,0.12),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.08),transparent_25%)]" />
+        <div className="max-w-7xl mx-auto px-6 py-16 relative z-10">
+          <div className="grid lg:grid-cols-[1.1fr,0.9fr] gap-12 items-center">
             {/* Copy + slider + CTA */}
-            <div className="space-y-7 w-full">
+            <div className="space-y-6 w-full text-white">
               <div className="space-y-3">
                 <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 px-4 py-2 rounded-full text-sm font-semibold">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                   Free to join ? Keep what you earn
                 </div>
-                <h1 className="text-4xl sm:text-5xl font-black leading-tight text-white">
-                  Beezio makes sure everyone keeps what they earn ? no hidden cuts.
+                <h1 className="text-4xl sm:text-5xl font-black leading-tight">
+                  A marketplace that feels familiar, but pays everyone fairly.
                 </h1>
-                <p className="text-base sm:text-lg text-white/80 max-w-3xl">
-                  Sellers set their price and markup. Affiliates and fundraisers earn 5% for every sale. Beezio handles platform fees and payout math so everyone gets their full share.
+                <p className="text-base sm:text-lg text-white/85 max-w-3xl">
+                  Add products in minutes, let affiliates and fundraisers promote them, and use your own domain or a simple Beezio link. No hidden cuts?just clean payouts.
                 </p>
-                <div className="inline-flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full text-sm font-semibold text-white/90">
-                  <Sparkles className="w-4 h-4 text-[#f6d243]" />
-                  Everyone earns on Beezio ? sellers, affiliates, fundraisers.
-                </div>
               </div>
 
               <div className="space-y-4">
-                <div className="relative h-[340px] bg-white/8 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md px-6 sm:px-10">
+                <div className="relative h-[320px] bg-white/10 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md px-6 sm:px-10 border border-white/15">
                   {slides.map((slide, index) => (
                     <div
                       key={index}
@@ -118,11 +102,11 @@ const HomePage: React.FC<{
                           : 'opacity-0 translate-x-10'
                       }`}
                     >
-                      <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full text-xs font-semibold text-[#f6d243]">
+                      <div className="inline-flex items-center gap-2 bg-white/15 px-3 py-1 rounded-full text-xs font-semibold text-[#f6d243]">
                         {React.cloneElement(slide.icon as React.ReactElement, { className: 'w-4 h-4 text-[#f6d243]' })}
                         {slide.badge}
                       </div>
-                      <h2 className="text-2xl sm:text-3xl font-bold text-white">{slide.title}</h2>
+                      <h2 className="text-2xl sm:text-3xl font-bold">{slide.title}</h2>
                       <p className="text-white/80 text-sm sm:text-base leading-relaxed max-w-2xl">{slide.description}</p>
                     </div>
                   ))}
@@ -144,11 +128,36 @@ const HomePage: React.FC<{
                 <div className="flex flex-wrap gap-3 pt-1">
                   <button
                     onClick={onOpenSimpleSignup}
-                    className="bg-black text-[#f6d243] font-bold px-6 py-3 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                    className="bg-[#f6d243] text-black font-bold px-6 py-3 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
                   >
                     Start Free Today
                   </button>
+                  <button
+                    onClick={() => window.location.assign('/marketplace')}
+                    className="bg-white/10 text-white font-semibold px-6 py-3 rounded-full border border-white/15 hover:bg-white/15 transition-all"
+                  >
+                    Browse Marketplace
+                  </button>
                 </div>
+              </div>
+            </div>
+
+            {/* Product collage */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100">
+                <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80" alt="Watch" className="w-full h-44 object-cover rounded-2xl" />
+                <p className="text-gray-900 font-semibold mt-3">Curated products</p>
+                <p className="text-gray-600 text-sm">Ready to list, price, and promote.</p>
+              </div>
+              <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100">
+                <img src="https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=800&q=80" alt="Shoes" className="w-full h-44 object-cover rounded-2xl" />
+                <p className="text-gray-900 font-semibold mt-3">Affiliate-ready</p>
+                <p className="text-gray-600 text-sm">One click to let affiliates promote.</p>
+              </div>
+              <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100 col-span-2">
+                <img src="https://images.unsplash.com/photo-1491553895911-0055eca6402d?auto=format&fit=crop&w=1200&q=80" alt="Lifestyle" className="w-full h-52 object-cover rounded-2xl" />
+                <p className="text-gray-900 font-semibold mt-3">Build your storefront</p>
+                <p className="text-gray-600 text-sm">Use your domain or beezio.co/yourstore.</p>
               </div>
             </div>
           </div>
