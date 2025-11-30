@@ -31,6 +31,8 @@
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-strong: 0 18px 50px -12px rgba(15, 23, 42, 0.22);
+  --shadow-ultra: 0 25px 80px -18px rgba(0, 0, 0, 0.28);
   
   /* Success/Error States */
   --success: #10B981;
@@ -91,13 +93,13 @@
   background: var(--bzo-white);
   border: 1px solid var(--border-color);
   border-radius: 16px;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-ultra);
   transition: all 0.3s ease;
 }
 
 .card-bzo:hover {
   transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-ultra);
   border-color: var(--bzo-yellow-primary);
 }
 
@@ -114,6 +116,16 @@
   outline: none;
   border-color: var(--bzo-yellow-primary);
   box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+}
+
+/* Strong elevation for white surfaces sitewide */
+.bg-white, .panel-white {
+  box-shadow: var(--shadow-strong);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[class*="bg-white/5"], [class*="bg-white/10"], [class*="bg-white/15"], [class*="bg-white/20"] {
+  box-shadow: var(--shadow-strong);
 }
 
 /* BZO Typography */

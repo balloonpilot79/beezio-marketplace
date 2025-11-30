@@ -21,36 +21,8 @@ const DEFAULT_LOCATION: LocationData = {
 
 // Get user's location data
 export const getUserLocation = async (): Promise<LocationData> => {
-  try {
-    // Try to get location from IP geolocation service
-    const response = await fetch('https://ipapi.co/json/');
-    
-    if (!response.ok) {
-      throw new Error('Geolocation service unavailable');
-    }
-    
-    const data = await response.json();
-    
-    if (data.error) {
-      throw new Error(data.reason || 'Geolocation failed');
-    }
-    
-    const countryCode = data.country_code?.toUpperCase() || 'US';
-    const currency = COUNTRY_CURRENCY_MAP[countryCode] || 'USD';
-    const vatRate = VAT_RATES[countryCode] || 0;
-    
-    return {
-      country: data.country_name || 'United States',
-      countryCode,
-      currency,
-      vatRate,
-      timezone: data.timezone || 'America/New_York',
-      locale: getLocaleFromCountry(countryCode),
-    };
-  } catch (error) {
-    console.warn('Failed to get user location, using default:', error);
-    return DEFAULT_LOCATION;
-  }
+  // Disabled remote geolocation in browser to avoid CORS issues; always return default
+  return DEFAULT_LOCATION;
 };
 
 // Get locale from country code

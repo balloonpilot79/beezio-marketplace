@@ -8,7 +8,6 @@ import { GlobalProvider } from './contexts/GlobalContext';
 import { GamificationProvider } from './contexts/GamificationContext';
 import BZOHeader from './components/BZOHeader';
 import HomePageBZO from './pages/HomePageBZO';
-import UserSubHeader from './components/UserSubHeader';
 import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
@@ -144,6 +143,11 @@ const AppWorking: React.FC = () => {
     console.error('Payment error:', error);
   };
 
+  const HomeOrDashboard = () => {
+    const { user } = useAuth();
+    return user ? <Dashboard /> : <HomePageBZO onOpenAuthModal={setAuthModal} onOpenSimpleSignup={() => setShowSimpleSignup(true)} />;
+  };
+
   return (
     <GlobalProvider>
       <AuthProvider>
@@ -155,11 +159,12 @@ const AppWorking: React.FC = () => {
               <CustomDomainHandler>
               <div className="min-h-screen bg-bzo-gradient">
                 <BZOHeader onOpenAuthModal={setAuthModal} />
-                <UserSubHeader />
+                
                 
                 <main>
                   <Routes>
-                    <Route path="/" element={<HomePageBZO onOpenAuthModal={setAuthModal} onOpenSimpleSignup={() => setShowSimpleSignup(true)} />} />
+                    <Route path="/" element={<HomeOrDashboard />} />
+                    <Route path="/home" element={<HomeOrDashboard />} />
                     <Route path="/test" element={<TestPage />} />
                     <Route path="/testing" element={<TestingDashboard />} />
                     <Route path="/revolutionary" element={<RevolutionaryShowcaseSimple />} />
