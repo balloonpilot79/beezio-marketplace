@@ -73,8 +73,8 @@ const HomePage: React.FC<{
         <div className="absolute inset-0 bg-gradient-to-br from-[#0b1026] via-[#0f1735] to-[#162142]" />
         <div className="absolute -left-20 -top-24 w-80 h-80 bg-[#f5c800]/20 blur-3xl rounded-full" />
         <div className="absolute -right-10 top-10 w-72 h-72 bg-[#f5a300]/15 blur-3xl rounded-full" />
-        <div className="max-w-6xl mx-auto px-5 py-14 relative z-10">
-          <div className="grid lg:grid-cols-[1.05fr,1fr] gap-10 items-center">
+        <div className="max-w-6xl lg:max-w-7xl mx-auto px-5 py-14 relative z-10">
+          <div className="grid lg:grid-cols-[1fr,1.1fr] gap-8 items-center">
             {/* Top copy spans full width */}
             <div className="lg:col-span-2 space-y-4">
               <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 px-4 py-2 rounded-full text-sm font-semibold">
@@ -90,9 +90,9 @@ const HomePage: React.FC<{
             </div>
 
             {/* Bee visual */}
-            <div className="relative flex items-center justify-start lg:justify-start -ml-8">
-              <div className="absolute -left-16 -top-10 w-72 h-72 bg-[#f6d243]/25 rounded-full blur-3xl" />
-              <div className="absolute -left-8 top-24 w-60 h-60 bg-[#f5a300]/20 rounded-full blur-3xl" />
+            <div className="relative flex items-center justify-start lg:justify-start -ml-12">
+              <div className="absolute -left-20 -top-14 w-72 h-72 bg-[#f6d243]/25 rounded-full blur-3xl" />
+              <div className="absolute -left-10 top-24 w-64 h-64 bg-[#f5a300]/20 rounded-full blur-3xl" />
               <div className="relative p-4 w-full max-w-[520px]">
                 <img
                   src="/bzobee.png"
@@ -107,7 +107,7 @@ const HomePage: React.FC<{
             </div>
 
             {/* Slider + CTAs */}
-            <div className="space-y-6">
+            <div className="space-y-6 lg:-ml-6 w-full max-w-2xl">
               <div className="relative h-48 bg-white/5 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md">
                 {slides.map((slide, index) => (
                   <div
