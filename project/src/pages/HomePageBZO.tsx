@@ -71,92 +71,90 @@ const HomePage: React.FC<{
       {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#0b1026] via-[#0f1735] to-[#162142]" />
-        <div className="absolute -left-20 -top-24 w-80 h-80 bg-[#f5c800]/20 blur-3xl rounded-full" />
-        <div className="absolute -right-10 top-10 w-72 h-72 bg-[#f5a300]/15 blur-3xl rounded-full" />
-        <div className="max-w-6xl lg:max-w-7xl mx-auto px-5 py-14 relative z-10">
-          <div className="grid lg:grid-cols-[1fr,1.1fr] gap-8 items-center">
-            {/* Top copy spans full width */}
-            <div className="lg:col-span-2 space-y-4">
-              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 px-4 py-2 rounded-full text-sm font-semibold">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                Free to join • Keep what you earn
-              </div>
-              <h1 className="text-4xl sm:text-5xl font-black leading-tight text-white">
-                Beezio makes sure everyone keeps what they earn — no hidden cuts.
-              </h1>
-              <p className="text-base sm:text-lg text-white/80 max-w-4xl">
-                Sellers set their price and markup. Affiliates and fundraisers earn 5% for every sale. Beezio handles platform fees, payout math, and Stripe so payouts stay whole.
-              </p>
-            </div>
-
+        <div className="absolute -left-20 -top-24 w-80 h-80 bg-[#f5c800]/18 blur-3xl rounded-full" />
+        <div className="absolute -right-14 top-10 w-72 h-72 bg-[#f5a300]/14 blur-3xl rounded-full" />
+        <div className="max-w-7xl mx-auto px-5 py-14 relative z-10">
+          <div className="grid lg:grid-cols-[0.95fr,1.05fr] gap-12 items-center">
             {/* Bee visual */}
             <div className="relative flex items-center justify-center lg:justify-start">
-              <div className="absolute -left-10 -top-12 w-64 h-64 bg-[#f6d243]/20 rounded-full blur-3xl" />
-              <div className="absolute -left-6 top-20 w-56 h-56 bg-[#f5a300]/15 rounded-full blur-3xl" />
-              <div className="relative p-4 w-full max-w-[420px]">
-                <img
-                  src="/bzobee.png"
-                  alt="Beezio Mascot"
-                  className="w-full max-w-[420px] drop-shadow-[0_30px_60px_rgba(245,194,0,0.35)] animate-float"
-                />
-                <div className="mt-3 inline-flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full text-sm font-semibold text-white/90">
-                  <Sparkles className="w-4 h-4 text-[#f6d243]" />
-                  Everyone earns on Beezio — sellers, affiliates, fundraisers.
-                </div>
-              </div>
+              <div className="absolute -left-10 -top-14 w-64 h-64 bg-[#f6d243]/18 rounded-full blur-3xl" />
+              <div className="absolute -left-4 top-16 w-56 h-56 bg-[#f5a300]/14 rounded-full blur-3xl" />
+              <img
+                src="/bzobee.png"
+                alt="Beezio Mascot"
+                className="relative w-full max-w-[420px] drop-shadow-[0_30px_60px_rgba(245,194,0,0.35)] animate-float"
+              />
             </div>
 
-            {/* Slider + CTAs */}
-            <div className="space-y-6 lg:-ml-4 w-full max-w-3xl">
-              <div className="relative h-[360px] bg-white/6 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md px-6 sm:px-10">
-                {slides.map((slide, index) => (
-                  <div
-                    key={index}
-                    className={`absolute inset-y-0 left-0 right-0 flex flex-col justify-center gap-4 px-8 sm:px-12 transition-all duration-700 ${
-                      index === currentSlide
-                        ? 'opacity-100 translate-x-2'
-                      : index < currentSlide
-                        ? 'opacity-0 -translate-x-10'
-                        : 'opacity-0 translate-x-10'
-                    }`}
-                  >
-                    <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full text-xs font-semibold text-[#f6d243]">
-                      {React.cloneElement(slide.icon as React.ReactElement, { className: 'w-4 h-4 text-[#f6d243]' })}
-                      {slide.badge}
+            {/* Copy + slider + CTA */}
+            <div className="space-y-7 w-full">
+              <div className="space-y-3">
+                <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 px-4 py-2 rounded-full text-sm font-semibold">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Free to join ? Keep what you earn
+                </div>
+                <h1 className="text-4xl sm:text-5xl font-black leading-tight text-white">
+                  Beezio makes sure everyone keeps what they earn ? no hidden cuts.
+                </h1>
+                <p className="text-base sm:text-lg text-white/80 max-w-3xl">
+                  Sellers set their price and markup. Affiliates and fundraisers earn 5% for every sale. Beezio handles platform fees and payout math so everyone gets their full share.
+                </p>
+                <div className="inline-flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full text-sm font-semibold text-white/90">
+                  <Sparkles className="w-4 h-4 text-[#f6d243]" />
+                  Everyone earns on Beezio ? sellers, affiliates, fundraisers.
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="relative h-[340px] bg-white/8 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md px-6 sm:px-10">
+                  {slides.map((slide, index) => (
+                    <div
+                      key={index}
+                      className={`absolute inset-0 flex flex-col justify-center gap-3 px-8 sm:px-12 transition-all duration-700 ${
+                        index === currentSlide
+                          ? 'opacity-100 translate-x-0'
+                          : index < currentSlide
+                          ? 'opacity-0 -translate-x-10'
+                          : 'opacity-0 translate-x-10'
+                      }`}
+                    >
+                      <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full text-xs font-semibold text-[#f6d243]">
+                        {React.cloneElement(slide.icon as React.ReactElement, { className: 'w-4 h-4 text-[#f6d243]' })}
+                        {slide.badge}
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-bold text-white">{slide.title}</h2>
+                      <p className="text-white/80 text-sm sm:text-base leading-relaxed max-w-2xl">{slide.description}</p>
                     </div>
-                    <h2 className="text-2xl font-bold text-white">{slide.title}</h2>
-                    <p className="text-white/80 text-sm sm:text-base">{slide.description}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
 
-              <div className="flex gap-2">
-                {slides.map((_, index) => (
+                <div className="flex gap-2">
+                  {slides.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentSlide(index)}
+                      className={`h-2 rounded-full transition-all duration-500 ${
+                        index === currentSlide ? 'w-8 bg-[#f6d243]' : 'w-2 bg-white/30 hover:bg-white/60'
+                      }`}
+                      aria-label={`Go to slide ${index + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap gap-3 pt-1">
                   <button
-                    key={index}
-                    onClick={() => setCurrentSlide(index)}
-                    className={`h-2 rounded-full transition-all duration-500 ${
-                      index === currentSlide ? 'w-8 bg-[#f6d243]' : 'w-2 bg-white/30 hover:bg-white/60'
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                  />
-                ))}
-              </div>
-
-              <div className="flex flex-wrap gap-3 pt-2">
-                <button
-                  onClick={onOpenSimpleSignup}
-                  className="bg-black text-[#f6d243] font-bold px-6 py-3 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
-                >
-                  Start Free Today
-                </button>
+                    onClick={onOpenSimpleSignup}
+                    className="bg-black text-[#f6d243] font-bold px-6 py-3 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                  >
+                    Start Free Today
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
-
-      {/* FEATURES GRID */}
+{/* FEATURES GRID */}
       <section className="bg-gradient-to-b from-[#0b1026] via-[#0f1735] to-[#0b132b] px-5 py-12">
         <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
