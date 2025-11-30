@@ -17,7 +17,7 @@ import ReferralDashboard from '../components/ReferralDashboard';
 import ReferredAffiliatesList from '../components/ReferredAffiliatesList';
 
 const AffiliateDashboardPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { selectedProducts, affiliateStats, generateAffiliateLink } = useAffiliate();
 
   if (!user) {
@@ -58,7 +58,7 @@ const AffiliateDashboardPage: React.FC = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Affiliate Dashboard</h1>
               <p className="mt-2 text-gray-600">
-                Track your performance and manage your affiliate products
+                Track your performance, share your referral link, and manage products.
               </p>
             </div>
             <Link
@@ -73,6 +73,62 @@ const AffiliateDashboardPage: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Referral link + code */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-1">Your referral link</p>
+              <div className="flex items-center gap-2">
+                <code className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-800 break-all">
+                  {`${window.location.origin}/signup?ref=${profile?.username || profile?.id || user?.id || ''}`}
+                </code>
+                <button
+                  onClick={() => copyToClipboard(`${window.location.origin}/signup?ref=${profile?.username || profile?.id || user?.id || ''}`)}
+                  className="p-2 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                  title="Copy referral link"
+                >
+                  <Copy className="w-4 h-4 text-gray-700" />
+                </button>
+                <a
+                  href={`/signup?ref=${profile?.username || profile?.id || user?.id || ''}`}
+                  className="p-2 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
+                  title="Open signup page"
+                >
+                  <ExternalLink className="w-4 h-4 text-blue-600" />
+                </a>
+              </div>
+              <p className="text-xs text-gray-600 mt-2">
+                Anyone who signs up with your link or code below is tied to you for life. They earn as normal; you earn 5% from Beezio’s 15% platform fee, so Beezio nets 10%.
+              </p>
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
+                <div className="font-semibold mb-1">How it works:</div>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Share your link or code. When someone signs up, they’re tagged to you forever.</li>
+                  <li>They sell/earn as usual. Their commissions are untouched.</li>
+                  <li>Beezio pays you 5% from its 15% platform fee on every sale they generate. Beezio keeps 10%.</li>
+                  <li>No double dipping: the buyer price already includes all fees, so nobody loses their share.</li>
+                </ol>
+              </div>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 min-w-[260px]">
+              <p className="text-sm font-semibold text-gray-800 mb-1">Referral code</p>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-2 bg-white border border-blue-200 rounded text-base font-bold text-blue-700">
+                  {(profile?.username || profile?.id || user?.id || '').toString()}
+                </span>
+                <button
+                  onClick={() => copyToClipboard(profile?.username || profile?.id || user?.id || '')}
+                  className="p-2 bg-white hover:bg-blue-100 rounded transition-colors"
+                  title="Copy referral code"
+                >
+                  <Copy className="w-4 h-4 text-blue-700" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-600 mt-2">Share this code if you can’t share a link.</p>
+            </div>
+          </div>
+        </div>
+
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

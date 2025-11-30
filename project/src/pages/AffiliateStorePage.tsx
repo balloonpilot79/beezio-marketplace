@@ -37,11 +37,25 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
         console.log('[AffiliateStorePage] Starting data fetch for affiliateId:', affiliateId);
         setLoading(true);
         
+        // Allow friendly slug from affiliate_store_settings.subdomain
+        let lookupId = affiliateId;
+        const { data: slugMatch, error: slugError } = await supabase
+          .from('affiliate_store_settings')
+          .select('affiliate_id')
+          .eq('subdomain', lookupId || '')
+          .maybeSingle();
+        if (slugError && slugError.code !== 'PGRST116') {
+          console.warn('[AffiliateStorePage] Error checking subdomain slug (non-fatal):', slugError);
+        }
+        if (slugMatch?.affiliate_id) {
+          lookupId = slugMatch.affiliate_id;
+        }
+
         console.log('[AffiliateStorePage] Fetching affiliate profile from database...');
         const { data: affiliateRecord, error: affiliateError } = await supabase
           .from('profiles')
           .select('*')
-          .or(`id.eq.${affiliateId},user_id.eq.${affiliateId}`)
+          .or(`id.eq.${lookupId},user_id.eq.${lookupId}`)
           .maybeSingle();
 
         if (affiliateError) {
@@ -214,6 +228,8 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
     ? `https://${storeSettings.subdomain}.beezio.co`
     : storeSettings?.custom_domain
     ? `https://${storeSettings.custom_domain}`
+    : storeSettings?.subdomain
+    ? `${window.location.origin}/affiliate/${storeSettings.subdomain}`
     : `${window.location.origin}/affiliate/${resolvedAffiliateId}`;
 
   return (

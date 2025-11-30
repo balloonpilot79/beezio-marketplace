@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 
 const HomePage: React.FC<{
-  onOpenAuthModal: (modal: { isOpen: boolean; mode: 'login' | 'register' }) => void;
   onOpenSimpleSignup: () => void;
 }> = ({ onOpenSimpleSignup }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -79,13 +78,13 @@ const HomePage: React.FC<{
               <div className="space-y-3">
                 <div className="inline-flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-semibold shadow-sm">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Free to join ? Keep what you earn
+                  Free to join - Keep what you earn
                 </div>
                 <h1 className="text-4xl sm:text-5xl font-black leading-tight">
-                  A marketplace that feels familiar?and pays everyone fairly.
+                  A marketplace that feels familiar, and pays everyone fairly.
                 </h1>
                 <p className="text-base sm:text-lg text-gray-700 max-w-3xl">
-                  Add products in minutes, let affiliates and fundraisers promote them, and use your own domain or a simple Beezio link. No hidden cuts?just clean payouts.
+                  Add products in minutes, let affiliates and fundraisers promote them, and use your own domain or a simple Beezio link. No hidden cuts - just clean payouts.
                 </p>
               </div>
 
@@ -145,17 +144,29 @@ const HomePage: React.FC<{
             {/* Product collage */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100">
-                <img src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=900&q=80" alt="Product grid" className="w-full h-44 object-cover rounded-2xl" />
+                <img
+                  src="https://images.unsplash.com/photo-1523475472560-d2df97ec485c?auto=format&fit=crop&w=900&q=80"
+                  alt="Merchandise ready to ship"
+                  className="w-full h-44 object-cover rounded-2xl"
+                />
                 <p className="text-gray-900 font-semibold mt-3">Curated products</p>
                 <p className="text-gray-600 text-sm">Ready to list, price, and promote.</p>
               </div>
               <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100">
-                <img src="https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=900&q=80" alt="Affiliate sharing" className="w-full h-44 object-cover rounded-2xl" />
+                <img
+                  src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=900&q=80"
+                  alt="Affiliate planning content"
+                  className="w-full h-44 object-cover rounded-2xl"
+                />
                 <p className="text-gray-900 font-semibold mt-3">Affiliate-ready</p>
                 <p className="text-gray-600 text-sm">One click to let affiliates promote.</p>
               </div>
               <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100 col-span-2">
-                <img src="https://images.unsplash.com/photo-1522199755839-a2bacb67c546?auto=format&fit=crop&w=1200&q=80" alt="Storefront" className="w-full h-52 object-cover rounded-2xl" />
+                <img
+                  src="https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1200&q=80"
+                  alt="Custom storefront on laptop"
+                  className="w-full h-52 object-cover rounded-2xl"
+                />
                 <p className="text-gray-900 font-semibold mt-3">Build your storefront</p>
                 <p className="text-gray-600 text-sm">Use your domain or beezio.co/yourstore.</p>
               </div>
@@ -170,7 +181,7 @@ const HomePage: React.FC<{
           <h2 className="text-3xl font-bold text-white">Everything you need to launch, earn, and fundraise</h2>
           <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 px-4 py-2 rounded-full text-xs font-semibold text-white/90">
             <Zap className="w-4 h-4 text-[#f6d243]" />
-            No monthly fees • Fees baked into pricing
+            No monthly fees - Fees baked into pricing
           </div>
         </div>
 
@@ -181,9 +192,9 @@ const HomePage: React.FC<{
               </div>
               <h3 className="text-xl font-semibold mb-3 text-white">For Sellers</h3>
               <ul className="space-y-2 text-sm text-white/80">
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Custom storefronts on your domain</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Stripe checkout with automated payouts</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Opt into affiliates or keep products private</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Custom storefronts on your domain</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Stripe checkout with automated payouts</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Opt into affiliates or keep products private</li>
               </ul>
             </div>
 
@@ -193,8 +204,8 @@ const HomePage: React.FC<{
               </div>
               <h3 className="text-xl font-semibold mb-3 text-white">For Affiliates</h3>
               <ul className="space-y-2 text-sm text-white/80">
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Earn 5% lifetime on every sale</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Bonus rates when sellers opt in</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Earn 5% lifetime on every sale</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Bonus rates when sellers opt in</li>
               </ul>
             </div>
 
@@ -204,8 +215,8 @@ const HomePage: React.FC<{
               </div>
               <h3 className="text-xl font-semibold mb-3 text-white">For Fundraisers</h3>
               <ul className="space-y-2 text-sm text-white/80">
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> 5% bonus paid by Beezio every sale</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Ready-made store templates for causes</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> 5% bonus paid by Beezio every sale</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Ready-made store templates for causes</li>
               </ul>
             </div>
 
@@ -215,8 +226,8 @@ const HomePage: React.FC<{
               </div>
               <h3 className="text-xl font-semibold mb-3 text-white">For Buyers</h3>
               <ul className="space-y-2 text-sm text-white/80">
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Trusted sellers and verified fundraisers</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Transparent pricing (includes Stripe 2.9% + $0.60)</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Trusted sellers and verified fundraisers</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Transparent pricing (includes Stripe 2.9% + $0.60)</li>
               </ul>
             </div>
 
@@ -226,8 +237,8 @@ const HomePage: React.FC<{
               </div>
               <h3 className="text-xl font-semibold mb-3 text-white">Custom Stores & Domains</h3>
               <ul className="space-y-2 text-sm text-white/80">
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Use beezio.co/yourstore or bring your own domain</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Guided onboarding with smart tips</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Use beezio.co/yourstore or bring your own domain</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Guided onboarding with smart tips</li>
               </ul>
             </div>
 
@@ -237,8 +248,8 @@ const HomePage: React.FC<{
               </div>
               <h3 className="text-xl font-semibold mb-3 text-white">API Integrations</h3>
               <ul className="space-y-2 text-sm text-white/80">
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Import supplier products through adapters</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">•</span> Automated fulfillment hooks are ready</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Import supplier products through adapters</li>
+                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Automated fulfillment hooks are ready</li>
               </ul>
             </div>
           </div>

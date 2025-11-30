@@ -45,12 +45,28 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         console.log('[SellerStorePage] Starting data fetch for sellerId:', sellerId);
         setLoading(true);
         
+        // Allow friendly slug from store_settings.subdomain
+        let lookupId = sellerId;
+        if (lookupId) {
+          const { data: slugMatch, error: slugError } = await supabase
+            .from('store_settings')
+            .select('seller_id')
+            .eq('subdomain', lookupId)
+            .maybeSingle();
+          if (slugError && slugError.code !== 'PGRST116') {
+            console.warn('[SellerStorePage] Error checking subdomain slug (non-fatal):', slugError);
+          }
+          if (slugMatch?.seller_id) {
+            lookupId = slugMatch.seller_id;
+          }
+        }
+
         // Try to fetch seller profile by profile id or auth user id
         console.log('[SellerStorePage] Fetching profile from database...');
         const { data: sellerData, error: sellerError } = await supabase
           .from('profiles')
           .select('*')
-          .or(`id.eq.${sellerId},user_id.eq.${sellerId}`)
+          .or(`id.eq.${lookupId},user_id.eq.${lookupId}`)
           .maybeSingle();
 
         if (sellerError) {

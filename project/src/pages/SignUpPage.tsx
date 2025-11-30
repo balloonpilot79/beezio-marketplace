@@ -393,28 +393,28 @@ const SignUpPage: React.FC = () => {
           {/* Referral Code Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Referral Code (Optional)
-              <span className="block sm:inline sm:ml-2 text-xs text-gray-500 mt-1 sm:mt-0">Have a friend's code? Enter it here!</span>
+              Referral Code (optional)
+              <span className="block sm:inline sm:ml-2 text-xs text-gray-500 mt-1 sm:mt-0">If someone invited you, paste their code here.</span>
             </label>
             <input 
               type="text" 
               value={referralCode || ''} 
               onChange={(e) => {
-                const code = e.target.value.toUpperCase();
-                if (code) {
+                const code = e.target.value.trim();
+                setReferralCode(code || null);
+                if (code.length >= 3) {
                   validateReferralCode(code);
                 } else {
-                  setReferralCode(null);
                   setReferralValid(null);
                   setReferrerName('');
                 }
               }}
-              placeholder="Enter code (e.g., JOHN2024)"
+              placeholder="Enter code (e.g., jason123 or profile id)"
               className={`w-full px-3 py-2 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                 referralValid === true 
-                  ? 'border-green-400 bg-green-50' 
+                  ? 'border-green-500 bg-green-50' 
                   : referralValid === false 
-                  ? 'border-red-400 bg-red-50' 
+                  ? 'border-red-500 bg-red-50' 
                   : 'border-gray-300'
               }`}
             />

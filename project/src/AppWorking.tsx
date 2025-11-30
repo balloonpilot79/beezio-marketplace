@@ -74,6 +74,11 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const HomeOrDashboard = ({ onOpenSimpleSignup }: { onOpenSimpleSignup: () => void }) => {
+  const { user } = useAuth();
+  return user ? <Dashboard /> : <HomePageBZO onOpenSimpleSignup={onOpenSimpleSignup} />;
+};
+
 // Store Settings Route - requires seller role
 const StoreSettingsRoute = () => {
   const { profile } = useAuth();
@@ -163,8 +168,8 @@ const AppWorking: React.FC = () => {
                 
                 <main>
                   <Routes>
-                    <Route path="/" element={<HomeOrDashboard />} />
-                    <Route path="/home" element={<HomeOrDashboard />} />
+                    <Route path="/" element={<HomeOrDashboard onOpenSimpleSignup={() => setShowSimpleSignup(true)} />} />
+                    <Route path="/home" element={<HomeOrDashboard onOpenSimpleSignup={() => setShowSimpleSignup(true)} />} />
                     <Route path="/test" element={<TestPage />} />
                     <Route path="/testing" element={<TestingDashboard />} />
                     <Route path="/revolutionary" element={<RevolutionaryShowcaseSimple />} />

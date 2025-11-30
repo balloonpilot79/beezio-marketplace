@@ -11,6 +11,7 @@ interface CustomDomainManagerProps {
 
 const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role, currentDomain, subdomain }) => {
   const [domain, setDomain] = useState(currentDomain || '');
+  const [subdomainInput, setSubdomainInput] = useState(subdomain || '');
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'failed'>('pending');
@@ -23,6 +24,11 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
       verifyDomain(currentDomain);
     }
   }, [currentDomain]);
+
+  const validateSubdomain = (input: string): boolean => {
+    const clean = input.trim().toLowerCase();
+    return /^[a-z0-9-]{3,32}$/.test(clean);
+  };
 
   const validateDomain = (input: string): boolean => {
     // Remove protocol if present
@@ -95,6 +101,61 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
     }
   };
 
+  const saveSubdomain = async () => {
+    const clean = subdomainInput.trim().toLowerCase();
+    if (!validateSubdomain(clean)) {
+      setError('Subdomain must be 3-32 characters, letters/numbers/hyphen only.');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    try {
+      // ensure uniqueness across seller + affiliate tables
+      const tables = ['store_settings', 'affiliate_store_settings'];
+      for (const table of tables) {
+        const { data: existing, error: checkError } = await supabase
+          .from(table)
+          .select('subdomain')
+          .eq('subdomain', clean)
+          .maybeSingle();
+        if (checkError && checkError.code !== 'PGRST116') {
+          throw checkError;
+        }
+        if (existing && table !== (role === 'seller' ? 'store_settings' : 'affiliate_store_settings')) {
+          setError('That subdomain is already taken. Please choose another.');
+          setSaving(false);
+          return;
+        }
+      }
+
+      const table = role === 'seller' ? 'store_settings' : 'affiliate_store_settings';
+      const idField = role === 'seller' ? 'seller_id' : 'affiliate_id';
+
+      const { error: updateError } = await supabase
+        .from(table)
+        .upsert({
+          [idField]: userId,
+          subdomain: clean,
+          updated_at: new Date().toISOString()
+        });
+
+      if (updateError) {
+        setError('Failed to save subdomain. Try another value.');
+      } else {
+        setSubdomainInput(clean);
+        setError('');
+        alert(`Subdomain saved! Your new link is https://${clean}.beezio.co or beezio.co/store/${clean}`);
+      }
+    } catch (err) {
+      console.error('Subdomain save error', err);
+      setError('Failed to save subdomain. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleRemove = async () => {
     if (!confirm('Are you sure you want to remove your custom domain?')) {
       return;
@@ -129,10 +190,10 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
   };
 
   const defaultStoreUrl = role === 'seller' 
-    ? `https://beezio.co/seller/${userId}`
-    : `https://beezio.co/affiliate/${userId}`;
+    ? `https://beezio.co/store/${subdomainInput || userId}`
+    : `https://beezio.co/affiliate/${subdomainInput || userId}`;
   
-  const subdomainUrl = subdomain ? `https://${subdomain}.beezio.co` : null;
+  const subdomainUrl = subdomainInput ? `https://${subdomainInput}.beezio.co` : null;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -144,7 +205,7 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
       {/* Subdomain URL (auto-generated from email) */}
       {subdomainUrl && (
         <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
-          <p className="text-sm font-medium text-gray-700 mb-2">✨ Your Custom Subdomain:</p>
+          <p className="text-sm font-medium text-gray-700 mb-2">Your Beezio subdomain</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 px-3 py-2 bg-white border border-purple-200 rounded text-sm font-semibold text-purple-700">
               {subdomainUrl}
@@ -167,10 +228,32 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
             </a>
           </div>
           <p className="text-xs text-purple-600 mt-2">
-            🎉 This is your personal subdomain, auto-generated from your email! Share this link with customers.
+            Share this link with customers. You can also use the path link below.
           </p>
         </div>
       )}
+
+      {/* Beezio subdomain setup */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Beezio Subdomain</label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={subdomainInput}
+            onChange={(e) => setSubdomainInput(e.target.value.toLowerCase())}
+            placeholder="yourstore"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          <button
+            onClick={saveSubdomain}
+            disabled={saving}
+            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 font-medium"
+          >
+            {saving ? 'Saving...' : 'Save Subdomain'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">Creates links like https://yourstore.beezio.co and beezio.co/store/yourstore</p>
+      </div>
 
       {/* Current Store URL (fallback path) */}
       <div className="mb-6 p-4 bg-blue-50 rounded-lg">
