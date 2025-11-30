@@ -65,10 +65,11 @@ import { initializeReferralTracking } from './utils/referralTracking';
 import AdminAIHubPage from './pages/AdminAIHubPage';
 
 // Protect admin route
-const ADMIN_EMAIL = "balloonpilot79@gmail.com";
+const ADMIN_EMAIL = "jason@beezio.co";
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { profile } = useAuth();
-  if (!profile || profile.role !== 'admin' || profile.email !== ADMIN_EMAIL) {
+  const isPlatformAdmin = profile?.email === ADMIN_EMAIL;
+  if (!isPlatformAdmin) {
     return <div className="max-w-xl mx-auto mt-20 text-center text-red-600 text-lg font-bold">Access denied. Admin only.</div>;
   }
   return <>{children}</>;
