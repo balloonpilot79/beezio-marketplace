@@ -150,12 +150,6 @@ const HomePage: React.FC<{
                 >
                   Start Free Today
                 </button>
-                <button
-                  onClick={() => window.location.assign('/admin/ai-hub')}
-                  className="bg-white/10 text-white font-semibold px-6 py-3 rounded-full border border-white/15 hover:bg-white/15 transition-all"
-                >
-                  See Beezio Hub
-                </button>
               </div>
             </div>
           </div>
@@ -244,55 +238,6 @@ const HomePage: React.FC<{
         </div>
       </section>
 
-      {/* AI HUB */}
-      <section className="bg-white text-gray-900 px-5 py-12">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-            <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-[#f6a300] font-semibold">Beezio AI Hub</p>
-              <h2 className="text-3xl font-bold text-gray-900 mt-1">GPT-powered copilots for pricing, copy, and support</h2>
-              <p className="text-gray-600 mt-2">Runs server-side through our GPT proxy—no API keys exposed on the frontend.</p>
-            </div>
-            <button
-              onClick={() => window.location.assign('/admin/ai-hub')}
-              className="bg-black text-[#f6d243] font-semibold px-5 py-3 rounded-full shadow-md hover:shadow-lg transition-all"
-            >
-              Open AI Hub
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-yellow-50 to-white">
-              <div className="w-11 h-11 rounded-xl bg-black text-[#f6d243] flex items-center justify-center mb-3">
-                <Wand2 className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Product Builder</h3>
-              <p className="text-sm text-gray-600 mt-1">Pull any supplier via adapters, price with Beezio math, generate titles, descriptions, and tags.</p>
-            </div>
-            <div className="p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-yellow-50 to-white">
-              <div className="w-11 h-11 rounded-xl bg-black text-[#f6d243] flex items-center justify-center mb-3">
-                <Brain className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Pricing Assistant</h3>
-              <p className="text-sm text-gray-600 mt-1">Deterministic helper adds markup, affiliate %, platform share, and Stripe fees automatically.</p>
-            </div>
-            <div className="p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-yellow-50 to-white">
-              <div className="w-11 h-11 rounded-xl bg-black text-[#f6d243] flex items-center justify-center mb-3">
-                <Bot className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Support Bot</h3>
-              <p className="text-sm text-gray-600 mt-1">Answers Beezio FAQs, commissions, payouts, and onboarding questions without exposing secrets.</p>
-            </div>
-            <div className="p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-yellow-50 to-white">
-              <div className="w-11 h-11 rounded-xl bg-black text-[#f6d243] flex items-center justify-center mb-3">
-                <MessageSquare className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Affiliate Content</h3>
-              <p className="text-sm text-gray-600 mt-1">Generates captions, hashtags, and pitches so affiliates and fundraisers can promote instantly.</p>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };
