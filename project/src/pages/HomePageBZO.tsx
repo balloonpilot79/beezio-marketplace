@@ -90,9 +90,9 @@ const HomePage: React.FC<{
             </div>
 
             {/* Bee visual */}
-            <div className="relative flex items-center justify-start lg:justify-start -ml-12">
-              <div className="absolute -left-20 -top-14 w-72 h-72 bg-[#f6d243]/25 rounded-full blur-3xl" />
-              <div className="absolute -left-10 top-24 w-64 h-64 bg-[#f5a300]/20 rounded-full blur-3xl" />
+            <div className="relative flex items-center justify-start lg:justify-start -ml-24">
+              <div className="absolute -left-24 -top-16 w-80 h-80 bg-[#f6d243]/25 rounded-full blur-3xl" />
+              <div className="absolute -left-12 top-28 w-72 h-72 bg-[#f5a300]/20 rounded-full blur-3xl" />
               <div className="relative p-4 w-full max-w-[520px]">
                 <img
                   src="/bzobee.png"
@@ -107,12 +107,12 @@ const HomePage: React.FC<{
             </div>
 
             {/* Slider + CTAs */}
-            <div className="space-y-6 lg:-ml-6 w-full max-w-3xl">
-              <div className="relative h-56 bg-white/5 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md px-4 sm:px-6">
+            <div className="space-y-6 lg:-ml-6 w-full max-w-5xl">
+              <div className="relative h-96 bg-white/5 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md px-6 sm:px-10">
                 {slides.map((slide, index) => (
                   <div
                     key={index}
-                    className={`absolute inset-y-0 left-0 right-0 flex flex-col justify-center gap-3 px-8 sm:px-10 transition-all duration-700 ${
+                    className={`absolute inset-y-0 left-0 right-0 flex flex-col justify-center gap-4 px-10 sm:px-14 transition-all duration-700 ${
                       index === currentSlide
                         ? 'opacity-100 translate-x-2'
                       : index < currentSlide
