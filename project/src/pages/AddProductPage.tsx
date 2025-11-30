@@ -133,7 +133,7 @@ const AddProductPage: React.FC = () => {
 
   if (mode === 'single') {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-[#0b1026] via-[#0f1735] to-[#0b132b] py-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <button
             onClick={() => setMode(null)}
@@ -153,7 +153,7 @@ const AddProductPage: React.FC = () => {
 
   if (mode === 'bulk') {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-[#0b1026] via-[#0f1735] to-[#0b132b] py-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <button
             onClick={() => setMode(null)}
@@ -163,7 +163,7 @@ const AddProductPage: React.FC = () => {
             Back to upload options
           </button>
 
-          <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="bg-white rounded-2xl shadow-2xl p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Bulk Upload Products</h2>
 
             {/* Instructions */}
@@ -269,15 +269,15 @@ const AddProductPage: React.FC = () => {
           <div className="flex justify-center mb-4">
             <div className="bzo-mascot text-4xl">🐝</div>
           </div>
-          <h1 className="text-5xl font-bold text-bzo-black mb-4">Add Products</h1>
-          <p className="text-xl text-gray-600">Choose how you want to buzz your products into the hive</p>
+          <h1 className="text-5xl font-bold text-white mb-4">Add Products</h1>
+          <p className="text-xl text-white/80">Choose how you want to buzz your products into the hive</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Single Product */}
           <div
             onClick={() => setMode('single')}
-            className="card-bzo p-8 cursor-pointer group"
+            className="bg-white rounded-2xl shadow-2xl p-8 cursor-pointer group hover:-translate-y-1 transition-all duration-300"
           >
             <div className="bg-gradient-to-br from-bzo-yellow-primary to-bzo-yellow-secondary w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-200">
               <Package className="w-10 h-10 text-bzo-black" />
@@ -314,7 +314,7 @@ const AddProductPage: React.FC = () => {
           {/* Bulk Upload */}
           <div
             onClick={() => setMode('bulk')}
-            className="bg-white rounded-xl shadow-lg p-8 cursor-pointer hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border-2 border-transparent hover:border-blue-500"
+            className="bg-white rounded-2xl shadow-2xl p-8 cursor-pointer hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border-2 border-transparent hover:border-blue-500"
           >
             <div className="bg-gradient-to-br from-blue-500 to-purple-500 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
               <FileSpreadsheet className="w-10 h-10 text-white" />
