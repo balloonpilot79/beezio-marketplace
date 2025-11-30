@@ -52,8 +52,8 @@ const HomePage: React.FC<{
     },
     {
       icon: <Zap className="w-11 h-11 text-[#ffcc00]" />,
-      title: '15% Platform Fee, That’s It',
-      description: 'No hidden costs. Sellers keep 85% after commissions. Stripe + referrer math is baked in.',
+      title: 'Transparent, All-In Pricing',
+      description: 'No hidden costs. We bake in platform, referrer, and Stripe fees so everyone keeps their full share.',
       badge: 'Transparent Pricing'
     }
   ];
@@ -165,13 +165,13 @@ const HomePage: React.FC<{
       {/* FEATURES GRID */}
       <section className="bg-gradient-to-b from-[#0b1026] via-[#0f1735] to-[#0b132b] px-5 py-12">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
-            <h2 className="text-3xl font-bold text-white">Everything you need to launch, earn, and fundraise</h2>
-            <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 px-4 py-2 rounded-full text-xs font-semibold text-white/90">
-              <Zap className="w-4 h-4 text-[#f6d243]" />
-              No monthly fees • Transparent 15% platform fee
-            </div>
+        <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
+          <h2 className="text-3xl font-bold text-white">Everything you need to launch, earn, and fundraise</h2>
+          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 px-4 py-2 rounded-full text-xs font-semibold text-white/90">
+            <Zap className="w-4 h-4 text-[#f6d243]" />
+            No monthly fees • Fees baked into pricing
           </div>
+        </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="group bg-white/5 border border-white/10 p-5 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
@@ -274,7 +274,7 @@ const HomePage: React.FC<{
                 <Brain className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Pricing Assistant</h3>
-              <p className="text-sm text-gray-600 mt-1">Deterministic helper adds markup, affiliate 5%+, platform 15%, Stripe 2.9% + $0.60.</p>
+              <p className="text-sm text-gray-600 mt-1">Deterministic helper adds markup, affiliate %, platform share, and Stripe fees automatically.</p>
             </div>
             <div className="p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-yellow-50 to-white">
               <div className="w-11 h-11 rounded-xl bg-black text-[#f6d243] flex items-center justify-center mb-3">

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import PricingCalculator from './PricingCalculator';
 import EasyImageUpload from './EasyImageUpload';
 import ImageGallery from './ImageGallery';
+import SimpleImageUpload from './SimpleImageUpload';
 import { PricingBreakdown } from '../lib/pricing';
 import { useNavigate } from 'react-router-dom';
 
