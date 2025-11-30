@@ -57,7 +57,8 @@ export default function SimpleImageUpload({
         .from(bucket)
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: false
+          upsert: false,
+          contentType: file.type || 'image/jpeg'
         });
 
       console.log('📥 Upload response:', { data, error });
@@ -74,7 +75,8 @@ export default function SimpleImageUpload({
           .from(bucket)
           .upload(retryPath, file, {
             cacheControl: '3600',
-            upsert: false
+            upsert: false,
+            contentType: file.type || 'image/jpeg'
           });
 
         console.log('📥 Retry response:', { retryData, retryError });
