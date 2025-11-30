@@ -75,29 +75,8 @@ const HomePage: React.FC<{
         <div className="absolute -right-10 top-10 w-72 h-72 bg-[#f5a300]/15 blur-3xl rounded-full" />
         <div className="max-w-6xl mx-auto px-5 py-14 relative z-10">
           <div className="grid lg:grid-cols-[1.05fr,1fr] gap-10 items-center">
-            {/* Bee visual */}
-            <div className="relative flex items-center justify-center">
-              <div className="absolute inset-6 bg-gradient-to-br from-[#f6d243]/25 via-transparent to-[#f5a300]/20 rounded-[38px] blur-3xl" />
-              <div className="relative bg-white/5 border border-white/10 rounded-[32px] p-8 shadow-2xl w-full max-w-[500px] backdrop-blur-md">
-                <div className="absolute -left-8 -bottom-10 w-28 h-28 bg-[#f6d243]/20 rounded-full blur-2xl" />
-                <div className="absolute -right-10 -top-8 w-32 h-32 bg-[#f5a300]/25 rounded-full blur-2xl" />
-                <div className="text-sm uppercase tracking-[0.25em] text-[#f6d243] mb-4 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  AI-ready marketplace
-                </div>
-                <img
-                  src="/bzobee.png"
-                  alt="Beezio Mascot"
-                  className="w-full max-w-[440px] mx-auto drop-shadow-[0_30px_60px_rgba(245,194,0,0.35)] animate-float"
-                />
-                <p className="mt-6 text-lg font-semibold text-white/90">
-                  BZO the Bee now fills the left side—your friendly guide for sellers, affiliates, and fundraisers.
-                </p>
-              </div>
-            </div>
-
-            {/* Copy + slider */}
-            <div className="space-y-6">
+            {/* Top copy spans full width */}
+            <div className="lg:col-span-2 space-y-4">
               <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 px-4 py-2 rounded-full text-sm font-semibold">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                 Free to join • Keep what you earn
@@ -105,11 +84,27 @@ const HomePage: React.FC<{
               <h1 className="text-4xl sm:text-5xl font-black leading-tight text-white">
                 Beezio makes sure everyone keeps what they earn — with AI doing the heavy lifting.
               </h1>
-              <p className="text-base sm:text-lg text-white/80 max-w-2xl">
+              <p className="text-base sm:text-lg text-white/80 max-w-4xl">
                 Sellers set their price and markup. Affiliates and fundraisers earn 5% for every sale. Beezio handles platform fees, payout math, and Stripe—GPT helps with pricing, copy, and support.
               </p>
+            </div>
 
-              <div className="relative h-44 bg-white/5 border border-white/10 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md">
+            {/* Bee visual */}
+            <div className="relative flex items-center justify-start lg:justify-start pl-2">
+              <div className="absolute -left-10 -top-10 w-64 h-64 bg-[#f6d243]/25 rounded-full blur-3xl" />
+              <div className="absolute -left-4 top-20 w-52 h-52 bg-[#f5a300]/20 rounded-full blur-3xl" />
+              <div className="relative p-4 w-full max-w-[520px]">
+                <img
+                  src="/bzobee.png"
+                  alt="Beezio Mascot"
+                  className="w-full max-w-[480px] drop-shadow-[0_30px_60px_rgba(245,194,0,0.35)] animate-float"
+                />
+              </div>
+            </div>
+
+            {/* Slider + CTAs */}
+            <div className="space-y-6">
+              <div className="relative h-44 bg-white/5 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md">
                 {slides.map((slide, index) => (
                   <div
                     key={index}
