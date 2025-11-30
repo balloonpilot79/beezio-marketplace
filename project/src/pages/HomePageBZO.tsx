@@ -107,12 +107,12 @@ const HomePage: React.FC<{
             </div>
 
             {/* Slider + CTAs */}
-            <div className="space-y-6 lg:-ml-6 w-full max-w-2xl">
-              <div className="relative h-48 bg-white/5 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md">
+            <div className="space-y-6 lg:-ml-6 w-full max-w-3xl">
+              <div className="relative h-56 bg-white/5 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md px-4 sm:px-6">
                 {slides.map((slide, index) => (
                   <div
                     key={index}
-                    className={`absolute inset-y-0 left-0 right-0 flex flex-col justify-center gap-2 px-8 transition-all duration-700 ${
+                    className={`absolute inset-y-0 left-0 right-0 flex flex-col justify-center gap-3 px-8 sm:px-10 transition-all duration-700 ${
                       index === currentSlide
                         ? 'opacity-100 translate-x-2'
                       : index < currentSlide
