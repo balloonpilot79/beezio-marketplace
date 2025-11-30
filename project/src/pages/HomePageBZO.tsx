@@ -70,27 +70,27 @@ const HomePage: React.FC<{
     <div className="min-h-screen bg-[#050915] text-white">
       {/* HERO */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black opacity-95" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,200,0,0.12),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.08),transparent_25%)]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#f9fbff] via-[#eef2ff] to-[#e5e7eb]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,215,0,0.12),transparent_32%),radial-gradient(circle_at_80%_10%,rgba(17,24,39,0.08),transparent_26%)]" />
         <div className="max-w-7xl mx-auto px-6 py-16 relative z-10">
-          <div className="grid lg:grid-cols-[1.1fr,0.9fr] gap-12 items-center">
+          <div className="grid lg:grid-cols-[1.05fr,0.95fr] gap-12 items-center">
             {/* Copy + slider + CTA */}
-            <div className="space-y-6 w-full text-white">
+            <div className="space-y-6 w-full text-gray-900">
               <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 px-4 py-2 rounded-full text-sm font-semibold">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="inline-flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-semibold shadow-sm">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   Free to join ? Keep what you earn
                 </div>
                 <h1 className="text-4xl sm:text-5xl font-black leading-tight">
-                  A marketplace that feels familiar, but pays everyone fairly.
+                  A marketplace that feels familiar?and pays everyone fairly.
                 </h1>
-                <p className="text-base sm:text-lg text-white/85 max-w-3xl">
+                <p className="text-base sm:text-lg text-gray-700 max-w-3xl">
                   Add products in minutes, let affiliates and fundraisers promote them, and use your own domain or a simple Beezio link. No hidden cuts?just clean payouts.
                 </p>
               </div>
 
               <div className="space-y-4">
-                <div className="relative h-[320px] bg-white/10 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-md px-6 sm:px-10 border border-white/15">
+                <div className="relative h-[320px] bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 px-6 sm:px-10">
                   {slides.map((slide, index) => (
                     <div
                       key={index}
@@ -102,12 +102,12 @@ const HomePage: React.FC<{
                           : 'opacity-0 translate-x-10'
                       }`}
                     >
-                      <div className="inline-flex items-center gap-2 bg-white/15 px-3 py-1 rounded-full text-xs font-semibold text-[#f6d243]">
-                        {React.cloneElement(slide.icon as React.ReactElement, { className: 'w-4 h-4 text-[#f6d243]' })}
+                      <div className="inline-flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-xs font-semibold text-gray-800">
+                        {React.cloneElement(slide.icon as React.ReactElement, { className: 'w-4 h-4 text-gray-800' })}
                         {slide.badge}
                       </div>
-                      <h2 className="text-2xl sm:text-3xl font-bold">{slide.title}</h2>
-                      <p className="text-white/80 text-sm sm:text-base leading-relaxed max-w-2xl">{slide.description}</p>
+                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{slide.title}</h2>
+                      <p className="text-gray-700 text-sm sm:text-base leading-relaxed max-w-2xl">{slide.description}</p>
                     </div>
                   ))}
                 </div>
@@ -118,7 +118,7 @@ const HomePage: React.FC<{
                       key={index}
                       onClick={() => setCurrentSlide(index)}
                       className={`h-2 rounded-full transition-all duration-500 ${
-                        index === currentSlide ? 'w-8 bg-[#f6d243]' : 'w-2 bg-white/30 hover:bg-white/60'
+                        index === currentSlide ? 'w-8 bg-gray-900' : 'w-2 bg-gray-300 hover:bg-gray-500'
                       }`}
                       aria-label={`Go to slide ${index + 1}`}
                     />
@@ -128,13 +128,13 @@ const HomePage: React.FC<{
                 <div className="flex flex-wrap gap-3 pt-1">
                   <button
                     onClick={onOpenSimpleSignup}
-                    className="bg-[#f6d243] text-black font-bold px-6 py-3 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                    className="bg-black text-white font-bold px-6 py-3 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
                   >
                     Start Free Today
                   </button>
                   <button
                     onClick={() => window.location.assign('/marketplace')}
-                    className="bg-white/10 text-white font-semibold px-6 py-3 rounded-full border border-white/15 hover:bg-white/15 transition-all"
+                    className="bg-white text-gray-900 font-semibold px-6 py-3 rounded-full border border-gray-300 hover:bg-gray-50 transition-all shadow-sm"
                   >
                     Browse Marketplace
                   </button>
@@ -145,17 +145,17 @@ const HomePage: React.FC<{
             {/* Product collage */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100">
-                <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80" alt="Watch" className="w-full h-44 object-cover rounded-2xl" />
+                <img src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=900&q=80" alt="Product grid" className="w-full h-44 object-cover rounded-2xl" />
                 <p className="text-gray-900 font-semibold mt-3">Curated products</p>
                 <p className="text-gray-600 text-sm">Ready to list, price, and promote.</p>
               </div>
               <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100">
-                <img src="https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=800&q=80" alt="Shoes" className="w-full h-44 object-cover rounded-2xl" />
+                <img src="https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=900&q=80" alt="Affiliate sharing" className="w-full h-44 object-cover rounded-2xl" />
                 <p className="text-gray-900 font-semibold mt-3">Affiliate-ready</p>
                 <p className="text-gray-600 text-sm">One click to let affiliates promote.</p>
               </div>
               <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100 col-span-2">
-                <img src="https://images.unsplash.com/photo-1491553895911-0055eca6402d?auto=format&fit=crop&w=1200&q=80" alt="Lifestyle" className="w-full h-52 object-cover rounded-2xl" />
+                <img src="https://images.unsplash.com/photo-1522199755839-a2bacb67c546?auto=format&fit=crop&w=1200&q=80" alt="Storefront" className="w-full h-52 object-cover rounded-2xl" />
                 <p className="text-gray-900 font-semibold mt-3">Build your storefront</p>
                 <p className="text-gray-600 text-sm">Use your domain or beezio.co/yourstore.</p>
               </div>
