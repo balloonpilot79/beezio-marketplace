@@ -60,6 +60,12 @@ const AffiliateDashboardPage: React.FC = () => {
               <p className="mt-2 text-gray-600">
                 Track your performance, share your referral link, and manage products.
               </p>
+              <div className="mt-3 grid gap-2 text-sm text-gray-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="font-semibold text-blue-800">Quick start</div>
+                <div>• Add products from the marketplace to your store.</div>
+                <div>• Customize your store theme/pages (Store Settings → Customize).</div>
+                <div>• Share your store link or referral link to earn.</div>
+              </div>
             </div>
             <Link
               to="/affiliate/products"
