@@ -37,8 +37,11 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
   const [activeTab, setActiveTab] = useState('general');
   const [activeTemplate, setActiveTemplate] = useState<string>('modern');
 
-  // Simple profanity blocklist to prevent abusive content or adult terms
-  const bannedWords = ['porn', 'xxx', 'sex', 'nude', 'hate', 'terror', 'abuse'];
+  // Simple profanity/abuse blocklist to prevent adult or harmful content
+  const bannedWords = [
+    'porn','xxx','sex','nude','nsfw','escort','casino','bet','gambling',
+    'hate','terror','abuse','violence','extremism','weapon','gun','knife'
+  ];
 
   const templates = [
     { id: 'modern', name: 'Modern Grid', desc: 'Hero banner, featured carousel, grid cards', theme: 'modern' },
@@ -140,6 +143,18 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
           <div>
             <h2 className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">Store Customization</h2>
             <p className="text-lg text-gray-600">Customize your store appearance and settings</p>
+            <div className="mt-3 text-sm text-gray-700 space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                <span>
+                  Public URL: <strong>{storeSettings.custom_domain || storeSettings.subdomain || userId}</strong> (try <code className="bg-white px-1 rounded">{storeSettings.custom_domain || `beezio.co/store/${storeSettings.subdomain || userId}`}</code>)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-orange-500" />
+                <span>Use templates + Custom Pages to drag/drop banners, feature strips, and info pages.</span>
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <a
@@ -409,6 +424,24 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
               <p className="text-gray-600">
                 Add About, FAQ, Contact, or promo pages. Drag and drop sections (hero banners, product strips, testimonials, text blocks). All pages use the shared Beezio checkout.
               </p>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-gray-200 p-4 bg-white shadow-sm">
+                  <h4 className="font-semibold text-gray-900 mb-2">Suggested sections</h4>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• Hero banner with CTA</li>
+                    <li>• Featured products carousel</li>
+                    <li>• About/mission block</li>
+                    <li>• Testimonials or social proof</li>
+                    <li>• FAQ + contact info</li>
+                  </ul>
+                </div>
+                <div className="rounded-xl border border-gray-200 p-4 bg-white shadow-sm">
+                  <h4 className="font-semibold text-gray-900 mb-2">Good to know</h4>
+                  <p className="text-sm text-gray-600">
+                    Custom pages inherit your store theme and checkout. Keep copy clean (no adult or abusive content). You can create multiple pages and link them in your store navigation.
+                  </p>
+                </div>
+              </div>
               <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                 <CustomPageBuilder ownerType={role} />
               </div>
