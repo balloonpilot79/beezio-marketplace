@@ -192,23 +192,18 @@ const CheckoutPage: React.FC = () => {
           {/* Trust Badges */}
           <div className="bg-gray-50 rounded-lg p-6">
             <h3 className="font-semibold text-gray-900 mb-3">Why shop with us?</h3>
-            <div className="space-y-3 text-sm text-gray-600">
-              <div className="flex items-center space-x-2">
-                <span>🔒</span>
-                <span>SSL encrypted checkout</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span>💳</span>
-                <span>Secure payment processing</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span>📦</span>
-                <span>Fast & reliable shipping</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span>↩️</span>
-                <span>30-day return policy</span>
-              </div>
+            <div className="space-y-3 text-sm text-gray-700">
+              {[
+                'SSL encrypted checkout',
+                'Secure payment processing',
+                'Fast & reliable shipping',
+                '30-day return policy',
+              ].map((text) => (
+                <div key={text} className="flex items-center space-x-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                  <span>{text}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
