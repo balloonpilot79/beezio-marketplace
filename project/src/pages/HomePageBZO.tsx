@@ -145,30 +145,30 @@ const HomePage: React.FC<{
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100">
                 <img
-                  src="https://images.unsplash.com/photo-1523475472560-d2df97ec485c?auto=format&fit=crop&w=900&q=80"
-                  alt="Merchandise ready to ship"
+                  src="https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=900&q=80"
+                  alt="Marketplace product grid"
                   className="w-full h-44 object-cover rounded-2xl"
                 />
-                <p className="text-gray-900 font-semibold mt-3">Curated products</p>
-                <p className="text-gray-600 text-sm">Ready to list, price, and promote.</p>
+                <p className="text-gray-900 font-semibold mt-3">Marketplace-ready</p>
+                <p className="text-gray-600 text-sm">Curated products and pricing in one place.</p>
               </div>
               <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100">
                 <img
-                  src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=900&q=80"
-                  alt="Affiliate planning content"
+                  src="https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&w=900&q=80"
+                  alt="Affiliate analytics dashboard"
                   className="w-full h-44 object-cover rounded-2xl"
                 />
-                <p className="text-gray-900 font-semibold mt-3">Affiliate-ready</p>
-                <p className="text-gray-600 text-sm">One click to let affiliates promote.</p>
+                <p className="text-gray-900 font-semibold mt-3">Affiliate dashboards</p>
+                <p className="text-gray-600 text-sm">Track clicks, sales, and payouts at a glance.</p>
               </div>
               <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100 col-span-2">
                 <img
-                  src="https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1200&q=80"
-                  alt="Custom storefront on laptop"
+                  src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80"
+                  alt="Custom storefront preview"
                   className="w-full h-52 object-cover rounded-2xl"
                 />
-                <p className="text-gray-900 font-semibold mt-3">Build your storefront</p>
-                <p className="text-gray-600 text-sm">Use your domain or beezio.co/yourstore.</p>
+                <p className="text-gray-900 font-semibold mt-3">Custom storefronts</p>
+                <p className="text-gray-600 text-sm">Use your domain or beezio.co/yourstore with templates.</p>
               </div>
             </div>
           </div>

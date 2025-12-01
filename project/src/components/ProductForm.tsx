@@ -50,6 +50,28 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     ] as Array<{ name: string; cost: number; estimated_days: string }>,
     requires_shipping: product?.requires_shipping !== false,
   });
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      images: [],
+      videos: [],
+      tags: [],
+      category_id: '',
+      stock_quantity: 1,
+      is_subscription: false,
+      subscription_interval: '',
+      affiliate_enabled: true,
+      shipping_options: [
+        { name: 'Standard Shipping', cost: 0, estimated_days: '3-5 business days' },
+        { name: 'Express Shipping', cost: 0, estimated_days: '1-2 business days' },
+        { name: 'Free Shipping', cost: 0, estimated_days: '5-7 business days' }
+      ],
+      requires_shipping: true,
+    });
+    setPricingBreakdown(null);
+    setProductImages([]);
+  };
 
   const [productImages, setProductImages] = useState<any[]>([]);
   const [currentProductId, setCurrentProductId] = useState<string | null>(null);
@@ -197,8 +219,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent, addAnother: boolean = false) => {
+    if (e) e.preventDefault();
     
     if (!user) {
       setError('You must be logged in to create a product');
@@ -213,6 +235,22 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
     if (!pricingBreakdown) {
       setError('Please configure your pricing first');
+      return;
+    }
+    if (!formData.title.trim()) {
+      setError('Please add a product title');
+      return;
+    }
+    if (!formData.description.trim()) {
+      setError('Please add a product description');
+      return;
+    }
+    if (!formData.category_id) {
+      setError('Please select a category');
+      return;
+    }
+    if (!formData.images || formData.images.length === 0) {
+      setError('Please upload at least one product image');
       return;
     }
 
@@ -318,35 +356,17 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       }
 
       setSuccess('Product created successfully!');
-      
-      // Reset form
-      setFormData({
-        title: '',
-        description: '',
-        images: [],
-        videos: [],
-        tags: [],
-        category_id: '',
-        stock_quantity: 1,
-        is_subscription: false,
-        subscription_interval: '',
-        affiliate_enabled: true, // DEFAULT TO TRUE - Business preference
-        shipping_options: [
-          { name: 'Standard Shipping', cost: 0, estimated_days: '3-5 business days' },
-          { name: 'Express Shipping', cost: 0, estimated_days: '1-2 business days' },
-          { name: 'Free Shipping', cost: 0, estimated_days: '5-7 business days' }
-        ],
-        requires_shipping: true,
-      });
-      setPricingBreakdown(null);
+      setError(null);
 
       setTimeout(() => {
-        if (onSuccess) {
+        if (addAnother) {
+          resetForm();
+        } else if (onSuccess) {
           onSuccess();
         } else {
           navigate('/dashboard');
         }
-      }, 2000);
+      }, 1200);
 
     } catch (err: any) {
       console.error('Error creating product:', err);
@@ -361,19 +381,28 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       {/* Clean Header */}
       <div className="bg-[#ffcc00] border-b border-gray-200">
         <div className="max-w-3xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-black">Add New Product</h1>
-              <p className="text-sm text-gray-700">Fill out the information below</p>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h1 className="text-2xl font-bold text-black">Add New Product</h1>
+                <p className="text-sm text-gray-700">Fill out the information below</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleSubmit(undefined, true)}
+                  disabled={loading}
+                  className="bg-white border border-gray-300 text-gray-900 px-5 py-2.5 rounded-lg font-semibold hover:bg-gray-50 disabled:bg-gray-200 transition-all"
+                >
+                  {loading ? 'Saving...' : 'Save & Add Another'}
+                </button>
+                <button
+                  onClick={() => handleSubmit()}
+                  disabled={loading}
+                  className="bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200"
+                >
+                  {loading ? 'Saving...' : editMode ? 'Update Product' : 'Save Product'}
+                </button>
+              </div>
             </div>
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200"
-            >
-              {loading ? 'Saving...' : editMode ? 'Update Product' : 'Save Product'}
-            </button>
-          </div>
         </div>
       </div>
 
