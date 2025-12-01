@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Save, Eye, Palette, Globe, Settings, Zap, FileText, ArrowUpDown } from 'lucide-react';
+import { Save, Eye, Palette, Globe, Settings, Zap, FileText, ArrowUpDown, LayoutTemplate, Wand2 } from 'lucide-react';
 import CustomDomainManager from './CustomDomainManager';
 import UniversalIntegrationsPage from './UniversalIntegrationsPage';
 import ImageUploader from './ImageUploader';
@@ -35,6 +35,17 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
+  const [activeTemplate, setActiveTemplate] = useState<string>('modern');
+
+  // Simple profanity blocklist to prevent abusive content or adult terms
+  const bannedWords = ['porn', 'xxx', 'sex', 'nude', 'hate', 'terror', 'abuse'];
+
+  const templates = [
+    { id: 'modern', name: 'Modern Grid', desc: 'Hero banner, featured carousel, grid cards', theme: 'modern' },
+    { id: 'boutique', name: 'Boutique', desc: 'Large imagery, two-column story + featured products', theme: 'elegant' },
+    { id: 'catalog', name: 'Catalog', desc: 'Category sidebar, clean list for fast browsing', theme: 'minimalist' },
+    { id: 'launch', name: 'Launch One-Pager', desc: 'Single-page with hero, highlights, FAQ, CTA', theme: 'vibrant' },
+  ];
 
   useEffect(() => {
     fetchStoreSettings();
@@ -54,7 +65,27 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
     setLoading(false);
   };
 
+  const validateContent = () => {
+    const textFields = [
+      storeSettings.store_name,
+      storeSettings.store_description,
+      storeSettings.business_hours,
+      storeSettings.shipping_policy,
+      storeSettings.return_policy,
+    ].filter(Boolean) as string[];
+
+    const joined = textFields.join(' ').toLowerCase();
+    const found = bannedWords.find(w => joined.includes(w));
+    if (found) {
+      alert(`Please remove disallowed content (“${found}”) before saving.`);
+      return false;
+    }
+    return true;
+  };
+
   const handleSave = async () => {
+    if (!validateContent()) return;
+
     setSaving(true);
     const table = role === 'seller' ? 'store_settings' : 'affiliate_store_settings';
     const { error } = await supabase
@@ -62,6 +93,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
       .upsert({
         [`${role}_id`]: userId,
         ...storeSettings,
+        store_theme: storeSettings.store_theme || activeTemplate,
         updated_at: new Date().toISOString(),
       });
 
@@ -138,6 +170,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
             {[
               { id: 'general', name: 'General', icon: Settings },
               { id: 'appearance', name: 'Appearance', icon: Palette },
+              { id: 'templates', name: 'Templates', icon: LayoutTemplate },
               { id: 'custom-pages', name: 'Custom Pages', icon: FileText },
               { id: 'product-order', name: 'Product Order', icon: ArrowUpDown },
               { id: 'integrations', name: 'API Integrations', icon: Zap },
@@ -300,6 +333,46 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
             </div>
           )}
 
+          {/* Templates Tab */}
+          {activeTab === 'templates' && (
+            <div className="space-y-6">
+              <p className="text-gray-600">
+                Pick a layout starter. You can refine colors, logos, banners, and drag/drop sections in Custom Pages. All templates use the shared Beezio checkout.
+              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                {templates.map(tpl => (
+                  <button
+                    key={tpl.id}
+                    onClick={() => {
+                      setActiveTemplate(tpl.id);
+                      handleInputChange('store_theme', tpl.theme);
+                    }}
+                    className={`text-left border rounded-xl p-4 shadow-sm transition-all ${
+                      activeTemplate === tpl.id
+                        ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200'
+                        : 'border-gray-200 hover:border-orange-300 hover:shadow-md'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{tpl.name}</h4>
+                        <p className="text-sm text-gray-600">{tpl.desc}</p>
+                      </div>
+                      {activeTemplate === tpl.id && (
+                        <span className="text-xs font-bold text-orange-700 bg-orange-100 px-3 py-1 rounded-full">Selected</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500">Theme: {tpl.theme}</div>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <Wand2 className="w-4 h-4 text-orange-500" />
+                <span>Need more control? Jump into Custom Pages to drag/drop sections, add About/FAQ pages, and attach banners.</span>
+              </div>
+            </div>
+          )}
+
           {/* API Integrations Tab */}
           {activeTab === 'integrations' && (
             <div className="space-y-6">
@@ -331,8 +404,14 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
 
           {/* Custom Pages Tab */}
           {activeTab === 'custom-pages' && (
-            <div>
-              <CustomPageBuilder ownerType={role} />
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Custom Pages & Drag-and-Drop Builder</h3>
+              <p className="text-gray-600">
+                Add About, FAQ, Contact, or promo pages. Drag and drop sections (hero banners, product strips, testimonials, text blocks). All pages use the shared Beezio checkout.
+              </p>
+              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <CustomPageBuilder ownerType={role} />
+              </div>
             </div>
           )}
 
