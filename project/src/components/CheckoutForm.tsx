@@ -84,14 +84,21 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
         affiliateCommissionRate: item.affiliateCommissionRate || 0
       }));
 
-      // compute subtotal for tax calculation
-      const itemsSubtotal = cartMetadata.reduce((acc, it) => acc + (it.price * it.quantity), 0);
-      const taxAmount = Math.round((itemsSubtotal * TAX_RATE + Number.EPSILON) * 100) / 100;
+      // compute subtotal and shipping/tax at checkout (not per product)
+      const itemsSubtotal = cartMetadata.reduce((acc, it) => acc + it.price * it.quantity, 0);
+      const shippingTotal = cartMetadata.reduce((acc, it) => {
+        // If products carry shipping_options in cart metadata, pick the first cost; otherwise 0
+        const shippingCost = (it as any).shipping_options?.[0]?.cost ?? 0;
+        return acc + shippingCost * it.quantity;
+      }, 0);
+      const taxBase = itemsSubtotal; // tax applied on merchandise
+      const taxAmount = Math.round((taxBase * TAX_RATE + Number.EPSILON) * 100) / 100;
+      const checkoutTotal = itemsSubtotal + shippingTotal + taxAmount;
 
       // Create payment intent using Supabase function
       const { data, error: functionError } = await supabase.functions.invoke('create-payment-intent', {
         body: {
-          amount: Math.round(amount * 100), // Convert to cents
+          amount: Math.round(checkoutTotal * 100), // Convert to cents
           items: cartMetadata,
           userId: user?.id,
           billingName: billingDetails.name,

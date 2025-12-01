@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Star, Heart, Share2, ShoppingCart } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
@@ -8,6 +8,7 @@ import AddToAffiliateStoreButton from '../components/AddToAffiliateStoreButton';
 import { SampleProduct, products as sampleProducts } from '../data/sampleProducts';
 import { isProductSampleDataEnabled } from '../config/sampleDataConfig';
 import { fetchProductById } from '../services/productService';
+import { calculatePricing, formatPricingBreakdown } from '../lib/pricing';
 
 const ProductDetailPageSimple: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
@@ -19,6 +20,31 @@ const ProductDetailPageSimple: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const sampleDataEnabled = isProductSampleDataEnabled();
+
+  // Centralized pricing computation
+  const sellerBase = useMemo(
+    () => (product ? (product as any).seller_amount ?? product.price ?? 0 : 0),
+    [product]
+  );
+  const affiliateRate = useMemo(
+    () =>
+      product
+        ? product.commission_type === 'flat_rate'
+          ? product.flat_commission_amount ?? 0
+          : product.commission_rate ?? 0
+        : 0,
+    [product]
+  );
+  const pricing = useMemo(
+    () =>
+      calculatePricing({
+        sellerDesiredAmount: sellerBase,
+        affiliateRate,
+        affiliateType: product?.commission_type,
+      }),
+    [sellerBase, affiliateRate, product?.commission_type]
+  );
+  const formattedPricing = useMemo(() => formatPricingBreakdown(pricing), [pricing]);
 
   // Handle affiliate tracking
   useEffect(() => {
@@ -75,7 +101,7 @@ const ProductDetailPageSimple: React.FC = () => {
       addToCart({
         productId: product.id,
         title: product.name,
-        price: product.price,
+        price: pricing.listingPrice,
         quantity: quantity,
         image: product.image,
         sellerId: product.sellerId || product.seller || 'unknown-seller',
@@ -175,9 +201,37 @@ const ProductDetailPageSimple: React.FC = () => {
 
             {/* Price & CTA */}
             <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-              <div className="flex items-baseline gap-3">
-                <span className="text-5xl font-extrabold text-gray-900">${product.price}</span>
-                <span className="text-lg text-gray-500">/month</span>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-baseline gap-3">
+                  <span className="text-5xl font-extrabold text-gray-900">${pricing.listingPrice.toFixed(2)}</span>
+                  {product.is_subscription && product.subscription_interval && (
+                    <span className="text-lg text-gray-500">/ {product.subscription_interval}</span>
+                  )}
+                </div>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <div className="flex justify-between max-w-xs">
+                      <span>Seller keeps</span>
+                      <span className="font-semibold text-green-700">{formattedPricing.seller}</span>
+                    </div>
+                  <div className="flex justify-between max-w-xs">
+                    <span>Affiliate earns</span>
+                    <span className="font-semibold text-blue-700">{formattedPricing.affiliate}</span>
+                  </div>
+                  <div className="flex justify-between max-w-xs">
+                    <span>Beezio platform</span>
+                    <span className="font-semibold text-purple-700">{formattedPricing.platform}</span>
+                  </div>
+                  <div className="flex justify-between max-w-xs">
+                    <span>Payment fees</span>
+                    <span className="font-semibold text-gray-700">{formattedPricing.stripe}</span>
+                  </div>
+                  {product.shipping_cost !== undefined && (
+                    <div className="text-xs text-gray-600">
+                      Shipping estimate: ${Number(product.shipping_cost || 0).toFixed(2)} (charged at checkout)
+                    </div>
+                  )}
+                  <div className="text-xs text-gray-500">Shipping & tax added at checkout.</div>
+                </div>
               </div>
 
               {/* Quantity */}
@@ -218,7 +272,7 @@ const ProductDetailPageSimple: React.FC = () => {
                     productId={product.id}
                     sellerId={product.sellerId || product.seller || 'unknown'}
                     productTitle={product.name}
-                    productPrice={product.price}
+                    productPrice={pricing.listingPrice}
                     defaultCommissionRate={product.commission_rate || 25}
                     size="lg"
                     variant="card"

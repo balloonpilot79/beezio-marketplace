@@ -259,19 +259,19 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                     <TrendingUp className="h-3 w-3" />
                     <span>
                       ${(() => {
+                        const sellerBase = (product as any).seller_amount ?? product.price;
+                        const affiliateRate = product.commission_type === 'flat_rate'
+                          ? product.flat_commission_amount
+                          : product.commission_rate;
                         const pricing = calculatePricing({
-                          sellerDesiredAmount: product.price,
-                          affiliateRate: product.commission_type === 'flat_rate' 
-                            ? product.flat_commission_amount 
-                            : product.commission_rate,
+                          sellerDesiredAmount: sellerBase,
+                          affiliateRate,
                           affiliateType: product.commission_type
                         });
                         return pricing.affiliateAmount.toFixed(2);
-                      })()} 💰
+                      })()}
                       {product.is_subscription && product.subscription_interval && (
-                        <>
-                          {' '}<span className="ml-1">(recurring {product.subscription_interval})</span>
-                        </>
+                        <span className="ml-1">(recurring {product.subscription_interval})</span>
                       )}
                     </span>
                   </div>
@@ -300,75 +300,49 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                 <div className="flex items-center space-x-2">
                   {/* Transparent Pricing Display */}
                   <div className="group relative">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-gray-800 font-bold text-lg">
-                        ${(() => {
-                          const pricing = calculatePricing({
-                            sellerDesiredAmount: product.price,
-                            affiliateRate: product.commission_type === 'flat_rate' 
-                              ? product.flat_commission_amount 
-                              : product.commission_rate,
-                            affiliateType: product.commission_type
-                          });
-                          return pricing.listingPrice.toFixed(2);
-                        })()}
-                      </span>
-                      <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                    </div>
-                    
-                    {/* Pricing Breakdown Tooltip */}
-                    <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                      <div className="text-sm text-gray-700">
-                        <div className="font-semibold text-gray-900 mb-2">💰 Transparent Pricing - Everyone Wins!</div>
-                        {(() => {
-                          const pricing = calculatePricing({
-                            sellerDesiredAmount: product.price,
-                            affiliateRate: product.commission_type === 'flat_rate' 
-                              ? product.flat_commission_amount 
-                              : product.commission_rate,
-                            affiliateType: product.commission_type
-                          });
-                          const formatted = formatPricingBreakdown(pricing);
-                          return (
-                            <div className="space-y-1">
-                              <div className="flex justify-between">
-                                <span>🎯 Seller gets:</span>
-                                <span className="font-medium text-green-600">{formatted.seller}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>🎁 Affiliate earns:</span>
-                                <span className="font-medium text-blue-600">{formatted.affiliate}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>🏢 Platform fee:</span>
-                                <span className="font-medium text-purple-600">{formatted.platform}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>💳 Processing:</span>
-                                <span className="font-medium text-gray-600">{formatted.stripe}</span>
-                              </div>
+                    {(() => {
+                      const sellerBase = (product as any).seller_amount ?? product.price;
+                      const affiliateRate = product.commission_type === 'flat_rate'
+                        ? product.flat_commission_amount
+                        : product.commission_rate;
+                      const pricing = calculatePricing({
+                        sellerDesiredAmount: sellerBase,
+                        affiliateRate,
+                        affiliateType: product.commission_type
+                      });
+                      const formatted = formatPricingBreakdown(pricing);
+                      return (
+                        <>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-gray-900 font-bold text-lg">${pricing.listingPrice.toFixed(2)}</span>
+                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                          </div>
+                          <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                            <div className="text-sm text-gray-700 space-y-1">
+                              <div className="font-semibold text-gray-900">Transparent pricing</div>
+                              <div className="flex justify-between"><span>Seller keeps</span><span className="font-medium text-green-600">{formatted.seller}</span></div>
+                              <div className="flex justify-between"><span>Affiliate earns</span><span className="font-medium text-blue-600">{formatted.affiliate}</span></div>
+                              <div className="flex justify-between"><span>Beezio platform</span><span className="font-medium text-purple-600">{formatted.platform}</span></div>
+                              <div className="flex justify-between"><span>Payment fees</span><span className="font-medium text-gray-600">{formatted.stripe}</span></div>
                               <div className="border-t pt-1 mt-1 flex justify-between font-semibold">
-                                <span>You pay:</span>
-                                <span className="text-gray-900">{formatted.total}</span>
+                                <span>Buyer pays</span><span className="text-gray-900">{formatted.total}</span>
                               </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                No hidden fees - transparent pricing!
-                              </div>
+                              <div className="text-xs text-gray-500">No hidden fees. Shipping & tax are added at checkout.</div>
                             </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                   
                   {product.is_subscription && product.subscription_interval && (
                     <span className="ml-2 text-primary-600 text-xs font-semibold bg-primary-50 px-2 py-1 rounded-full">
-                      📅 {product.subscription_interval.charAt(0).toUpperCase() + product.subscription_interval.slice(1)}
+                      {product.subscription_interval.charAt(0).toUpperCase() + product.subscription_interval.slice(1)}
                     </span>
                   )}
                   {/* Show shipping cost if available */}
                   {product.shipping_cost && (
-                    <span className="text-primary-500 text-xs font-semibold">+ ${product.shipping_cost.toFixed(2)} 🚚</span>
+                    <span className="text-primary-500 text-xs font-semibold">+ ${product.shipping_cost.toFixed(2)} shipping</span>
                   )}
                 </div>
               </div>
@@ -400,7 +374,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                       </Link>
                       {product.profiles?.location && (
                         <p className="text-gray-600 text-xs line-clamp-1">
-                          📍 {product.profiles.location}
+                          {product.profiles.location}
                         </p>
                       )}
                     </div>
