@@ -204,12 +204,13 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
     ? products 
     : products.filter(p => p.category === activeCategory);
 
+  const storeUrl = seller?.custom_domain
+    ? `https://${seller.custom_domain}`
+    : seller?.subdomain
+    ? `https://${seller.subdomain}.beezio.co`
+    : `${window.location.origin}/store/${resolvedSellerId}`;
+
   const handleShare = async () => {
-    // Use subdomain if available, otherwise fallback to /store/:id path
-    const storeUrl = seller?.subdomain 
-      ? `https://${seller.subdomain}.beezio.co`
-      : `${window.location.origin}/store/${resolvedSellerId}`;
-    
     if (navigator.share) {
       await navigator.share({
         title: `${seller?.full_name}'s Store`,
@@ -392,6 +393,22 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                 <Share2 className="w-4 h-4" />
                 <span>Share Store</span>
               </button>
+              <a
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(storeUrl)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 hover:bg-blue-100 text-sm font-semibold"
+              >
+                Share on Facebook
+              </a>
+              <a
+                href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(storeUrl)}&text=${encodeURIComponent(`${seller.full_name}'s store on Beezio`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-2 bg-slate-50 text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-100 text-sm font-semibold"
+              >
+                Share on X
+              </a>
               <Link
                 to={`/contact-seller/${resolvedSellerId}`}
                 className="flex items-center space-x-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
@@ -514,7 +531,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             )}
           </div>
         ) : (
-          <ProductGrid products={filteredProducts} />
+          <ProductGrid products={filteredProducts} hideAffiliateUI />
         )}
 
         {/* Store Customization Panel */}

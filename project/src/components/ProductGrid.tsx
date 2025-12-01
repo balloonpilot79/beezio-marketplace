@@ -39,9 +39,10 @@ interface Product {
 interface ProductGridProps {
   products?: Product[];
   hideFilters?: boolean;
+  hideAffiliateUI?: boolean; // hide affiliate badges/tooltip (e.g., on seller storefronts)
 }
 
-const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, hideFilters = false }) => {
+const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, hideFilters = false, hideAffiliateUI = false }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -253,8 +254,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                   />
                 </div>
                 
-                {/* Commission info - show to everyone with transparent calculation */}
-                {product.commission_rate > 0 && (
+                {/* Commission info - only show where affiliate UI is desired */}
+                {!hideAffiliateUI && product.commission_rate > 0 && (
                   <div className="absolute bottom-2 left-2 bg-primary-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center space-x-1 shadow-lg">
                     <TrendingUp className="h-3 w-3" />
                     <span>
@@ -311,6 +312,13 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                         affiliateType: product.commission_type
                       });
                       const formatted = formatPricingBreakdown(pricing);
+                      if (hideAffiliateUI) {
+                        return (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-gray-900 font-bold text-lg">${pricing.listingPrice.toFixed(2)}</span>
+                          </div>
+                        );
+                      }
                       return (
                         <>
                           <div className="flex items-center space-x-2">
@@ -390,8 +398,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                 </div>
               </div>
 
-              {/* Add to Affiliate Store Button - for affiliates */}
-              {(userRole === 'affiliate' || userRole === 'fundraiser') && (
+              {/* Add to store button - affiliates/fundraisers/sellers can add from marketplace */}
+              {(userRole === 'affiliate' || userRole === 'fundraiser' || userRole === 'seller') && (
                 <div className="mt-3 mb-2">
                   <AddToAffiliateStoreButton
                     productId={product.id}
