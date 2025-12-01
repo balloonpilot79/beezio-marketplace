@@ -468,6 +468,12 @@ const EnhancedSellerDashboard: React.FC = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Seller Dashboard</h1>
         <p className="text-gray-600">Manage your products, track sales, and grow your business</p>
+        <div className="mt-4 grid gap-2 text-sm text-gray-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <div className="font-semibold text-amber-800">Quick start</div>
+          <div>• Add products from the marketplace to your store (Marketplace → Add to store).</div>
+          <div>• Customize your store theme/pages (Store Settings → Customize).</div>
+          <div>• Share your store link or referral link to earn; checkout stays on Beezio with platform + Stripe + tax/shipping.</div>
+        </div>
       </div>
 
       {/* Local Affiliate Support Banner */}
