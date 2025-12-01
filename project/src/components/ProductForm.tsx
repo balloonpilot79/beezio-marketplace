@@ -6,6 +6,8 @@ import EasyImageUpload from './EasyImageUpload';
 import ImageGallery from './ImageGallery';
 import SimpleImageUpload from './SimpleImageUpload';
 import { PricingBreakdown } from '../lib/pricing';
+import { callGPT } from '../lib/gptClient';
+import { Wand2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface ProductFormProps {
@@ -31,6 +33,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pricingBreakdown, setPricingBreakdown] = useState<PricingBreakdown | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     title: product?.title || '',
@@ -71,6 +74,29 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     });
     setPricingBreakdown(null);
     setProductImages([]);
+  };
+
+  const generateCopyWithAI = async () => {
+    setAiLoading(true);
+    try {
+      const prompt = `Write a concise product title, 3 short bullet features, and 8-12 tags for an ecommerce listing. Return as JSON with keys title, bullets (array), tags (array). Use the details:\nTitle: ${formData.title}\nDescription: ${formData.description}\nCategory: ${formData.category_id || 'Uncategorized'}`;
+      const reply = await callGPT({
+        mode: 'product_copy',
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const parsed = JSON.parse(reply);
+      if (parsed.title) handleInputChange('title', parsed.title);
+      if (Array.isArray(parsed.bullets)) {
+        handleInputChange('description', parsed.bullets.join(' • ') + (formData.description ? `\n\n${formData.description}` : ''));
+      }
+      if (Array.isArray(parsed.tags)) {
+        setFormData(prev => ({ ...prev, tags: parsed.tags.map((t: any) => String(t)) }));
+      }
+    } catch (err: any) {
+      alert(`AI copy generation failed: ${err.message || err}`);
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const [productImages, setProductImages] = useState<any[]>([]);
