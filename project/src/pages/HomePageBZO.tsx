@@ -145,8 +145,8 @@ const HomePage: React.FC<{
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100">
                 <img
-                  src="https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=900&q=80"
-                  alt="Marketplace product grid"
+                  src="https://images.unsplash.com/photo-1542293787938-4d273c3f3e86?auto=format&fit=crop&w=900&q=80"
+                  alt="Product assortment"
                   className="w-full h-44 object-cover rounded-2xl"
                 />
                 <p className="text-gray-900 font-semibold mt-3">Marketplace-ready</p>
@@ -154,8 +154,8 @@ const HomePage: React.FC<{
               </div>
               <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100">
                 <img
-                  src="https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&w=900&q=80"
-                  alt="Affiliate analytics dashboard"
+                  src="https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=900&q=80"
+                  alt="Earnings dashboard"
                   className="w-full h-44 object-cover rounded-2xl"
                 />
                 <p className="text-gray-900 font-semibold mt-3">Affiliate dashboards</p>
@@ -163,8 +163,8 @@ const HomePage: React.FC<{
               </div>
               <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100 col-span-2">
                 <img
-                  src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80"
-                  alt="Custom storefront preview"
+                  src="https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1200&q=80"
+                  alt="Custom storefront"
                   className="w-full h-52 object-cover rounded-2xl"
                 />
                 <p className="text-gray-900 font-semibold mt-3">Custom storefronts</p>
