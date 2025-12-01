@@ -47,6 +47,7 @@ import AffiliateStoreCustomization from './components/AffiliateStoreCustomizatio
 import UniversalIntegrationsPage from './components/UniversalIntegrationsPage';
 import OrderManagement from './components/OrderManagement';
 import ChatBot from './components/ChatBot';
+import GPTChatWidget from './components/GPTChatWidget';
 import RevolutionaryShowcaseSimple from './components/RevolutionaryShowcaseSimple';
 import TestPage from './components/TestPage';
 import ContactPage from './pages/ContactPage';
@@ -225,6 +226,7 @@ const AppWorking: React.FC = () => {
                 <Footer />
 
                 <ChatBot />
+                <GPTChatWidget />
 
                 {/* Auth Modal */}
                 <AuthModal
