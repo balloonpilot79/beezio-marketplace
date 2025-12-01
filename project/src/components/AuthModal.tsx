@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import { supabase } from '../lib/supabase';
 
 // Runtime check for Vite env vars (will be inlined at build time)
 const RUNTIME_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
@@ -47,6 +48,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
     state: '',
     zipCode: '',
   });
+  const [referralCode, setReferralCode] = useState<string>('');
+  const [referralValid, setReferralValid] = useState<boolean | null>(null);
+  const [referrerName, setReferrerName] = useState<string>('');
 
   // Reset form state when modal opens/closes
   React.useEffect(() => {
@@ -55,8 +59,61 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
       setLoading(false);
       setError(null);
       setSuccess(null);
+      // Prefill referral code from URL if present
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+      if (ref) {
+        setReferralCode(ref);
+        validateReferralCode(ref);
+      }
     }
   }, [isOpen]);
+
+  const validateReferralCode = async (code: string) => {
+    try {
+      // Look up by username first
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, username')
+        .eq('username', code)
+        .maybeSingle();
+
+      if (data) {
+        setReferralValid(true);
+        setReferrerName(data.full_name || data.username || 'Someone');
+        return data.id;
+      }
+
+      if (error && error.code !== 'PGRST116') {
+        console.warn('Referral lookup warning:', error);
+      }
+
+      const { data: byId, error: byIdErr } = await supabase
+        .from('profiles')
+        .select('id, full_name, username')
+        .eq('id', code)
+        .maybeSingle();
+
+      if (byId) {
+        setReferralValid(true);
+        setReferrerName(byId.full_name || byId.username || 'Someone');
+        return byId.id;
+      }
+
+      if (byIdErr && byIdErr.code !== 'PGRST116') {
+        console.warn('Referral lookup by id warning:', byIdErr);
+      }
+
+      setReferralValid(false);
+      setReferrerName('');
+      return null;
+    } catch (err) {
+      console.error('Referral validation error:', err);
+      setReferralValid(false);
+      setReferrerName('');
+      return null;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +179,24 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         const result = await signUp(formData.email, formData.password, formData);
         
         if (result && result.user) {
+          if (referralCode && referralValid) {
+            try {
+              const { data: newProfile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('user_id', result.user.id)
+                .maybeSingle();
+              if (newProfile?.id) {
+                await supabase
+                  .from('profiles')
+                  .update({ referred_by: referralCode })
+                  .eq('id', newProfile.id);
+                localStorage.setItem('affiliate_referral', referralCode);
+              }
+            } catch (refErr) {
+              console.warn('Referral attach failed (non-blocking):', refErr);
+            }
+          }
           // Supabase: If email confirmation is required, session will be null
           if (!result.session) {
             setSuccess('Account created! Please check your email to confirm your account before logging in.');
@@ -307,15 +382,50 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ZIP Code (Optional)
+                ZIP Code (Optional)
+              </label>
+              <input
+                type="text"
+                name="zipCode"
+                value={formData.zipCode}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Referral Code (Optional)
                   </label>
                   <input
                     type="text"
-                    name="zipCode"
-                    value={formData.zipCode}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    value={referralCode}
+                    onChange={(e) => {
+                      const code = e.target.value.trim();
+                      setReferralCode(code);
+                      if (code.length >= 3) {
+                        validateReferralCode(code);
+                      } else {
+                        setReferralValid(null);
+                        setReferrerName('');
+                      }
+                    }}
+                    placeholder="Enter inviter's code"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                      referralValid === true
+                        ? 'border-green-500 bg-green-50'
+                        : referralValid === false
+                        ? 'border-red-500 bg-red-50'
+                        : 'border-gray-300'
+                    }`}
                   />
+                  {referralValid === true && (
+                    <p className="text-xs text-green-700 mt-1">
+                      Valid code from {referrerName}. You keep your full share; they earn 5% from Beezio's fee.
+                    </p>
+                  )}
+                  {referralValid === false && (
+                    <p className="text-xs text-red-600 mt-1">Code not found. Double-check or leave blank.</p>
+                  )}
                 </div>
               </React.Fragment>
             )}
