@@ -9,7 +9,7 @@ import {
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
-import { calculatePricing, reverseCalculateFromListingPrice, TAX_RATE } from '../lib/pricing';
+import { calculatePricing, reverseCalculateFromListingPrice, TAX_RATE, DEFAULT_REFERRAL_RATE } from '../lib/pricing';
 import { getReferralAttribution, clearReferralData } from '../utils/referralTracking';
 
 interface CheckoutFormProps {
@@ -144,11 +144,19 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
         
         // Add affiliate/fundraiser tracking data to items
         const itemsWithAffiliateData = cartMetadata.map(item => {
+          // If there is a referral (affiliate or fundraiser), carve 5% of sale from Beezio's platform fee
+          const referralCommission = attribution.id
+            ? Math.max(0, item.price * item.quantity * DEFAULT_REFERRAL_RATE)
+            : 0;
+          const platformNet = Math.max(0, item.platformFee - referralCommission);
+
           if (attribution.type === 'affiliate' && attribution.id) {
             return {
               ...item,
               affiliate_id: attribution.id,
               referral_type: 'affiliate',
+              referral_commission: referralCommission,
+              platform_net: platformNet,
               affiliate_commission: item.affiliateAmount,
               platform_fee: item.platformFee,
               seller_payout: item.sellerDesiredAmount, // Seller gets exactly what they wanted
@@ -160,6 +168,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
               ...item,
               fundraiser_id: attribution.id,
               referral_type: 'fundraiser',
+              referral_commission: referralCommission,
+              platform_net: platformNet,
               affiliate_commission: item.affiliateAmount,
               platform_fee: item.platformFee,
               seller_payout: item.sellerDesiredAmount,
