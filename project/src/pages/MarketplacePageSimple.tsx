@@ -240,6 +240,26 @@ const MarketplacePage = () => {
               </div>
             </div>
 
+            {/* Helper Banner */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-800">
+              <div className="font-semibold mb-1">Need a hand?</div>
+              <div className="space-y-1">
+                <div>• Sellers: click "Add to store" on any product to stock your shop. Customize your store in Store Settings → Customize.</div>
+                <div>• Affiliates/Fundraisers: use "Add to store" to build your promo catalog, then share your store or referral link.</div>
+                <div>• Checkout stays on Beezio with platform + Stripe + tax/shipping; commissions are handled automatically.</div>
+              </div>
+            </div>
+
+            {/* Helper Banner */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-800">
+              <div className="font-semibold mb-1">Need a hand?</div>
+              <div className="space-y-1">
+                <div>• Sellers: click "Add to store" on any product to stock your shop. Customize your store in Store Settings → Customize.</div>
+                <div>• Affiliates/Fundraisers: use "Add to store" to build your promo catalog, then share your store or referral link.</div>
+                <div>• Checkout stays on Beezio with platform + Stripe + tax/shipping; commissions are handled automatically.</div>
+              </div>
+            </div>
+
             {/* Results Summary */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-4">

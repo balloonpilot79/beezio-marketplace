@@ -16,6 +16,13 @@ const AddProductPage: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadResults, setUploadResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+  const checklist = [
+    'Required: title, description, and the price you want to earn. Beezio adds platform + Stripe; tax/shipping are added at checkout.',
+    'Upload at least one image (use the uploader below).',
+    'Set affiliate commission (percentage or flat) for marketplace/affiliate use.',
+    'Pick a category and stock quantity.',
+    'You can also add products from the marketplace via “Add to store”.',
+  ];
 
   const handleBulkUpload = async () => {
   if (!bulkFile || !user) return;
@@ -271,6 +278,14 @@ const AddProductPage: React.FC = () => {
           </div>
           <h1 className="text-5xl font-bold text-white mb-4">Add Products</h1>
           <p className="text-xl text-white/80">Choose how you want to buzz your products into the hive</p>
+          <div className="mt-4 max-w-3xl mx-auto text-left text-sm text-white/90 bg-white/10 border border-white/20 rounded-lg p-4">
+            <div className="font-semibold text-white">Checklist</div>
+            <div className="mt-1 space-y-1">
+              {checklist.map(item => (
+                <div key={item}>• {item}</div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
