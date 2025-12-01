@@ -10,7 +10,7 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { calculatePricing, reverseCalculateFromListingPrice, TAX_RATE } from '../lib/pricing';
-import { getAffiliateRef, clearAffiliateRef } from '../utils/affiliateTracking';
+import { getReferralAttribution, clearReferralData } from '../utils/referralTracking';
 
 interface CheckoutFormProps {
   amount: number;
@@ -140,20 +140,29 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
 
       // Payment successful - create order record and clear cart
       try {
-        // Get affiliate reference if exists
-        const affiliateRef = getAffiliateRef();
+        const attribution = getReferralAttribution();
         
-        // Add affiliate tracking data to items
+        // Add affiliate/fundraiser tracking data to items
         const itemsWithAffiliateData = cartMetadata.map(item => {
-          // Add affiliate data if this order came through affiliate link
-          if (affiliateRef.id && affiliateRef.code) {
+          if (attribution.type === 'affiliate' && attribution.id) {
             return {
               ...item,
-              affiliate_id: affiliateRef.id,
-              referral_code: affiliateRef.code,
+              affiliate_id: attribution.id,
+              referral_type: 'affiliate',
               affiliate_commission: item.affiliateAmount,
               platform_fee: item.platformFee,
               seller_payout: item.sellerDesiredAmount, // Seller gets exactly what they wanted
+            };
+          }
+          
+          if (attribution.type === 'fundraiser' && attribution.id) {
+            return {
+              ...item,
+              fundraiser_id: attribution.id,
+              referral_type: 'fundraiser',
+              affiliate_commission: item.affiliateAmount,
+              platform_fee: item.platformFee,
+              seller_payout: item.sellerDesiredAmount,
             };
           }
           
@@ -169,13 +178,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
             billingDetails: billingDetails,
             totalPaid: checkoutTotal,
             tax: taxAmount,
+            referral: attribution,
           },
         });
 
-        // Clear affiliate reference after successful order
-        if (affiliateRef.id) {
-          clearAffiliateRef();
-        }
+        // Clear referral data after successful order
+        clearReferralData();
 
         // Clear the cart after successful order
         localStorage.removeItem('beezio-cart');
