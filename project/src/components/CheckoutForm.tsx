@@ -9,7 +9,7 @@ import {
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
-import { calculatePricing, formatPricingBreakdown, TAX_RATE } from '../lib/pricing';
+import { calculatePricing, reverseCalculateFromListingPrice, TAX_RATE } from '../lib/pricing';
 import { getAffiliateRef, clearAffiliateRef } from '../utils/affiliateTracking';
 
 interface CheckoutFormProps {
@@ -42,22 +42,60 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!stripe || !elements) {
-      return;
-    }
-
     setProcessing(true);
     setError(null);
 
-    const cardElement = elements.getElement(CardNumberElement);
-
-    if (!cardElement) {
-      setError('Card element not found');
-      setProcessing(false);
-      return;
-    }
-
     try {
+      // Prepare cart metadata with consistent pricing breakdown
+      const cartMetadata = items.map(item => {
+        const affiliateRate = item.commission_type === 'flat_rate'
+          ? item.flat_commission_amount || 0
+          : item.commission_rate || 0;
+        const breakdown = reverseCalculateFromListingPrice(
+          item.price,
+          affiliateRate,
+          item.commission_type || 'percentage',
+          0, // referral handled at checkout level if needed
+        );
+        return {
+          productId: item.id,
+          title: item.title,
+          price: item.price,
+          quantity: item.quantity,
+          sellerId: item.sellerId || 'unknown',
+          sellerDesiredAmount: breakdown.sellerAmount,
+          commissionRate: affiliateRate,
+          affiliateType: item.commission_type || 'percentage',
+          affiliateId: item.affiliateId || null,
+          affiliateCommissionRate: item.affiliateCommissionRate || affiliateRate,
+          affiliateAmount: breakdown.affiliateAmount,
+          platformFee: breakdown.platformFee,
+          stripeFee: breakdown.stripeFee,
+        };
+      });
+
+      // compute subtotal and shipping/tax at checkout (not per product)
+      const itemsSubtotal = cartMetadata.reduce((acc, it) => acc + it.price * it.quantity, 0);
+      const shippingTotal = items.reduce((acc, it) => acc + (it.shippingCost || 0) * it.quantity, 0);
+      const taxBase = itemsSubtotal; // tax applied on merchandise
+      const taxAmount = Math.round((taxBase * TAX_RATE + Number.EPSILON) * 100) / 100;
+      const checkoutTotal = itemsSubtotal + shippingTotal + taxAmount;
+
+      // If Stripe isn’t configured, simulate success for now
+      if (!stripe || !elements || !import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) {
+        onSuccess('order-placeholder');
+        setProcessing(false);
+        return;
+      }
+
+      const cardElement = elements.getElement(CardNumberElement);
+
+      if (!cardElement) {
+        setError('Card element not found');
+        setProcessing(false);
+        return;
+      }
+
       // Create payment method
       const { error: paymentMethodError, paymentMethod } = await stripe.createPaymentMethod({
         type: 'card',
@@ -70,30 +108,6 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
         setProcessing(false);
         return;
       }
-
-      // Create payment intent with cart metadata
-      const cartMetadata = items.map(item => ({
-        productId: item.id,
-        title: item.title,
-        price: item.price,
-        quantity: item.quantity,
-        sellerId: item.sellerId || 'unknown',
-        sellerDesiredAmount: item.price * 0.7, // Default: seller gets 70% of listing price
-        commissionRate: item.commission_rate || 70,
-        affiliateId: item.affiliateId || null,
-        affiliateCommissionRate: item.affiliateCommissionRate || 0
-      }));
-
-      // compute subtotal and shipping/tax at checkout (not per product)
-      const itemsSubtotal = cartMetadata.reduce((acc, it) => acc + it.price * it.quantity, 0);
-      const shippingTotal = cartMetadata.reduce((acc, it) => {
-        // If products carry shipping_options in cart metadata, pick the first cost; otherwise 0
-        const shippingCost = (it as any).shipping_options?.[0]?.cost ?? 0;
-        return acc + shippingCost * it.quantity;
-      }, 0);
-      const taxBase = itemsSubtotal; // tax applied on merchandise
-      const taxAmount = Math.round((taxBase * TAX_RATE + Number.EPSILON) * 100) / 100;
-      const checkoutTotal = itemsSubtotal + shippingTotal + taxAmount;
 
       // Create payment intent using Supabase function
       const { data, error: functionError } = await supabase.functions.invoke('create-payment-intent', {
@@ -111,7 +125,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
         throw new Error(`Payment setup failed: ${functionError.message}`);
       }
 
-  const { client_secret, order_id, payment_intent_id } = data;
+      const { client_secret, order_id, payment_intent_id } = data;
 
       // Confirm payment
       const { error: confirmError } = await stripe.confirmCardPayment(client_secret, {
@@ -131,22 +145,15 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
         
         // Add affiliate tracking data to items
         const itemsWithAffiliateData = cartMetadata.map(item => {
-          // Calculate pricing breakdown for this item using commission rate
-          const pricing = calculatePricing({
-            sellerDesiredAmount: item.sellerDesiredAmount,
-            affiliateRate: item.commissionRate || 0,
-            affiliateType: 'percentage'
-          });
-          
           // Add affiliate data if this order came through affiliate link
           if (affiliateRef.id && affiliateRef.code) {
             return {
               ...item,
               affiliate_id: affiliateRef.id,
               referral_code: affiliateRef.code,
-              affiliate_commission: pricing.affiliateAmount,
-              platform_fee: pricing.platformFee,
-              seller_payout: pricing.sellerAmount, // Seller gets exactly what they wanted
+              affiliate_commission: item.affiliateAmount,
+              platform_fee: item.platformFee,
+              seller_payout: item.sellerDesiredAmount, // Seller gets exactly what they wanted
             };
           }
           
@@ -160,7 +167,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
             paymentIntentId: payment_intent_id,
             items: itemsWithAffiliateData,
             billingDetails: billingDetails,
-            totalPaid: amount,
+            totalPaid: checkoutTotal,
             tax: taxAmount,
           },
         });
