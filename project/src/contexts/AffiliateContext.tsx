@@ -166,7 +166,7 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
     const refParam = referralCode || user.id;
     
     // Create a site-wide affiliate link that tracks signups and purchases
-    return `${baseUrl}/signup?ref=${refParam}`;
+    return `${baseUrl}/affiliate-signup?ref=${refParam}`;
   };
 
   const trackClick = (productId: string, affiliateId: string) => {

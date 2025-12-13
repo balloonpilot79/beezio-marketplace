@@ -80,10 +80,30 @@ const StreamlinedAddProducts: React.FC = () => {
   };
 
   const handleImageUpload = (urls: string[]) => {
-    updateProduct(currentProductIndex, 'images', [...products[currentProductIndex].images, ...urls]);
+    setProducts(prev => {
+      const next = [...prev];
+      const current = next[currentProductIndex] || blankProduct();
+      next[currentProductIndex] = {
+        ...current,
+        images: [...(current.images || []), ...urls],
+      };
+      return next;
+    });
   };
 
-  const saveAllProducts = async () => {
+  const blankProduct = (): ProductItem => ({
+    id: Date.now().toString(),
+    name: '',
+    sku: '',
+    description: '',
+    price: 0,
+    inventory: 1,
+    images: [],
+    category_id: '',
+    affiliate_enabled: true
+  });
+
+  const saveAllProducts = async (redirectAfterSave: boolean = true) => {
     if (!profile?.id) {
       alert('Please complete your profile first');
       return;
@@ -121,7 +141,13 @@ const StreamlinedAddProducts: React.FC = () => {
       }
 
       alert(`Successfully added ${validProducts.length} products!`);
-      navigate('/dashboard');
+      if (redirectAfterSave) {
+        navigate('/dashboard');
+      } else {
+        // Reset form for another entry
+        setProducts([blankProduct()]);
+        setCurrentProductIndex(0);
+      }
 
     } catch (error: any) {
       console.error('Error saving products:', error);
@@ -143,13 +169,22 @@ const StreamlinedAddProducts: React.FC = () => {
               <h1 className="text-2xl font-bold text-black">Add New Product</h1>
               <p className="text-sm text-gray-700">Fill out the information below</p>
             </div>
-            <button
-              onClick={saveAllProducts}
-              disabled={saving}
-              className="bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200"
-            >
-              {saving ? 'Saving...' : 'Save Product'}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => saveAllProducts(false)}
+                disabled={saving}
+                className="bg-white border border-black text-black hover:bg-gray-100 disabled:bg-gray-200 px-4 py-2.5 rounded-lg font-semibold shadow-sm transition-all duration-200"
+              >
+                {saving ? 'Saving...' : 'Save & Add Another'}
+              </button>
+              <button
+                onClick={() => saveAllProducts(true)}
+                disabled={saving}
+                className="bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200"
+              >
+                {saving ? 'Saving...' : 'Save Product'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -308,6 +343,23 @@ const StreamlinedAddProducts: React.FC = () => {
             </label>
           </div>
 
+        </div>
+        {/* Bottom action bar */}
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <button
+            onClick={() => saveAllProducts(false)}
+            disabled={saving}
+            className="bg-white border border-black text-black hover:bg-gray-100 disabled:bg-gray-200 px-4 py-2.5 rounded-lg font-semibold shadow-sm transition-all duration-200"
+          >
+            {saving ? 'Saving...' : 'Save & Add Another'}
+          </button>
+          <button
+            onClick={() => saveAllProducts(true)}
+            disabled={saving}
+            className="bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            {saving ? 'Saving...' : 'Save Product'}
+          </button>
         </div>
       </div>
     </div>

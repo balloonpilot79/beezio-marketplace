@@ -14,10 +14,13 @@ interface CartItem {
   price: number;
   quantity: number;
   sellerId: string;
+  sellerDesiredAmount?: number;
   commissionRate: number;
   affiliateId?: string;
   affiliateCommissionRate?: number;
 }
+
+const roundToCents = (amount: number): number => Math.round((amount + Number.EPSILON) * 100);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -37,9 +40,14 @@ serve(async (req) => {
       apiVersion: '2023-10-16',
     })
 
+    const serviceRoleKey =
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ??
+      Deno.env.get('SERVICE_ROLE_KEY') ??
+      ''
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      serviceRoleKey
     )
 
     // Calculate totals for the first item (for metadata)
@@ -63,15 +71,32 @@ serve(async (req) => {
       allItems: JSON.stringify(items)
     }
 
-    // Check for seller connected account (use primary item as the main seller)
+    // Stripe Connect destination charges only work when all items belong to one seller.
+    // Otherwise, keep funds on the platform and rely on the webhook/payout automation.
+    const uniqueSellerIds = Array.from(
+      new Set((Array.isArray(items) ? items : []).map((it: CartItem) => it?.sellerId).filter(Boolean))
+    ) as string[]
+
+    const singleSellerId = uniqueSellerIds.length === 1 ? uniqueSellerIds[0] : null
+
+    // Sum seller totals from item metadata (authoritative for payout math)
+    const sellerTotalCents = (Array.isArray(items) ? items : []).reduce((acc: number, item: CartItem) => {
+      const qty = Number.isFinite(item?.quantity) ? Number(item.quantity) : 0
+      const sellerAskUnit = Number.isFinite(item?.sellerDesiredAmount)
+        ? Number(item.sellerDesiredAmount)
+        : (Number.isFinite(item?.price) ? Number(item.price) * 0.7 : 0)
+      return acc + roundToCents(sellerAskUnit) * qty
+    }, 0)
+
+    // Check for seller connected account (only for single-seller carts)
     let transferDestination: string | undefined = undefined
     try {
-      if (primaryItem && primaryItem.sellerId) {
+      if (singleSellerId) {
         const { data: sellerProfile, error: sellerError } = await supabase
           .from('profiles')
           .select('stripe_account_id')
-          .eq('id', primaryItem.sellerId)
-          .single()
+          .eq('id', singleSellerId)
+          .maybeSingle()
 
         if (!sellerError && sellerProfile?.stripe_account_id) {
           transferDestination = sellerProfile.stripe_account_id
@@ -90,9 +115,10 @@ serve(async (req) => {
     }
 
     if (transferDestination) {
-      // Calculate platform application fee (10% of item subtotal + stripe estimate)
-      // For now, compute a simple application_fee_amount = Math.round(amount * 0.10)
-      const applicationFeeAmount = Math.round(amount * 0.10)
+      // Keep seller proceeds consistent with our internal distribution logic.
+      // Seller receives sellerDesiredAmount totals; platform retains everything else
+      // (affiliate commission, platform revenue, Stripe buffer, shipping/tax/rounding).
+      const applicationFeeAmount = Math.max(amount - sellerTotalCents, 0)
 
       piParams.transfer_data = { destination: transferDestination }
       piParams.application_fee_amount = applicationFeeAmount
@@ -126,7 +152,9 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       client_secret: paymentIntent.client_secret,
-      payment_intent_id: paymentIntent.id
+      payment_intent_id: paymentIntent.id,
+      // In our schema we use the PaymentIntent id as the order id
+      order_id: paymentIntent.id
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

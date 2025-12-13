@@ -4,8 +4,10 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import ProductGrid from '../components/ProductGrid';
 import StoreCustomization from '../components/StoreCustomization';
-import { Star, MapPin, Clock, Package, Award, ExternalLink, Share2, Settings } from 'lucide-react';
+import StoreContactModal from '../components/StoreContactModal';
+import { Star, MapPin, Clock, Package, Award, ExternalLink, Share2, Settings, MessageSquare, Facebook, Instagram, Twitter, Linkedin, Globe, Target, Sparkles, Shield, Download, Zap, Lock, Store, Eye, BarChart, Users, FileText } from 'lucide-react';
 import { applyThemeToDocument, getThemeStyles, type ThemeName } from '../utils/themes';
+import { SAMPLE_PRODUCTS } from '../data/sampleProducts';
 
 interface SellerStorePageProps {
   sellerId?: string;
@@ -29,6 +31,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('all');
   const [isCustomizing, setIsCustomizing] = useState(false);
+  const [customPages, setCustomPages] = useState<any[]>([]);
+  const [contactModal, setContactModal] = useState(false);
   
   useEffect(() => {
     console.log('[SellerStorePage] useEffect triggered with sellerId:', sellerId);
@@ -45,7 +49,167 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         console.log('[SellerStorePage] Starting data fetch for sellerId:', sellerId);
         setLoading(true);
         
+        // Sample store fallback data (check FIRST to avoid database queries)
+        // Each store is a UNIQUE mini-website with custom domains, internal messaging, and distinct designs
+        const sampleStores: Record<string, any> = {
+          'beezio-store': {
+            id: 'beezio-store',
+            full_name: 'Beezio Marketplace',
+            bio: '🚀 FULL FEATURE DEMO: This store showcases everything Beezio offers - custom pages, white-label branding, affiliate links, analytics, and more. Your store can look just like this (or completely different with our templates)!',
+            store_theme: 'modern',
+            store_banner: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1600&q=80',
+            store_logo: '/bzobee.png',
+            subdomain: 'beezio-store',
+            custom_domain: 'shop.beezio.co',
+            location: 'Seattle, WA',
+            business_hours: 'Open 24/7',
+            social_links: {
+              facebook: 'https://facebook.com/beezio',
+              instagram: 'https://instagram.com/beezio',
+              twitter: 'https://twitter.com/beezio'
+            },
+            template_id: 'modern-grid',
+            product_page_template: 'product-detailed',
+            layout_config: {
+              header_style: 'banner',
+              product_grid: '4-col',
+              sidebar: false,
+              footer_style: 'detailed',
+              show_ratings: true,
+              show_quick_view: true,
+              show_all_features: true
+            },
+            demo_features: {
+              showcase_all: true,
+              active_affiliates: 23,
+              total_sales: 1847,
+              avg_conversion: '3.2%',
+              custom_pages: ['About', 'FAQ', 'Shipping'],
+              white_label: true
+            },
+            custom_css: '.product-card { border-radius: 16px; transition: transform 0.3s ease; } .product-card:hover { transform: translateY(-8px); }',
+            has_contact_page: true
+          },
+          'harbor-coffee': {
+            id: 'harbor-coffee',
+            full_name: 'Harbor Coffee Roasters',
+            bio: '☕ Artisan coffee roasted fresh daily. Try our MESSAGING feature - click "Contact Store" to see how customers can reach you directly! We source the finest single-origin beans from sustainable farms.',
+            store_theme: 'elegant',
+            store_banner: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=80',
+            store_logo: null,
+            subdomain: 'harbor-coffee',
+            custom_domain: 'harborcoffee.com',
+            location: 'Portland, OR',
+            business_hours: 'Mon-Fri 7am-6pm',
+            social_links: {
+              instagram: 'https://instagram.com/harborcoffee',
+              facebook: 'https://facebook.com/harborcoffee',
+              website: 'https://harborcoffee.com'
+            },
+            template_id: 'boutique-story',
+            product_page_template: 'product-immersive',
+            layout_config: {
+              header_style: 'full-width',
+              product_grid: '2-col',
+              sidebar: false,
+              footer_style: 'elegant',
+              show_large_images: true,
+              show_story: true,
+              show_messaging_demo: true
+            },
+            demo_features: {
+              messaging: true,
+              hasUnreadMessages: 3,
+              messagePreview: 'Try the built-in messaging system! Click Contact Store to see how customers can message you directly.'
+            },
+            custom_css: '.store-header { background: linear-gradient(135deg, #6B4423 0%, #3E2723 100%); color: white; } .product-card { box-shadow: 0 8px 24px rgba(0,0,0,0.12); }',
+            has_contact_page: true
+          },
+          'luma-labs': {
+            id: 'luma-labs',
+            full_name: 'Luma Labs',
+            bio: '💻 DIGITAL STORE DEMO: Instant delivery, custom pages, and digital downloads. Perfect template for selling courses, templates, ebooks, and software. Browse our catalog to see digital commerce in action!',
+            store_theme: 'minimalist',
+            store_banner: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?auto=format&fit=crop&w=1600&q=80',
+            store_logo: null,
+            subdomain: 'luma-labs',
+            custom_domain: 'lumalabs.io',
+            location: 'Remote-First',
+            business_hours: 'Instant Digital Delivery',
+            social_links: {
+              twitter: 'https://twitter.com/lumalabs',
+              website: 'https://lumalabs.io'
+            },
+            template_id: 'catalog-browse',
+            product_page_template: 'product-minimal',
+            layout_config: {
+              header_style: 'minimal',
+              product_grid: '3-col',
+              sidebar: true,
+              footer_style: 'minimal',
+              show_categories: true,
+              show_filters: true,
+              show_digital_features: true
+            },
+            demo_features: {
+              digital_products: true,
+              instant_delivery: true,
+              download_stats: {
+                total_downloads: 2847,
+                monthly_customers: 156,
+                avg_rating: 4.9
+              },
+              subscription_option: true
+            },
+            custom_css: '.store-header { background: #f8fafc; border-bottom: 1px solid #e2e8f0; } .product-card { border: 1px solid #e2e8f0; background: white; }',
+            has_contact_page: true
+          },
+          'cause-collective': {
+            id: 'cause-collective',
+            full_name: 'Cause Collective',
+            bio: '🎯 FUNDRAISER DEMO: See the progress bar below! Every purchase supports local causes. This store shows how fundraisers can track their goals and engage supporters in real-time.',
+            store_theme: 'vibrant',
+            store_banner: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1600&q=80',
+            store_logo: null,
+            subdomain: 'cause-collective',
+            custom_domain: 'causecollective.org',
+            location: 'Nationwide',
+            business_hours: 'Shop Anytime, Impact Always',
+            social_links: {
+              instagram: 'https://instagram.com/causecollective',
+              facebook: 'https://facebook.com/causecollective',
+              twitter: 'https://twitter.com/causecollective'
+            },
+            template_id: 'marketplace-hub',
+            product_page_template: 'product-comparison',
+            layout_config: {
+              header_style: 'split',
+              product_grid: '3-col',
+              sidebar: true,
+              footer_style: 'detailed',
+              show_featured: true,
+              show_impact_badge: true,
+              show_fundraiser_goal: true
+            },
+            demo_features: {
+              fundraiser: true,
+              goal_amount: 10000,
+              current_raised: 7350,
+              supporters_count: 89,
+              days_remaining: 12,
+              fundraiser_title: 'Community Youth Sports Program',
+              fundraiser_description: 'Help us raise $10,000 to provide sports equipment and coaching for local youth programs'
+            },
+            custom_css: '.store-header { background: linear-gradient(135deg, #ec4899 0%, #f59e0b 100%); color: white; } .product-card { border: 2px solid #fbbf24; } .impact-badge { background: #10b981; }',
+            has_contact_page: true
+          }
+        };
+
+        const isSampleStore = Boolean(sampleStores[sellerId]);
+        const isBeezioDemoStore = sellerId === 'beezio-store';
+
         // Allow friendly slug from store_settings.subdomain
+        // Special case: beezio-store should prefer real DB-backed data when configured.
         let lookupId = sellerId;
         if (lookupId) {
           const { data: slugMatch, error: slugError } = await supabase
@@ -58,6 +222,22 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           }
           if (slugMatch?.seller_id) {
             lookupId = slugMatch.seller_id;
+          }
+
+          // If this is a sample store and there is no DB match (lookupId unchanged), fall back.
+          if (isSampleStore && (!isBeezioDemoStore || lookupId === sellerId)) {
+            console.log('[SellerStorePage] Loading sample store:', sellerId);
+            const sampleStore = sampleStores[sellerId];
+            setCanonicalSellerId(sampleStore.id);
+            setSeller(sampleStore);
+            setProducts(SAMPLE_PRODUCTS.slice(0, 12));
+            setStoreStats(prev => ({
+              ...prev,
+              totalProducts: 12,
+              memberSince: 2024
+            }));
+            setLoading(false);
+            return;
           }
         }
 
@@ -74,7 +254,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           throw sellerError;
         }
 
-        // If no seller found, show error
+        // If no seller found in database
         if (!sellerData) {
           console.log('[SellerStorePage] No seller found in database for ID:', sellerId);
           setSeller(null);
@@ -119,23 +299,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           }));
         }
 
-        // Fetch products
-        console.log('[SellerStorePage] Fetching products for seller:', canonicalId);
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('seller_id', canonicalId)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false });
-
-        if (productsError) {
-          console.error('[SellerStorePage] Error fetching products:', productsError);
-          // Continue anyway, just show empty products
-        }
-
-        console.log('[SellerStorePage] Found', productsData?.length || 0, 'products');
-
-        // Fetch product order settings
+        // Fetch product order settings / curated list
         const { data: orderData, error: orderError } = await supabase
           .from('seller_product_order')
           .select('product_id, display_order, is_featured')
@@ -145,15 +309,51 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           console.warn('[SellerStorePage] Error fetching product order (non-fatal):', orderError);
         }
 
+        let productsData: any[] = [];
+        const orderIds = orderData?.map(entry => entry.product_id).filter(Boolean) || [];
+
+        if (orderIds.length > 0) {
+          console.log('[SellerStorePage] Loading curated product list:', orderIds.length, 'items');
+          const { data: curatedProducts, error: curatedError } = await supabase
+            .from('products')
+            .select('*')
+            .in('id', orderIds)
+            .eq('is_active', true);
+
+          if (curatedError) {
+            console.error('[SellerStorePage] Error fetching curated products:', curatedError);
+          } else {
+            productsData = curatedProducts || [];
+          }
+        }
+
+        if (productsData.length === 0) {
+          console.log('[SellerStorePage] Falling back to seller-owned products list');
+          const { data: fallbackProducts, error: productsError } = await supabase
+            .from('products')
+            .select('*')
+            .eq('seller_id', canonicalId)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+
+          if (productsError) {
+            console.error('[SellerStorePage] Error fetching products:', productsError);
+          }
+
+          productsData = fallbackProducts || [];
+        }
+
+        console.log('[SellerStorePage] Found', productsData.length, 'products for storefront');
+
         // Merge products with order settings and sort
-        let orderedProducts = productsData?.map(product => {
+        const orderedProducts = productsData.map(product => {
           const orderSetting = orderData?.find(o => o.product_id === product.id);
           return {
             ...product,
             display_order: orderSetting?.display_order ?? 999,
             is_featured: orderSetting?.is_featured ?? false
           };
-        }) || [];
+        });
 
         // Sort: featured first, then by display_order, then by created_at
         orderedProducts.sort((a, b) => {
@@ -170,6 +370,19 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           ...prev,
           totalProducts: productsData?.length || 0
         }));
+
+        // Fetch custom pages
+        const { data: pagesData, error: pagesError } = await supabase
+          .from('custom_pages')
+          .select('page_slug,page_title,is_active,display_order')
+          .eq('owner_id', sellerData.id)
+          .eq('owner_type', 'seller')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+        if (pagesError) {
+          console.warn('[SellerStorePage] Error fetching custom pages (non-fatal):', pagesError);
+        }
+        setCustomPages(pagesData || []);
 
         console.log('[SellerStorePage] Data fetch complete, setting loading to false');
         setLoading(false);
@@ -249,14 +462,21 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: theme?.colors.background || '#fef3c7' }}>
+      {/* Apply custom CSS for unique store styling */}
+      {seller.custom_css && (
+        <style>{seller.custom_css}</style>
+      )}
+      
       {/* Admin Toolbar - Only visible to store owner when logged in */}
-      {isOwner && isCustomDomain && (
+      {isOwner && !isCustomDomain && (
         <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-3 shadow-lg sticky top-0 z-50">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Settings className="w-5 h-5" />
               <span className="font-semibold">Store Owner View</span>
-              <span className="text-amber-100 text-sm">| You're viewing your custom domain store</span>
+              {seller.custom_domain && (
+                <span className="text-amber-100 text-sm">| Your store is live at: {seller.custom_domain}</span>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -283,6 +503,18 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                 Beezio Dashboard
               </a>
             </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Custom Domain Banner - Shows customers the professional custom domain */}
+      {seller.custom_domain && (
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2">
+          <div className="max-w-6xl mx-auto px-4 flex items-center justify-center gap-2 text-sm">
+            <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold">PROFESSIONAL STORE</span>
+            <span className="font-semibold">{seller.custom_domain}</span>
+            <span className="opacity-75">|</span>
+            <span className="opacity-90">Secure checkout & payments</span>
           </div>
         </div>
       )}
@@ -345,25 +577,65 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                 
                 {/* Social Links */}
                 {seller.social_links && Object.keys(seller.social_links).length > 0 && (
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center gap-2">
                     {seller.social_links.facebook && (
-                      <a href={seller.social_links.facebook} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700">
-                        Facebook
+                      <a 
+                        href={seller.social_links.facebook} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
+                        title="Follow us on Facebook"
+                      >
+                        <Facebook className="w-4 h-4" />
+                        <span className="font-medium">Facebook</span>
                       </a>
                     )}
                     {seller.social_links.instagram && (
-                      <a href={seller.social_links.instagram} target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:text-pink-700">
-                        Instagram
+                      <a 
+                        href={seller.social_links.instagram} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
+                        title="Follow us on Instagram"
+                      >
+                        <Instagram className="w-4 h-4" />
+                        <span className="font-medium">Instagram</span>
                       </a>
                     )}
                     {seller.social_links.twitter && (
-                      <a href={seller.social_links.twitter} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-500">
-                        Twitter
+                      <a 
+                        href={seller.social_links.twitter} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
+                        title="Follow us on Twitter"
+                      >
+                        <Twitter className="w-4 h-4" />
+                        <span className="font-medium">Twitter</span>
+                      </a>
+                    )}
+                    {seller.social_links.linkedin && (
+                      <a 
+                        href={seller.social_links.linkedin} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
+                        title="Follow us on LinkedIn"
+                      >
+                        <Linkedin className="w-4 h-4" />
+                        <span className="font-medium">LinkedIn</span>
                       </a>
                     )}
                     {seller.social_links.website && (
-                      <a href={seller.social_links.website} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-700">
-                        Website
+                      <a 
+                        href={seller.social_links.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
+                        title="Visit our website"
+                      >
+                        <Globe className="w-4 h-4" />
+                        <span className="font-medium">Website</span>
                       </a>
                     )}
                   </div>
@@ -409,13 +681,22 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               >
                 Share on X
               </a>
-              <Link
-                to={`/contact-seller/${resolvedSellerId}`}
-                className="flex items-center space-x-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+              <button
+                onClick={() => setContactModal(true)}
+                className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg font-semibold"
               >
-                <ExternalLink className="w-4 h-4" />
-                <span>Contact Seller</span>
-              </Link>
+                <MessageSquare className="w-5 h-5" />
+                <span>Message</span>
+              </button>
+              {customPages.filter(p => p.page_slug !== 'contact').map((p) => (
+                <Link
+                  key={p.page_slug}
+                  to={`/store/${resolvedSellerId}/${p.page_slug}`}
+                  className="px-3 py-2 border border-gray-300 rounded-lg hover:border-amber-500 hover:text-amber-600 text-sm font-semibold"
+                >
+                  {p.page_title}
+                </Link>
+              ))}
             </div>
           </div>
         </div>
@@ -456,6 +737,321 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           </div>
         </div>
       </div>
+
+      {/* Interactive Demo Features */}
+      {seller.demo_features?.fundraiser && (
+        <div className="bg-gradient-to-br from-pink-50 to-orange-50 border-y border-pink-200">
+          <div className="max-w-6xl mx-auto px-4 py-8">
+            <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-pink-300">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-gradient-to-br from-pink-500 to-orange-500 p-3 rounded-xl">
+                  <Target className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-pink-600 uppercase tracking-wider">Active Fundraiser</div>
+                  <h3 className="text-2xl font-bold text-gray-900">{seller.demo_features.fundraiser_title}</h3>
+                </div>
+              </div>
+              <p className="text-gray-700 mb-6">{seller.demo_features.fundraiser_description}</p>
+              
+              {/* Progress Bar */}
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-semibold text-gray-600">Progress</span>
+                  <span className="text-2xl font-bold text-pink-600">
+                    ${seller.demo_features.current_raised.toLocaleString()} / ${seller.demo_features.goal_amount.toLocaleString()}
+                  </span>
+                </div>
+                <div className="h-6 bg-gray-200 rounded-full overflow-hidden border-2 border-gray-300">
+                  <div 
+                    className="h-full bg-gradient-to-r from-pink-500 to-orange-500 rounded-full transition-all duration-1000 flex items-center justify-end pr-2"
+                    style={{ width: `${(seller.demo_features.current_raised / seller.demo_features.goal_amount) * 100}%` }}
+                  >
+                    <span className="text-white text-xs font-bold drop-shadow">
+                      {Math.round((seller.demo_features.current_raised / seller.demo_features.goal_amount) * 100)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 mt-6">
+                <div className="text-center p-4 bg-pink-50 rounded-xl border border-pink-200">
+                  <div className="text-3xl font-bold text-pink-600">{seller.demo_features.supporters_count}</div>
+                  <div className="text-sm text-gray-600 font-medium">Supporters</div>
+                </div>
+                <div className="text-center p-4 bg-orange-50 rounded-xl border border-orange-200">
+                  <div className="text-3xl font-bold text-orange-600">{seller.demo_features.days_remaining}</div>
+                  <div className="text-sm text-gray-600 font-medium">Days Left</div>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
+                  <div className="text-3xl font-bold text-green-600">
+                    {Math.round((seller.demo_features.current_raised / seller.demo_features.goal_amount) * 100)}%
+                  </div>
+                  <div className="text-sm text-gray-600 font-medium">Complete</div>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-900">
+                    <strong>FUNDRAISER DEMO:</strong> This progress bar updates in real-time as purchases are made. 
+                    Every product sold contributes to the goal. Perfect for schools, charities, sports teams, and community causes!
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {seller.demo_features?.messaging && (
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-y border-green-200">
+          <div className="max-w-6xl mx-auto px-4 py-8">
+            <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-green-300">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-gradient-to-br from-green-500 to-emerald-500 p-3 rounded-xl relative">
+                  <MessageSquare className="w-8 h-8 text-white" />
+                  {seller.demo_features.hasUnreadMessages > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">
+                      {seller.demo_features.hasUnreadMessages}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-green-600 uppercase tracking-wider">Messaging</div>
+                  <h3 className="text-2xl font-bold text-gray-900">Direct Customer Communication</h3>
+                </div>
+              </div>
+
+              <div className="mb-6 p-6 bg-gray-50 rounded-xl border-2 border-gray-200">
+                <div className="flex items-start gap-4">
+                  <div className="bg-blue-500 rounded-full w-12 h-12 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                    JD
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-gray-900">John Doe</span>
+                      <span className="text-xs text-gray-500">2 hours ago</span>
+                      <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">NEW</span>
+                    </div>
+                    <p className="text-gray-700 leading-relaxed">
+                      {seller.demo_features.messagePreview}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setContactModal(true)}
+                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold text-lg hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg flex items-center justify-center gap-3"
+              >
+                <MessageSquare className="w-6 h-6" />
+                Send Message (Goes to Seller Dashboard)
+              </button>
+
+              <div className="mt-6 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                <div className="flex items-start gap-3">
+                  <Shield className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-900">
+                    <strong>MESSAGING DEMO:</strong> Click "Contact Store" or "Message" to see the internal messaging system. 
+                    No email exposed, spam-free, and all conversations appear in your dashboard at /dashboard/messages!
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {seller.demo_features?.digital_products && (
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-y border-blue-200">
+          <div className="max-w-6xl mx-auto px-4 py-8">
+            <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-blue-300">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-gradient-to-br from-blue-500 to-indigo-500 p-3 rounded-xl">
+                  <Download className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-blue-600 uppercase tracking-wider">Digital Commerce</div>
+                  <h3 className="text-2xl font-bold text-gray-900">Instant Delivery & Downloads</h3>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-blue-300">
+                  <div className="text-4xl font-bold text-blue-600 mb-2">
+                    {seller.demo_features.download_stats.total_downloads.toLocaleString()}
+                  </div>
+                  <div className="text-sm text-gray-700 font-semibold">Total Downloads</div>
+                </div>
+                <div className="text-center p-6 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border-2 border-indigo-300">
+                  <div className="text-4xl font-bold text-indigo-600 mb-2">
+                    {seller.demo_features.download_stats.monthly_customers}
+                  </div>
+                  <div className="text-sm text-gray-700 font-semibold">Monthly Customers</div>
+                </div>
+                <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border-2 border-purple-300">
+                  <div className="text-4xl font-bold text-purple-600 mb-2">
+                    {seller.demo_features.download_stats.avg_rating} ⭐
+                  </div>
+                  <div className="text-sm text-gray-700 font-semibold">Average Rating</div>
+                </div>
+              </div>
+
+              <div className="mt-6 grid grid-cols-2 gap-4">
+                <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Zap className="w-5 h-5 text-green-600" />
+                    <span className="font-bold text-green-900">Instant Delivery</span>
+                  </div>
+                  <p className="text-sm text-gray-700">Download links sent immediately after purchase</p>
+                </div>
+                <div className="p-4 bg-purple-50 rounded-xl border border-purple-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lock className="w-5 h-5 text-purple-600" />
+                    <span className="font-bold text-purple-900">Secure Files</span>
+                  </div>
+                  <p className="text-sm text-gray-700">Protected links with expiration & access control</p>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-900">
+                    <strong>DIGITAL STORE DEMO:</strong> Perfect for selling courses, ebooks, templates, software, and more. 
+                    Automated delivery, no shipping hassles, global reach 24/7!
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {seller.demo_features?.showcase_all && (
+        <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border-y border-amber-200">
+          <div className="max-w-6xl mx-auto px-4 py-8">
+            <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-amber-300">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-gradient-to-br from-amber-500 to-yellow-500 p-3 rounded-xl">
+                  <Store className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-amber-600 uppercase tracking-wider">Full Platform Demo</div>
+                  <h3 className="text-2xl font-bold text-gray-900">Complete Marketplace Features</h3>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl text-center border-2 border-blue-200">
+                  <div className="text-3xl font-bold text-blue-600">{seller.demo_features.active_affiliates}</div>
+                  <div className="text-sm text-gray-700 font-semibold mt-1">Active Affiliates</div>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl text-center border-2 border-green-200">
+                  <div className="text-3xl font-bold text-green-600">{seller.demo_features.total_sales.toLocaleString()}</div>
+                  <div className="text-sm text-gray-700 font-semibold mt-1">Total Sales</div>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl text-center border-2 border-purple-200">
+                  <div className="text-3xl font-bold text-purple-600">{seller.demo_features.avg_conversion}</div>
+                  <div className="text-sm text-gray-700 font-semibold mt-1">Conversion Rate</div>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl text-center border-2 border-pink-200">
+                  <div className="text-3xl font-bold text-pink-600">{seller.demo_features.custom_pages.length}</div>
+                  <div className="text-sm text-gray-700 font-semibold mt-1">Custom Pages</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Eye className="w-5 h-5 text-amber-600" />
+                    <span className="font-bold text-amber-900">White-Label Branding</span>
+                  </div>
+                  <p className="text-sm text-gray-700">Your domain, your logo, zero platform branding</p>
+                </div>
+                <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BarChart className="w-5 h-5 text-blue-600" />
+                    <span className="font-bold text-blue-900">Analytics Dashboard</span>
+                  </div>
+                  <p className="text-sm text-gray-700">Track sales, conversions, and affiliate performance</p>
+                </div>
+                <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-5 h-5 text-green-600" />
+                    <span className="font-bold text-green-900">Affiliate Network</span>
+                  </div>
+                  <p className="text-sm text-gray-700">Built-in affiliate system with commission tracking</p>
+                </div>
+                <div className="p-4 bg-purple-50 rounded-xl border border-purple-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    <span className="font-bold text-purple-900">Custom Pages</span>
+                  </div>
+                  <p className="text-sm text-gray-700">Add About, FAQ, Terms, and any custom content</p>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-900">
+                    <strong>MARKETPLACE DEMO:</strong> This store showcases all platform capabilities. 
+                    Browse different sample stores to see how each template and feature set works differently!
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Template Showcase Banner (only for sample stores) */}
+      {['beezio-store', 'harbor-coffee', 'luma-labs', 'cause-collective'].includes(sellerId || '') && (
+        <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 text-white">
+          <div className="max-w-6xl mx-auto px-4 py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                    Demo Mini-Website
+                  </span>
+                  <span className="text-sm opacity-90 flex items-center gap-2">
+                    <span className="bg-green-500 px-2 py-0.5 rounded text-xs font-bold">MESSAGING</span>
+                    <span className="bg-blue-500 px-2 py-0.5 rounded text-xs font-bold">CUSTOM DOMAIN: {seller.custom_domain}</span>
+                  </span>
+                </div>
+                <h3 className="text-xl font-bold mb-1">🚀 Your Customers See a Complete Website - Not Just a Store</h3>
+                <p className="text-white/90 text-sm max-w-3xl">
+                  This is <strong>{seller.full_name}</strong> using the <strong>{seller.template_id ? seller.template_id.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Modern Grid'}</strong> template
+                  on their custom domain <strong className="bg-white/20 px-2 py-0.5 rounded">{seller.custom_domain}</strong>.
+                  {' '}Messages go through secure internal platform. Checkout uses verified payment system.
+                  {' '}<strong>Each store looks completely different - no platform branding required!</strong>
+                </p>
+              </div>
+              <div className="hidden md:flex flex-col gap-2 text-right">
+                <div className="text-xs opacity-75 font-semibold">Compare Different Designs:</div>
+                <div className="flex gap-2">
+                  {['beezio-store', 'harbor-coffee', 'luma-labs', 'cause-collective']
+                    .filter(id => id !== sellerId)
+                    .map(id => (
+                      <a
+                        key={id}
+                        href={`/store/${id}`}
+                        className="px-3 py-1.5 bg-white/20 backdrop-blur-sm hover:bg-white/30 rounded-lg text-xs font-semibold transition-all border border-white/30"
+                      >
+                        {id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                      </a>
+                    ))
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Products Section */}
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -531,7 +1127,12 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             )}
           </div>
         ) : (
-          <ProductGrid products={filteredProducts} hideAffiliateUI />
+          <ProductGrid 
+            products={filteredProducts} 
+            hideAffiliateUI 
+            gridLayout={seller?.layout_config?.grid_layout || 'standard'}
+            colorScheme={seller?.color_scheme}
+          />
         )}
 
         {/* Store Customization Panel */}
@@ -542,6 +1143,15 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           </div>
         )}
       </div>
+
+      {/* Contact Modal */}
+      <StoreContactModal
+        isOpen={contactModal}
+        onClose={() => setContactModal(false)}
+        ownerId={resolvedSellerId}
+        ownerType="seller"
+        storeName={seller?.full_name}
+      />
     </div>
   );
 };

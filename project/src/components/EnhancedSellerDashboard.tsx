@@ -595,7 +595,7 @@ const EnhancedSellerDashboard: React.FC = () => {
           <div className="bg-gradient-to-r from-orange-500 to-pink-500 p-6 rounded-xl shadow-lg text-white">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold mb-2">My Custom Store</h3>
+                <h3 className="text-lg font-semibold text-[#ffcb05] mb-2">My Custom Store</h3>
                 <p className="text-orange-100 mb-4">Manage your branded storefront and customize your store settings</p>
                 <div className="flex space-x-4">
                   <a

@@ -112,8 +112,8 @@ export const useBehaviorTracker = (): BehaviorTracker => {
     
     // Extract product/category info from URL
     const path = window.location.pathname;
-    const productMatch = path.match(/\/product\/([^\/]+)/);
-    const categoryMatch = path.match(/\/category\/([^\/]+)/);
+    const productMatch = path.match(/\/product\/([^/]+)/);
+    const categoryMatch = path.match(/\/category\/([^/]+)/);
     
     trackBehavior(
       'page_view',

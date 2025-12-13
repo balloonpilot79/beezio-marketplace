@@ -1,7 +1,7 @@
 [build]
-  # The project lives in the `project/` subfolder
-  base = "project"
-  # Use the existing npm build script from project/package.json
+  # Build from current directory
+  base = "."
+  # Use the existing npm build script from package.json
   command = "npm run build"
   # Vite output directory relative to base
   publish = "dist"

@@ -46,6 +46,9 @@ const EnhancedAffiliateDashboard: React.FC = () => {
   const { user, profile } = useAuth();
   const { referralCode, generateSiteWideLink: getSiteWideLink } = useAffiliate();
   const isFundraiser = profile?.role === 'fundraiser';
+  const referralSignupLink = referralCode
+    ? `${window.location.origin}/affiliate-signup?ref=${referralCode}`
+    : `${window.location.origin}/affiliate-signup`;
   const [stats, setStats] = useState<AffiliateStats>({
     total_earnings: 0,
     pending_earnings: 0,
@@ -56,6 +59,8 @@ const EnhancedAffiliateDashboard: React.FC = () => {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [trafficSources, setTrafficSources] = useState<TrafficSource[]>([]);
+  const [referralEarnings, setReferralEarnings] = useState<{ total: number; month: number }>({ total: 0, month: 0 });
+  const [referredAffiliates, setReferredAffiliates] = useState<Array<{ id: string; full_name?: string; email?: string; created_at?: string; total_sales?: number; total_commission?: number }>>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'links' | 'qr-codes' | 'analytics' | 'optimization' | 'earnings' | 'community' | 'training' | 'payments' | 'integrations' | 'campaigns'>('overview');
   const [loading, setLoading] = useState(false); // Changed to false to prevent loading screen
   const [selectedProduct, setSelectedProduct] = useState<string>('');
@@ -188,6 +193,35 @@ const EnhancedAffiliateDashboard: React.FC = () => {
         { source: 'Direct/QR Codes', clicks: 180, conversions: 8, earnings: 156.89 },
         { source: 'Blog/Content', clicks: 295, conversions: 12, earnings: 198.76 }
       ]);
+
+      // Referral earnings (5% upline)
+      if (profile?.id) {
+        const { data: referralCommissions, error: refEarnError } = await supabase
+          .from('commissions')
+          .select('commission_amount, created_at')
+          .eq('affiliate_id', profile.id)
+          .eq('type', 'affiliate_referrer');
+
+        if (!refEarnError && referralCommissions) {
+          const total = referralCommissions.reduce((sum: number, row: any) => sum + (row.commission_amount || 0), 0);
+          const month = referralCommissions
+            .filter((row: any) => {
+              const created = row.created_at ? new Date(row.created_at) : null;
+              const now = new Date();
+              return created && created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+            })
+            .reduce((sum: number, row: any) => sum + (row.commission_amount || 0), 0);
+          setReferralEarnings({ total, month });
+        }
+
+        const { data: downline, error: downlineError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, created_at, total_sales, total_commission')
+          .eq('referred_by_affiliate_id', profile.id);
+        if (!downlineError && downline) {
+          setReferredAffiliates(downline);
+        }
+      }
     } catch (error) {
       console.error('Error fetching affiliate data:', error);
     } finally {
@@ -296,6 +330,55 @@ const EnhancedAffiliateDashboard: React.FC = () => {
           <span className="text-blue-800 font-medium">Next Payment: Every 2 weeks on Fridays</span>
         </div>
         <p className="text-blue-700 text-sm mt-1">Pending earnings will be paid on the next payment cycle.</p>
+      </div>
+
+      {/* Referral Upline Snapshot */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+        <div className="bg-gradient-to-r from-amber-50 via-white to-amber-100 border border-amber-200 rounded-xl p-5 shadow-sm">
+          <p className="text-xs text-amber-700 font-semibold mb-1">Referral code</p>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="font-mono text-lg text-gray-900 break-all">{referralCode || 'Not generated yet'}</div>
+            {referralCode && (
+              <button
+                onClick={() => copyToClipboard(referralCode)}
+                className="px-3 py-1.5 rounded-lg bg-amber-500 text-black text-sm font-semibold hover:bg-amber-600"
+              >
+                Copy code
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-gray-600 mt-2">Share your code or referral link to earn 5% of Beezio’s 15% fee on every sale from affiliates you recruit.</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+          <p className="text-xs text-gray-600 font-semibold mb-2">Referral link</p>
+          <div className="flex items-center gap-2">
+            <input
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+              value={referralSignupLink}
+              readOnly
+            />
+            <button
+              onClick={() => copyToClipboard(referralSignupLink)}
+              className="px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-xs text-gray-600 mt-2">Link goes to /affiliate-signup so new affiliates can join under you.</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+          <p className="text-xs text-gray-600 font-semibold mb-1">Referral earnings</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-2xl font-bold text-gray-900">${referralEarnings.total.toFixed(2)}</p>
+              <p className="text-sm text-green-700">Lifetime total</p>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-semibold text-gray-900">${referralEarnings.month.toFixed(2)}</p>
+              <p className="text-xs text-gray-600">This month</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Navigation Tabs */}
@@ -467,6 +550,33 @@ const EnhancedAffiliateDashboard: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Downline Snapshot */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Referred Affiliates</h3>
+              <span className="text-sm text-gray-600">{referredAffiliates.length} total</span>
+            </div>
+            {referredAffiliates.length === 0 ? (
+              <p className="text-sm text-gray-600">Invite affiliates with your link to build your 5% referral earnings.</p>
+            ) : (
+              <div className="space-y-3">
+                {referredAffiliates.map((aff) => (
+                  <div key={aff.id} className="border border-gray-100 rounded-lg p-3 flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-900">{aff.full_name || 'Affiliate'}</p>
+                      <p className="text-xs text-gray-600">{aff.email || 'No email on file'}</p>
+                    </div>
+                    <div className="text-right text-xs text-gray-600">
+                      {aff.created_at && <div>Joined: {new Date(aff.created_at).toLocaleDateString()}</div>}
+                      {aff.total_sales && <div>Sales: {aff.total_sales}</div>}
+                      {aff.total_commission && <div>Referral earned: ${Number(aff.total_commission).toFixed(2)}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -742,8 +852,8 @@ const EnhancedAffiliateDashboard: React.FC = () => {
           </div>
 
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Site-Wide Affiliate Link</h3>
-            <p className="text-gray-600 mb-4">Use this link to recruit new affiliates and earn 5% on everything they sell!</p>
+            <h3 className="text-lg font-semibold mb-4">Referral Link for New Affiliates</h3>
+            <p className="text-gray-600 mb-4">Share this link so affiliates sign up under you. You earn 5% of Beezio’s fee on their sales.</p>
             
             {/* Referral Code Display */}
             {referralCode && (
@@ -766,13 +876,13 @@ const EnhancedAffiliateDashboard: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <input
                 type="text"
-                value={generateSiteWideLink()}
+                value={referralSignupLink}
                 readOnly
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-xs sm:text-sm"
               />
               <div className="flex gap-2">
                 <button
-                  onClick={() => copyToClipboard(generateSiteWideLink())}
+                  onClick={() => copyToClipboard(referralSignupLink)}
                   className="flex-1 sm:flex-none px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
                 >
                   <Copy className="w-4 h-4 mx-auto" />

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import UnifiedMegaDashboard from './UnifiedMegaDashboard';
@@ -6,24 +6,20 @@ import UnifiedMegaDashboard from './UnifiedMegaDashboard';
 const Dashboard: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const hasRedirected = useRef(false);
 
   console.log('Dashboard:', { hasUser: !!user, userEmail: user?.email, authLoading });
 
-  // If no user and done loading, redirect home
+  // If no user and done loading, redirect home (only once)
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!authLoading && !user && !hasRedirected.current) {
       console.log('Dashboard: No user, redirecting to home');
+      hasRedirected.current = true;
       navigate('/', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
-  // Show dashboard if we have a user
-  if (user) {
-    console.log('Dashboard: Showing dashboard for', user.email);
-    return <UnifiedMegaDashboard />;
-  }
-
-  // Show loading only if auth is still loading
+  // Always show loading while auth is loading, even if user briefly exists
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -33,6 +29,12 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // Show dashboard if we have a user
+  if (user) {
+    console.log('Dashboard: Showing dashboard for', user.email);
+    return <UnifiedMegaDashboard />;
   }
 
   return null;

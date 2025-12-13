@@ -20,6 +20,7 @@ const SimpleSignupModal: React.FC<SimpleSignupModalProps> = ({ isOpen, onClose, 
     email: '',
     password: '',
     fullName: '',
+    storeName: '',
     phone: '',
     city: '',
     state: '',
@@ -89,6 +90,7 @@ const SimpleSignupModal: React.FC<SimpleSignupModalProps> = ({ isOpen, onClose, 
       email: '',
       password: '',
       fullName: '',
+      storeName: '',
       phone: '',
       city: '',
       state: '',
@@ -303,6 +305,20 @@ const SimpleSignupModal: React.FC<SimpleSignupModalProps> = ({ isOpen, onClose, 
                         onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                         placeholder="Your full name"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Store Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.storeName}
+                        onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                        placeholder="Name your store"
                       />
                     </div>
 

@@ -11,7 +11,7 @@ const toBoolean = (value: string | boolean | undefined, defaultValue: boolean) =
   return defaultValue;
 };
 
-const ENABLE_SAMPLE_DATA = toBoolean(import.meta.env.VITE_ENABLE_SAMPLE_DATA, true);
+const ENABLE_SAMPLE_DATA = toBoolean(import.meta.env.VITE_ENABLE_SAMPLE_DATA, false);
 
 export const SAMPLE_DATA_CONFIG = {
   // Master switch for all sample data

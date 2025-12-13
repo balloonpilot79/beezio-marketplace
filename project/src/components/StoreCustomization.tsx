@@ -1,11 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Save, Eye, Palette, Globe, Settings, Zap, FileText, ArrowUpDown, LayoutTemplate, Wand2 } from 'lucide-react';
+import {
+  Save,
+  Eye,
+  Palette,
+  Globe,
+  Settings,
+  Zap,
+  FileText,
+  ArrowUpDown,
+  LayoutTemplate,
+  Wand2,
+  PackagePlus
+} from 'lucide-react';
 import CustomDomainManager from './CustomDomainManager';
 import UniversalIntegrationsPage from './UniversalIntegrationsPage';
 import ImageUploader from './ImageUploader';
 import CustomPageBuilder from './CustomPageBuilder';
 import ProductOrderManager from './ProductOrderManager';
+import ProductBrowserForSellers from './ProductBrowserForSellers';
+import StoreTemplateSelector, { type StoreTemplate } from './StoreTemplateSelector';
+import StoreContactForm from './StoreContactForm';
 
 interface StoreSettings {
   store_name?: string;
@@ -15,6 +30,27 @@ interface StoreSettings {
   store_theme?: string;
   custom_domain?: string;
   subdomain?: string;
+  template_id?: string;
+  product_page_template?: string;
+  layout_config?: {
+    header_style?: string;
+    product_grid?: string;
+    sidebar?: boolean;
+    footer_style?: string;
+    grid_layout?: 'compact' | 'standard' | 'comfortable' | 'large';
+  };
+  color_scheme?: {
+    primary?: string;
+    secondary?: string;
+    accent?: string;
+    background?: string;
+    text?: string;
+  };
+  custom_css?: string;
+  custom_html_header?: string;
+  custom_html_footer?: string;
+  contact_page_enabled?: boolean;
+  contact_email?: string;
   social_links?: {
     [key: string]: string | undefined;
     facebook?: string;
@@ -31,6 +67,16 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
   const [storeSettings, setStoreSettings] = useState<StoreSettings>({
     store_theme: 'modern',
     social_links: {},
+    layout_config: {
+      grid_layout: 'standard'
+    },
+    color_scheme: {
+      primary: '#f59e0b',
+      secondary: '#3b82f6',
+      accent: '#ef4444',
+      background: '#ffffff',
+      text: '#1f2937'
+    }
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -125,7 +171,41 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
     }));
   };
 
+  const handleLayoutChange = (field: string, value: any) => {
+    setStoreSettings(prev => ({
+      ...prev,
+      layout_config: {
+        ...prev.layout_config,
+        [field]: value
+      }
+    }));
+  };
+
+  const handleColorSchemeChange = (field: string, value: string) => {
+    setStoreSettings(prev => ({
+      ...prev,
+      color_scheme: {
+        ...prev.color_scheme,
+        [field]: value
+      }
+    }));
+  };
+
   const themeOptions = ['modern', 'vibrant', 'minimalist', 'dark', 'classic', 'elegant'];
+
+  const tabItems = [
+    { id: 'general', name: 'General', icon: Settings },
+    { id: 'appearance', name: 'Appearance', icon: Palette },
+    { id: 'templates', name: 'Templates', icon: LayoutTemplate },
+    { id: 'custom-pages', name: 'Custom Pages', icon: FileText },
+    { id: 'product-order', name: 'Product Order', icon: ArrowUpDown },
+    { id: 'integrations', name: 'API Integrations', icon: Zap },
+    { id: 'domain', name: 'Domain', icon: Globe }
+  ];
+
+  if (role === 'seller') {
+    tabItems.splice(4, 0, { id: 'product-library', name: 'Product Library', icon: PackagePlus });
+  }
 
   if (loading) {
     return (
@@ -143,6 +223,14 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
           <div>
             <h2 className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">Store Customization</h2>
             <p className="text-lg text-gray-600">Customize your store appearance and settings</p>
+            <div className="mt-3 text-sm text-gray-700 space-y-1 bg-white/60 border border-amber-100 rounded-xl p-3">
+              <div className="font-semibold text-gray-900">Quick start</div>
+              <div>1) Set your name/logo/banner on General.</div>
+              <div>2) Add a Contact page and info pages under Pages (buyers stay in Beezio checkout).</div>
+              <div>3) Connect a custom domain if you have one.</div>
+              <div>4) Share your store link after previewing.</div>
+              <div>5) Check your store inbox at <a className="text-amber-700 underline" href="/messages">/messages</a>.</div>
+            </div>
             <div className="mt-3 text-sm text-gray-700 space-y-1">
               <div className="flex items-center gap-2">
                 <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
@@ -182,15 +270,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
       <div className="bg-white/90 rounded-2xl shadow-xl border border-gray-100">
         <div className="border-b">
           <nav className="flex gap-8 px-8">
-            {[
-              { id: 'general', name: 'General', icon: Settings },
-              { id: 'appearance', name: 'Appearance', icon: Palette },
-              { id: 'templates', name: 'Templates', icon: LayoutTemplate },
-              { id: 'custom-pages', name: 'Custom Pages', icon: FileText },
-              { id: 'product-order', name: 'Product Order', icon: ArrowUpDown },
-              { id: 'integrations', name: 'API Integrations', icon: Zap },
-              { id: 'domain', name: 'Domain', icon: Globe }
-            ].map(tab => {
+            {tabItems.map(tab => {
               const Icon = tab.icon;
               return (
                 <button
@@ -345,45 +425,211 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                   ))}
                 </select>
               </div>
+
+              {/* Grid Layout Options */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-200">
+                <div className="flex items-center gap-3 mb-4">
+                  <LayoutTemplate className="w-6 h-6 text-blue-600" />
+                  <h3 className="text-xl font-bold text-gray-900">Product Grid Layout</h3>
+                </div>
+                <p className="text-gray-600 mb-4">Choose how your products are displayed on your store</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { 
+                      value: 'compact', 
+                      label: 'Compact', 
+                      desc: 'More products, smaller cards',
+                      cols: '6 columns',
+                      icon: '📱'
+                    },
+                    { 
+                      value: 'standard', 
+                      label: 'Standard', 
+                      desc: 'Balanced view (recommended)',
+                      cols: '4 columns',
+                      icon: '💼'
+                    },
+                    { 
+                      value: 'comfortable', 
+                      label: 'Comfortable', 
+                      desc: 'Spacious with details',
+                      cols: '3 columns',
+                      icon: '🛋️'
+                    },
+                    { 
+                      value: 'large', 
+                      label: 'Large', 
+                      desc: 'Big cards, fewer per row',
+                      cols: '2-3 columns',
+                      icon: '🖼️'
+                    }
+                  ].map(layout => (
+                    <button
+                      key={layout.value}
+                      onClick={() => handleLayoutChange('grid_layout', layout.value)}
+                      className={`p-4 rounded-lg border-2 transition-all hover:shadow-lg ${
+                        storeSettings.layout_config?.grid_layout === layout.value
+                          ? 'border-blue-500 bg-blue-100 shadow-md'
+                          : 'border-gray-300 bg-white hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="text-3xl mb-2">{layout.icon}</div>
+                      <div className="font-bold text-gray-900">{layout.label}</div>
+                      <div className="text-xs text-gray-600 mt-1">{layout.desc}</div>
+                      <div className="text-xs text-blue-600 font-semibold mt-2">{layout.cols}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Color Scheme Options */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
+                <div className="flex items-center gap-3 mb-4">
+                  <Palette className="w-6 h-6 text-purple-600" />
+                  <h3 className="text-xl font-bold text-gray-900">Color Scheme</h3>
+                </div>
+                <p className="text-gray-600 mb-6">Customize your store's color palette to match your brand</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[
+                    { key: 'primary', label: 'Primary Color', desc: 'Main brand color (buttons, links)', default: '#f59e0b' },
+                    { key: 'secondary', label: 'Secondary Color', desc: 'Supporting color (borders, accents)', default: '#3b82f6' },
+                    { key: 'accent', label: 'Accent Color', desc: 'Highlights and badges', default: '#ef4444' },
+                    { key: 'background', label: 'Background', desc: 'Main background color', default: '#ffffff' },
+                    { key: 'text', label: 'Text Color', desc: 'Primary text color', default: '#1f2937' }
+                  ].map(color => (
+                    <div key={color.key} className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-800">
+                        {color.label}
+                      </label>
+                      <p className="text-xs text-gray-600 mb-2">{color.desc}</p>
+                      <div className="flex gap-3 items-center">
+                        <input
+                          type="color"
+                          value={storeSettings.color_scheme?.[color.key as keyof typeof storeSettings.color_scheme] || color.default}
+                          onChange={(e) => handleColorSchemeChange(color.key, e.target.value)}
+                          className="w-16 h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={storeSettings.color_scheme?.[color.key as keyof typeof storeSettings.color_scheme] || color.default}
+                          onChange={(e) => handleColorSchemeChange(color.key, e.target.value)}
+                          placeholder={color.default}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
+                        />
+                        <button
+                          onClick={() => handleColorSchemeChange(color.key, color.default)}
+                          className="px-3 py-2 text-xs bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Color Preset Buttons */}
+                <div className="mt-6 pt-6 border-t border-purple-200">
+                  <label className="block text-sm font-bold text-gray-800 mb-3">
+                    Quick Presets
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { name: 'Default', primary: '#f59e0b', secondary: '#3b82f6', accent: '#ef4444' },
+                      { name: 'Ocean', primary: '#0ea5e9', secondary: '#06b6d4', accent: '#8b5cf6' },
+                      { name: 'Forest', primary: '#10b981', secondary: '#059669', accent: '#f59e0b' },
+                      { name: 'Sunset', primary: '#f97316', secondary: '#fb923c', accent: '#dc2626' },
+                      { name: 'Royal', primary: '#8b5cf6', secondary: '#a78bfa', accent: '#ec4899' },
+                      { name: 'Mono', primary: '#1f2937', secondary: '#6b7280', accent: '#374151' },
+                      { name: 'Mint', primary: '#14b8a6', secondary: '#2dd4bf', accent: '#f43f5e' },
+                      { name: 'Berry', primary: '#ec4899', secondary: '#f472b6', accent: '#8b5cf6' }
+                    ].map(preset => (
+                      <button
+                        key={preset.name}
+                        onClick={() => {
+                          handleColorSchemeChange('primary', preset.primary);
+                          handleColorSchemeChange('secondary', preset.secondary);
+                          handleColorSchemeChange('accent', preset.accent);
+                        }}
+                        className="flex items-center gap-2 px-3 py-2 bg-white border-2 border-gray-300 rounded-lg hover:border-purple-400 hover:shadow transition-all"
+                      >
+                        <div className="flex gap-1">
+                          <div className="w-4 h-4 rounded" style={{ backgroundColor: preset.primary }} />
+                          <div className="w-4 h-4 rounded" style={{ backgroundColor: preset.secondary }} />
+                          <div className="w-4 h-4 rounded" style={{ backgroundColor: preset.accent }} />
+                        </div>
+                        <span className="text-xs font-medium text-gray-700">{preset.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Templates Tab */}
           {activeTab === 'templates' && (
             <div className="space-y-6">
-              <p className="text-gray-600">
-                Pick a layout starter. You can refine colors, logos, banners, and drag/drop sections in Custom Pages. All templates use the shared Beezio checkout.
-              </p>
-              <div className="grid gap-4 md:grid-cols-2">
-                {templates.map(tpl => (
-                  <button
-                    key={tpl.id}
-                    onClick={() => {
-                      setActiveTemplate(tpl.id);
-                      handleInputChange('store_theme', tpl.theme);
-                    }}
-                    className={`text-left border rounded-xl p-4 shadow-sm transition-all ${
-                      activeTemplate === tpl.id
-                        ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200'
-                        : 'border-gray-200 hover:border-orange-300 hover:shadow-md'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <h4 className="font-semibold text-gray-900">{tpl.name}</h4>
-                        <p className="text-sm text-gray-600">{tpl.desc}</p>
-                      </div>
-                      {activeTemplate === tpl.id && (
-                        <span className="text-xs font-bold text-orange-700 bg-orange-100 px-3 py-1 rounded-full">Selected</span>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500">Theme: {tpl.theme}</div>
-                  </button>
-                ))}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">🎨 Choose Your Store Template</h3>
+                <p className="text-gray-700 mb-4">
+                  Select from professionally designed templates for your storefront and product pages. 
+                  Each template is fully customizable with your branding, colors, and content.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                    ✅ 12+ Templates
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                    ✅ Fully Responsive
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                    ✅ Easy Customization
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                    ✅ HTML/CSS Access
+                  </span>
+                </div>
               </div>
+
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-900 mb-3">Storefront Template</h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  This controls the overall layout and design of your store homepage and product listings.
+                </p>
+                <StoreTemplateSelector
+                  category="storefront"
+                  currentTemplateId={storeSettings.template_id || activeTemplate}
+                  onSelectTemplate={(template: StoreTemplate) => {
+                    setActiveTemplate(template.id);
+                    handleInputChange('template_id', template.id);
+                    handleInputChange('store_theme', template.theme);
+                    handleInputChange('layout_config', template.layout);
+                  }}
+                />
+              </div>
+
+              <div className="mb-6 border-t pt-6">
+                <h4 className="font-semibold text-gray-900 mb-3">Product Page Template</h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  Choose how individual product pages are displayed to your customers.
+                </p>
+                <StoreTemplateSelector
+                  category="product"
+                  currentTemplateId={storeSettings.product_page_template}
+                  onSelectTemplate={(template: StoreTemplate) => {
+                    handleInputChange('product_page_template', template.id);
+                  }}
+                />
+              </div>
+
               <div className="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-4">
-                <Wand2 className="w-4 h-4 text-orange-500" />
-                <span>Need more control? Jump into Custom Pages to drag/drop sections, add About/FAQ pages, and attach banners.</span>
+                <Wand2 className="w-4 h-4 text-purple-500" />
+                <span>
+                  After selecting a template, use the <strong>Custom Pages</strong> tab to add HTML/CSS, 
+                  create About/FAQ pages, and fully customize your store design.
+                </span>
               </div>
             </div>
           )}
@@ -445,6 +691,13 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
               <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                 <CustomPageBuilder ownerType={role} />
               </div>
+            </div>
+          )}
+
+          {/* Seller Marketplace Tab */}
+          {activeTab === 'product-library' && role === 'seller' && (
+            <div>
+              <ProductBrowserForSellers sellerId={userId} />
             </div>
           )}
 

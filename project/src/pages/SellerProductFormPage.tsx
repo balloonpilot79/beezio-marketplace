@@ -1,24 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, X, Save, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
+import { calculateSalePriceFromSellerAsk, DEFAULT_AFFILIATE_RATE, normalizeAffiliateRate } from '../utils/pricing';
 import ImageUpload from '../components/ImageUpload';
 
 const SellerProductFormPage: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [newProduct, setNewProduct] = useState({
     title: '',
     description: '',
     price: 0,
+    sellerAsk: 0,
     stock_quantity: 0,
     category_id: '',
     product_type: 'one_time' as 'one_time' | 'subscription',
     subscription_interval: 'monthly' as 'monthly' | 'yearly',
     affiliate_commission_rate: 10,
     affiliate_commission_type: 'percentage' as 'percentage' | 'fixed',
+    sku: '',
+    is_digital: false,
+    requires_shipping: true,
+    shipping_cost: 0,
+    is_promotable: true,
     images: [] as string[],
     video_url: '',
     api_integration: {
@@ -48,6 +55,18 @@ const SellerProductFormPage: React.FC = () => {
     { id: 'food-beverages', name: 'Food & Beverages' }
   ]);
 
+  const affiliateRateDecimal = newProduct.affiliate_commission_type === 'percentage'
+    ? normalizeAffiliateRate(newProduct.affiliate_commission_rate)
+    : DEFAULT_AFFILIATE_RATE;
+
+  const previewPrice = (() => {
+    try {
+      return calculateSalePriceFromSellerAsk(newProduct.sellerAsk || 0, affiliateRateDecimal);
+    } catch {
+      return 0;
+    }
+  })();
+
   useEffect(() => {
     (async () => {
       try {
@@ -63,6 +82,17 @@ const SellerProductFormPage: React.FC = () => {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    try {
+      const nextPrice = calculateSalePriceFromSellerAsk(newProduct.sellerAsk || 0, affiliateRateDecimal);
+      if (Math.abs((newProduct.price || 0) - nextPrice) > 0.009) {
+        setNewProduct(prev => ({ ...prev, price: nextPrice }));
+      }
+    } catch {
+      // Ignore invalid pricing config while user is typing
+    }
+  }, [newProduct.sellerAsk, newProduct.affiliate_commission_rate, newProduct.affiliate_commission_type, affiliateRateDecimal]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,8 +118,8 @@ const SellerProductFormPage: React.FC = () => {
       return;
     }
 
-    if (newProduct.price <= 0) {
-      alert('Please enter a valid price.');
+    if (newProduct.sellerAsk <= 0) {
+      alert('Please enter a valid seller ask.');
       return;
     }
 
@@ -106,13 +136,20 @@ const SellerProductFormPage: React.FC = () => {
     try {
       setLoading(true);
 
+      const { sellerAsk, ...rest } = newProduct;
+
       const productData = {
-        ...newProduct,
+        ...rest,
+        price: previewPrice,
+        seller_ask: sellerAsk,
+        currency: 'USD',
         category_id: newProduct.category_id || null,
         seller_id: profile.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         is_active: true,
+        is_promotable: newProduct.is_promotable ?? true,
+        dropship_provider: null,
         sales_count: 0,
         images: newProduct.images || [],
         video_url: newProduct.video_url || '',
@@ -121,7 +158,12 @@ const SellerProductFormPage: React.FC = () => {
           provider: '',
           product_id: '',
           webhook_url: ''
-        }
+        },
+        // Marketplace eligibility + canonical commission fields
+        affiliate_enabled: true,
+        commission_rate: newProduct.affiliate_commission_type === 'percentage' ? newProduct.affiliate_commission_rate : 0,
+        commission_type: newProduct.affiliate_commission_type === 'percentage' ? 'percentage' : 'flat_rate',
+        flat_commission_amount: newProduct.affiliate_commission_type === 'fixed' ? newProduct.affiliate_commission_rate : 0,
       };
 
       console.log('Creating product:', productData);
@@ -235,18 +277,24 @@ const SellerProductFormPage: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Price ($) *
+                    Seller Ask ($) *
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
-                    value={newProduct.price}
-                    onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
+                    value={newProduct.sellerAsk}
+                    onChange={(e) => handleInputChange('sellerAsk', parseFloat(e.target.value) || 0)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     required
                     placeholder="0.00"
                   />
+                  <p className="text-sm text-gray-700 mt-2">
+                    Customer price (before tax & shipping): <span className="font-semibold">${previewPrice.toFixed(2)}</span>
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Beezio automatically adds fees, affiliate commissions, and platform costs into the price so you always receive your full ask on each sale. Tax and shipping are added at checkout.
+                  </p>
                 </div>
 
                 <div>
@@ -347,6 +395,78 @@ const SellerProductFormPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Shipping & Fulfillment */}
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Shipping & Fulfillment</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    SKU (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={newProduct.sku}
+                    onChange={(e) => handleInputChange('sku', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    placeholder="Internal SKU or code"
+                  />
+                </div>
+
+                <div className="flex items-center space-x-3 mt-6 md:mt-0">
+                  <input
+                    id="is-digital"
+                    type="checkbox"
+                    checked={newProduct.is_digital}
+                    onChange={(e) => {
+                      const isDigital = e.target.checked;
+                      handleInputChange('is_digital', isDigital);
+                      handleInputChange('requires_shipping', !isDigital);
+                    }}
+                    className="rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                  />
+                  <label htmlFor="is-digital" className="text-sm font-medium text-gray-700">
+                    This is a digital product (no shipping)
+                  </label>
+                </div>
+              </div>
+
+              {!newProduct.is_digital && (
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Requires Shipping
+                    </label>
+                    <select
+                      value={newProduct.requires_shipping ? 'yes' : 'no'}
+                      onChange={(e) => handleInputChange('requires_shipping', e.target.value === 'yes')}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    >
+                      <option value="yes">Yes</option>
+                      <option value="no">No</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Flat Shipping Cost ($)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={newProduct.shipping_cost}
+                      onChange={(e) => handleInputChange('shipping_cost', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Optional flat shipping amount added at checkout. Leave at 0 for free shipping.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Images */}

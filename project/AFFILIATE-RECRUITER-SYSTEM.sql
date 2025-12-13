@@ -36,21 +36,25 @@ CREATE TABLE IF NOT EXISTS recruiter_earnings (
 ALTER TABLE affiliate_recruiters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recruiter_earnings ENABLE ROW LEVEL SECURITY;
 
--- 5. RLS Policies for affiliate_recruiters
+-- 5. RLS Policies for affiliate_recruiters (drop existing first)
+DROP POLICY IF EXISTS "Recruiters can view their recruits" ON affiliate_recruiters;
 CREATE POLICY "Recruiters can view their recruits" ON affiliate_recruiters
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM profiles WHERE profiles.id = recruiter_id AND profiles.user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Public can view recruitment stats" ON affiliate_recruiters;
 CREATE POLICY "Public can view recruitment stats" ON affiliate_recruiters
   FOR SELECT USING (true);
 
--- 6. RLS Policies for recruiter_earnings
+-- 6. RLS Policies for recruiter_earnings (drop existing first)
+DROP POLICY IF EXISTS "Recruiters can view their passive earnings" ON recruiter_earnings;
 CREATE POLICY "Recruiters can view their passive earnings" ON recruiter_earnings
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM profiles WHERE profiles.id = recruiter_id AND profiles.user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Public can view recruiter earnings" ON recruiter_earnings;
 CREATE POLICY "Public can view recruiter earnings" ON recruiter_earnings
   FOR SELECT USING (true);
 
@@ -120,52 +124,28 @@ RETURNS TRIGGER AS $$
 DECLARE
   recruiter_id_var UUID;
   recruiter_commission DECIMAL(10,2);
-  platform_fee DECIMAL(10,2);
 BEGIN
-  -- Only record if there's an affiliate
-  IF NEW.affiliate_id IS NOT NULL AND NEW.affiliate_commission > 0 THEN
-    
-    -- Affiliate ALWAYS gets their full commission (set by seller)
-    INSERT INTO affiliate_earnings (affiliate_id, order_id, amount, status)
-    VALUES (NEW.affiliate_id, NEW.id, NEW.affiliate_commission, 'pending');
+  -- Only record if there's an affiliate and total_amount exists
+  IF NEW.affiliate_id IS NOT NULL AND NEW.total_amount IS NOT NULL AND NEW.total_amount > 0 THEN
     
     -- Check if this affiliate was recruited by someone
     SELECT referred_by INTO recruiter_id_var
     FROM profiles
     WHERE id = NEW.affiliate_id;
     
-    -- If recruited, recruiter earns 5% from Beezio's platform fee
+    -- If recruited, recruiter earns 5% of total order amount from Beezio's platform fee
     IF recruiter_id_var IS NOT NULL THEN
-      -- Calculate recruiter commission (5% of order total from Beezio's platform fee)
-      -- Use NEW.total_amount if available, otherwise use platform_fee field
-      IF NEW.total_amount IS NOT NULL AND NEW.total_amount > 0 THEN
-        recruiter_commission := NEW.total_amount * 0.05;
-      ELSIF NEW.platform_fee IS NOT NULL THEN
-        recruiter_commission := NEW.platform_fee * 0.33; -- Approximately 5% of total from 15% platform fee
-      ELSE
-        recruiter_commission := 0;
-      END IF;
+      -- Calculate recruiter commission (5% of order total)
+      recruiter_commission := NEW.total_amount * 0.05;
       
-      -- Only record if commission > 0
-      IF recruiter_commission > 0 THEN
-        -- Record recruiter's passive earnings (comes from Beezio's cut, not seller or affiliate)
-        INSERT INTO recruiter_earnings (recruiter_id, recruit_id, order_id, amount, status)
-        VALUES (recruiter_id_var, NEW.affiliate_id, NEW.id, recruiter_commission, 'pending');
-        
-        -- Update recruiter's total passive earnings (use COALESCE to handle NULL)
-        UPDATE affiliate_recruiters
-        SET total_passive_earnings = COALESCE(total_passive_earnings, 0) + recruiter_commission
-        WHERE recruiter_id = recruiter_id_var AND recruit_id = NEW.affiliate_id;
-      END IF;
-    END IF;
-    
-    -- Update affiliate link stats if referral_code exists
-    IF NEW.referral_code IS NOT NULL THEN
-      UPDATE affiliate_links
-      SET 
-        conversions = conversions + 1,
-        total_commission = total_commission + NEW.affiliate_commission
-      WHERE referral_code = NEW.referral_code;
+      -- Record recruiter's passive earnings (comes from Beezio's cut, not seller or affiliate)
+      INSERT INTO recruiter_earnings (recruiter_id, recruit_id, order_id, amount, status)
+      VALUES (recruiter_id_var, NEW.affiliate_id, NEW.id, recruiter_commission, 'pending');
+      
+      -- Update recruiter's total passive earnings
+      UPDATE affiliate_recruiters
+      SET total_passive_earnings = COALESCE(total_passive_earnings, 0) + recruiter_commission
+      WHERE recruiter_id = recruiter_id_var AND recruit_id = NEW.affiliate_id;
     END IF;
   END IF;
   

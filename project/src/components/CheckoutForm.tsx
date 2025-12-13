@@ -58,12 +58,13 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
           0, // referral handled at checkout level if needed
         );
         return {
-          productId: item.id,
+          productId: item.productId,
           title: item.title,
           price: item.price,
           quantity: item.quantity,
           sellerId: item.sellerId || 'unknown',
-          sellerDesiredAmount: breakdown.sellerAmount,
+          // Prefer the seller ask we already have (when available), otherwise derive from listing price.
+          sellerDesiredAmount: item.sellerAsk ?? breakdown.sellerAmount,
           commissionRate: affiliateRate,
           affiliateType: item.commission_type || 'percentage',
           affiliateId: item.affiliateId || null,
@@ -126,6 +127,11 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
       }
 
       const { client_secret, order_id, payment_intent_id } = data;
+      const resolvedOrderId = order_id || payment_intent_id;
+
+      if (!resolvedOrderId) {
+        throw new Error('Payment setup failed: missing order id');
+      }
 
       // Confirm payment
       const { error: confirmError } = await stripe.confirmCardPayment(client_secret, {
@@ -144,45 +150,21 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
         
         // Add affiliate/fundraiser tracking data to items
         const itemsWithAffiliateData = cartMetadata.map(item => {
-          // If there is a referral (affiliate or fundraiser), carve 5% of sale from Beezio's platform fee
-          const referralCommission = attribution.id
-            ? Math.max(0, item.price * item.quantity * DEFAULT_REFERRAL_RATE)
-            : 0;
-          const platformNet = Math.max(0, item.platformFee - referralCommission);
-
+          // IMPORTANT: the Edge Function expects camelCase `affiliateId`.
+          // Referral/recruiter logic is handled server-side (service role) based on the affiliate's profile.
           if (attribution.type === 'affiliate' && attribution.id) {
-            return {
-              ...item,
-              affiliate_id: attribution.id,
-              referral_type: 'affiliate',
-              referral_commission: referralCommission,
-              platform_net: platformNet,
-              affiliate_commission: item.affiliateAmount,
-              platform_fee: item.platformFee,
-              seller_payout: item.sellerDesiredAmount, // Seller gets exactly what they wanted
-            };
+            return { ...item, affiliateId: attribution.id };
           }
-          
-          if (attribution.type === 'fundraiser' && attribution.id) {
-            return {
-              ...item,
-              fundraiser_id: attribution.id,
-              referral_type: 'fundraiser',
-              referral_commission: referralCommission,
-              platform_net: platformNet,
-              affiliate_commission: item.affiliateAmount,
-              platform_fee: item.platformFee,
-              seller_payout: item.sellerDesiredAmount,
-            };
-          }
-          
-          return item;
+
+          // Fundraiser attribution isn't currently modeled in the edge function schema.
+          // Keep items unchanged here.
+          return { ...item, affiliateId: item.affiliateId ?? null };
         });
         
         // Update order status in database
         await supabase.functions.invoke('complete-order-corrected', {
           body: {
-            orderId: order_id,
+            orderId: resolvedOrderId,
             paymentIntentId: payment_intent_id,
             items: itemsWithAffiliateData,
             billingDetails: billingDetails,
@@ -199,12 +181,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, onSuccess, onError 
         localStorage.removeItem('beezio-cart');
         
         // Payment successful
-        onSuccess(order_id);
+        onSuccess(resolvedOrderId);
       } catch (orderError) {
         console.error('Order completion error:', orderError);
         // Payment went through but order recording failed
         // Still call onSuccess since payment was processed
-        onSuccess(order_id);
+        onSuccess(resolvedOrderId);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';

@@ -32,7 +32,7 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
 
   const validateDomain = (input: string): boolean => {
     // Remove protocol if present
-    let cleanDomain = input.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const cleanDomain = input.replace(/^https?:\/\//, '').replace(/\/$/, '');
     
     // Basic domain validation
     const domainRegex = /^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i;

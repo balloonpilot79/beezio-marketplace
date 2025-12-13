@@ -9,7 +9,9 @@ interface Product {
   description: string;
   price: number;
   images: string[];
-  category: string;
+  category?: string;
+  category_id?: string;
+  categories?: { name?: string } | null;
   seller_id: string;
   seller_name?: string;
   stock_quantity: number;
@@ -45,9 +47,11 @@ const ProductBrowserForAffiliates: React.FC = () => {
         .from('products')
         .select(`
           *,
-          profiles!products_seller_id_fkey (full_name)
+          profiles!products_seller_id_fkey (full_name),
+          categories:category_id (name)
         `)
         .eq('is_active', true)
+        .eq('is_promotable', true)
         .gt('stock_quantity', 0)
         .order('created_at', { ascending: false });
 
@@ -55,7 +59,8 @@ const ProductBrowserForAffiliates: React.FC = () => {
 
       const productsWithSeller = data?.map((p: any) => ({
         ...p,
-        seller_name: p.profiles?.full_name || 'Unknown Seller'
+        seller_name: p.profiles?.full_name || 'Unknown Seller',
+        category: p.categories?.name || p.category || '',
       })) || [];
 
       setProducts(productsWithSeller);
@@ -111,7 +116,7 @@ const ProductBrowserForAffiliates: React.FC = () => {
           description: product.description,
           price: product.price,
           images: product.images,
-          category_id: product.category,
+          category_id: product.category_id || null,
           stock_quantity: product.stock_quantity,
           seller_name: product.seller_name,
           is_active: true

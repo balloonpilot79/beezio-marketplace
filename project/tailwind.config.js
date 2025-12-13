@@ -11,7 +11,25 @@ export default {
         'touch': { 'raw': '(hover: none) and (pointer: coarse)' },
         'no-touch': { 'raw': '(hover: hover) and (pointer: fine)' },
       },
+      borderRadius: {
+        'bzo-card': '1.25rem',
+        'bzo-button': '1rem',
+      },
       colors: {
+        bz: {
+          bg: '#050505',
+          surface: '#111111',
+          surfaceAlt: '#181818',
+          primary: '#FBBF24',
+          primarySoft: '#FDE68A',
+          accent: '#F97316',
+          text: '#F9FAFB',
+          muted: '#9CA3AF',
+          border: '#27272A',
+          success: '#22C55E',
+          info: '#38BDF8',
+          error: '#EF4444',
+        },
         primary: {
           50: '#fffbeb',
           100: '#fef3c7',

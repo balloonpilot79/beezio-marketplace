@@ -4,9 +4,11 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 interface Product {
   id: string;
-  name: string;
+  name?: string;
+  title?: string;
   price: number;
   image_url: string | null;
+  images?: string[] | null;
   display_order?: number;
   is_featured?: boolean;
 }
@@ -32,7 +34,7 @@ const ProductOrderManager: React.FC<ProductOrderManagerProps> = ({ sellerId }) =
       // Get all products for this seller
       const { data: sellerProducts, error: productsError } = await supabase
         .from('products')
-        .select('id, name, price, image_url')
+        .select('id, name, title, price, image_url, images')
         .eq('seller_id', sellerId)
         .order('created_at', { ascending: false });
 
@@ -47,14 +49,53 @@ const ProductOrderManager: React.FC<ProductOrderManagerProps> = ({ sellerId }) =
       if (orderError) throw orderError;
 
       // Merge products with their order settings
-      const productsWithOrder = sellerProducts?.map(product => {
+      const normalizedSellerProducts = (sellerProducts || []).map(product => ({
+        ...product,
+        name: product.name || product.title || 'Product',
+        image_url:
+          product.image_url ||
+          (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : null)
+      }));
+
+      const missingProductIds =
+        orderSettings
+          ?.map(setting => setting.product_id)
+          .filter(
+            (productId): productId is string =>
+              Boolean(productId && !normalizedSellerProducts.some(product => product.id === productId))
+          ) || [];
+
+      let externalProducts: Product[] = [];
+      if (missingProductIds.length > 0) {
+        const { data: extraProducts, error: extraError } = await supabase
+          .from('products')
+          .select('id, name, title, price, image_url, images')
+          .in('id', missingProductIds);
+
+        if (extraError) {
+          console.warn('ProductOrderManager: unable to load curated products outside seller inventory', extraError);
+        } else {
+          externalProducts =
+            extraProducts?.map(product => ({
+              ...product,
+              name: product.name || product.title || 'Product',
+              image_url:
+                product.image_url ||
+                (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : null)
+            })) || [];
+        }
+      }
+
+      const combinedProducts = [...normalizedSellerProducts, ...externalProducts];
+
+      const productsWithOrder = combinedProducts.map(product => {
         const orderSetting = orderSettings?.find(o => o.product_id === product.id);
         return {
           ...product,
           display_order: orderSetting?.display_order ?? 999,
           is_featured: orderSetting?.is_featured ?? false
         };
-      }) || [];
+      });
 
       // Sort by display_order
       productsWithOrder.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));

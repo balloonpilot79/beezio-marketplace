@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Heart, ShoppingCart, Shield, Truck, RotateCcw, DollarSign, Star, Users, TrendingUp, Play, ExternalLink, Share2, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -12,12 +12,16 @@ import RecommendationEngine from '../components/RecommendationEngine';
 import ShippingSelector from '../components/ShippingSelector';
 import { useBehaviorTracker } from '../hooks/useBehaviorTracker';
 import { trackAffiliateClick } from '../utils/affiliateTracking';
+import { calculateFinalPrice, deriveAskPriceFromFinalPrice } from '../utils/pricingEngine';
+import { DEFAULT_PAYOUT_SETTINGS, PLATFORM_FEE_PERCENT } from '../config/beezioConfig';
 
 interface Product {
   id: string;
   title: string;
   description?: string;
   price: number;
+  seller_ask?: number;
+  affiliate_commission_rate?: number;
   images: string[];
   videos: string[];
   commission_rate: number;
@@ -58,6 +62,37 @@ const ProductDetailPage: React.FC = () => {
   
   const isAffiliate = hasRole('affiliate');
 
+  const payoutSettings = useMemo(() => ({
+    affiliatePercent: product?.commission_rate ?? product?.affiliate_commission_rate ?? DEFAULT_PAYOUT_SETTINGS.affiliatePercent,
+    platformPercent: PLATFORM_FEE_PERCENT,
+    fundraiserPercent: DEFAULT_PAYOUT_SETTINGS.fundraiserPercent,
+  }), [product]);
+
+  const derivedSellerAsk = useMemo(() => {
+    if (!product) return 0;
+    if (typeof product.seller_ask === 'number' && product.seller_ask > 0) return product.seller_ask;
+    // If legacy data stored only final price, invert the pricing formula.
+    try {
+      return deriveAskPriceFromFinalPrice(product.price, payoutSettings);
+    } catch {
+      return product.price;
+    }
+  }, [product, payoutSettings]);
+
+  const finalDisplayPrice = useMemo(() => {
+    if (!product) return 0;
+    try {
+      // Prefer seller_ask when available; otherwise assume `price` is already customer-facing.
+      if (typeof product.seller_ask === 'number' && product.seller_ask > 0) {
+        return calculateFinalPrice(product.seller_ask, payoutSettings);
+      }
+      return product.price;
+    } catch (e) {
+      console.warn('BEEZIO_PRICING_ENGINE display fallback', e);
+      return product.price;
+    }
+  }, [product, payoutSettings]);
+
   // Track affiliate referral on page load
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -73,7 +108,7 @@ const ProductDetailPage: React.FC = () => {
     if (!url) return null;
     
     // YouTube
-    const youtubeMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+    const youtubeMatch = url.match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/);
     if (youtubeMatch) {
       return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
     }
@@ -263,8 +298,8 @@ const ProductDetailPage: React.FC = () => {
     }
     
     // Calculate affiliate discount (5% off if user is an affiliate)
-    const affiliateDiscount = isAffiliate ? product.price * 0.05 : 0;
-    const discountedPrice = product.price - affiliateDiscount;
+    const affiliateDiscount = isAffiliate ? finalDisplayPrice * 0.05 : 0;
+    const discountedPrice = finalDisplayPrice - affiliateDiscount;
     
     // Track add to cart behavior
     trackCartAdd(product.id);
@@ -274,6 +309,10 @@ const ProductDetailPage: React.FC = () => {
       productId: product.id,
       title: product.title,
       price: discountedPrice,
+      sellerAsk: derivedSellerAsk,
+      commission_rate: product.commission_rate,
+      commission_type: product.commission_type,
+      flat_commission_amount: product.flat_commission_amount,
       quantity: quantity,
       image: product.images[0] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=800',
       sellerId: product.seller_id,
@@ -470,13 +509,18 @@ const ProductDetailPage: React.FC = () => {
           <div className="space-y-1">
             <div className="flex items-center space-x-3">
               <span className="text-3xl font-bold text-gray-900">
-                ${product.price.toFixed(2)}
+                ${finalDisplayPrice.toFixed(2)}
               </span>
               {product.requires_shipping && (
                 <span className="text-sm text-gray-600">
                   + shipping
                 </span>
               )}
+            </div>
+            
+            <div className="text-sm text-gray-600 flex items-center">
+              <DollarSign className="w-4 h-4 text-green-600 mr-1" />
+              <span>Price includes platform fees & commissions</span>
             </div>
             
             {/* Affiliate Discount Badge */}
@@ -651,7 +695,7 @@ const ProductDetailPage: React.FC = () => {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>Product Price (×{quantity}):</span>
-                    <span>${(product.price * quantity).toFixed(2)}</span>
+                    <span>${(finalDisplayPrice * quantity).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>{selectedShipping.name}:</span>
@@ -660,7 +704,7 @@ const ProductDetailPage: React.FC = () => {
                   <div className="border-t border-gray-300 pt-1 mt-2">
                     <div className="flex justify-between font-semibold text-lg">
                       <span>Total:</span>
-                      <span>${(product.price * quantity + selectedShipping.cost).toFixed(2)}</span>
+                      <span>${(finalDisplayPrice * quantity + selectedShipping.cost).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

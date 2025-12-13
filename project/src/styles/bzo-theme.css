@@ -1,11 +1,11 @@
 /* BZO The Bee - Brand Color Palette */
 :root {
-  /* Primary BZO Colors */
-  --bzo-yellow-primary: #FFD700;    /* Golden bee yellow */
-  --bzo-yellow-secondary: #FFA500;  /* Orange accent */
-  --bzo-yellow-light: #FFF8DC;      /* Light cream background */
-  --bzo-black: #1A1A1A;             /* Bee stripe black */
-  --bzo-white: #FFFFFF;             /* Clean white */
+  /* Iowa Hawkeye Inspired Colors */
+  --bzo-yellow-primary: #ffcb05;    /* Hawkeye gold */
+  --bzo-yellow-secondary: #e0b000;  /* deeper gold accent */
+  --bzo-yellow-light: #fff9d4;      /* pale gold wash */
+  --bzo-black: #101820;             /* Hawkeye black */
+  --bzo-white: #ffffff;             /* bright white base */
   
   /* Semantic Colors */
   --primary: var(--bzo-yellow-primary);
@@ -19,11 +19,11 @@
   
   /* Interactive States */
   --button-primary-bg: var(--bzo-yellow-primary);
-  --button-primary-hover: var(--bzo-yellow-secondary);
+  --button-primary-hover: #ffdf5c;
   --button-primary-text: var(--bzo-black);
   --button-secondary-bg: var(--bzo-black);
-  --button-secondary-hover: #2D2D2D;
-  --button-secondary-text: var(--bzo-white);
+  --button-secondary-hover: #000000;
+  --button-secondary-text: var(--bzo-yellow-primary);
   
   /* Borders & Shadows */
   --border-color: #E5E7EB;
@@ -138,7 +138,7 @@
 }
 
 .bg-bzo-gradient {
-  background: linear-gradient(135deg, var(--bzo-yellow-light) 0%, var(--bzo-white) 100%);
+  background: #ffffff;
 }
 
 /* BZO Hero Section */

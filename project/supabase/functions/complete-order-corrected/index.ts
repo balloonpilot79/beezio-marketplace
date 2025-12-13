@@ -23,41 +23,76 @@ interface PaymentDistribution {
   sellerAmount: number;
   affiliateAmount: number;
   platformFee: number;
+  referralAmount: number;
+  beezioNet: number;
   stripeFee: number;
   totalListingPrice: number;
 }
 
-// Calculate correct fee distribution using our NEW formula
-function calculateCorrectDistribution(
-  sellerDesiredAmount: number,
-  affiliateRate: number = 0,
-  affiliateType: string = 'percentage'
-): PaymentDistribution {
-  // Step 1: Seller gets exactly what they want
-  const sellerAmount = sellerDesiredAmount;
+// Unified Beezio distribution constants (must match frontend config)
+const STRIPE_PERCENT = 0.029;
+const STRIPE_FIXED = 0.60;
+const PLATFORM_PERCENT = 0.15;
+const REFERRER_PERCENT_OF_SALE = 0.05;
+const PLATFORM_FEE_UNDER_20_THRESHOLD = 20;
+const PLATFORM_FEE_UNDER_20_SURCHARGE = 1;
 
-  // Step 2: Affiliate commission
-  const affiliateAmount = affiliateType === 'flat_rate'
-    ? affiliateRate
-    : sellerAmount * (affiliateRate / 100);
+const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
-  // Step 3: Stripe fee = 3% of (seller + affiliate) + $0.60
-  const stripeBase = sellerAmount + affiliateAmount;
-  const stripeFee = stripeBase * 0.03 + 0.60;
+const platformSurchargePerUnit = (sellerAskPerUnit: number): number =>
+  Number.isFinite(sellerAskPerUnit) && sellerAskPerUnit > 0 && sellerAskPerUnit <= PLATFORM_FEE_UNDER_20_THRESHOLD
+    ? PLATFORM_FEE_UNDER_20_SURCHARGE
+    : 0;
 
-  // Step 4: Beezio gets 10% of (seller + affiliate + stripe)
-  const totalBeforePlatform = sellerAmount + affiliateAmount + stripeFee;
-  const platformFee = totalBeforePlatform * 0.10; // Beezio gets 10%
+function calculateBeezioDistributionFromFinalPrice(params: {
+  unitFinalPrice: number;
+  quantity: number;
+  sellerAskPerUnit: number;
+  affiliatePercent: number;
+  affiliateType?: 'percentage' | 'flat_rate';
+  recruiterEnabled: boolean;
+}): PaymentDistribution {
+  const {
+    unitFinalPrice,
+    quantity,
+    sellerAskPerUnit,
+    affiliatePercent,
+    affiliateType = 'percentage',
+    recruiterEnabled,
+  } = params;
 
-  // Step 5: Total listing price = (seller + affiliate + stripe) + Beezio
-  const totalListingPrice = totalBeforePlatform + platformFee;
+  const qty = Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
+  const finalPriceTotal = round2((Number.isFinite(unitFinalPrice) ? unitFinalPrice : 0) * qty);
+
+  const affiliateAmountTotal = round2(
+    affiliateType === 'flat_rate'
+      ? (Number.isFinite(affiliatePercent) ? affiliatePercent : 0) * qty
+      : finalPriceTotal * (Math.max(0, affiliatePercent) / 100)
+  );
+
+  const sellerAmountTotal = round2((Number.isFinite(sellerAskPerUnit) ? sellerAskPerUnit : 0) * qty);
+
+  // IMPORTANT: This code models Stripe fixed fee per-unit, because item prices were computed per-unit.
+  const stripeFeeTotal = round2(finalPriceTotal * STRIPE_PERCENT + STRIPE_FIXED * qty);
+
+  const platformFeeTotal = round2(
+    finalPriceTotal * PLATFORM_PERCENT + platformSurchargePerUnit(sellerAskPerUnit) * qty
+  );
+
+  const referralAmountTotal = recruiterEnabled
+    ? round2(finalPriceTotal * REFERRER_PERCENT_OF_SALE)
+    : 0;
+
+  const beezioNet = round2(Math.max(platformFeeTotal - referralAmountTotal, 0));
 
   return {
-    sellerAmount,
-    affiliateAmount,
-    platformFee,
-    stripeFee,
-    totalListingPrice
+    sellerAmount: sellerAmountTotal,
+    affiliateAmount: affiliateAmountTotal,
+    platformFee: platformFeeTotal,
+    referralAmount: referralAmountTotal,
+    beezioNet,
+    stripeFee: stripeFeeTotal,
+    totalListingPrice: finalPriceTotal,
   };
 }
 
@@ -76,9 +111,14 @@ serve(async (req) => {
       tax = 0 // Fixed tax amount passed from client
     } = await req.json()
 
+    const serviceRoleKey =
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ??
+      Deno.env.get('SERVICE_ROLE_KEY') ??
+      ''
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      serviceRoleKey
     )
 
     console.log('🔄 Processing order with CORRECT fee distribution:', {
@@ -96,32 +136,88 @@ serve(async (req) => {
     let totalStripeFees = 0;
     const distributionDetails = [];
 
+    // Cache seller recruiter lookups (seller profile id -> recruiter profile id)
+    const sellerRecruiterCache = new Map<string, string | null>();
+
     for (const item of items as CartItem[]) {
-      const sellerAmountForItem = (item.sellerDesiredAmount || item.price * 0.7) * item.quantity;
-      const affiliateRate = item.affiliateCommissionRate || 0;
-      
-      const distribution = calculateCorrectDistribution(
-        sellerAmountForItem,
-        affiliateRate,
-        'percentage'
-      );
+      const unitFinalPrice = Number.isFinite(item.price) ? item.price : 0;
+      const qty = Number.isFinite(item.quantity) ? item.quantity : 0;
+      const sellerAskPerUnit = Number.isFinite(item.sellerDesiredAmount)
+        ? item.sellerDesiredAmount
+        : unitFinalPrice * 0.7;
+
+      // Resolve affiliate profile id (for affiliate commissions)
+      let resolvedAffiliateProfileId: string | null = null;
+
+      if (item.affiliateId) {
+        const { data: affiliateProfile, error: affiliateLookupError } = await supabase
+          .from('profiles')
+          .select('id, referred_by_affiliate_id')
+          .or(`id.eq.${item.affiliateId},referral_code.ilike.${item.affiliateId}`)
+          .maybeSingle();
+
+        if (affiliateLookupError) {
+          console.warn('Recruiter lookup warning:', affiliateLookupError);
+        }
+
+        resolvedAffiliateProfileId = (affiliateProfile as any)?.id ?? null;
+      }
+
+      // Recruiter bonus is based on the SELLER being referred at signup.
+      // If seller has referred_by_affiliate_id, pay recruiter 5% of sale and reduce Beezio net from 15% to 10%.
+      let recruiterAffiliateId: string | null = null;
+      if (item.sellerId) {
+        if (sellerRecruiterCache.has(item.sellerId)) {
+          recruiterAffiliateId = sellerRecruiterCache.get(item.sellerId) ?? null;
+        } else {
+          const { data: sellerProfile, error: sellerLookupError } = await supabase
+            .from('profiles')
+            .select('id, referred_by_affiliate_id')
+            .eq('id', item.sellerId)
+            .maybeSingle();
+
+          if (sellerLookupError) {
+            console.warn('Seller recruiter lookup warning:', sellerLookupError);
+          }
+
+          recruiterAffiliateId = (sellerProfile as any)?.referred_by_affiliate_id ?? null;
+          sellerRecruiterCache.set(item.sellerId, recruiterAffiliateId);
+        }
+      }
+
+      const affiliatePercent = Number.isFinite(item.affiliateCommissionRate)
+        ? (item.affiliateCommissionRate as number)
+        : 0;
+
+      const distribution = calculateBeezioDistributionFromFinalPrice({
+        unitFinalPrice,
+        quantity: qty,
+        sellerAskPerUnit,
+        affiliatePercent,
+        affiliateType: 'percentage',
+        recruiterEnabled: Boolean(recruiterAffiliateId),
+      });
       
       totalSellerPayouts += distribution.sellerAmount;
       totalAffiliatePayouts += distribution.affiliateAmount;
-      totalPlatformRevenue += distribution.platformFee;
+      // Platform revenue tracked as net (after recruiter override)
+      totalPlatformRevenue += distribution.beezioNet;
       totalStripeFees += distribution.stripeFee;
       
       distributionDetails.push({
         productId: item.productId,
         sellerId: item.sellerId,
-        affiliateId: item.affiliateId,
+        affiliateId: resolvedAffiliateProfileId ?? item.affiliateId ?? null,
+        recruiterAffiliateId,
         distribution
       });
       
       console.log(`📊 Item ${item.productId} distribution:`, {
         seller: `$${distribution.sellerAmount.toFixed(2)}`,
         affiliate: `$${distribution.affiliateAmount.toFixed(2)}`,
-        platform: `$${distribution.platformFee.toFixed(2)}`,
+        platformGross: `$${distribution.platformFee.toFixed(2)}`,
+        recruiter: `$${distribution.referralAmount.toFixed(2)}`,
+        beezioNet: `$${distribution.beezioNet.toFixed(2)}`,
         stripe: `$${distribution.stripeFee.toFixed(2)}`,
         total: `$${distribution.totalListingPrice.toFixed(2)}`
       });
@@ -156,13 +252,17 @@ serve(async (req) => {
           order_id: orderId,
           product_id: item.productId,
           seller_id: item.sellerId,
-          affiliate_id: item.affiliateId || null,
+          affiliate_id: (detail.affiliateId as string | null) || null,
+          affiliate_referrer_id: (detail.recruiterAffiliateId as string | null) || null,
           quantity: item.quantity,
           unit_price: item.price,
           total_price: item.price * item.quantity,
           seller_desired_amount: item.sellerDesiredAmount || item.price * 0.7,
           seller_payout: detail.distribution.sellerAmount,
           affiliate_commission: detail.distribution.affiliateAmount,
+          referral_bonus: detail.distribution.referralAmount,
+          beezio_gross: detail.distribution.platformFee,
+          beezio_net: detail.distribution.beezioNet,
           platform_fee: detail.distribution.platformFee,
           stripe_fee: detail.distribution.stripeFee,
           commission_rate: item.commissionRate,
@@ -185,72 +285,63 @@ serve(async (req) => {
         .eq('id', item.productId)
     }
 
-    // Create CORRECT commission records for affiliates
+    // Create commission records for affiliates (direct commissions)
     for (let i = 0; i < items.length; i++) {
       const item = items[i] as CartItem;
       const detail = distributionDetails[i];
-      
-      if (item.affiliateId && detail.distribution.affiliateAmount > 0) {
+
+      const resolvedAffiliateId = (detail.affiliateId as string | null) || null;
+
+      if (resolvedAffiliateId && detail.distribution.affiliateAmount > 0) {
         await supabase
           .from('commissions')
           .insert({
-            affiliate_id: item.affiliateId,
+            affiliate_id: resolvedAffiliateId,
             product_id: item.productId,
             order_id: orderId,
             commission_rate: item.affiliateCommissionRate || 0,
             commission_amount: detail.distribution.affiliateAmount,
             status: 'pending',
-          })
-
-        // Check if this affiliate was referred by someone (2-tier commission)
-        const { data: referralData } = await supabase
-          .from('affiliate_referrals')
-          .select('referrer_id, referral_code')
-          .eq('referred_id', item.affiliateId)
-          .eq('status', 'active')
-          .single()
-
-        if (referralData) {
-          // Calculate 5% referral commission from the TOTAL sale amount (UPDATED Oct 2025)
-          const saleAmount = item.price * item.quantity;
-          const referralCommission = saleAmount * 0.05; // 5% of total sale - PASSIVE INCOME!
-          
-          console.log(`💰 Referral commission for ${item.productId}:`, {
-            referrer: referralData.referrer_id,
-            referred_affiliate: item.affiliateId,
-            sale_amount: `$${saleAmount.toFixed(2)}`,
-            commission: `$${referralCommission.toFixed(2)} (5% passive income!)`
           });
+      }
+    }
 
-          // Create referral commission record
-          await supabase
-            .from('referral_commissions')
-            .insert({
-              referrer_id: referralData.referrer_id,
-              referred_affiliate_id: item.affiliateId,
-              order_id: orderId,
-              sale_amount: saleAmount,
-              commission_amount: referralCommission,
-              commission_rate: 5.00,
-              status: 'pending'
-            })
+    // Create recruiter earnings (5% of sale) based on SELLER recruitment
+    const recruiterEarningsByPair = new Map<string, { recruiterId: string; recruitId: string; amount: number }>();
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i] as CartItem;
+      const detail = distributionDetails[i];
+      const recruiterId = (detail.recruiterAffiliateId as string | null) || null;
+      const recruitId = (detail.sellerId as string | null) || null;
+      if (!recruiterId || !recruitId) continue;
+      if (!(detail.distribution.referralAmount > 0)) continue;
 
-          // Update total commission for this referral relationship
-          await supabase
-            .from('affiliate_referrals')
-            .update({
-              total_sales: supabase.sql`total_sales + ${saleAmount}`,
-              total_commission: supabase.sql`total_commission + ${referralCommission}`,
-              updated_at: new Date().toISOString()
-            })
-            .eq('referrer_id', referralData.referrer_id)
-            .eq('referred_id', item.affiliateId)
+      const key = `${recruiterId}__${recruitId}`;
+      const current = recruiterEarningsByPair.get(key);
+      if (current) {
+        current.amount = round2(current.amount + detail.distribution.referralAmount);
+      } else {
+        recruiterEarningsByPair.set(key, {
+          recruiterId,
+          recruitId,
+          amount: detail.distribution.referralAmount,
+        });
+      }
+    }
 
-          // Reduce platform fee by 5% (from 15% to 10%)
-          totalPlatformRevenue -= referralCommission;
-          
-          console.log(`📉 Platform fee adjusted: -$${referralCommission.toFixed(2)} (5% goes to referrer for passive income)`);
-        }
+    for (const { recruiterId, recruitId, amount } of recruiterEarningsByPair.values()) {
+      try {
+        await supabase
+          .from('recruiter_earnings')
+          .insert({
+            recruiter_id: recruiterId,
+            recruit_id: recruitId,
+            order_id: orderId,
+            amount,
+            status: 'pending',
+          });
+      } catch (e) {
+        console.warn('Recruiter earnings insert failed (non-fatal):', e);
       }
     }
 
@@ -311,19 +402,20 @@ serve(async (req) => {
         recipient_type: 'platform',
         recipient_id: null,
         amount: totalPlatformRevenue,
-        percentage: 10.00, // Always 10% of seller amounts
+        // Net platform amount after recruiter override. Percentage is informational here.
+        percentage: 15.00,
         status: 'pending'
       });
 
-    // Log the CORRECT distribution using NEW formula
-    console.log('✅ Order completed with NEW fee distribution (seller+affiliate+stripe=beezio=listing):', {
+    // Log distribution summary
+    console.log('✅ Order completed with Beezio distribution:', {
       orderId,
       totalPaid: `$${totalPaid.toFixed(2)}`,
       breakdown: {
         sellers: `$${totalSellerPayouts.toFixed(2)} (get exactly what they wanted)`,
         affiliates: `$${totalAffiliatePayouts.toFixed(2)} (commission)`,
-        platform: `$${totalPlatformRevenue.toFixed(2)} (10% of seller amounts)`,
-        stripe: `$${totalStripeFees.toFixed(2)} (3% processing)`
+        platform: `$${totalPlatformRevenue.toFixed(2)} (net after recruiter override)`,
+        stripe: `$${totalStripeFees.toFixed(2)} (Stripe fees)`
       },
       verification: `${totalSellerPayouts.toFixed(2)} + ${totalAffiliatePayouts.toFixed(2)} + ${totalPlatformRevenue.toFixed(2)} + ${totalStripeFees.toFixed(2)} = ${(totalSellerPayouts + totalAffiliatePayouts + totalPlatformRevenue + totalStripeFees).toFixed(2)}`
     });

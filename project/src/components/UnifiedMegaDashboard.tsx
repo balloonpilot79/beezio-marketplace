@@ -6,6 +6,7 @@ import StoreCustomization from './StoreCustomization';
 import UniversalIntegrationsPage from './UniversalIntegrationsPage';
 import StripeSellerDashboard from './StripeSellerDashboard';
 import StripeAffiliateDashboard from './StripeAffiliateDashboard';
+import CJProductImportPage from '../pages/CJProductImportPage';
 
 import {
   LayoutDashboard, Package, ShoppingCart, BarChart3, DollarSign, 
@@ -70,7 +71,7 @@ const UnifiedMegaDashboard: React.FC = () => {
   console.log('🎉 UnifiedMegaDashboard loaded! User:', user?.email, 'Role:', profile?.role);
   
   // All state management
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'earnings' | 'affiliate' | 'analytics' | 'store' | 'integrations' | 'payments'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'cj-import' | 'orders' | 'earnings' | 'affiliate' | 'analytics' | 'store' | 'integrations' | 'payments'>('overview');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [commissions, setCommissions] = useState<Commission[]>([]);
@@ -96,6 +97,9 @@ const UnifiedMegaDashboard: React.FC = () => {
   // EVERYONE CAN ACCESS EVERYTHING (business rule)
   const canSellProducts = true;
   const canEarnCommissions = true;
+  
+  // Admin check using direct email comparison (bypasses profile timeout)
+  const isAdmin = user?.email === 'jason@beezio.co' || user?.email === 'jasonlovingsr@gmail.com';
 
   useEffect(() => {
     if (user) {
@@ -304,6 +308,7 @@ const UnifiedMegaDashboard: React.FC = () => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard, show: true },
     { id: 'products', label: 'Products', icon: Package, show: canSellProducts },
+    { id: 'cj-import', label: 'CJ Import', icon: Package, show: isAdmin },
     { id: 'orders', label: 'Orders', icon: ShoppingCart, show: canSellProducts || isBuyer },
     { id: 'earnings', label: 'Earnings', icon: DollarSign, show: canEarnCommissions },
     { id: 'affiliate', label: 'Affiliate Tools', icon: Link, show: canEarnCommissions },
@@ -314,54 +319,41 @@ const UnifiedMegaDashboard: React.FC = () => {
   ].filter(tab => tab.show);
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-[#fff8e1] via-white to-[#fff1c0]">
+    <div className="relative min-h-screen bg-white">
       {loading && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ffcb05] mx-auto mb-4"></div>
             <p className="text-gray-700 font-medium">Updating your dashboard...</p>
           </div>
         </div>
       )}
-      {/* BZO Welcome Banner */}
-      <div className="bg-gradient-to-r from-bzo-yellow-primary to-bzo-yellow-secondary text-bzo-black text-center py-4 font-bold text-lg shadow-lg">
-        🐝 BZO Dashboard - Your Hive of Success
-      </div>
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* BZO Header */}
-        <div className="mb-8">
-          <div className="card-bzo p-8 bg-gradient-to-r from-bzo-yellow-light to-bzo-white border-2 border-bzo-yellow-primary/30">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-4xl font-bold mb-4 text-bzo-black flex items-center gap-3">
-                  <div className="bzo-mascot text-3xl">🐝</div>
-                  Welcome back, {profile?.full_name || user?.email?.split('@')[0] || 'User'}!
-                </h1>
-                <p className="text-gray-700 text-lg mb-4">
-                  {isSeller && 'Manage your products, orders, and grow your business with BZO'}
-                  {isAffiliate && 'Track your commissions and promote products in the hive'}
-                  {isBuyer && 'View your orders and discover amazing products'}
-                  {!profile && 'Access all features - sell products, earn commissions, and buzz with success!'}
-                </p>
-                <div className="flex items-center gap-4">
-                  <span className="inline-flex items-center px-6 py-2 rounded-full text-sm font-semibold bg-bzo-yellow-primary text-bzo-black">
-                    {profile?.role === 'fundraiser' ? 'Fundraiser' : profile?.role ? `${profile.role.charAt(0).toUpperCase()}${profile.role.slice(1)}` : 'User'}
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    Member since {new Date(user?.created_at || Date.now()).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-              <div className="hidden lg:block">
-                <div className="w-32 h-32 bg-bzo-yellow-primary/20 rounded-full flex items-center justify-center backdrop-blur-sm bzo-mascot">
-                  <div className="text-6xl">🐝</div>
-                </div>
-              </div>
+
+      {/* Dashboard Header (global) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        <div className="bg-white border border-black/10 rounded-2xl shadow-sm p-5 md:p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="bzo-mascot text-3xl leading-none">🐝</div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7a5b00] mb-1">Dashboard</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Beezio Control Panel</h1>
+              <p className="text-sm text-gray-700">Buyer • Seller • Affiliate • Fundraiser</p>
+            </div>
+          </div>
+          <div className="text-left md:text-right space-y-1">
+            <p className="text-sm font-semibold text-gray-900">Welcome back, {profile?.full_name || user?.email?.split('@')[0] || 'User'}</p>
+            <p className="text-xs text-gray-600">Member since {new Date(user?.created_at || Date.now()).toLocaleDateString()}</p>
+            <div className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#fff4c1] text-[#5a4300]">
+                {(profile?.primary_role || profile?.role || 'User').toUpperCase()}
+              </span>
+              <span className="text-xs text-gray-500">{user?.email}</span>
             </div>
           </div>
         </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* BZO Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {canSellProducts && (
@@ -378,14 +370,14 @@ const UnifiedMegaDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-[#ffc400]">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Revenue</p>
                     <p className="text-3xl font-bold text-gray-900 mt-2">${stats.total_revenue.toFixed(2)}</p>
                   </div>
-                  <div className="bg-green-100 rounded-full p-3">
-                    <DollarSign className="w-8 h-8 text-green-600" />
+                  <div className="bg-[#fff4c1] rounded-full p-3">
+                    <DollarSign className="w-8 h-8 text-[#7a5b00]" />
                   </div>
                 </div>
               </div>
@@ -394,26 +386,26 @@ const UnifiedMegaDashboard: React.FC = () => {
 
           {canEarnCommissions && (
             <>
-              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-[#ffcb05]">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Earnings</p>
                     <p className="text-3xl font-bold text-gray-900 mt-2">${stats.total_earnings.toFixed(2)}</p>
                   </div>
-                  <div className="bg-purple-100 rounded-full p-3">
-                    <Award className="w-8 h-8 text-purple-600" />
+                  <div className="bg-[#fff4c1] rounded-full p-3">
+                    <Award className="w-8 h-8 text-[#7a5b00]" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
+              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-[#ffe567]">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Pending Earnings</p>
                     <p className="text-3xl font-bold text-gray-900 mt-2">${stats.pending_earnings.toFixed(2)}</p>
                   </div>
-                  <div className="bg-orange-100 rounded-full p-3">
-                    <Clock className="w-8 h-8 text-orange-600" />
+                  <div className="bg-[#fff9da] rounded-full p-3">
+                    <Clock className="w-8 h-8 text-[#7a5b00]" />
                   </div>
                 </div>
               </div>
@@ -421,14 +413,14 @@ const UnifiedMegaDashboard: React.FC = () => {
           )}
 
           {isBuyer && (
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-indigo-500">
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-[#ffc400]">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">My Orders</p>
                   <p className="text-3xl font-bold text-gray-900 mt-2">{orders.length}</p>
                 </div>
-                <div className="bg-indigo-100 rounded-full p-3">
-                  <Package className="w-8 h-8 text-indigo-600" />
+                <div className="bg-[#fff4c1] rounded-full p-3">
+                  <Package className="w-8 h-8 text-[#7a5b00]" />
                 </div>
               </div>
             </div>
@@ -447,8 +439,8 @@ const UnifiedMegaDashboard: React.FC = () => {
                     onClick={() => setActiveTab(tab.id as any)}
                     className={`flex items-center gap-2 px-6 py-4 border-b-4 font-semibold text-sm transition-all whitespace-nowrap ${
                       activeTab === tab.id
-                        ? 'border-orange-500 text-orange-700 bg-orange-50'
-                        : 'border-transparent text-gray-500 hover:text-orange-700 hover:bg-orange-50/50'
+                        ? 'border-[#ffcb05] text-[#5a4300] bg-[#fff9da]'
+                        : 'border-transparent text-gray-500 hover:text-[#5a4300] hover:bg-[#fff9da]/60'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -472,30 +464,30 @@ const UnifiedMegaDashboard: React.FC = () => {
                     {canSellProducts && (
                       <button
                         onClick={handleAddProduct}
-                        className="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
+                        className="bg-[#ffcb05] text-black p-6 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
                       >
-                        <Plus className="w-8 h-8 mb-2" />
+                        <Plus className="w-8 h-8 mb-2 text-black" />
                         <h3 className="text-lg font-bold">Add New Product</h3>
-                        <p className="text-sm text-orange-100 mt-1">List a new product for sale</p>
+                        <p className="text-sm text-black/70 mt-1">List a new product for sale</p>
                       </button>
                     )}
                     
                     <button
                       onClick={() => setActiveTab('store')}
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
+                      className="bg-[#101820] text-[#ffcb05] p-6 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
                     >
-                      <Store className="w-8 h-8 mb-2" />
-                      <h3 className="text-lg font-bold">Customize Store</h3>
-                      <p className="text-sm text-purple-100 mt-1">Set up your custom domain</p>
+                      <Store className="w-8 h-8 mb-2 text-[#ffcb05]" />
+                      <h3 className="text-lg font-bold text-[#ffcb05]">Customize Store</h3>
+                      <p className="text-sm text-[#ffcb05] mt-1">Set up your custom domain</p>
                     </button>
 
                     <button
                       onClick={() => setActiveTab('analytics')}
-                      className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
+                      className="bg-[#ffcb05] text-black p-6 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
                     >
-                      <BarChart3 className="w-8 h-8 mb-2" />
+                      <BarChart3 className="w-8 h-8 mb-2 text-black" />
                       <h3 className="text-lg font-bold">View Analytics</h3>
-                      <p className="text-sm text-blue-100 mt-1">Track your performance</p>
+                      <p className="text-sm text-black/70 mt-1">Track your performance</p>
                     </button>
                   </div>
 
@@ -515,7 +507,7 @@ const UnifiedMegaDashboard: React.FC = () => {
                               <span className={`text-xs px-2 py-1 rounded-full ${
                                 order.status === 'delivered' ? 'bg-green-100 text-green-800' :
                                 order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                                order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                                order.status === 'processing' ? 'bg-[#fff4c1] text-[#5a4300]' :
                                 'bg-gray-100 text-gray-800'
                               }`}>
                                 {order.status}
@@ -537,7 +529,7 @@ const UnifiedMegaDashboard: React.FC = () => {
                   <h2 className="text-2xl font-bold text-gray-900">My Products</h2>
                   <button
                     onClick={handleAddProduct}
-                    className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-orange-600 transition-all shadow-lg"
+                    className="flex items-center gap-2 bg-[#101820] text-white px-6 py-3 rounded-xl font-semibold hover:bg-black transition-all shadow-lg"
                   >
                     <Plus className="w-5 h-5" />
                     Add Product
@@ -551,7 +543,7 @@ const UnifiedMegaDashboard: React.FC = () => {
                     <p className="text-gray-600 mb-6">Start selling by adding your first product</p>
                     <button
                       onClick={handleAddProduct}
-                      className="bg-orange-500 text-white px-8 py-3 rounded-xl font-semibold hover:bg-orange-600"
+                      className="bg-[#101820] text-white px-8 py-3 rounded-xl font-semibold hover:bg-black"
                     >
                       Add Your First Product
                     </button>
@@ -577,7 +569,7 @@ const UnifiedMegaDashboard: React.FC = () => {
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleEditProduct(product.id)}
-                              className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 flex items-center justify-center gap-2"
+                              className="flex-1 bg-[#ffcb05] text-black px-4 py-2 rounded-lg font-semibold hover:bg-[#e0b000] flex items-center justify-center gap-2"
                             >
                               <Edit className="w-4 h-4" />
                               Edit
@@ -642,7 +634,7 @@ const UnifiedMegaDashboard: React.FC = () => {
                               <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                 order.status === 'delivered' ? 'bg-green-100 text-green-800' :
                                 order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                                order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                                order.status === 'processing' ? 'bg-[#fff4c1] text-[#5a4300]' :
                                 order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                                 'bg-gray-100 text-gray-800'
                               }`}>
@@ -667,17 +659,17 @@ const UnifiedMegaDashboard: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Earnings & Commissions</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl p-6 shadow-lg">
-                    <p className="text-green-100 text-sm font-medium mb-2">Total Earnings</p>
+                  <div className="bg-[#101820] text-[#ffcb05] rounded-xl p-6 shadow-lg">
+                    <p className="text-sm font-medium text-[#ffcb05]/80 mb-2">Total Earnings</p>
                     <p className="text-4xl font-bold">${stats.total_earnings.toFixed(2)}</p>
                   </div>
-                  <div className="bg-gradient-to-br from-orange-500 to-amber-600 text-white rounded-xl p-6 shadow-lg">
-                    <p className="text-orange-100 text-sm font-medium mb-2">Pending</p>
+                  <div className="bg-[#ffcb05] text-black rounded-xl p-6 shadow-lg">
+                    <p className="text-sm font-medium text-black/70 mb-2">Pending</p>
                     <p className="text-4xl font-bold">${stats.pending_earnings.toFixed(2)}</p>
                   </div>
-                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl p-6 shadow-lg">
-                    <p className="text-blue-100 text-sm font-medium mb-2">Total Sales</p>
-                    <p className="text-4xl font-bold">{commissions.length}</p>
+                  <div className="bg-white border border-black/10 rounded-xl p-6 shadow-lg">
+                    <p className="text-sm font-medium text-gray-600 mb-2">Total Sales</p>
+                    <p className="text-4xl font-bold text-gray-900">{commissions.length}</p>
                   </div>
                 </div>
 
@@ -707,7 +699,7 @@ const UnifiedMegaDashboard: React.FC = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                commission.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                commission.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-[#fff4c1] text-[#5a4300]'
                               }`}>
                                 {commission.status}
                               </span>
@@ -729,7 +721,7 @@ const UnifiedMegaDashboard: React.FC = () => {
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Affiliate Tools</h2>
                 
-                <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-6 mb-8">
+                <div className="bg-[#fff9da] border border-black/10 rounded-xl p-6 mb-8">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">Your Affiliate Links</h3>
                   <p className="text-gray-700 mb-4">Share products and earn commissions on every sale!</p>
                   
@@ -738,7 +730,7 @@ const UnifiedMegaDashboard: React.FC = () => {
                       {products.slice(0, 3).map((product) => {
                         const link = generateAffiliateLink(product.id);
                         return (
-                          <div key={product.id} className="bg-white rounded-lg p-4">
+                          <div key={product.id} className="bg-white rounded-lg p-4 border border-gray-100">
                             <div className="flex items-center justify-between">
                               <div className="flex-1">
                                 <p className="font-semibold text-gray-900">{product.title}</p>
@@ -746,7 +738,7 @@ const UnifiedMegaDashboard: React.FC = () => {
                               </div>
                               <button
                                 onClick={() => copyToClipboard(link)}
-                                className="ml-4 bg-purple-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-600 flex items-center gap-2"
+                                className="ml-4 bg-[#101820] text-[#ffcb05] px-4 py-2 rounded-lg font-semibold hover:bg-black flex items-center gap-2"
                               >
                                 <Copy className="w-4 h-4" />
                                 Copy
@@ -760,20 +752,20 @@ const UnifiedMegaDashboard: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-xl shadow-lg p-6">
-                    <QrCode className="w-12 h-12 text-purple-600 mb-4" />
+                  <div className="bg-white rounded-xl shadow-lg p-6 border border-black/5">
+                    <QrCode className="w-12 h-12 text-[#101820] mb-4" />
                     <h3 className="text-xl font-bold text-gray-900 mb-2">QR Codes</h3>
                     <p className="text-gray-600 mb-4">Generate QR codes for your affiliate links</p>
-                    <button className="bg-purple-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-purple-600">
+                    <button className="bg-[#ffcb05] text-black px-6 py-2 rounded-lg font-semibold hover:bg-[#e0b000]">
                       Generate QR Code
                     </button>
                   </div>
 
-                  <div className="bg-white rounded-xl shadow-lg p-6">
-                    <MessageSquare className="w-12 h-12 text-blue-600 mb-4" />
+                  <div className="bg-white rounded-xl shadow-lg p-6 border border-black/5">
+                    <MessageSquare className="w-12 h-12 text-[#101820] mb-4" />
                     <h3 className="text-xl font-bold text-gray-900 mb-2">Marketing Materials</h3>
                     <p className="text-gray-600 mb-4">Download banners and promotional content</p>
-                    <button className="bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-600">
+                    <button className="bg-[#101820] text-[#ffcb05] px-6 py-2 rounded-lg font-semibold hover:bg-black">
                       View Materials
                     </button>
                   </div>
@@ -808,6 +800,13 @@ const UnifiedMegaDashboard: React.FC = () => {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Integrations</h2>
                 <UniversalIntegrationsPage />
+              </div>
+            )}
+
+            {/* CJ IMPORT TAB */}
+            {activeTab === 'cj-import' && isAdmin && (
+              <div className="space-y-6">
+                <CJProductImportPage />
               </div>
             )}
 
@@ -846,3 +845,4 @@ const UnifiedMegaDashboard: React.FC = () => {
 };
 
 export default UnifiedMegaDashboard;
+

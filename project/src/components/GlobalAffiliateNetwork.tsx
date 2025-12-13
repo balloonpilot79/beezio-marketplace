@@ -196,7 +196,7 @@ const GlobalAffiliateNetwork: React.FC<GlobalAffiliateNetworkProps> = ({
 
   useEffect(() => {
     // Filter and sort affiliates
-    let filtered = affiliates.filter(affiliate => {
+    const filtered = affiliates.filter(affiliate => {
       const countryMatch = selectedCountry === 'all' || affiliate.location.country === selectedCountry;
       const categoryMatch = selectedCategory === 'all' || affiliate.preferredCategories.includes(selectedCategory);
       const tierMatch = filterTier === 'all' || affiliate.commissionTier === filterTier;

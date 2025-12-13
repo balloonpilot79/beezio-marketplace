@@ -6,6 +6,9 @@ export interface CartItem {
   productId: string;
   title: string;
   price: number;
+  sellerAsk?: number;
+  currency?: string;
+  affiliateRate?: number;
   quantity: number;
   image: string;
   sellerId: string;

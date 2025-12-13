@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import ProductGrid from '../components/ProductGrid';
 import FundraiserStoreCustomization from '../components/FundraiserStoreCustomization';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import StoreContactModal from '../components/StoreContactModal';
 import { Settings, User, Target, Heart, TrendingUp, Globe, Share2, Facebook, Instagram, Twitter, ExternalLink, Package, DollarSign } from 'lucide-react';
 
 interface FundraiserStorePageProps {
@@ -21,6 +22,8 @@ const FundraiserStorePage: React.FC<FundraiserStorePageProps> = ({ fundraiserId:
   const [loading, setLoading] = useState(true);
   const [canonicalFundraiserId, setCanonicalFundraiserId] = useState<string | null>(null);
   const [showCustomization, setShowCustomization] = useState(false);
+  const [customPages, setCustomPages] = useState<any[]>([]);
+  const [contactModal, setContactModal] = useState(false);
 
   useEffect(() => {
     if (!fundraiserId) {
@@ -97,6 +100,18 @@ const FundraiserStorePage: React.FC<FundraiserStorePageProps> = ({ fundraiserId:
         })).filter((p: any) => p.id) || [];
 
         setProducts(buyerFacingProducts);
+
+        const { data: pagesData, error: pagesError } = await supabase
+          .from('custom_pages')
+          .select('page_slug,page_title,is_active,display_order')
+          .eq('owner_id', canonicalId)
+          .eq('owner_type', 'fundraiser')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+        if (pagesError) {
+          console.warn('[FundraiserStorePage] Error fetching custom pages (non-fatal):', pagesError);
+        }
+        setCustomPages(pagesData || []);
 
         // Set fundraiser referral in localStorage
         localStorage.setItem('fundraiser_referral', canonicalId);
@@ -266,6 +281,24 @@ const FundraiserStorePage: React.FC<FundraiserStorePageProps> = ({ fundraiserId:
                 <span className="hidden sm:inline">Share</span>
               </button>
 
+              <button
+                onClick={() => setContactModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-400 text-black rounded-lg hover:bg-amber-500 transition-colors font-semibold"
+              >
+                <ExternalLink className="w-5 h-5" />
+                <span>Contact</span>
+              </button>
+
+              {customPages.filter(p => p.page_slug !== 'contact').map((p) => (
+                <Link
+                  key={p.page_slug}
+                  to={`/fundraiser/${canonicalFundraiserId || fundraiserId}/${p.page_slug}`}
+                  className="px-3 py-2 border border-white/40 text-white rounded-lg hover:bg-white/10 text-sm font-semibold"
+                >
+                  {p.page_title}
+                </Link>
+              ))}
+
               {/* Customize Button (only for owner) */}
               {isOwner && (
                 <button
@@ -386,12 +419,20 @@ const FundraiserStorePage: React.FC<FundraiserStorePageProps> = ({ fundraiserId:
                     <TrendingUp className="w-5 h-5 text-yellow-500" />
                     Featured Products
                   </h3>
-                  <ProductGrid products={products.filter(p => p.is_featured)} />
+                  <ProductGrid 
+                    products={products.filter(p => p.is_featured)} 
+                    gridLayout={storeSettings?.layout_config?.grid_layout || 'standard'}
+                    colorScheme={storeSettings?.color_scheme}
+                  />
                 </div>
               )}
 
               {/* All Products */}
-              <ProductGrid products={products} />
+              <ProductGrid 
+                products={products} 
+                gridLayout={storeSettings?.layout_config?.grid_layout || 'standard'}
+                colorScheme={storeSettings?.color_scheme}
+              />
             </>
           ) : (
             <div className="text-center py-12">
@@ -466,6 +507,14 @@ const FundraiserStorePage: React.FC<FundraiserStorePageProps> = ({ fundraiserId:
           </div>
         </div>
       </div>
+
+      <StoreContactModal
+        isOpen={contactModal}
+        onClose={() => setContactModal(false)}
+        ownerId={canonicalFundraiserId || fundraiserId || ''}
+        ownerType="fundraiser"
+        storeName={fundraiser?.full_name}
+      />
     </div>
   );
 };

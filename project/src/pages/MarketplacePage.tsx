@@ -1,3 +1,307 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { Grid, List, Search, ShoppingCart, Store, TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { SAMPLE_PRODUCTS } from '../lib/sampleData';
+import ProductCard from '../components/ProductCard';
+import { useAuth } from '../contexts/AuthContextMultiRole';
+import AddToAffiliateStoreButton from '../components/AddToAffiliateStoreButton';
+
+interface ProductProfile {
+  full_name?: string;
+}
+
+interface MarketplaceProduct {
+  id: string;
+  title: string;
+  description?: string;
+  price: number;
+  category?: string;
+  images?: string[];
+  commission_rate?: number;
+  commission_type?: 'percentage' | 'flat_rate';
+  flat_commission_amount?: number;
+  profiles?: ProductProfile | null;
+  average_rating?: number;
+  review_count?: number;
+}
+
+type SortOption = 'featured' | 'price-low' | 'price-high' | 'commission' | 'popular';
+
+const MarketplacePage: React.FC = () => {
+  const { user, profile } = useAuth();
+  const [products, setProducts] = useState<MarketplaceProduct[]>(SAMPLE_PRODUCTS);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [sortBy, setSortBy] = useState<SortOption>('featured');
+  const [loading, setLoading] = useState(false);
+
+  const affiliateRef = profile?.referral_code || user?.id || null;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*, profiles(full_name)')
+          .limit(60);
+
+        if (!error && data && data.length && isMounted) {
+          setProducts(data as MarketplaceProduct[]);
+        }
+      } catch (error) {
+        console.warn('MarketplacePage: falling back to sample data', error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchProducts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const categories = useMemo(() => {
+    const unique = Array.from(
+      new Set(
+        products
+          .map((product) => (product.category ? product.category.trim() : ''))
+          .filter(Boolean)
+      )
+    );
+    return ['All', ...unique];
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    let filtered = [...products];
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (product) =>
+          product.title.toLowerCase().includes(term) ||
+          product.description?.toLowerCase().includes(term)
+      );
+    }
+
+    if (selectedCategory !== 'All') {
+      filtered = filtered.filter((product) => product.category === selectedCategory);
+    }
+
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'price-low':
+          return a.price - b.price;
+        case 'price-high':
+          return b.price - a.price;
+        case 'commission':
+          return (b.commission_rate || 0) - (a.commission_rate || 0);
+        case 'popular':
+          return (b.review_count || 0) - (a.review_count || 0);
+        default:
+          return a.title.localeCompare(b.title);
+      }
+    });
+
+    return filtered;
+  }, [products, searchTerm, selectedCategory, sortBy]);
+
+  const marketplaceStats = useMemo(() => {
+    const totalProducts = products.length;
+    const totalSellers = new Set(products.map((product) => product.profiles?.full_name).filter(Boolean)).size;
+    const avgRating = products.length
+      ? (
+          products.reduce((sum, product) => sum + (product.average_rating || 4.7), 0) /
+          products.length
+        ).toFixed(1)
+      : '4.9';
+
+    return {
+      totalProducts,
+      totalSellers,
+      avgRating,
+    };
+  }, [products]);
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <section className="bg-gradient-to-br from-[#1f1746] via-[#2c1570] to-[#43126d] text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="max-w-3xl">
+            <p className="text-sm uppercase tracking-[0.3em] text-amber-300 mb-4">Beezio Marketplace</p>
+            <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-6">
+              Browse community-built storefronts and products curated by real sellers, affiliates, and fundraisers.
+            </h1>
+            <p className="text-lg text-white/80 mb-8">
+              Promote any product instantly, earn commissions on every sale, and unlock 5% referral rewards for life when you bring new affiliates to Beezio.
+            </p>
+            <div className="flex flex-wrap gap-3 text-sm text-white/70">
+              <span className="inline-flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full">
+                🛒 {marketplaceStats.totalProducts}+ products
+              </span>
+              <span className="inline-flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full">
+                🤝 {marketplaceStats.totalSellers || 25}+ active sellers
+              </span>
+              <span className="inline-flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full">
+                ⭐ {marketplaceStats.avgRating}/5 community score
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white shadow-sm -mt-10 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search by product, brand, or cause"
+                className="w-full pl-12 pr-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value as SortOption)}
+                className="px-4 py-3 rounded-2xl border border-gray-200 text-sm"
+              >
+                <option value="featured">Featured</option>
+                <option value="popular">Most Popular</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="commission">Highest Commission</option>
+              </select>
+              <div className="flex bg-gray-100 rounded-2xl p-1">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-2xl ${viewMode === 'grid' ? 'bg-white shadow' : 'text-gray-500'}`}
+                >
+                  <Grid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-2xl ${viewMode === 'list' ? 'bg-white shadow' : 'text-gray-500'}`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-gray-200 bg-white/90 backdrop-blur sticky top-0 z-30">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center overflow-x-auto gap-3 py-4 text-sm">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-2 rounded-full border transition-colors whitespace-nowrap ${
+                  selectedCategory === category
+                    ? 'bg-amber-500 text-white border-amber-500'
+                    : 'border-gray-200 text-gray-600 hover:border-amber-300 hover:text-amber-600'
+                }`}
+              >
+                {category === 'All' ? 'All Products' : category}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="flex items-center justify-between mb-6 text-sm text-gray-600">
+          <span>
+            Showing <strong>{filteredProducts.length}</strong> products
+            {selectedCategory !== 'All' && ` in ${selectedCategory}`}
+          </span>
+          <Link to="/start-earning" className="text-amber-600 font-semibold hover:underline">
+            Promote products · earn commissions
+          </Link>
+        </div>
+
+        {loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="h-64 bg-white border border-gray-200 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        )}
+
+        {!loading && filteredProducts.length === 0 && (
+          <div className="bg-white border border-dashed border-amber-300 rounded-2xl p-12 text-center">
+            <h3 className="text-xl font-semibold mb-3">No products yet.</h3>
+            <p className="text-gray-600 mb-6">
+              Try clearing your filters or search for another product category.
+            </p>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('All');
+                setSortBy('featured');
+              }}
+              className="px-6 py-3 bg-amber-500 text-white rounded-full font-semibold"
+            >
+              Reset Filters
+            </button>
+          </div>
+        )}
+
+        {filteredProducts.length > 0 && (
+          <div
+            className={
+              viewMode === 'grid'
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5'
+                : 'space-y-4'
+            }
+          >
+            {filteredProducts.map((product) => (
+              <ProductCard key={product.id} product={product as any} viewMode={viewMode} affiliateRef={affiliateRef} />
+            ))}
+          </div>
+        )}
+      </main>
+
+      <section className="bg-gradient-to-br from-slate-900 via-purple-900 to-amber-900 text-white py-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+          <p className="text-sm uppercase tracking-[0.4em] text-amber-200">Why affiliates love this marketplace</p>
+          <h2 className="text-3xl font-bold">Promote anything. Earn on everything.</h2>
+          <p className="text-lg text-white/80 max-w-3xl mx-auto">
+            Every product listed here can be added to your storefront in seconds. Invite new affiliates and get 5% referral fees for life on everything they sell.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              to="/start-earning"
+              className="px-8 py-3 rounded-full bg-white text-slate-900 font-semibold shadow-lg"
+            >
+              Browse affiliate tools
+            </Link>
+            <Link
+              to="/seller-complete"
+              className="px-8 py-3 rounded-full border border-white/40 text-white font-semibold"
+            >
+              Publish a storefront
+            </Link>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default MarketplacePage;
 import { useState, useEffect } from 'react';
 import { Grid, List, Search, Heart, Award } from 'lucide-react';
 import { supabase } from '../lib/supabase';

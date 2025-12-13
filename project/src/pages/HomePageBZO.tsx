@@ -1,263 +1,209 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Store,
-  Users,
-  TrendingUp,
-  Globe,
-  Package,
-  Zap,
-  Sparkles,
-  Bot,
-  Wand2,
-  MessageSquare,
-  Brain
-} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Heart, Megaphone, ShoppingBag, Store } from 'lucide-react';
+import PublicLayout from '../components/layout/PublicLayout';
+import ProductCard from '../components/product/ProductCard';
+import { Card } from '../components/ui/Card';
+import { SAMPLE_PRODUCTS, SampleProduct } from '../data/sampleProducts';
+import { fetchMarketplaceProducts } from '../services/productService';
+import { buildPricedProduct } from '../utils/pricing';
 
-const HomePage: React.FC<{
-  onOpenSimpleSignup: () => void;
-}> = ({ onOpenSimpleSignup }) => {
-  const [currentSlide, setCurrentSlide] = useState(0);
+type HomeProduct = SampleProduct & { sale_price?: number; seller_ask?: number };
 
-  const slides = [
-    {
-      icon: <Store className="w-11 h-11 text-[#ffcc00]" />,
-      title: 'Sell Anything, Anywhere',
-      description: 'Launch your custom storefront in minutes. Stripe checkout, your domain, zero inventory required.',
-      badge: 'For Sellers'
-    },
-    {
-      icon: <Users className="w-11 h-11 text-[#ffcc00]" />,
-      title: 'Earn 5% Lifetime Commissions',
-      description: 'Share products, earn forever. One link gets you 5% on every sale + seller bonuses.',
-      badge: 'For Affiliates'
-    },
-    {
-      icon: <TrendingUp className="w-11 h-11 text-[#ffcc00]" />,
-      title: 'Fundraise with Zero Effort',
-      description: 'Turn supporters into salespeople. Launch a cause-based store and earn while they share.',
-      badge: 'For Fundraisers'
-    },
-    {
-      icon: <Globe className="w-11 h-11 text-[#ffcc00]" />,
-      title: 'Your Brand, Your Domain',
-      description: 'Bring your own domain or use ours. Full customization, no tech skills needed.',
-      badge: 'Custom Stores'
-    },
-    {
-      icon: <Package className="w-11 h-11 text-[#ffcc00]" />,
-      title: 'Dropship-Ready Marketplace',
-      description: 'Opt products into affiliate promotion or keep them private. You control the distribution.',
-      badge: 'Smart Inventory'
-    },
-    {
-      icon: <Zap className="w-11 h-11 text-[#ffcc00]" />,
-      title: 'Transparent, All-In Pricing',
-      description: 'No hidden costs. We bake in platform, referrer, and Stripe fees so everyone keeps their full share.',
-      badge: 'Transparent Pricing'
-    }
-  ];
+interface HomePageProps {
+  onOpenSimpleSignup?: () => void;
+}
+
+const audience = [
+  {
+    title: 'Buyers',
+    icon: ShoppingBag,
+    description:
+      'Browse physical products, digital downloads, and fundraiser merch in one place. Prices are final and transparent—no surprise “platform” add-ons at checkout.',
+  },
+  {
+    title: 'Sellers',
+    icon: Store,
+    description:
+      "List products for free, connect your own supplier or inventory, and keep 100% of your ask price. Beezio adds its fees and affiliate rewards on top so you don't lose margin.",
+  },
+  {
+    title: 'Affiliates',
+    icon: Megaphone,
+    description:
+      "Share products and stores with your audience and earn a built-in commission on every sale. On top of that, you earn a lifetime 5% share of Beezio's cut on every affiliate you refer.",
+  },
+  {
+    title: 'Fundraisers',
+    icon: Heart,
+    description:
+      "Launch a campaign with products instead of just donation buttons. Affiliates and supporters help promote your cause, and Beezio's referral share helps you reach your goals faster.",
+  },
+];
+
+const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
+  const [products, setProducts] = useState<HomeProduct[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 4200);
+    const loadProducts = async () => {
+      try {
+        const live = await fetchMarketplaceProducts(8);
+        if (live.length) {
+          setProducts(live);
+          setLoadingProducts(false);
+          return;
+        }
+      } catch (error) {
+        console.warn('HomePageBZO: using sample products', error);
+      }
 
-    return () => clearInterval(timer);
-  }, [slides.length]);
+      setProducts(SAMPLE_PRODUCTS.slice(0, 8).map((item) => buildPricedProduct(item)));
+      setLoadingProducts(false);
+    };
+
+    loadProducts();
+  }, []);
+
+  const previewProducts = useMemo(() => products.slice(0, 8), [products]);
 
   return (
-    <div className="min-h-screen bg-[#050915] text-white">
-      {/* HERO */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#f9fbff] via-[#eef2ff] to-[#e5e7eb]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,215,0,0.12),transparent_32%),radial-gradient(circle_at_80%_10%,rgba(17,24,39,0.08),transparent_26%)]" />
-        <div className="max-w-7xl mx-auto px-6 py-16 relative z-10">
-          <div className="grid lg:grid-cols-[1.05fr,0.95fr] gap-12 items-center">
-            {/* Copy + slider + CTA */}
-            <div className="space-y-6 w-full text-gray-900">
-              <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-semibold shadow-sm">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Free to join - Keep what you earn
-                </div>
-                <h1 className="text-4xl sm:text-5xl font-black leading-tight">
-                  A marketplace that feels familiar, and pays everyone fairly.
-                </h1>
-                <p className="text-base sm:text-lg text-gray-700 max-w-3xl">
-                  Add products in minutes, let affiliates and fundraisers promote them, and use your own domain or a simple Beezio link. No hidden cuts - just clean payouts.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="relative h-[320px] bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 px-6 sm:px-10">
-                  {slides.map((slide, index) => (
-                    <div
-                      key={index}
-                      className={`absolute inset-0 flex flex-col justify-center gap-3 px-8 sm:px-12 transition-all duration-700 ${
-                        index === currentSlide
-                          ? 'opacity-100 translate-x-0'
-                          : index < currentSlide
-                          ? 'opacity-0 -translate-x-10'
-                          : 'opacity-0 translate-x-10'
-                      }`}
-                    >
-                      <div className="inline-flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-xs font-semibold text-gray-800">
-                        {React.cloneElement(slide.icon as React.ReactElement, { className: 'w-4 h-4 text-gray-800' })}
-                        {slide.badge}
-                      </div>
-                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{slide.title}</h2>
-                      <p className="text-gray-700 text-sm sm:text-base leading-relaxed max-w-2xl">{slide.description}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-2">
-                  {slides.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentSlide(index)}
-                      className={`h-2 rounded-full transition-all duration-500 ${
-                        index === currentSlide ? 'w-8 bg-gray-900' : 'w-2 bg-gray-300 hover:bg-gray-500'
-                      }`}
-                      aria-label={`Go to slide ${index + 1}`}
-                    />
-                  ))}
-                </div>
-
-                <div className="flex flex-wrap gap-3 pt-1">
-                  <button
-                    onClick={onOpenSimpleSignup}
-                    className="bg-black text-white font-bold px-6 py-3 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
-                  >
-                    Start Free Today
-                  </button>
-                  <button
-                    onClick={() => window.location.assign('/marketplace')}
-                    className="bg-white text-gray-900 font-semibold px-6 py-3 rounded-full border border-gray-300 hover:bg-gray-50 transition-all shadow-sm"
-                  >
-                    Browse Marketplace
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Product collage */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100">
-                <img
-                  src="https://images.unsplash.com/photo-1542293787938-4d273c3f3e86?auto=format&fit=crop&w=900&q=80"
-                  alt="Product assortment"
-                  className="w-full h-44 object-cover rounded-2xl"
-                />
-                <p className="text-gray-900 font-semibold mt-3">Marketplace-ready</p>
-                <p className="text-gray-600 text-sm">Curated products and pricing in one place.</p>
-              </div>
-              <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100">
-                <img
-                  src="https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=900&q=80"
-                  alt="Earnings dashboard"
-                  className="w-full h-44 object-cover rounded-2xl"
-                />
-                <p className="text-gray-900 font-semibold mt-3">Affiliate dashboards</p>
-                <p className="text-gray-600 text-sm">Track clicks, sales, and payouts at a glance.</p>
-              </div>
-              <div className="bg-white rounded-3xl p-4 shadow-2xl border border-gray-100 col-span-2">
-                <img
-                  src="https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1200&q=80"
-                  alt="Custom storefront"
-                  className="w-full h-52 object-cover rounded-2xl"
-                />
-                <p className="text-gray-900 font-semibold mt-3">Custom storefronts</p>
-                <p className="text-gray-600 text-sm">Use your domain or beezio.co/yourstore with templates.</p>
-              </div>
-            </div>
-          </div>
+    <PublicLayout>
+      <section className="space-y-6 relative">
+        <p className="text-sm font-semibold text-amber-700 uppercase tracking-[0.2em]">
+          Marketplace • Sellers • Affiliates • Fundraisers
+        </p>
+        <div className="space-y-4">
+          <h1 className="text-4xl md:text-5xl font-semibold leading-tight text-gray-900 max-w-3xl">
+            Discover products, fundraisers, and opportunities on Beezio.
+          </h1>
+          <p className="text-lg text-gray-700 max-w-3xl leading-relaxed">
+            Beezio is a marketplace where sellers list products, affiliates promote them, and buyers shop with everything baked into the price.
+            Every price already includes platform, Stripe, affiliate, and referral rewards. Sellers keep their full ask, supporters earn fairly,
+            and buyers see the truth up front.
+          </p>
         </div>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            to="/marketplace"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-amber-500 text-black font-semibold shadow hover:bg-amber-600 transition-colors"
+          >
+            Browse marketplace
+          </Link>
+          <Link
+            to="/auth/signup?role=seller"
+            onClick={(event) => {
+              if (onOpenSimpleSignup) {
+                event.preventDefault();
+                onOpenSimpleSignup();
+              }
+            }}
+            className="inline-flex items-center justify-center px-6 py-3 rounded-full border border-gray-300 text-gray-900 font-semibold hover:border-amber-500 hover:text-amber-700 transition-colors"
+          >
+            Start selling
+          </Link>
+        </div>
+        <div className="flex flex-wrap gap-4 text-sm text-gray-700">
+          <Link to="/about#affiliates" className="inline-flex items-center gap-2 hover:text-amber-700">
+            Want to earn by sharing links? <span className="font-semibold">Become an affiliate</span>
+          </Link>
+          <span className="hidden sm:block text-gray-300">•</span>
+          <Link to="/how-it-works" className="inline-flex items-center gap-2 hover:text-amber-700">
+            How Beezio is different
+          </Link>
+        </div>
+        <img
+          src="/bzobee.png"
+          alt="Beezio mascot"
+          className="hidden lg:block absolute right-0 top-1/2 -translate-y-1/2 w-52 h-auto pointer-events-none drop-shadow-xl"
+        />
       </section>
-{/* FEATURES GRID */}
-      <section className="bg-gradient-to-b from-[#0b1026] via-[#0f1735] to-[#0b132b] px-5 py-12">
-        <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
-          <h2 className="text-3xl font-bold text-white">Everything you need to launch, earn, and fundraise</h2>
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 px-4 py-2 rounded-full text-xs font-semibold text-white/90">
-            <Zap className="w-4 h-4 text-[#f6d243]" />
-            No monthly fees - Fees baked into pricing
-          </div>
+
+      <section className="mt-12 space-y-6">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-semibold text-gray-900">Who Beezio is for</h2>
+          <p className="text-gray-600">Four paths, one transparent marketplace.</p>
         </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="group bg-white/5 border border-white/10 p-5 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-              <div className="w-11 h-11 bg-gradient-to-br from-[#f6d243] to-[#f5a300] rounded-xl flex items-center justify-center mb-3 text-black">
-                <Store className="w-6 h-6" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {audience.map((item) => (
+            <Card
+              key={item.title}
+              className="h-full bg-gradient-to-r from-amber-50 via-white to-amber-100 border border-amber-100 shadow-lg"
+            >
+              <div className="flex gap-4 items-start p-5">
+                <div className="p-3 rounded-full bg-amber-200 text-amber-800 shadow-sm">
+                  <item.icon className="w-5 h-5" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-gray-900">{item.title}</h3>
+                  <p className="text-sm text-gray-700 leading-relaxed">{item.description}</p>
+                </div>
               </div>
-              <h3 className="text-xl font-semibold mb-3 text-white">For Sellers</h3>
-              <ul className="space-y-2 text-sm text-white/80">
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Custom storefronts on your domain</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Stripe checkout with automated payouts</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Opt into affiliates or keep products private</li>
-              </ul>
-            </div>
-
-            <div className="group bg-white/5 border border-white/10 p-5 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-              <div className="w-11 h-11 bg-gradient-to-br from-[#f6d243] to-[#f5a300] rounded-xl flex items-center justify-center mb-3 text-black">
-                <Users className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 text-white">For Affiliates</h3>
-              <ul className="space-y-2 text-sm text-white/80">
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Earn 5% lifetime on every sale</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Bonus rates when sellers opt in</li>
-              </ul>
-            </div>
-
-            <div className="group bg-white/5 border border-white/10 p-5 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-              <div className="w-11 h-11 bg-gradient-to-br from-[#f6d243] to-[#f5a300] rounded-xl flex items-center justify-center mb-3 text-black">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 text-white">For Fundraisers</h3>
-              <ul className="space-y-2 text-sm text-white/80">
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> 5% bonus paid by Beezio every sale</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Ready-made store templates for causes</li>
-              </ul>
-            </div>
-
-            <div className="group bg-white/5 border border-white/10 p-5 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-              <div className="w-11 h-11 bg-gradient-to-br from-[#f6d243] to-[#f5a300] rounded-xl flex items-center justify-center mb-3 text-black">
-                <Package className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 text-white">For Buyers</h3>
-              <ul className="space-y-2 text-sm text-white/80">
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Trusted sellers and verified fundraisers</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Transparent pricing (includes Stripe 2.9% + $0.60)</li>
-              </ul>
-            </div>
-
-            <div className="group bg-white/5 border border-white/10 p-5 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-              <div className="w-11 h-11 bg-gradient-to-br from-[#f6d243] to-[#f5a300] rounded-xl flex items-center justify-center mb-3 text-black">
-                <Globe className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 text-white">Custom Stores & Domains</h3>
-              <ul className="space-y-2 text-sm text-white/80">
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Use beezio.co/yourstore or bring your own domain</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Guided onboarding with smart tips</li>
-              </ul>
-            </div>
-
-            <div className="group bg-white/5 border border-white/10 p-5 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-              <div className="w-11 h-11 bg-gradient-to-br from-[#f6d243] to-[#f5a300] rounded-xl flex items-center justify-center mb-3 text-black">
-                <Zap className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 text-white">API Integrations</h3>
-              <ul className="space-y-2 text-sm text-white/80">
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Import supplier products through adapters</li>
-                <li className="flex items-start gap-2"><span className="text-[#f6d243] font-bold">-</span> Automated fulfillment hooks are ready</li>
-              </ul>
-            </div>
-          </div>
+            </Card>
+          ))}
         </div>
       </section>
 
-    </div>
+      <section className="mt-12 space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-sm text-gray-600">Marketplace preview</p>
+            <h2 className="text-2xl font-semibold text-gray-900">Products ready to shop</h2>
+          </div>
+          <Link
+            to="/marketplace"
+            className="inline-flex items-center gap-2 text-amber-700 font-semibold hover:text-amber-800"
+          >
+            View all products
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+        {loadingProducts ? (
+          <div className="text-gray-600">Loading products…</div>
+        ) : previewProducts.length === 0 ? (
+          <div className="text-gray-700">No products yet. Add items from the seller dashboard to populate the marketplace.</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {previewProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                title={product.name}
+                price={product.sale_price ?? product.price}
+                imageUrl={product.image}
+                sellerName={product.seller}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-200 pt-8">
+        <Link
+          to="/stores"
+          className="block rounded-2xl bg-gray-50 border border-gray-200 p-6 hover:border-amber-500 hover:bg-amber-50 transition-colors"
+        >
+          <p className="text-sm text-gray-600">Featured stores</p>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold text-gray-900">See featured stores</h3>
+            <ArrowRight className="w-5 h-5 text-amber-600" />
+          </div>
+          <p className="text-sm text-gray-700 mt-2">Browse Beezio-run collections and spotlighted sellers.</p>
+        </Link>
+        <Link
+          to="/fundraisers"
+          className="block rounded-2xl bg-gray-50 border border-gray-200 p-6 hover:border-amber-500 hover:bg-amber-50 transition-colors"
+        >
+          <p className="text-sm text-gray-600">Causes</p>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold text-gray-900">See active fundraisers</h3>
+            <ArrowRight className="w-5 h-5 text-amber-600" />
+          </div>
+          <p className="text-sm text-gray-700 mt-2">Shop campaigns using built-in affiliate + referral rewards.</p>
+        </Link>
+      </section>
+    </PublicLayout>
   );
 };
 
-export default HomePage;
+export default HomePageBZO;

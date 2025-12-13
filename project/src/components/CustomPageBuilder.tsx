@@ -94,7 +94,9 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
   };
 
   const sanitizeHTML = (html: string): string => {
-    // Configure DOMPurify to ensure all checkout/product links go through our platform
+    // Configure DOMPurify to ensure all checkout/product links go through our platform and block external checkouts
+    const allowedHosts = ['beezio.co', window.location.host];
+
     const config = {
       ALLOWED_TAGS: ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'a', 'img', 'ul', 'ol', 'li', 'strong', 'em', 'br', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'blockquote', 'code', 'pre', 'hr', 'section', 'article', 'button'],
       ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'id', 'target', 'rel'],
@@ -117,23 +119,27 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
       KEEP_CONTENT: true
     };
 
-    let sanitized = DOMPurify.sanitize(html, config);
-    
-    // Force all product/checkout links to go through our platform
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(sanitized, 'text/html');
-    const links = doc.querySelectorAll('a[href*="checkout"], a[href*="product"], a[href*="cart"], a[href*="buy"]');
-    
-    links.forEach(link => {
-      const href = link.getAttribute('href');
-      if (href && !href.startsWith('/') && !href.includes(window.location.hostname)) {
-        // Redirect external checkout links to our platform
-        link.setAttribute('href', '/checkout');
-        link.setAttribute('data-original-href', href);
+    DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+      if (node.tagName === 'A' && node.hasAttribute('href')) {
+        const href = node.getAttribute('href') || '';
+        const isMailTel = href.startsWith('mailto:') || href.startsWith('tel:');
+        const isRelative = href.startsWith('/') || href.startsWith('#');
+        let isAllowedHost = false;
+        try {
+          const url = new URL(href, window.location.origin);
+          isAllowedHost = allowedHosts.some(h => url.host.endsWith(h));
+        } catch (e) {
+          // ignore parse errors
+        }
+        if (!(isMailTel || isRelative || isAllowedHost)) {
+          node.removeAttribute('href');
+          node.setAttribute('data-blocked', 'external-checkout-blocked');
+          node.textContent = node.textContent || 'Link blocked';
+        }
       }
     });
 
-    return doc.body.innerHTML;
+    return DOMPurify.sanitize(html, config);
   };
 
   const handleSavePage = async () => {

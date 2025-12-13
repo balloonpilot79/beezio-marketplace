@@ -2,6 +2,7 @@
 // Set ENABLE_SAMPLE_DATA to false to disable all sample data
 
 import { isProductSampleDataEnabled } from '../config/sampleDataConfig';
+import { buildPricedProduct } from '../utils/pricing';
 
 export const ENABLE_SAMPLE_DATA = isProductSampleDataEnabled();
 
@@ -23,10 +24,13 @@ export interface SampleProduct {
   shipping_cost?: number;
   stock_quantity?: number;
   created_at: string;
+  seller_ask?: number;
+  sale_price?: number;
+  currency?: string;
 }
 
 // High quality Unsplash images for each category
-export const SAMPLE_PRODUCTS: SampleProduct[] = [
+const RAW_SAMPLE_PRODUCTS: SampleProduct[] = [
   // MOCK SELLER POST - New listing for demo
   {
     id: 'mock-seller-1',
@@ -586,6 +590,8 @@ export const getRandomProducts = (count: number = 6): SampleProduct[] => {
   const shuffled = [...SAMPLE_PRODUCTS].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count);
 };
+
+export const SAMPLE_PRODUCTS: SampleProduct[] = RAW_SAMPLE_PRODUCTS.map((product) => buildPricedProduct(product));
 
 export default SAMPLE_PRODUCTS;
 

@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import PricingCalculator from './PricingCalculator';
-import EasyImageUpload from './EasyImageUpload';
+import ImageUpload from './ImageUpload';
 import ImageGallery from './ImageGallery';
-import SimpleImageUpload from './SimpleImageUpload';
 import { PricingBreakdown } from '../lib/pricing';
 import { callGPT } from '../lib/gptClient';
 import { Wand2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { normalizeMoneyInput } from '../utils/pricing';
 
 interface ProductFormProps {
   onSuccess?: () => void;
@@ -29,6 +29,7 @@ interface ProductFormProps {
 const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode, product }) => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const MAX_IMAGES = 6;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -52,6 +53,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       { name: 'Free Shipping', cost: 0, estimated_days: '5-7 business days' }
     ] as Array<{ name: string; cost: number; estimated_days: string }>,
     requires_shipping: product?.requires_shipping !== false,
+    shipping_price: product?.shipping_price ?? (product as any)?.shipping_cost ?? 0,
   });
   const resetForm = () => {
     setFormData({
@@ -71,6 +73,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         { name: 'Free Shipping', cost: 0, estimated_days: '5-7 business days' }
       ],
       requires_shipping: true,
+      shipping_price: 0,
     });
     setPricingBreakdown(null);
     setProductImages([]);
@@ -132,14 +135,19 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   { name: 'Free Shipping', cost: 0, estimated_days: '5-7 business days' }
                 ],
                 requires_shipping: data.requires_shipping !== false,
+                shipping_price: data.shipping_price ?? data.shipping_cost ?? 0,
               });
               setPricingBreakdown({
-                sellerAmount: data.seller_amount,
-                affiliateAmount: data.flat_commission_amount || 0,
+                sellerAmount: data.seller_amount ?? data.seller_ask ?? data.seller_ask_price ?? 0,
+                affiliateAmount: data.commission_type === 'flat_rate'
+                  ? data.flat_commission_amount || data.affiliate_commission_value || 0
+                  : (data.seller_amount ?? data.seller_ask ?? data.seller_ask_price ?? 0) * ((data.commission_rate || data.affiliate_commission_value || 0) / 100),
                 platformFee: data.platform_fee,
                 stripeFee: data.stripe_fee,
                 listingPrice: data.price,
-                affiliateRate: data.commission_rate,
+                affiliateRate: data.commission_type === 'flat_rate'
+                  ? data.flat_commission_amount || data.affiliate_commission_value || 0
+                  : data.commission_rate || data.affiliate_commission_value || 0,
                 affiliateType: data.commission_type,
               });
             }
@@ -202,7 +210,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'stock_quantity' ? parseInt(value) || 0 : value,
+      [name]:
+        name === 'stock_quantity'
+          ? parseInt(value) || 0
+          : name === 'shipping_price'
+            ? parseFloat(value) || 0
+            : value,
     }));
   };
 
@@ -228,24 +241,84 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
 
+    // Clear any prior image validation error when uploads succeed
+    setError(null);
+
     setFormData(prev => {
       const newImages = uploadedImages.filter(url => url && !prev.images.includes(url));
       if (newImages.length === 0) {
         return prev;
       }
+
+      const merged = [...prev.images, ...newImages];
+      if (merged.length > MAX_IMAGES) {
+        setError(`You can upload up to ${MAX_IMAGES} images per product`);
+      }
+
       return {
         ...prev,
-        images: [...prev.images, ...newImages],
+        images: merged.slice(0, MAX_IMAGES),
       };
     });
 
     if (currentProductId) {
       // For editing mode, allow gallery refresh while Supabase metadata catches up
-      setProductImages(prev => [...prev, ...uploadedImages]);
+      setProductImages(prev => {
+        const merged = [...prev, ...uploadedImages];
+        return merged.slice(0, MAX_IMAGES);
+      });
     }
   };
 
-  const handleSubmit = async (e?: React.FormEvent, addAnother: boolean = false) => {
+  const removeImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
+  };
+
+  const ensureSellerProfileId = async (): Promise<string | null> => {
+    if (profile?.id) {
+      return profile.id;
+    }
+    if (!user) {
+      return null;
+    }
+
+    try {
+      const fullName =
+        profile?.full_name ||
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email ||
+        'Seller';
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            user_id: user.id,
+            email: user.email,
+            full_name: fullName,
+            role: 'seller',
+            primary_role: 'seller',
+          },
+          { onConflict: 'user_id', returning: 'representation' }
+        );
+
+      if (error) {
+        console.error('Unable to create seller profile for user:', error);
+        return null;
+      }
+
+      return data?.[0]?.id || null;
+    } catch (error) {
+      console.error('Unexpected error while ensuring seller profile:', error);
+      return null;
+    }
+  };
+
+  async function handleSubmit(e?: React.FormEvent, addAnother: boolean = false) {
     if (e) e.preventDefault();
     
     if (!user) {
@@ -253,10 +326,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
 
-    const sellerProfileId = profile?.id;
+    let sellerProfileId = profile?.id;
     if (!sellerProfileId) {
-      setError('We could not find your seller profile. Please refresh or complete your profile.');
-      return;
+      sellerProfileId = await ensureSellerProfileId();
+      if (!sellerProfileId) {
+        setError('We could not find your seller profile. Please refresh or complete your profile.');
+        return;
+      }
     }
 
     if (!pricingBreakdown) {
@@ -277,6 +353,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     }
     if (!formData.images || formData.images.length === 0) {
       setError('Please upload at least one product image');
+      return;
+    }
+    if (formData.images.length > MAX_IMAGES) {
+      setError(`Please keep product images to ${MAX_IMAGES} or fewer`);
       return;
     }
 
@@ -304,6 +384,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       }
     }
 
+    if (formData.shipping_price < 0) {
+      setError('Shipping price cannot be negative');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -320,7 +405,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             title: formData.title,
             description: formData.description,
             price: pricingBreakdown.listingPrice,
-            commission_rate: pricingBreakdown.affiliateRate,
+            commission_rate: pricingBreakdown.affiliateType === 'percentage' ? pricingBreakdown.affiliateRate : 0,
             commission_type: pricingBreakdown.affiliateType,
             flat_commission_amount: pricingBreakdown.affiliateType === 'flat_rate' ? pricingBreakdown.affiliateAmount : 0,
             images: formData.images,
@@ -331,12 +416,21 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             is_subscription: formData.is_subscription,
             subscription_interval: formData.is_subscription ? formData.subscription_interval : null,
             seller_amount: pricingBreakdown.sellerAmount,
+            seller_ask: pricingBreakdown.sellerAmount,
+            seller_ask_price: pricingBreakdown.sellerAmount,
             platform_fee: pricingBreakdown.platformFee,
             stripe_fee: pricingBreakdown.stripeFee,
             shipping_options: formData.shipping_options,
             requires_shipping: formData.requires_shipping,
+            shipping_price: formData.shipping_price ?? 0,
+            shipping_cost: formData.shipping_price ?? 0,
             affiliate_enabled: formData.affiliate_enabled,
+            affiliate_commission_type: pricingBreakdown.affiliateType === 'flat_rate' ? 'flat' : 'percent',
+            affiliate_commission_value: pricingBreakdown.affiliateRate,
+            calculated_customer_price: pricingBreakdown.listingPrice,
             status: formData.affiliate_enabled ? 'active' : 'store_only',
+            is_promotable: formData.affiliate_enabled,
+            is_active: true,
           })
           .eq('id', productId)
           .select()
@@ -350,7 +444,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             title: formData.title,
             description: formData.description,
             price: pricingBreakdown.listingPrice,
-            commission_rate: pricingBreakdown.affiliateRate,
+            commission_rate: pricingBreakdown.affiliateType === 'percentage' ? pricingBreakdown.affiliateRate : 0,
             commission_type: pricingBreakdown.affiliateType,
             flat_commission_amount: pricingBreakdown.affiliateType === 'flat_rate' ? pricingBreakdown.affiliateAmount : 0,
             images: formData.images,
@@ -361,14 +455,22 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             is_subscription: formData.is_subscription,
             subscription_interval: formData.is_subscription ? formData.subscription_interval : null,
             seller_amount: pricingBreakdown.sellerAmount,
+            seller_ask: pricingBreakdown.sellerAmount,
+            seller_ask_price: pricingBreakdown.sellerAmount,
             platform_fee: pricingBreakdown.platformFee,
             stripe_fee: pricingBreakdown.stripeFee,
             seller_id: sellerProfileId,
             shipping_options: formData.shipping_options,
             requires_shipping: formData.requires_shipping,
+            shipping_price: formData.shipping_price ?? 0,
+            shipping_cost: formData.shipping_price ?? 0,
             affiliate_enabled: formData.affiliate_enabled,
+            affiliate_commission_type: pricingBreakdown.affiliateType === 'flat_rate' ? 'flat' : 'percent',
+            affiliate_commission_value: pricingBreakdown.affiliateRate,
+            calculated_customer_price: pricingBreakdown.listingPrice,
             status: formData.affiliate_enabled ? 'active' : 'store_only',  // Business logic: marketplace vs store-only
-            is_active: true     // ✅ Always visible in seller's store
+            is_promotable: formData.affiliate_enabled,
+            is_active: true     // Always visible in seller's store
           }])
           .select()
           .single();
@@ -400,7 +502,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -538,12 +640,36 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               </div>
             )}
 
-            <SimpleImageUpload
+            <ImageUpload
               bucket="product-images"
+              folder="product-form"
               onUploadComplete={handleImageUploadSuccess}
-              maxFiles={10}
-              maxFileSizeMB={10}
+              onUploadError={(message) => setError(message || 'Image upload failed')}
+              maxFiles={MAX_IMAGES}
+              maxFileSize={10}
             />
+
+            {formData.images.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {formData.images.map((img, idx) => (
+                  <div key={`${img}-${idx}`} className="relative group">
+                    <img
+                      src={img}
+                      alt={`Product ${idx + 1}`}
+                      className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(idx)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label={`Remove image ${idx + 1}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Pricing Calculator */}
@@ -554,6 +680,32 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             <PricingCalculator
               onPricingChange={(breakdown) => setPricingBreakdown(breakdown)}
             />
+          </div>
+
+          {/* Shipping Price */}
+          <div className="border-t border-gray-200 pt-6">
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Shipping Price
+            </label>
+            <input
+              type="number"
+              name="shipping_price"
+              min="0"
+              step="0.01"
+              value={formData.shipping_price}
+              onChange={handleInputChange}
+              onBlur={(e) =>
+                setFormData(prev => ({
+                  ...prev,
+                  shipping_price: parseFloat(normalizeMoneyInput(e.target.value)) || 0
+                }))
+              }
+              placeholder="4.99"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
+            />
+            <p className="text-xs text-gray-600 mt-2">
+              This is the shipping cost the customer pays. It is not used to calculate affiliate or Beezio fees.
+            </p>
           </div>
 
           {/* Affiliate Marketing Toggle */}
@@ -574,6 +726,17 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 </div>
               </div>
             </label>
+          </div>
+
+          {/* Bottom submit action */}
+          <div className="pt-4">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-black text-white rounded-lg py-3 font-semibold shadow-md hover:shadow-lg hover:bg-gray-800 disabled:bg-gray-400 transition-all"
+            >
+              {loading ? 'Saving...' : editMode ? 'Update Product' : 'Add Product'}
+            </button>
           </div>
 
         </form>

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import ProductGrid from '../components/ProductGrid';
 import AffiliateStoreCustomization from '../components/AffiliateStoreCustomization';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import StoreContactModal from '../components/StoreContactModal';
 import { Settings, User, Award, Heart, Star, Globe, Share2, Facebook, Instagram, Twitter, Youtube, ExternalLink, Package } from 'lucide-react';
 
 interface AffiliateStorePageProps {
@@ -21,6 +22,8 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
   const [loading, setLoading] = useState(true);
   const [canonicalAffiliateId, setCanonicalAffiliateId] = useState<string | null>(null);
   const [showCustomization, setShowCustomization] = useState(false);
+  const [customPages, setCustomPages] = useState<any[]>([]);
+  const [contactModal, setContactModal] = useState(false);
 
   useEffect(() => {
     console.log('[AffiliateStorePage] useEffect triggered with affiliateId:', affiliateId);
@@ -89,7 +92,20 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
             .maybeSingle(),
           supabase
             .from('affiliate_store_products')
-            .select('*')
+            .select(`
+              *,
+              products (
+                id,
+                title,
+                description,
+                price,
+                images,
+                category_id,
+                stock_quantity,
+                seller_id,
+                profiles!products_seller_id_fkey (full_name)
+              )
+            `)
             .eq('affiliate_id', canonicalId)
             .eq('is_active', true)
         ]);
@@ -114,19 +130,77 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
           setStoreSettings(null);
         }
 
-        const buyerFacingProducts = productRows?.map(product => ({
-          id: product.product_id,
-          title: product.title,
-          description: product.affiliate_description || product.description,
-          price: product.price,
-          images: product.custom_images?.length > 0 ? product.custom_images : product.images,
-          category_id: product.category_id,
-          stock_quantity: product.stock_quantity,
-          seller_name: product.seller_name,
-        })) || [];
+        const curatedIds = (productRows || [])
+          .map(product => product.product_id)
+          .filter((id): id is string => Boolean(id));
+
+        let curatedProductMap = new Map<string, any>();
+        if (curatedIds.length > 0) {
+          const { data: canonicalProducts, error: canonicalError } = await supabase
+            .from('products')
+            .select(`
+              id,
+              title,
+              description,
+              price,
+              images,
+              category_id,
+              stock_quantity,
+              seller_id,
+              profiles!products_seller_id_fkey (full_name)
+            `)
+            .in('id', curatedIds)
+            .eq('is_active', true);
+
+          if (canonicalError) {
+            console.warn('[AffiliateStorePage] Error fetching canonical product data:', canonicalError);
+          } else if (canonicalProducts) {
+            curatedProductMap = new Map(canonicalProducts.map(product => [product.id, product]));
+          }
+        }
+
+        const buyerFacingProducts = (productRows || [])
+          .map(product => {
+            const baseProduct = product.products || curatedProductMap.get(product.product_id);
+            if (!baseProduct) {
+              return null;
+            }
+
+            return {
+              id: baseProduct.id,
+              title: product.custom_title || baseProduct.title,
+              description: product.affiliate_description || product.custom_description || baseProduct.description,
+              price: product.custom_price ?? baseProduct.price,
+              images: product.custom_images?.length ? product.custom_images : baseProduct.images,
+              category_id: baseProduct.category_id,
+              stock_quantity: baseProduct.stock_quantity,
+              seller_name: product.seller_name || baseProduct.profiles?.full_name,
+              is_featured: product.is_featured ?? false,
+              display_order: product.display_order ?? 999
+            };
+          })
+          .filter((product): product is any => Boolean(product))
+          .sort((a, b) => {
+            if (a.is_featured && !b.is_featured) return -1;
+            if (!a.is_featured && b.is_featured) return 1;
+            return (a.display_order ?? 0) - (b.display_order ?? 0);
+          });
 
         console.log('[AffiliateStorePage] Found', buyerFacingProducts.length, 'products');
         setProducts(buyerFacingProducts);
+
+        // Load custom pages
+        const { data: pagesData, error: pagesError } = await supabase
+          .from('custom_pages')
+          .select('page_slug,page_title,is_active,display_order')
+          .eq('owner_id', canonicalId)
+          .eq('owner_type', 'affiliate')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+        if (pagesError) {
+          console.warn('[AffiliateStorePage] Error fetching custom pages (non-fatal):', pagesError);
+        }
+        setCustomPages(pagesData || []);
 
         if (buyerFacingProducts.length > 0) {
           // Track views (non-fatal errors)
@@ -350,6 +424,24 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
                 <span className="hidden sm:inline">Share</span>
               </button>
 
+              <button
+                onClick={() => setContactModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-400 text-black rounded-lg hover:bg-amber-500 transition-colors font-semibold"
+              >
+                <ExternalLink className="w-5 h-5" />
+                <span>Contact</span>
+              </button>
+
+              {customPages.filter(p => p.page_slug !== 'contact').map((p) => (
+                <Link
+                  key={p.page_slug}
+                  to={`/affiliate/${canonicalAffiliateId || affiliateId}/${p.page_slug}`}
+                  className="px-3 py-2 border border-white/40 text-white rounded-lg hover:bg-white/10 text-sm font-semibold"
+                >
+                  {p.page_title}
+                </Link>
+              ))}
+
               {/* Customize Button (only for owner) */}
               {isOwner && (
                 <button
@@ -539,7 +631,11 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
                   </div>
                 </div>
               </div>
-              <ProductGrid products={products} />
+              <ProductGrid 
+                products={products} 
+                gridLayout={storeSettings?.layout_config?.grid_layout || 'standard'}
+                colorScheme={storeSettings?.color_scheme}
+              />
             </>
           ) : (
             <div className="text-center py-12">
@@ -590,6 +686,14 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
           )}
         </div>
       </div>
+
+      <StoreContactModal
+        isOpen={contactModal}
+        onClose={() => setContactModal(false)}
+        ownerId={canonicalAffiliateId || affiliateId || ''}
+        ownerType="affiliate"
+        storeName={affiliate?.full_name}
+      />
     </div>
   );
 };

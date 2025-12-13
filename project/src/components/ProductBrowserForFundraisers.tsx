@@ -42,6 +42,7 @@ const ProductBrowserForFundraisers: React.FC = () => {
           profiles!products_seller_id_fkey (full_name)
         `)
         .eq('is_active', true)
+        .eq('is_promotable', true)
         .gt('stock_quantity', 0)
         .order('created_at', { ascending: false });
 

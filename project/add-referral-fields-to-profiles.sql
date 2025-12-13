@@ -117,8 +117,8 @@ DROP POLICY IF EXISTS "Affiliates can view their referrals" ON public.affiliate_
 CREATE POLICY "Affiliates can view their referrals"
 ON public.affiliate_referrals FOR SELECT
 USING (
-  auth.uid() = referrer_affiliate_id 
-  OR auth.uid() = referred_affiliate_id
+  auth.uid()::text = referrer_affiliate_id::text 
+  OR auth.uid()::text = referred_affiliate_id::text
 );
 
 -- Indexes
@@ -153,7 +153,7 @@ ALTER TABLE public.referral_commissions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Referrers can view their commissions" ON public.referral_commissions;
 CREATE POLICY "Referrers can view their commissions"
 ON public.referral_commissions FOR SELECT
-USING (auth.uid() = referrer_id);
+USING (auth.uid()::text = referrer_id::text);
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_referral_commissions_referrer ON public.referral_commissions(referrer_id);

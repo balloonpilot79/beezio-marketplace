@@ -54,6 +54,26 @@ const faqs = [
     answer:
       'Access Store Customization in your dashboard to add banners, logos, themes, business hours, social links, and more. You get a professional storefront at your own URL.'
   },
+  {
+    question: 'For sellers: how much do I actually earn per sale?',
+    answer:
+      'You earn exactly what you set as your Seller Ask for each product. If you set your ask to $40, we bake in Stripe fees, affiliate commissions, and Beezio’s platform fee so you still receive that full $40 per item sold (before tax and shipping).'
+  },
+  {
+    question: 'For sellers: why does the customer price look higher than my ask?',
+    answer:
+      'Your ask is what you want to receive. Beezio automatically adds a margin on top to cover payment processing, affiliate commissions, and Beezio’s 15% platform fee. All of those are built into the product price the customer sees. Only tax and shipping are added later at checkout.'
+  },
+  {
+    question: 'For sellers: what fees do I pay?',
+    answer:
+      'You do not pay anything out of your payout. Your seller ask is protected. Beezio and affiliates are paid from the margin we calculate on top of your ask.'
+  },
+  {
+    question: 'For sellers: does tax or shipping come out of my payout?',
+    answer:
+      'No. Tax and shipping are separate and do not reduce your seller payout. Your payout is based only on your seller ask.'
+  },
 
   // Affiliate Questions
   {
@@ -80,6 +100,26 @@ const faqs = [
     question: 'What is the affiliate gamification system?',
     answer:
       'Earn points, badges, and level up from Bronze to Silver to Gold based on your sales performance. Higher levels unlock bonus commissions, advanced tools, and exclusive perks.'
+  },
+  {
+    question: 'For affiliates: how is my commission calculated?',
+    answer:
+      'Your commission is a fixed percentage of the product’s sale price (before tax and shipping). For example, if your rate is 20% and the product sells for $100, your commission is $20.'
+  },
+  {
+    question: 'For affiliates: does my commission reduce what the seller earns?',
+    answer:
+      'No. The seller’s payout is based on their seller ask, which we protect. Your commission, Beezio’s platform fee, and payment processing costs are all built into the price the customer pays.'
+  },
+  {
+    question: 'For affiliates: what is the 5% referral bonus?',
+    answer:
+      'If you refer another affiliate to Beezio, you can earn 5% of Beezio’s 15% platform fee on that affiliate’s sales. This bonus is paid out of Beezio’s share, not from the seller or the main affiliate’s commission.'
+  },
+  {
+    question: 'For affiliates: is my commission calculated before or after tax and shipping?',
+    answer:
+      'Your commission is calculated on the product price only (before tax and shipping). Tax and shipping are separate and do not change your commission amount.'
   },
 
   // Buyer Questions
@@ -171,6 +211,52 @@ const faqs = [
   }
 ];
 
+const sellerPricingFaq = [
+  {
+    question: 'How much do I actually earn per sale?',
+    answer:
+      'You earn exactly what you set as your Seller Ask for each product. If you set your ask to $40, we make sure that after Stripe fees, affiliate commissions, and Beezio’s platform fee, you still receive that full $40 per item sold (before tax and shipping).'
+  },
+  {
+    question: 'Why does the customer price look higher than my ask?',
+    answer:
+      'Your ask is what you want to receive. Beezio automatically adds a margin on top to cover payment processing (Stripe), affiliate commissions, and Beezio’s 15% platform fee. All of those are built into the product price the customer sees. Only tax and shipping are added later at checkout.'
+  },
+  {
+    question: 'What fees do I pay as a seller?',
+    answer:
+      'You don’t pay anything directly out of your payout. Your seller ask is protected. Beezio and affiliates are paid from the margin we calculate on top of your ask.'
+  },
+  {
+    question: 'Does tax or shipping come out of my payout?',
+    answer:
+      'No. Tax and shipping are separate and do not reduce your seller payout. Your payout is based on your seller ask only.'
+  }
+];
+
+const affiliatePricingFaq = [
+  {
+    question: 'How is my affiliate commission calculated?',
+    answer:
+      'Your commission is a fixed percentage of the product’s sale price (before tax and shipping). For example, if your rate is 20% and the product sells for $100, your commission is $20.'
+  },
+  {
+    question: 'Does my commission reduce what the seller earns?',
+    answer:
+      "No. The seller’s payout is based on their seller ask, which we protect. Your commission, Beezio’s platform fee, and payment processing costs are all built into the price the customer pays."
+  },
+  {
+    question: 'What is the 5% referral bonus?',
+    answer:
+      "If you refer another affiliate to Beezio, you can earn 5% of Beezio’s 15% platform fee on that affiliate’s sales. This bonus is paid out of Beezio’s share, not from the seller or the main affiliate’s commission."
+  },
+  {
+    question: 'Is my commission calculated before or after tax and shipping?',
+    answer:
+      'Your commission is calculated on the product price only (before tax and shipping). Tax and shipping are separate and do not change your commission amount.'
+  }
+];
+
 const FAQPage: React.FC = () => {
   const categories = [
     { name: 'General', start: 0, end: 4 },
@@ -191,6 +277,41 @@ const FAQPage: React.FC = () => {
           <p className="text-base sm:text-xl md:text-2xl opacity-90">
             Everything you need to know about selling, affiliate marketing, and fundraising on Beezio
           </p>
+        </div>
+      </section>
+
+      {/* Pricing FAQs */}
+      <section className="py-8 sm:py-12 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">For Sellers – How Pricing Works</h2>
+            <p className="text-gray-600 mt-2">Plain-English answers so you always know how money flows.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {sellerPricingFaq.map((faq, idx) => (
+              <div key={`seller-${idx}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{faq.question}</h3>
+                <p className="text-gray-700">{faq.answer}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-4 sm:py-10 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">For Affiliates – How You Get Paid</h2>
+            <p className="text-gray-600 mt-2">Your commission, the seller’s payout, and Beezio’s cut are all baked into the product price.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {affiliatePricingFaq.map((faq, idx) => (
+              <div key={`affiliate-${idx}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{faq.question}</h3>
+                <p className="text-gray-700">{faq.answer}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

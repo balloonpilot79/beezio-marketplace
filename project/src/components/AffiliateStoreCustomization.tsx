@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Save, Eye, Palette, Settings, Heart } from 'lucide-react';
+import {
+  Save,
+  Eye,
+  Palette,
+  Settings,
+  Heart,
+  Globe,
+  PackagePlus,
+  ArrowUp,
+  ArrowDown,
+  Star,
+  Trash2
+} from 'lucide-react';
+import CustomDomainManager from './CustomDomainManager';
 
 interface AffiliateStoreSettings {
   store_name?: string;
@@ -8,6 +21,8 @@ interface AffiliateStoreSettings {
   store_banner?: string;
   store_logo?: string;
   store_theme?: string;
+  subdomain?: string;
+  custom_domain?: string;
   personal_message?: string;
   social_links?: {
     facebook?: string;
@@ -30,10 +45,68 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
+  const [curatedProducts, setCuratedProducts] = useState<any[]>([]);
+  const [curatedLoading, setCuratedLoading] = useState(true);
+  const [newProductInput, setNewProductInput] = useState('');
+  const [productActionLoading, setProductActionLoading] = useState(false);
+  const [productActionMessage, setProductActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAffiliateSettings();
+    loadCuratedProducts();
   }, [affiliateId]);
+
+  useEffect(() => {
+    if (productActionMessage) {
+      const timeout = setTimeout(() => setProductActionMessage(null), 4000);
+      return () => clearTimeout(timeout);
+    }
+  }, [productActionMessage]);
+
+  const loadCuratedProducts = async () => {
+    if (!affiliateId) {
+      setCuratedProducts([]);
+      setCuratedLoading(false);
+      return;
+    }
+    setCuratedLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('affiliate_store_products')
+        .select(`
+          id,
+          product_id,
+          display_order,
+          is_featured,
+          custom_title,
+          custom_price,
+          affiliate_description,
+          custom_images,
+          products (
+            id,
+            title,
+            description,
+            price,
+            images,
+            profiles!products_seller_id_fkey (full_name)
+          )
+        `)
+        .eq('affiliate_id', affiliateId)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      setCuratedProducts(data || []);
+    } catch (error) {
+      console.error('Error loading curated products:', error);
+      setCuratedProducts([]);
+    } finally {
+      setCuratedLoading(false);
+    }
+  };
 
   const fetchAffiliateSettings = async () => {
     // Try to get affiliate store settings
@@ -44,10 +117,155 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
       .single();
     
     if (data) {
-      setStoreSettings(data);
+      setStoreSettings(prev => ({
+        ...prev,
+        ...data,
+        social_links: data.social_links || {},
+        favorite_categories: data.favorite_categories || [],
+        custom_domain: data.custom_domain || '',
+        subdomain: data.subdomain || ''
+      }));
+    } else {
+      setStoreSettings(prev => ({
+        ...prev,
+        social_links: prev.social_links || {},
+        favorite_categories: prev.favorite_categories || []
+      }));
     }
     
     setLoading(false);
+  };
+
+  const handleAddProduct = async () => {
+    if (!newProductInput.trim()) {
+      setProductActionMessage('Enter a product ID or slug first.');
+      return;
+    }
+
+    setProductActionLoading(true);
+    setProductActionMessage(null);
+
+    try {
+      const identifier = newProductInput.trim();
+      const { data: productRecord, error: productLookupError } = await supabase
+        .from('products')
+        .select('id')
+        .or(`id.eq.${identifier},unique_slug.eq.${identifier}`)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (productLookupError && productLookupError.code !== 'PGRST116') {
+        throw productLookupError;
+      }
+
+      if (!productRecord) {
+        setProductActionMessage('Product not found. Double-check the ID or slug.');
+        return;
+      }
+
+      if (curatedProducts.some(product => product.product_id === productRecord.id)) {
+        setProductActionMessage('That product is already part of your store.');
+        return;
+      }
+
+      const { error: insertError } = await supabase
+        .from('affiliate_store_products')
+        .insert({
+          affiliate_id: affiliateId,
+          product_id: productRecord.id,
+          display_order: curatedProducts.length + 1,
+          is_active: true
+        });
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      setNewProductInput('');
+      setProductActionMessage('Product added to your curated list.');
+      await loadCuratedProducts();
+    } catch (error) {
+      console.error('Error adding curated product:', error);
+      setProductActionMessage('Could not add that product. Please try again.');
+    } finally {
+      setProductActionLoading(false);
+    }
+  };
+
+  const handleRemoveProduct = async (rowId: string) => {
+    setProductActionLoading(true);
+    setProductActionMessage(null);
+    try {
+      const { error } = await supabase
+        .from('affiliate_store_products')
+        .update({ is_active: false })
+        .eq('id', rowId);
+      if (error) throw error;
+      setProductActionMessage('Product removed from your storefront.');
+      await loadCuratedProducts();
+    } catch (error) {
+      console.error('Error removing curated product:', error);
+      setProductActionMessage('Failed to remove that product.');
+    } finally {
+      setProductActionLoading(false);
+    }
+  };
+
+  const handleMoveProduct = async (rowId: string, direction: 'up' | 'down') => {
+    const currentIndex = curatedProducts.findIndex(product => product.id === rowId);
+    if (currentIndex === -1) return;
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= curatedProducts.length) return;
+
+    const current = curatedProducts[currentIndex];
+    const target = curatedProducts[targetIndex];
+
+    setProductActionLoading(true);
+    setProductActionMessage(null);
+
+    try {
+      await Promise.all([
+        supabase
+          .from('affiliate_store_products')
+          .update({ display_order: target.display_order ?? targetIndex + 1 })
+          .eq('id', current.id),
+        supabase
+          .from('affiliate_store_products')
+          .update({ display_order: current.display_order ?? currentIndex + 1 })
+          .eq('id', target.id),
+      ]);
+
+      setProductActionMessage('Product order updated.');
+      await loadCuratedProducts();
+    } catch (error) {
+      console.error('Error reordering curated products:', error);
+      setProductActionMessage('Failed to reorder products.');
+    } finally {
+      setProductActionLoading(false);
+    }
+  };
+
+  const handleToggleFeatured = async (rowId: string, nextValue: boolean) => {
+    setProductActionLoading(true);
+    setProductActionMessage(null);
+
+    try {
+      const { error } = await supabase
+        .from('affiliate_store_products')
+        .update({ is_featured: nextValue })
+        .eq('id', rowId);
+
+      if (error) throw error;
+
+      setProductActionMessage(nextValue ? 'Product marked as featured.' : 'Product removed from featured list.');
+      await loadCuratedProducts();
+    } catch (error) {
+      console.error('Error toggling featured product:', error);
+      setProductActionMessage('Could not update featured status.');
+    } finally {
+      setProductActionLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -136,7 +354,9 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
             {[
               { id: 'general', name: 'General', icon: Settings },
               { id: 'appearance', name: 'Appearance', icon: Palette },
-              { id: 'categories', name: 'Categories', icon: Heart }
+              { id: 'categories', name: 'Categories', icon: Heart },
+              { id: 'products', name: 'Products', icon: PackagePlus },
+              { id: 'domain', name: 'Domain & Links', icon: Globe }
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -356,6 +576,144 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Products Tab */}
+          {activeTab === 'products' && (
+            <div className="space-y-6">
+              <div className="bg-purple-50 border border-purple-100 rounded-xl p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <PackagePlus className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <h4 className="text-lg font-semibold text-purple-900">Curated Products</h4>
+                    <p className="text-sm text-purple-700">Choose exactly which products appear on your storefront.</p>
+                  </div>
+                </div>
+                <div className="flex flex-col md:flex-row gap-3">
+                  <input
+                    type="text"
+                    value={newProductInput}
+                    onChange={(e) => setNewProductInput(e.target.value)}
+                    placeholder="Enter product ID or slug"
+                    className="flex-1 px-3 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={handleAddProduct}
+                    disabled={productActionLoading}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50"
+                  >
+                    <PackagePlus className="w-4 h-4" />
+                    <span>{productActionLoading ? 'Adding...' : 'Add Product'}</span>
+                  </button>
+                </div>
+                <p className="text-xs text-purple-700 mt-2">
+                  Tip: copy the ID or slug from the seller dashboard to add a product instantly.
+                </p>
+              </div>
+
+              {productActionMessage && (
+                <div className="p-3 rounded-lg bg-purple-100 text-purple-900 text-sm font-medium">
+                  {productActionMessage}
+                </div>
+              )}
+
+              {curatedLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                </div>
+              ) : curatedProducts.length === 0 ? (
+                <div className="text-center py-12 border border-dashed border-purple-200 rounded-xl">
+                  <p className="text-lg font-semibold text-gray-700 mb-2">No curated products yet</p>
+                  <p className="text-gray-500">Add products above to start building your affiliate storefront.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {[...curatedProducts]
+                    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+                    .map((product, index) => {
+                      const productCard = product.products || {};
+                      const heroImage = (product.custom_images?.[0]) || productCard.images?.[0];
+                      const displayTitle = product.custom_title || productCard.title || 'Product';
+                      const priceValue = Number(product.custom_price ?? productCard.price ?? 0);
+                      const sellerName = productCard.profiles?.full_name || 'Seller';
+
+                      return (
+                        <div key={product.id} className="border rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            {heroImage ? (
+                              <img src={heroImage} alt={displayTitle} className="w-16 h-16 rounded-lg object-cover border" />
+                            ) : (
+                              <div className="w-16 h-16 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
+                                {displayTitle.slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-semibold text-gray-900">{displayTitle}</p>
+                              <p className="text-sm text-gray-500">{sellerName}</p>
+                              <p className="text-sm font-medium text-purple-700">${priceValue.toFixed(2)}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => handleMoveProduct(product.id, 'up')}
+                              disabled={index === 0 || productActionLoading}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-lg text-gray-600 hover:text-gray-900 disabled:opacity-40"
+                            >
+                              <ArrowUp className="w-4 h-4" />
+                              Up
+                            </button>
+                            <button
+                              onClick={() => handleMoveProduct(product.id, 'down')}
+                              disabled={index === curatedProducts.length - 1 || productActionLoading}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-lg text-gray-600 hover:text-gray-900 disabled:opacity-40"
+                            >
+                              <ArrowDown className="w-4 h-4" />
+                              Down
+                            </button>
+                            <button
+                              onClick={() => handleToggleFeatured(product.id, !product.is_featured)}
+                              disabled={productActionLoading}
+                              className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-lg ${product.is_featured ? 'text-yellow-600 border-yellow-400 bg-yellow-50' : 'text-gray-600'}`}
+                            >
+                              <Star className={`w-4 h-4 ${product.is_featured ? 'fill-current' : ''}`} />
+                              {product.is_featured ? 'Featured' : 'Feature'}
+                            </button>
+                            <button
+                              onClick={() => handleRemoveProduct(product.id)}
+                              disabled={productActionLoading}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-lg text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Domain Tab */}
+          {activeTab === 'domain' && (
+            <div className="space-y-6">
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">Shareable Links</h4>
+                <p className="text-gray-600 text-sm">
+                  Default link: <span className="font-mono break-all">{storeUrl}</span>
+                </p>
+                <p className="text-gray-600 text-sm mt-2">
+                  Claim a Beezio subdomain or connect your own branded domain for a seamless customer experience.
+                </p>
+              </div>
+              <CustomDomainManager
+                userId={affiliateId}
+                role="affiliate"
+                currentDomain={storeSettings.custom_domain}
+                subdomain={storeSettings.subdomain}
+              />
             </div>
           )}
         </div>

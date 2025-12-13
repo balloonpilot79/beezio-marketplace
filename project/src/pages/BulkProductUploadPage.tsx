@@ -89,7 +89,7 @@ const BulkProductUploadPage: React.FC = () => {
         image_url_3: row.image_url_3 || '',
         image_url_4: row.image_url_4 || '',
         image_url_5: row.image_url_5 || '',
-        affiliate_commission_rate: parseFloat(row.affiliate_commission_rate) || 15
+        affiliate_commission_rate: parseFloat(row.affiliate_commission_rate) || 20
       }));
 
       setPreviewData(products);

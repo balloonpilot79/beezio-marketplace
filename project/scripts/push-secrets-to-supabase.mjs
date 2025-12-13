@@ -42,9 +42,14 @@ if (!env.SUPABASE_URL && env.VITE_SUPABASE_URL) {
   env.SUPABASE_URL = env.VITE_SUPABASE_URL;
 }
 
+// Supabase CLI no longer allows setting secrets that start with SUPABASE_.
+// Map legacy .env keys to allowed names.
+if (!env.SERVICE_ROLE_KEY && env.SUPABASE_SERVICE_ROLE_KEY) {
+  env.SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY;
+}
+
 const required = [
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'SUPABASE_URL',
+  'SERVICE_ROLE_KEY',
   'STRIPE_SECRET_KEY',
   'STRIPE_WEBHOOK_SECRET'
 ];

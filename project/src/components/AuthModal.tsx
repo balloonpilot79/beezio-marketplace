@@ -42,6 +42,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
     email: '',
     password: '',
     fullName: '',
+    storeName: '',
     role: 'buyer' as 'buyer' | 'seller' | 'affiliate' | 'fundraiser',
     phone: '',
     city: '',
@@ -51,6 +52,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
   const [referralCode, setReferralCode] = useState<string>('');
   const [referralValid, setReferralValid] = useState<boolean | null>(null);
   const [referrerName, setReferrerName] = useState<string>('');
+  const [referrerAffiliateId, setReferrerAffiliateId] = useState<string | null>(null);
 
   // Reset form state when modal opens/closes
   React.useEffect(() => {
@@ -71,46 +73,41 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
 
   const validateReferralCode = async (code: string) => {
     try {
-      // Look up by username first
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, username')
-        .eq('username', code)
-        .maybeSingle();
-
-      if (data) {
-        setReferralValid(true);
-        setReferrerName(data.full_name || data.username || 'Someone');
-        return data.id;
+      const cleaned = code.trim();
+      if (!cleaned) {
+        setReferralValid(null);
+        setReferrerName('');
+        setReferrerAffiliateId(null);
+        return null;
       }
 
-      if (error && error.code !== 'PGRST116') {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, referral_code, primary_role, role')
+        // Preferred: profiles.referral_code. Backward-compatible: username or id.
+        .or(`referral_code.ilike.${cleaned},username.ilike.${cleaned},id.eq.${cleaned}`)
+        .maybeSingle();
+
+      if (error && (error as any).code !== 'PGRST116') {
         console.warn('Referral lookup warning:', error);
       }
 
-      const { data: byId, error: byIdErr } = await supabase
-        .from('profiles')
-        .select('id, full_name, username')
-        .eq('id', code)
-        .maybeSingle();
-
-      if (byId) {
+      if (data) {
         setReferralValid(true);
-        setReferrerName(byId.full_name || byId.username || 'Someone');
-        return byId.id;
-      }
-
-      if (byIdErr && byIdErr.code !== 'PGRST116') {
-        console.warn('Referral lookup by id warning:', byIdErr);
+        setReferrerName((data as any).full_name || (data as any).referral_code || 'A referrer');
+        setReferrerAffiliateId((data as any).id);
+        return (data as any).id;
       }
 
       setReferralValid(false);
       setReferrerName('');
+      setReferrerAffiliateId(null);
       return null;
     } catch (err) {
       console.error('Referral validation error:', err);
       setReferralValid(false);
       setReferrerName('');
+      setReferrerAffiliateId(null);
       return null;
     }
   };
@@ -179,7 +176,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         const result = await signUp(formData.email, formData.password, formData);
         
         if (result && result.user) {
-          if (referralCode && referralValid) {
+          // If recruiter referral code is present and valid, attach it to the new profile.
+          // Applies to ANY role; the referrer earns 5% on the recruit's sales.
+          if (referralCode && referralValid && referrerAffiliateId) {
             try {
               const { data: newProfile } = await supabase
                 .from('profiles')
@@ -189,9 +188,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
               if (newProfile?.id) {
                 await supabase
                   .from('profiles')
-                  .update({ referred_by: referralCode })
+                  .update({
+                    referred_by_affiliate_id: referrerAffiliateId,
+                    // Optional column (if present in your schema) for audit/debug
+                    referral_code_used: referralCode,
+                  })
                   .eq('id', newProfile.id);
-                localStorage.setItem('affiliate_referral', referralCode);
               }
             } catch (refErr) {
               console.warn('Referral attach failed (non-blocking):', refErr);
@@ -324,6 +326,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                     onChange={handleChange}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Store Name
+                  </label>
+                  <input
+                    type="text"
+                    name="storeName"
+                    value={(formData as any).storeName}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    placeholder="e.g., Beezio Deals"
                   />
                 </div>
                 <div>

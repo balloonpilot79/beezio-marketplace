@@ -17,7 +17,6 @@ const BuyerSubscriptions: React.FC<{ buyerId: string }> = ({ buyerId }) => {
 
   useEffect(() => {
     fetchSubscriptions();
-    // eslint-disable-next-line
   }, [buyerId]);
 
   const fetchSubscriptions = async () => {

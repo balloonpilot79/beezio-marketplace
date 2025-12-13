@@ -48,9 +48,14 @@ serve(async (req) => {
   try {
     const { orderId } = await req.json()
 
+    const serviceRoleKey =
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ??
+      Deno.env.get('SERVICE_ROLE_KEY') ??
+      ''
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      serviceRoleKey
     )
 
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {

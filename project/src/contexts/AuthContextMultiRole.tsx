@@ -207,10 +207,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, userData: any) => {
     try {
       console.log('[AuthContext] Starting signUp for:', email);
+
+      const initialRole = userData?.role || 'buyer';
+      const fullName = userData?.fullName || '';
+      const storeName = userData?.storeName || '';
       
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: fullName,
+            store_name: storeName,
+            role: initialRole,
+          },
+        },
       });
 
       if (error) {
@@ -224,8 +235,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Wait for auth system to fully propagate
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        const initialRole = userData.role || 'buyer';
-        
         // Create profile with BOTH id and user_id
         console.log('[AuthContext] Creating profile...');
         const { data: profileData, error: profileError } = await supabase
@@ -234,7 +243,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: data.user.id,              // ✅ FIXED: Added id column
             user_id: data.user.id,         // Also set user_id
             email,
-            full_name: userData.fullName || '',
+            full_name: fullName,
             role: initialRole,             // Keep for backwards compatibility
             primary_role: initialRole,
             phone: userData.phone || null,

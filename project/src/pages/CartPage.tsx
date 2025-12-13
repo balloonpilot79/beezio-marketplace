@@ -5,6 +5,8 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import RecommendationEngine from '../components/RecommendationEngine';
 import { TAX_RATE } from '../lib/pricing';
+import { calculateFinalPrice } from '../utils/pricingEngine';
+import { DEFAULT_PAYOUT_SETTINGS, PLATFORM_FEE_PERCENT } from '../config/beezioConfig';
 import { useBehaviorTracker } from '../hooks/useBehaviorTracker';
 
 const CartPage: React.FC = () => {
@@ -23,10 +25,25 @@ const CartPage: React.FC = () => {
   // Behavior tracking
   const { trackView, trackClick } = useBehaviorTracker();
 
-  const subtotal = getTotalPrice();
+  const computeFinalUnitPrice = (item: typeof items[number]) => {
+    const affiliatePercent = item.affiliateCommissionRate ?? item.commission_rate ?? DEFAULT_PAYOUT_SETTINGS.affiliatePercent;
+    const payout = {
+      affiliatePercent,
+      platformPercent: PLATFORM_FEE_PERCENT,
+      fundraiserPercent: DEFAULT_PAYOUT_SETTINGS.fundraiserPercent,
+    };
+    try {
+      return calculateFinalPrice(item.price, payout);
+    } catch (e) {
+      console.warn('BEEZIO_PRICING_ENGINE cart display fallback', e);
+      return item.price;
+    }
+  };
+
+  const displaySubtotal = items.reduce((total, item) => total + computeFinalUnitPrice(item) * item.quantity, 0);
   const shipping = getShippingTotal();
-  const tax = Math.round((subtotal * TAX_RATE + Number.EPSILON) * 100) / 100;
-  const total = subtotal + shipping + tax;
+  const tax = Math.round((displaySubtotal * TAX_RATE + Number.EPSILON) * 100) / 100;
+  const total = displaySubtotal + shipping + tax;
 
   useEffect(() => {
     // Track cart page view
@@ -111,7 +128,9 @@ const CartPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
-          {items.map((item) => (
+          {items.map((item) => {
+            const finalUnitPrice = computeFinalUnitPrice(item);
+            return (
             <div key={item.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center space-x-4">
                 {/* Product Image */}
@@ -136,8 +155,9 @@ const CartPage: React.FC = () => {
                   </p>
                   <div className="flex items-center space-x-4 mt-2">
                     <span className="text-lg font-bold text-gray-900">
-                      ${item.price.toFixed(2)}
+                      ${finalUnitPrice.toFixed(2)}
                     </span>
+                    <span className="text-xs text-gray-500">Includes platform & commission fees</span>
                     {item.shippingCost && item.shippingCost > 0 && (
                       <span className="text-sm text-gray-600">
                         + ${item.shippingCost.toFixed(2)} shipping
@@ -184,14 +204,15 @@ const CartPage: React.FC = () => {
               {/* Item Total */}
               <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
                 <span className="text-sm text-gray-600">
-                  {item.quantity} × ${item.price.toFixed(2)}
+                  {item.quantity} × ${finalUnitPrice.toFixed(2)}
                 </span>
                 <span className="text-lg font-bold text-gray-900">
-                  ${(item.price * item.quantity).toFixed(2)}
+                  ${(finalUnitPrice * item.quantity).toFixed(2)}
                 </span>
               </div>
             </div>
-          ))}
+          );
+        })}
         </div>
 
         {/* Order Summary */}
@@ -202,7 +223,7 @@ const CartPage: React.FC = () => {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal</span>
-                <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                <span className="font-semibold">${displaySubtotal.toFixed(2)}</span>
               </div>
               
               <div className="flex justify-between">

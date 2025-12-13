@@ -6,10 +6,15 @@ import AffiliateLink from './AffiliateLink';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import ProductAffiliateQRCode from './ProductAffiliateQRCode';
 import AddToAffiliateStoreButton from './AddToAffiliateStoreButton';
-import { SAMPLE_PRODUCTS } from '../lib/sampleData';
 import StarRating from './StarRating';
 import SocialShareButton from './SocialShareButton';
-import { calculatePricing, formatPricingBreakdown } from '../lib/pricing';
+import {
+  calculatePayouts,
+  calculateSalePriceFromSellerAsk,
+  DEFAULT_AFFILIATE_RATE,
+  deriveSellerAskFromSalePrice,
+  normalizeAffiliateRate,
+} from '../utils/pricing';
 
 interface Product {
   id: string;
@@ -40,9 +45,21 @@ interface ProductGridProps {
   products?: Product[];
   hideFilters?: boolean;
   hideAffiliateUI?: boolean; // hide affiliate badges/tooltip (e.g., on seller storefronts)
+  gridLayout?: 'compact' | 'standard' | 'comfortable' | 'large';
+  colorScheme?: {
+    primary?: string;
+    secondary?: string;
+    accent?: string;
+  };
 }
 
-const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, hideFilters = false, hideAffiliateUI = false }) => {
+const ProductGrid: React.FC<ProductGridProps> = ({ 
+  products: externalProducts, 
+  hideFilters = false, 
+  hideAffiliateUI = false,
+  gridLayout = 'standard',
+  colorScheme
+}) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +67,21 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
   const { profile } = useAuth();
   // Determine user role
   const userRole = profile?.role;
+
+  // Grid layout configurations
+  const gridClasses = {
+    compact: 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3',
+    standard: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6',
+    comfortable: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8',
+    large: 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-10'
+  };
+
+  const cardSizeClasses = {
+    compact: 'text-sm',
+    standard: '',
+    comfortable: 'text-base',
+    large: 'text-lg'
+  };
 
   // Debug logging
   console.log('ProductGrid - Products count:', products.length);
@@ -64,58 +96,50 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
     } else {
       fetchProducts();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalProducts, filter]);
 
   const fetchProducts = async () => {
     try {
-      // Load sample data immediately
-      console.log('ProductGrid: Loading sample data immediately');
-      setProducts(SAMPLE_PRODUCTS);
-      setLoading(false);
-      setError(null);
-      
-      // Try to fetch from Supabase in background
-      try {
-        let query = supabase
-          .from('products')
-          .select(`
-            *,
-            profiles:seller_id (
-              full_name,
-              location
-            )
-          `)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(20);
+      // Fetch from Supabase only; no sample data fallback
+      let query = supabase
+        .from('products')
+        .select(`
+          *,
+          profiles:seller_id (
+            full_name,
+            location
+          )
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(20);
 
-        if (filter === 'affiliate') {
-          query = query.gt('commission_rate', 0);
-        }
+      if (filter === 'affiliate') {
+        query = query.gt('commission_rate', 0);
+      }
 
-        const { data, error } = await query;
+      const { data, error } = await query;
 
-        if (!error && data && data.length > 0) {
-          console.log('ProductGrid: Loaded real products from database:', data.length);
-          setProducts(data);
-        }
-      } catch (supabaseError) {
-        console.log('ProductGrid: Supabase error (using sample data):', supabaseError);
+      if (error) {
+        console.log('ProductGrid: Supabase error (no sample fallback):', error);
+        setError('Unable to load products yet.');
+      } else {
+        setProducts(data || []);
+        setError(null);
       }
     } catch (error) {
       console.log('ProductGrid: Error in fetchProducts:', error);
-      setProducts(SAMPLE_PRODUCTS);
+      setError('Unable to load products yet.');
+    } finally {
       setLoading(false);
-      setError(null);
     }
   };
 
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {[...Array(8)].map((_, i) => (
+      <div className={gridClasses[gridLayout]}>
+        {[...Array(gridLayout === 'compact' ? 12 : gridLayout === 'large' ? 6 : 8)].map((_, i) => (
           <div key={i} className="animate-pulse">
             <div className="bg-gray-200 aspect-square mb-4 rounded-lg"></div>
             <div className="h-4 bg-gray-300 rounded mb-2"></div>
@@ -212,28 +236,61 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
       )}
 
       {/* Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {products.map((product) => (
-          <div key={product.id} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 group border border-primary-200 hover:border-primary-400">
-            <Link to={`/product/${product.id}`} className="block">
+      <div className={gridClasses[gridLayout]}>
+        {products.map((product) => {
+          // Normalize product data (handle both 'name' and 'title', 'image' and 'images')
+          const normalizedProduct = {
+            ...product,
+            title: product.title || (product as any).name || 'Untitled Product',
+            images: product.images || ((product as any).image ? [(product as any).image] : []),
+            average_rating: product.average_rating || (product as any).rating || 0,
+            review_count: product.review_count || (product as any).reviews || 0
+          };
+          
+          const affiliateRateDecimal = normalizedProduct.commission_type === 'flat_rate'
+            ? normalizeAffiliateRate(DEFAULT_AFFILIATE_RATE)
+            : normalizeAffiliateRate(normalizedProduct.commission_rate ?? DEFAULT_AFFILIATE_RATE);
+          const sellerAsk = (normalizedProduct as any).seller_ask ?? (normalizedProduct as any).seller_amount ?? deriveSellerAskFromSalePrice(normalizedProduct.price ?? 0, affiliateRateDecimal);
+          const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, affiliateRateDecimal);
+          const payouts = calculatePayouts(salePrice, sellerAsk, {
+            hasAffiliate: true,
+            hasAffiliateReferrer: false,
+            affiliateRate: affiliateRateDecimal,
+          });
+
+          const primaryColor = colorScheme?.primary || '#f59e0b';
+          const accentColor = colorScheme?.accent || '#ef4444';
+
+          return (
+          <div 
+            key={normalizedProduct.id} 
+            className={`bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 group border-2 ${cardSizeClasses[gridLayout]}`}
+            style={{ 
+              borderColor: colorScheme?.secondary || '#e5e7eb',
+              '--hover-border': primaryColor
+            } as React.CSSProperties & { '--hover-border': string }}
+            onMouseEnter={(e) => e.currentTarget.style.borderColor = primaryColor}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = colorScheme?.secondary || '#e5e7eb'}
+          >
+            <Link to={`/product/${normalizedProduct.id}`} className="block">
               <div className="aspect-square relative overflow-hidden">
                 <img
-                  src={product.images[0] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=500'}
-                  alt={product.title}
+                  src={normalizedProduct.images[0] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=500'}
+                  alt={normalizedProduct.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 
                 {/* Affiliate Status Badge - Top Left */}
                 <div className="absolute top-2 left-2 flex flex-col gap-1">
                   {/* Featured Badge */}
-                  {(product as any).is_featured && (
+                  {(normalizedProduct as any).is_featured && (
                     <span className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 shadow-md">
                       ⭐ Featured
                     </span>
                   )}
                   
                   {/* Marketplace/Store Badge */}
-                  {product.affiliate_enabled ? (
+                  {normalizedProduct.affiliate_enabled ? (
                     <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 shadow-md">
                       <ShoppingBag className="w-3 h-3" /> Marketplace
                     </span>
@@ -247,7 +304,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                 {/* Action Buttons */}
                 <div className="absolute top-2 right-2 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <SocialShareButton 
-                    product={product}
+                    product={normalizedProduct}
                     variant="icon"
                     size="sm"
                     className="bg-primary-50 bg-opacity-90 hover:bg-opacity-100 shadow-md border border-primary-200"
@@ -255,24 +312,13 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                 </div>
                 
                 {/* Commission info - only show where affiliate UI is desired */}
-                {!hideAffiliateUI && product.commission_rate > 0 && (
+                {!hideAffiliateUI && normalizedProduct.commission_rate > 0 && (
                   <div className="absolute bottom-2 left-2 bg-primary-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center space-x-1 shadow-lg">
                     <TrendingUp className="h-3 w-3" />
                     <span>
-                      ${(() => {
-                        const sellerBase = (product as any).seller_amount ?? product.price;
-                        const affiliateRate = product.commission_type === 'flat_rate'
-                          ? product.flat_commission_amount
-                          : product.commission_rate;
-                        const pricing = calculatePricing({
-                          sellerDesiredAmount: sellerBase,
-                          affiliateRate,
-                          affiliateType: product.commission_type
-                        });
-                        return pricing.affiliateAmount.toFixed(2);
-                      })()}
-                      {product.is_subscription && product.subscription_interval && (
-                        <span className="ml-1">(recurring {product.subscription_interval})</span>
+                      ${payouts.affiliateCommission.toFixed(2)}
+                      {normalizedProduct.is_subscription && normalizedProduct.subscription_interval && (
+                        <span className="ml-1">(recurring {normalizedProduct.subscription_interval})</span>
                       )}
                     </span>
                   </div>
@@ -281,18 +327,18 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
             </Link>
 
             <div className="p-4">
-              <Link to={`/product/${product.id}`}>
+              <Link to={`/product/${normalizedProduct.id}`}>
                 <h3 className="font-display font-semibold text-gray-800 mb-2 hover:text-primary-600 transition-colors line-clamp-2">
-                  {product.title}
+                  {normalizedProduct.title}
                 </h3>
               </Link>
               
               {/* Rating Display */}
-              {product.average_rating && (
+              {normalizedProduct.average_rating && (
                 <div className="flex items-center space-x-2 mb-2">
-                  <StarRating rating={product.average_rating} size="sm" />
+                  <StarRating rating={normalizedProduct.average_rating} size="sm" />
                   <span className="text-gray-600 text-sm">
-                    {product.average_rating.toFixed(1)} ({product.review_count || 0} {(product.review_count || 0) === 1 ? 'review' : 'reviews'})
+                    {normalizedProduct.average_rating.toFixed(1)} ({normalizedProduct.review_count || 0} {(normalizedProduct.review_count || 0) === 1 ? 'review' : 'reviews'})
                   </span>
                 </div>
               )}
@@ -301,88 +347,73 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                 <div className="flex items-center space-x-2">
                   {/* Transparent Pricing Display */}
                   <div className="group relative">
-                    {(() => {
-                      const sellerBase = (product as any).seller_amount ?? product.price;
-                      const affiliateRate = product.commission_type === 'flat_rate'
-                        ? product.flat_commission_amount
-                        : product.commission_rate;
-                      const pricing = calculatePricing({
-                        sellerDesiredAmount: sellerBase,
-                        affiliateRate,
-                        affiliateType: product.commission_type
-                      });
-                      const formatted = formatPricingBreakdown(pricing);
-                      if (hideAffiliateUI) {
-                        return (
-                          <div className="flex items-center space-x-2">
-                            <span className="text-gray-900 font-bold text-lg">${pricing.listingPrice.toFixed(2)}</span>
-                          </div>
-                        );
-                      }
-                      return (
-                        <>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-gray-900 font-bold text-lg">${pricing.listingPrice.toFixed(2)}</span>
-                            <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                          </div>
-                          <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                            <div className="text-sm text-gray-700 space-y-1">
-                              <div className="font-semibold text-gray-900">Transparent pricing</div>
-                              <div className="flex justify-between"><span>Seller keeps</span><span className="font-medium text-green-600">{formatted.seller}</span></div>
-                              <div className="flex justify-between"><span>Affiliate earns</span><span className="font-medium text-blue-600">{formatted.affiliate}</span></div>
-                              <div className="flex justify-between"><span>Beezio platform</span><span className="font-medium text-purple-600">{formatted.platform}</span></div>
-                              <div className="flex justify-between"><span>Payment fees</span><span className="font-medium text-gray-600">{formatted.stripe}</span></div>
-                              <div className="border-t pt-1 mt-1 flex justify-between font-semibold">
-                                <span>Buyer pays</span><span className="text-gray-900">{formatted.total}</span>
-                              </div>
-                              <div className="text-xs text-gray-500">No hidden fees. Shipping & tax are added at checkout.</div>
+                    {hideAffiliateUI ? (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-900 font-bold text-lg">${payouts.salePrice.toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-gray-900 font-bold text-lg">${payouts.salePrice.toFixed(2)}</span>
+                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                        </div>
+                        <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                          <div className="text-sm text-gray-700 space-y-1">
+                            <div className="font-semibold text-gray-900">Transparent pricing</div>
+                            <div className="flex justify-between"><span>Seller keeps</span><span className="font-medium text-green-600">${payouts.sellerPayout.toFixed(2)}</span></div>
+                            <div className="flex justify-between"><span>Affiliate earns</span><span className="font-medium text-blue-600">${payouts.affiliateCommission.toFixed(2)}</span></div>
+                            <div className="flex justify-between"><span>Beezio platform</span><span className="font-medium text-purple-600">${payouts.beezioGross.toFixed(2)}</span></div>
+                            <div className="flex justify-between"><span>Payment fees</span><span className="font-medium text-gray-600">${payouts.stripeFee.toFixed(2)}</span></div>
+                            <div className="border-t pt-1 mt-1 flex justify-between font-semibold">
+                              <span>Buyer pays</span><span className="text-gray-900">${payouts.salePrice.toFixed(2)}</span>
                             </div>
+                            <div className="text-xs text-gray-500">No hidden fees. Shipping & tax are added at checkout.</div>
                           </div>
-                        </>
-                      );
-                    })()}
+                        </div>
+                      </>
+                    )}
                   </div>
                   
-                  {product.is_subscription && product.subscription_interval && (
+                  {normalizedProduct.is_subscription && normalizedProduct.subscription_interval && (
                     <span className="ml-2 text-primary-600 text-xs font-semibold bg-primary-50 px-2 py-1 rounded-full">
-                      {product.subscription_interval.charAt(0).toUpperCase() + product.subscription_interval.slice(1)}
+                      {normalizedProduct.subscription_interval.charAt(0).toUpperCase() + normalizedProduct.subscription_interval.slice(1)}
                     </span>
                   )}
                   {/* Show shipping cost if available */}
-                  {product.shipping_cost && (
-                    <span className="text-primary-500 text-xs font-semibold">+ ${product.shipping_cost.toFixed(2)} shipping</span>
+                  {normalizedProduct.shipping_cost && (
+                    <span className="text-primary-500 text-xs font-semibold">+ ${normalizedProduct.shipping_cost.toFixed(2)} shipping</span>
                   )}
                 </div>
               </div>
 
-              {product.description && (
+              {normalizedProduct.description && (
                 <p className="text-gray-600 text-sm line-clamp-2 mb-4">
-                  {product.description}
+                  {normalizedProduct.description}
                 </p>
               )}
 
               {/* Seller Info and Share Button */}
               <div className="flex items-center justify-between mb-4">
-                {product.profiles && (
+                {normalizedProduct.profiles && (
                   <div className="flex items-center space-x-3 flex-1">
                     <div className="flex-shrink-0">
-                      <Link to={`/profile/${product.seller_id}`}>
+                      <Link to={`/profile/${normalizedProduct.seller_id}`}>
                         <img
-                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(product.profiles.full_name)}&size=128&background=random`}
-                          alt={product.profiles.full_name}
+                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(normalizedProduct.profiles.full_name)}&size=128&background=random`}
+                          alt={normalizedProduct.profiles.full_name}
                           className="w-10 h-10 rounded-full object-cover border-2 border-primary-300"
                         />
                       </Link>
                     </div>
                     <div className="flex-1">
-                      <Link to={`/profile/${product.seller_id}`}>
+                      <Link to={`/profile/${normalizedProduct.seller_id}`}>
                         <p className="text-gray-800 font-semibold text-sm line-clamp-1 hover:text-primary-600 transition-colors">
-                          {product.profiles?.full_name}
+                          {normalizedProduct.profiles?.full_name}
                         </p>
                       </Link>
-                      {product.profiles?.location && (
+                      {normalizedProduct.profiles?.location && (
                         <p className="text-gray-600 text-xs line-clamp-1">
-                          {product.profiles.location}
+                          {normalizedProduct.profiles.location}
                         </p>
                       )}
                     </div>
@@ -392,7 +423,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
                 {/* Share Button */}
                 <div className="flex-shrink-0">
                   <SocialShareButton 
-                    product={product}
+                    product={normalizedProduct}
                     size="sm"
                   />
                 </div>
@@ -402,11 +433,11 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
               {(userRole === 'affiliate' || userRole === 'fundraiser' || userRole === 'seller') && (
                 <div className="mt-3 mb-2">
                   <AddToAffiliateStoreButton
-                    productId={product.id}
-                    sellerId={product.seller_id}
-                    productTitle={product.title}
-                    productPrice={product.price}
-                    defaultCommissionRate={product.commission_rate}
+                    productId={normalizedProduct.id}
+                    sellerId={normalizedProduct.seller_id}
+                    productTitle={normalizedProduct.title}
+                    productPrice={salePrice}
+                    defaultCommissionRate={normalizedProduct.commission_rate}
                     size="sm"
                     variant="button"
                   />
@@ -417,18 +448,19 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products: externalProducts, h
               {userRole === 'affiliate' && (
                 <div className="mt-4 space-y-2">
                   <AffiliateLink
-                    productId={product.id}
-                    commissionRate={product.commission_rate}
-                    commissionType={product.commission_type}
-                    flatCommissionAmount={product.flat_commission_amount}
-                    price={product.price}
+                    productId={normalizedProduct.id}
+                    commissionRate={normalizedProduct.commission_rate}
+                    commissionType={normalizedProduct.commission_type}
+                    flatCommissionAmount={normalizedProduct.flat_commission_amount}
+                    price={salePrice}
                   />
-                  <ProductAffiliateQRCode product={product} profile={profile} />
+                  <ProductAffiliateQRCode product={normalizedProduct} profile={profile} />
                 </div>
               )}
             </div>
           </div>
-        ))}
+        );
+        })}
       </div>
     </div>
   );

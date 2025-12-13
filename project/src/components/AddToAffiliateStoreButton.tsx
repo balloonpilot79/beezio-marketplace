@@ -36,8 +36,9 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
     notes: ''
   });
 
-  // Check if user is affiliate and if they already added this product
+  // Check if user is affiliate or fundraiser and if they already added this product
   const isAffiliate = profile?.role === 'affiliate' || profile?.role === 'fundraiser';
+  const isFundraiser = profile?.role === 'fundraiser';
   const affiliateProfileId = profile?.id;
   const isOwnProduct = Boolean(
     (affiliateProfileId && affiliateProfileId === sellerId) ||
@@ -52,14 +53,27 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
 
   const checkIfAdded = async (currentAffiliateId: string) => {
     try {
+      if (isFundraiser) {
+        const { data } = await supabase
+          .from('fundraiser_products')
+          .select('id')
+          .eq('fundraiser_id', currentAffiliateId)
+          .eq('product_id', productId)
+          .maybeSingle();
+        setIsAdded(!!data);
+        return;
+      }
+
+      // Storefront pages read from affiliate_store_products.
       const { data } = await supabase
-        .from('affiliate_products')
+        .from('affiliate_store_products')
         .select('id, is_active')
         .eq('affiliate_id', currentAffiliateId)
         .eq('product_id', productId)
         .maybeSingle();
 
-      setIsAdded(!!data?.is_active);
+      // If schema doesn't have is_active, presence of a row is enough.
+      setIsAdded(Boolean((data as any)?.is_active ?? data));
     } catch (error) {
       console.error('Error checking affiliate product status:', error);
     }
@@ -92,34 +106,79 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
 
     setIsLoading(true);
     try {
-      // Add product to affiliate's store
-      const { data: affiliateProduct, error } = await supabase
-        .from('affiliate_products')
-        .insert({
-          affiliate_id: affiliateProfileId,
-          product_id: productId,
-          seller_id: sellerId,
-          custom_commission_rate: customSettings.customCommissionRate,
-          custom_price: customSettings.customPrice,
-          is_featured: customSettings.isFeatured,
-          affiliate_description: customSettings.affiliateDescription || null,
-          notes: customSettings.notes || null,
-          is_active: true
-        })
-        .select()
-        .single();
+      if (isFundraiser) {
+        // Fundraiser storefront reads fundraiser_products
+        const { error } = await supabase
+          .from('fundraiser_products')
+          .upsert(
+            {
+              fundraiser_id: affiliateProfileId,
+              product_id: productId,
+              custom_description: customSettings.affiliateDescription || null,
+              display_order: 0,
+              is_featured: customSettings.isFeatured,
+            },
+            { onConflict: 'fundraiser_id,product_id' }
+          );
 
-      if (error) {
-        if (error.code === '23505') {
-          alert('You already have this product in your store!');
-        } else {
-          throw error;
+        if (error) {
+          if ((error as any).code === '23505') {
+            alert('You already have this product in your fundraiser store!');
+          } else {
+            throw error;
+          }
+          setIsLoading(false);
+          return;
         }
-        setIsLoading(false);
-        return;
+      } else {
+        // Affiliate storefront reads affiliate_store_products (curated products + overrides)
+        const { error: storeError } = await supabase
+          .from('affiliate_store_products')
+          .upsert(
+            {
+              affiliate_id: affiliateProfileId,
+              product_id: productId,
+              display_order: 0,
+              is_featured: customSettings.isFeatured,
+              custom_title: null,
+              custom_price: customSettings.customPrice,
+              affiliate_description: customSettings.affiliateDescription || null,
+              is_active: true,
+            },
+            { onConflict: 'affiliate_id,product_id' }
+          );
+
+        if (storeError) {
+          if ((storeError as any).code === '23505') {
+            alert('You already have this product in your store!');
+          } else {
+            throw storeError;
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        // Keep legacy affiliate_products in sync for other parts of the app (best-effort)
+        try {
+          await supabase
+            .from('affiliate_products')
+            .upsert({
+              affiliate_id: affiliateProfileId,
+              product_id: productId,
+              seller_id: sellerId,
+              custom_commission_rate: customSettings.customCommissionRate,
+              custom_price: customSettings.customPrice,
+              is_featured: customSettings.isFeatured,
+              affiliate_description: customSettings.affiliateDescription || null,
+              notes: customSettings.notes || null,
+              is_active: true
+            });
+        } catch (legacyError) {
+          console.warn('Legacy affiliate_products sync failed (non-fatal):', legacyError);
+        }
       }
 
-      // Generate affiliate link
+      // Generate trackable link (affiliates + fundraisers both use ref attribution)
       const linkCode = await generateLinkCode();
       const { data: linkData, error: linkError } = await supabase
         .from('affiliate_links')
@@ -171,13 +230,28 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('affiliate_products')
-        .delete()
-        .eq('affiliate_id', affiliateProfileId)
-        .eq('product_id', productId);
+      if (isFundraiser) {
+        const { error } = await supabase
+          .from('fundraiser_products')
+          .delete()
+          .eq('fundraiser_id', affiliateProfileId)
+          .eq('product_id', productId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('affiliate_store_products')
+          .delete()
+          .eq('affiliate_id', affiliateProfileId)
+          .eq('product_id', productId);
+        if (error) throw error;
 
-      if (error) throw error;
+        // Best-effort cleanup of legacy table
+        await supabase
+          .from('affiliate_products')
+          .delete()
+          .eq('affiliate_id', affiliateProfileId)
+          .eq('product_id', productId);
+      }
 
       setIsAdded(false);
       alert('Product removed from your store');

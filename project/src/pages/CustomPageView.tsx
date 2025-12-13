@@ -7,7 +7,7 @@ import DOMPurify from 'dompurify';
 interface CustomPage {
   id: string;
   owner_id: string;
-  owner_type: 'seller' | 'affiliate';
+  owner_type: 'seller' | 'affiliate' | 'fundraiser';
   page_slug: string;
   page_title: string;
   page_content: string;
@@ -24,7 +24,7 @@ interface OwnerProfile {
 
 export default function CustomPageView() {
   const { ownerType, username, pageSlug } = useParams<{
-    ownerType: 'seller' | 'affiliate';
+    ownerType: 'seller' | 'affiliate' | 'fundraiser';
     username: string;
     pageSlug: string;
   }>();
@@ -89,11 +89,42 @@ export default function CustomPageView() {
   };
 
   const sanitizeHTML = (html: string): string => {
+    // Disallow outbound checkout links (e.g., Amazon/other stores). Only allow:
+    // - Relative links
+    // - Current host
+    // - beezio.co domain
+    // - mailto/tel
+    const allowedHosts = ['beezio.co', window.location.host];
+
     const config = {
       ALLOWED_TAGS: ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'a', 'img', 'ul', 'ol', 'li', 'strong', 'em', 'br', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'blockquote', 'code', 'pre', 'hr', 'section', 'article', 'button'],
       ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'id', 'target', 'rel'],
-      KEEP_CONTENT: true
+      KEEP_CONTENT: true,
+      FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
+      ALLOWED_URI_REGEXP: /^(?:(?:https?:\/\/(?:[^/?#\s]+)?)|(?:\/)|(?:#)|(?:mailto:)|(?:tel:))/i
     };
+
+    // Hook to strip or neutralize checkout-bypass links
+    DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+      if (node.tagName === 'A' && node.hasAttribute('href')) {
+        const href = node.getAttribute('href') || '';
+        const isMailTel = href.startsWith('mailto:') || href.startsWith('tel:');
+        const isRelative = href.startsWith('/') || href.startsWith('#');
+        let isAllowedHost = false;
+        try {
+          const url = new URL(href, window.location.origin);
+          isAllowedHost = allowedHosts.some(h => url.host.endsWith(h));
+        } catch (e) {
+          // leave as not allowed
+        }
+
+        if (!(isMailTel || isRelative || isAllowedHost)) {
+          node.removeAttribute('href');
+          node.setAttribute('data-blocked', 'external-checkout-blocked');
+          node.textContent = node.textContent || 'Link blocked';
+        }
+      }
+    });
 
     return DOMPurify.sanitize(html, config);
   };
@@ -145,7 +176,13 @@ export default function CustomPageView() {
               </div>
             </div>
             <Link
-              to={`/store/${owner.id}`}
+              to={
+                ownerType === 'affiliate'
+                  ? `/affiliate/${owner.id}`
+                  : ownerType === 'fundraiser'
+                  ? `/fundraiser/${owner.id}`
+                  : `/store/${owner.id}`
+              }
               className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-colors"
             >
               <Store className="w-4 h-4" />

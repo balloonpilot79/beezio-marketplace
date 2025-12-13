@@ -8,7 +8,6 @@ import {
   MapPin, 
   Shield,
   CheckCircle,
-  AlertCircle
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -16,6 +15,14 @@ import { useAffiliate } from '../contexts/AffiliateContext';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { getReferralAttribution } from '../utils/referralTracking';
+import { recordOrderWithPayouts } from '../lib/orderPersistence';
+import {
+  calculateFinalPrice,
+  computePayoutBreakdown,
+  type PayoutBreakdown,
+} from '../utils/pricingEngine';
+import { DEFAULT_PAYOUT_SETTINGS, PLATFORM_FEE_PERCENT } from '../config/beezioConfig';
+import { supabase } from '../lib/supabase'; // Import supabase
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
@@ -24,9 +31,24 @@ interface OrderSummary {
   subtotal: number;
   shipping: number;
   tax: number;
+  total: number;
   affiliateCommission: number;
   beezioCommission: number;
-  total: number;
+  stripeFee: number;
+  referralBonus: number;
+  sellerPayout: number;
+  lineItems: Array<{
+    productId: string;
+    title: string;
+    sellerId: string;
+    sellerName: string;
+    quantity: number;
+    salePrice: number;
+    sellerAsk: number;
+    affiliateRate: number;
+    payouts: PayoutBreakdown;
+    shippingCost: number;
+  }>;
 }
 
 interface CheckoutFormData {
@@ -267,14 +289,15 @@ const CheckoutForm: React.FC<{ onSubmit: (data: any) => void; isLoading: boolean
 };
 
 const EnhancedCheckoutPage: React.FC = () => {
-  const { items, getTotalPrice, getShippingTotal, clearCart } = useCart();
-  const { user, userRoles } = useAuth();
+  const { items, getShippingTotal, clearCart } = useCart();
+  const { user, userRoles, profile } = useAuth();
   const { trackSale } = useAffiliate();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [affiliateId, setAffiliateId] = useState<string | null>(null);
   const [fundraiserId, setFundraiserId] = useState<string | null>(null);
+  const [referralAffiliateId, setReferralAffiliateId] = useState<string | null>(null);
 
   // Check for affiliate or fundraiser reference using new referral system
   useEffect(() => {
@@ -291,9 +314,40 @@ const EnhancedCheckoutPage: React.FC = () => {
 
   // Redirect if not logged in
   useEffect(() => {
+      setReferralAffiliateId(null); // Reset referralAffiliateId when setting affiliateId
     if (!user) {
       navigate('/signup?redirect=/checkout');
     }
+  // If a sale is attributed to an affiliate, check whether that affiliate was recruited by another affiliate.
+  // If yes, Beezio splits its 15% platform fee into 10% (Beezio) + 5% (recruiter) for life.
+  useEffect(() => {
+    const fetchRecruiter = async () => {
+      try {
+        if (!affiliateId) {
+          setReferralAffiliateId(null);
+          return;
+        }
+
+        // affiliateId could be a UUID profile id OR a referral_code string.
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, referred_by_affiliate_id')
+          .or(`id.eq.${affiliateId},referral_code.ilike.${affiliateId}`)
+          .maybeSingle();
+
+        if (error && (error as any).code !== 'PGRST116') {
+          console.warn('Recruiter lookup warning:', error);
+        }
+
+        setReferralAffiliateId((data as any)?.referred_by_affiliate_id ?? null);
+      } catch (e) {
+        console.warn('Recruiter lookup failed (non-blocking):', e);
+        setReferralAffiliateId(null);
+      }
+    };
+
+    fetchRecruiter();
+  }, [affiliateId]);
   }, [user, navigate]);
 
   // Redirect if cart is empty
@@ -303,35 +357,51 @@ const EnhancedCheckoutPage: React.FC = () => {
     }
   }, [items.length, navigate]);
 
-  // Calculate order summary
+  // Calculate order summary using unified pricing helpers
   const calculateOrderSummary = (): OrderSummary => {
-    const subtotal = getTotalPrice();
+    const attribution = getReferralAttribution();
+    const lineItems = items.map((item) => {
+      const payouts = computePayoutBreakdown(salePrice, sellerAsk, payout, {
+        referralOverrideEnabled: Boolean(referralAffiliateId) && attribution.type === 'affiliate',
+      });
+      const payout = {
+        affiliatePercent: affiliateRate,
+        platformPercent: PLATFORM_FEE_PERCENT,
+        fundraiserPercent: DEFAULT_PAYOUT_SETTINGS.fundraiserPercent,
+      };
+      const sellerAsk = item.sellerAsk ?? item.price;
+      const salePrice = calculateFinalPrice(sellerAsk, payout);
+      const payouts = computePayoutBreakdown(salePrice, sellerAsk, payout);
+
+      return {
+        productId: item.productId,
+        title: item.title,
+        sellerId: item.sellerId,
+        sellerName: item.sellerName,
+        quantity: item.quantity,
+        salePrice,
+        sellerAsk,
+        affiliateRate,
+        payouts,
+        shippingCost: item.shippingCost || 0,
+      };
+    });
+
+    const subtotal = lineItems.reduce((sum, line) => sum + line.salePrice * line.quantity, 0);
     const shipping = getShippingTotal();
-    const tax = subtotal * 0.08; // 8% tax rate
-    
-    let affiliateCommission = 0;
-    let beezioCommission = subtotal * 0.08; // Platform always gets 8%
+    const tax = subtotal * 0.08; // placeholder tax (adjust if needed)
 
-    // Check if buyer has affiliate role (they get products without affiliate commission)
-    const buyerHasAffiliateRole = userRoles.includes('affiliate') || userRoles.includes('fundraiser');
-
-    if (affiliateId && !buyerHasAffiliateRole) {
-      // Regular customer buying via affiliate link: charge affiliate commission
-      affiliateCommission = items.reduce((sum, item) => {
-        // Skip commission if buyer is the seller of this specific item
-        if (user?.id === item.sellerId) {
-          return sum;
-        }
-        return sum + (item.price * item.quantity * (item.commission_rate || 5) / 100);
-      }, 0);
-    } else if (buyerHasAffiliateRole) {
-      // Affiliate/fundraiser buying for themselves: NO affiliate commission
-      // They get "wholesale" pricing - just pay base price + platform fee
-      affiliateCommission = 0;
-    } else {
-      // Regular customer buying direct (no affiliate link): NO affiliate commission
-      affiliateCommission = 0;
-    }
+    const payoutTotals = lineItems.reduce(
+      (acc, line) => {
+        acc.affiliateCommission += line.payouts.affiliateAmount * line.quantity;
+        acc.beezioCommission += line.payouts.beezioNetAmount * line.quantity;
+        acc.referralBonus += line.payouts.referralAffiliateAmount * line.quantity;
+        acc.sellerPayout += line.payouts.sellerAmount * line.quantity;
+        acc.stripeFee += (line.payouts.stripePercentAmount + line.payouts.stripeFixedFee) * line.quantity;
+        return acc;
+      },
+      { affiliateCommission: 0, beezioCommission: 0, referralBonus: 0, sellerPayout: 0, stripeFee: 0 }
+    );
 
     const total = subtotal + shipping + tax;
 
@@ -339,9 +409,13 @@ const EnhancedCheckoutPage: React.FC = () => {
       subtotal,
       shipping,
       tax,
-      affiliateCommission,
-      beezioCommission,
-      total
+      total,
+      affiliateCommission: payoutTotals.affiliateCommission,
+      beezioCommission: payoutTotals.beezioCommission,
+      stripeFee: payoutTotals.stripeFee,
+      referralBonus: payoutTotals.referralBonus,
+      sellerPayout: payoutTotals.sellerPayout,
+      lineItems,
     };
   };
 
@@ -350,53 +424,54 @@ const EnhancedCheckoutPage: React.FC = () => {
     
     try {
       const orderSummary = calculateOrderSummary();
-      
-      // Create order payload
-      const orderPayload = {
-        items: items.map(item => ({
-          productId: item.productId,
-          title: item.title,
-          price: item.price,
-          quantity: item.quantity,
-          sellerId: item.sellerId,
-          sellerName: item.sellerName,
-          commission_rate: item.commission_rate
-        })),
-        customer: paymentData.customerInfo,
-        payment: {
-          paymentMethodId: paymentData.paymentMethod.id,
-          amount: Math.round(orderSummary.total * 100), // Convert to cents
-        },
-        affiliate: affiliateId ? {
-          affiliateId,
-          commission: orderSummary.affiliateCommission
-        } : null,
-        fundraiser: fundraiserId ? {
-          fundraiserId,
-          commission: orderSummary.affiliateCommission // Same 5% as affiliate
-        } : null,
-        summary: orderSummary
-      };
+      const attribution = getReferralAttribution();
 
-      // In a real app, this would go to your backend API
-      console.log('Processing order:', orderPayload);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // In a real app, this would call your backend; for now simulate success.
+          referralAffiliateId: attribution.type === 'affiliate' ? referralAffiliateId : null,
+
+      // Persist order + payouts directly to Supabase (best effort if RLS allows)
+      try {
+        await recordOrderWithPayouts({
+          userId: user?.id || '',
+          storefrontId: null,
+          affiliateId: attribution.type === 'affiliate' ? attribution.id : null,
+          referralAffiliateId: profile?.referred_by || null,
+          fundraiserId: attribution.type === 'fundraiser' ? attribution.id : null,
+          summary: {
+            subtotal: orderSummary.subtotal,
+            shipping: orderSummary.shipping,
+            tax: orderSummary.tax,
+            total: orderSummary.total,
+          },
+          lines: orderSummary.lineItems.map(line => ({
+            productId: line.productId,
+            title: line.title,
+            sellerId: line.sellerId,
+            sellerName: line.sellerName,
+            quantity: line.quantity,
+            salePrice: line.salePrice,
+            sellerAsk: line.sellerAsk,
+            affiliateRate: line.affiliateRate,
+            payout: line.payouts,
+            shippingCost: line.shippingCost,
+          })),
+        });
+        console.log('✅ Order persisted successfully to database');
+      } catch (persistError) {
+        console.error('❌ Order persistence failed:', persistError);
+        throw new Error('Failed to save order. Please contact support.');
+      }
 
       // Track affiliate sales if applicable
       if (affiliateId) {
-        items.forEach(item => {
-          if (item.commission_rate) {
-            const commission = item.price * item.quantity * (item.commission_rate / 100);
-            trackSale(item.productId, affiliateId, item.price * item.quantity, commission);
-          }
+        orderSummary.lineItems.forEach(line => {
+          trackSale(line.productId, affiliateId, line.salePrice * line.quantity, line.payouts.affiliateAmount * line.quantity);
         });
       }
 
       // Track fundraiser sales and update goal progress
       if (fundraiserId) {
-        const totalCommission = orderSummary.affiliateCommission; // 5% commission
+        const totalCommission = orderSummary.affiliateCommission;
         
         // Update fundraiser's current_raised amount
         import('../lib/supabase').then(({ supabase }) => {
@@ -472,22 +547,25 @@ const EnhancedCheckoutPage: React.FC = () => {
               
               {/* Items */}
               <div className="space-y-4 mb-6">
-                {items.map(item => (
-                  <div key={item.id} className="flex items-center space-x-3">
+                {orderSummary.lineItems.map(line => {
+                  const cartItem = items.find((i) => i.productId === line.productId);
+                  return (
+                  <div key={line.productId} className="flex items-center space-x-3">
                     <img
-                      src={item.image}
-                      alt={item.title}
+                      src={cartItem?.image || '/api/placeholder/64/64'}
+                      alt={line.title}
                       className="w-12 h-12 rounded-lg object-cover"
                     />
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900 text-sm">{item.title}</p>
-                      <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                      <p className="font-medium text-gray-900 text-sm">{line.title}</p>
+                      <p className="text-sm text-gray-500">Qty: {line.quantity}</p>
                     </div>
                     <p className="font-semibold text-gray-900">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      ${(line.salePrice * line.quantity).toFixed(2)}
                     </p>
                   </div>
-                ))}
+                );
+                })}
               </div>
 
               {/* Pricing Breakdown */}
@@ -504,50 +582,6 @@ const EnhancedCheckoutPage: React.FC = () => {
                   <span className="text-gray-600">Tax</span>
                   <span className="text-gray-900">${orderSummary.tax.toFixed(2)}</span>
                 </div>
-                
-                {/* Commission Transparency */}
-                <div className="border-t border-gray-100 pt-2 mt-2">
-                  {affiliateId && orderSummary.affiliateCommission > 0 ? (
-                    <>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-blue-600">Affiliate Commission</span>
-                        <span className="text-blue-600">${orderSummary.affiliateCommission.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Platform Fee (8%)</span>
-                        <span className="text-gray-600">${orderSummary.beezioCommission.toFixed(2)}</span>
-                      </div>
-                    </>
-                  ) : userRoles.includes('affiliate') || userRoles.includes('fundraiser') ? (
-                    <>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-green-600 flex items-center gap-1">
-                          <CheckCircle className="w-4 h-4" />
-                          Affiliate Discount
-                        </span>
-                        <span className="text-green-600 font-semibold">$0.00</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Platform Fee (8%)</span>
-                        <span className="text-gray-600">${orderSummary.beezioCommission.toFixed(2)}</span>
-                      </div>
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-2">
-                        <p className="text-xs text-green-700 font-medium">
-                          🎉 Affiliate Perk Active!
-                        </p>
-                        <p className="text-xs text-green-600 mt-1">
-                          As an affiliate, you shop without paying affiliate commissions. You only pay the base price + platform fee. Share products with others to earn!
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Platform Fee (8%)</span>
-                      <span className="text-gray-600">${orderSummary.beezioCommission.toFixed(2)}</span>
-                    </div>
-                  )}
-                </div>
-                
                 <div className="border-t border-gray-200 pt-2 mt-2">
                   <div className="flex justify-between text-lg font-semibold">
                     <span className="text-gray-900">Total</span>
@@ -574,21 +608,8 @@ const EnhancedCheckoutPage: React.FC = () => {
               </div>
 
               {/* 100% Transparency Message */}
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="flex items-start">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="text-sm font-semibold text-yellow-800">100% Transparent Pricing</h4>
-                    <p className="text-xs text-yellow-700 mt-1">
-                      {affiliateId && orderSummary.affiliateCommission > 0
-                        ? `Affiliate earns $${orderSummary.affiliateCommission.toFixed(2)}. Platform fee: $${orderSummary.beezioCommission.toFixed(2)} (8%).`
-                        : userRoles.includes('affiliate') || userRoles.includes('fundraiser')
-                        ? `🎉 As an affiliate, you shop commission-free! Platform fee: $${orderSummary.beezioCommission.toFixed(2)} (8%). Share products to earn commissions when others buy!`
-                        : `Direct purchase - no affiliate commission. Platform fee: $${orderSummary.beezioCommission.toFixed(2)} (8%) covers operations and seller support.`
-                      }
-                    </p>
-                  </div>
-                </div>
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800">
+                Your total includes all marketplace pricing. Taxes and shipping are shown here; we keep the checkout clean without payout or commission breakdowns.
               </div>
             </div>
           </div>

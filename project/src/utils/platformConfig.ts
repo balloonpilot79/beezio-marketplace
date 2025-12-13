@@ -10,7 +10,7 @@ export const PLATFORM_CONFIG = {
   STRIPE_FEE_FIXED: 0.60, // $0.60 fixed fee
   
   // Affiliate commissions (default rates)
-  DEFAULT_AFFILIATE_COMMISSION: 15, // 15% default commission rate
+  DEFAULT_AFFILIATE_COMMISSION: 20, // 20% default commission rate
   MAX_AFFILIATE_COMMISSION: 50, // Maximum 50% commission allowed
   
   // Payout thresholds

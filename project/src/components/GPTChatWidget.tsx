@@ -2,7 +2,14 @@ import React, { useState } from 'react';
 import { MessageCircle, Send, X } from 'lucide-react';
 import { callGPT } from '../lib/gptClient';
 
+const GPT_PROXY_ENDPOINT = import.meta.env.VITE_GPT_PROXY_ENDPOINT;
+
 const GPTChatWidget: React.FC = () => {
+  // Hide widget entirely if no proxy endpoint is configured
+  if (!GPT_PROXY_ENDPOINT) {
+    return null;
+  }
+
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
@@ -22,9 +29,15 @@ const GPTChatWidget: React.FC = () => {
           userMessage,
         ],
       });
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply || 'Got it! Ask about commissions, checkout, or adding products.' }]);
     } catch (err: any) {
-      setMessages((prev) => [...prev, { role: 'assistant', content: `Sorry, I had an issue: ${err.message || err}` }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `Beezio GPT is temporarily unavailable. If you deploy on Netlify, ensure the function "gpt-proxy" exists. Error: ${err.message || err}`,
+        },
+      ]);
     } finally {
       setLoading(false);
     }

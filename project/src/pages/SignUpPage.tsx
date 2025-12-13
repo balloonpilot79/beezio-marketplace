@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { Gift, Check, X } from 'lucide-react';
@@ -10,21 +10,24 @@ const SignUpPage: React.FC = () => {
     email: '',
     password: '',
     fullName: '',
+    storeName: '',
     phone: '',
     city: '',
     state: '',
     zipCode: '',
     role: 'buyer',
   });
-  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralCode, setReferralCode] = useState<string>('');
   const [referralValid, setReferralValid] = useState<boolean | null>(null);
   const [referrerName, setReferrerName] = useState<string>('');
+  const [referrerAffiliateId, setReferrerAffiliateId] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const { signUp, signIn } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Password strength calculation
   const getPasswordStrength = (password: string) => {
@@ -49,50 +52,41 @@ const SignUpPage: React.FC = () => {
   useEffect(() => {
     const refCode = searchParams.get('ref');
     if (refCode) {
+      setReferralCode(refCode);
       validateReferralCode(refCode);
     }
   }, [searchParams]);
 
   const validateReferralCode = async (code: string) => {
     try {
-      // Look up profile by username (recruitment links use username)
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, user_id, full_name, username, primary_role')
-        .eq('username', code)
-        .single();
-
-      // If not found by username, try by ID
-      if (error || !data) {
-        const { data: dataById, error: errorById } = await supabase
-          .from('profiles')
-          .select('id, user_id, full_name, username, primary_role')
-          .eq('id', code)
-          .single();
-
-        if (errorById || !dataById) {
-          setReferralValid(false);
-          setReferralCode(null);
-          return;
-        }
-
-        setReferralCode(dataById.id);
-        setReferralValid(true);
-        setReferrerName(dataById.full_name || dataById.username || 'Someone');
-        setFormData(prev => ({ ...prev, role: 'affiliate' }));
+      const cleaned = (code || '').trim();
+      if (!cleaned) {
+        setReferralValid(null);
+        setReferrerAffiliateId(null);
+        setReferrerName('');
         return;
       }
 
-      setReferralCode(data.id); // Store profile ID for referred_by
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, referral_code, username, primary_role, role')
+        // Preferred: profiles.referral_code. Backward-compatible: username or id.
+        .or(`referral_code.ilike.${cleaned},username.ilike.${cleaned},id.eq.${cleaned}`)
+        .maybeSingle();
+
+      if (error || !data) {
+        setReferralValid(false);
+        setReferrerAffiliateId(null);
+        return;
+      }
+
+      setReferrerAffiliateId(data.id);
       setReferralValid(true);
-      setReferrerName(data.full_name || data.username || 'Someone');
-      
-      // Auto-select affiliate role if referred
-      setFormData(prev => ({ ...prev, role: 'affiliate' }));
+      setReferrerName(data.full_name || data.referral_code || 'An affiliate');
     } catch (err) {
       console.error('Error validating referral code:', err);
       setReferralValid(false);
-      setReferralCode(null);
+      setReferrerAffiliateId(null);
     }
   };
 
@@ -122,12 +116,18 @@ const SignUpPage: React.FC = () => {
       return;
     }
 
+    if (!formData.storeName || formData.storeName.trim().length < 2) {
+      setError('Please choose a store name (at least 2 characters)');
+      setLoading(false);
+      return;
+    }
+
     try {
       // Only assign selected role
       const result = await signUp(formData.email, formData.password, { ...formData, role: formData.role });
       if (result.user) {
         // If there's a referral code, store it and create referral relationship
-        if (referralCode && referralValid) {
+        if (referralCode && referralValid && referrerAffiliateId) {
           try {
             // Get the new user's profile ID
             const { data: newUserProfile } = await supabase
@@ -137,15 +137,15 @@ const SignUpPage: React.FC = () => {
               .single();
 
             if (newUserProfile) {
-              // Update new user's profile with referred_by (recruiter's profile ID)
+              // Update new user's profile with referred_by_affiliate_id (recruiter's profile ID)
               await supabase
                 .from('profiles')
                 .update({ 
-                  referred_by: referralCode // This is the recruiter's profile ID
+                  referred_by_affiliate_id: referrerAffiliateId
                 })
                 .eq('id', newUserProfile.id);
 
-              console.log('✅ Referral relationship created: Recruiter', referralCode, '→ Recruit', newUserProfile.id);
+              console.log('Referral relationship created:', referrerAffiliateId, '->', newUserProfile.id);
               
               // The database trigger will automatically create the affiliate_recruiters record
             }
@@ -197,6 +197,17 @@ const SignUpPage: React.FC = () => {
     }
   }, [urlRole]);
 
+  useEffect(() => {
+    if (urlRole) return;
+    if (location.pathname.includes('/seller')) {
+      setFormData(prev => ({ ...prev, role: 'seller' }));
+    } else if (location.pathname.includes('/affiliate')) {
+      setFormData(prev => ({ ...prev, role: 'affiliate' }));
+    } else if (location.pathname.includes('/fundraiser')) {
+      setFormData(prev => ({ ...prev, role: 'fundraiser' }));
+    }
+  }, [location.pathname, urlRole]);
+
   // Role benefits data
   const roleBenefits = {
     seller: {
@@ -247,7 +258,14 @@ const SignUpPage: React.FC = () => {
   const currentBenefits = roleBenefits[formData.role as keyof typeof roleBenefits] || roleBenefits.buyer;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-6 px-4 sm:py-12">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-6 px-4 sm:py-12 relative">
+      <Link
+        to="/"
+        className="absolute top-4 right-4 inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-amber-500 bg-white shadow-sm"
+        aria-label="Close and go home"
+      >
+        <span className="text-xl leading-none">×</span>
+      </Link>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-4 sm:p-6 md:p-8">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 text-center">Create Your Account</h2>
         
@@ -272,6 +290,28 @@ const SignUpPage: React.FC = () => {
               </p>
             </div>
           )}
+        </div>
+
+        {/* Stripe payout placeholder */}
+        <div className="mb-4 sm:mb-6 bg-white border border-amber-100 rounded-lg p-4 sm:p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-semibold">
+              $
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Payout setup (Stripe)</h3>
+              <p className="text-sm text-gray-700">
+                Connect Stripe to receive earnings. This is a placeholder until Stripe onboarding is fully configured.
+              </p>
+              <button
+                type="button"
+                disabled
+                className="inline-flex items-center px-4 py-2 rounded-full bg-gray-200 text-gray-600 font-semibold cursor-not-allowed"
+              >
+                Stripe setup coming soon
+              </button>
+            </div>
+          </div>
         </div>
         
         {/* Referral Banner */}
@@ -370,6 +410,18 @@ const SignUpPage: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
             <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Store Name</label>
+            <input
+              type="text"
+              name="storeName"
+              value={formData.storeName}
+              onChange={handleChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+              placeholder="e.g., Jason's Shop"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Phone (Optional)</label>

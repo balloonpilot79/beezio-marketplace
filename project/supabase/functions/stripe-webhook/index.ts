@@ -17,7 +17,34 @@ interface PaymentMetadata {
   affiliateCommissionRate?: string
   billingName: string
   billingEmail: string
+  allItems?: string
 }
+
+// Unified distribution constants (keep aligned with frontend)
+const STRIPE_PERCENT = 0.029;
+const STRIPE_FIXED = 0.60;
+const PLATFORM_PERCENT = 0.15;
+const REFERRER_PERCENT_OF_SALE = 0.05;
+const PLATFORM_FEE_UNDER_20_THRESHOLD = 20;
+const PLATFORM_FEE_UNDER_20_SURCHARGE = 1;
+
+const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const platformSurchargePerUnit = (sellerAskPerUnit: number): number =>
+  Number.isFinite(sellerAskPerUnit) && sellerAskPerUnit > 0 && sellerAskPerUnit <= PLATFORM_FEE_UNDER_20_THRESHOLD
+    ? PLATFORM_FEE_UNDER_20_SURCHARGE
+    : 0;
+
+type MetaCartItem = {
+  productId: string;
+  title?: string;
+  price: number; // unit final customer price
+  quantity: number;
+  sellerId: string;
+  sellerDesiredAmount?: number; // unit seller ask
+  affiliateId?: string | null; // may be profile id or referral code
+  affiliateCommissionRate?: number; // percent
+};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -29,10 +56,31 @@ serve(async (req) => {
       apiVersion: '2023-10-16',
     })
 
+    const serviceRoleKey =
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ??
+      Deno.env.get('SERVICE_ROLE_KEY') ??
+      ''
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      serviceRoleKey
     )
+
+    const tableHasColumn = async (tableName: string, columnName: string): Promise<boolean> => {
+      try {
+        const { data, error } = await supabase
+          .from('information_schema.columns')
+          .select('column_name')
+          .eq('table_name', tableName)
+          .eq('column_name', columnName)
+          .limit(1)
+          .maybeSingle()
+        if (error) return false
+        return Boolean(data)
+      } catch (_e) {
+        return false
+      }
+    }
 
     const signature = req.headers.get('stripe-signature')
     const body = await req.text()
@@ -62,6 +110,7 @@ serve(async (req) => {
           affiliateCommissionRate,
           billingName,
           billingEmail,
+          allItems,
         } = metadata
 
         console.log('Processing payment distribution for:', paymentIntent.id)
@@ -104,71 +153,233 @@ serve(async (req) => {
           throw transactionError
         }
 
-        // Calculate CORRECT payment distributions using our NEW pricing formula
-        const totalAmount = paymentIntent.amount / 100
-        const sellerCommissionRate = parseFloat(commissionRate) || 70
-        const affiliateCommissionPercent = parseFloat(affiliateCommissionRate || '0')
+        // Best-effort: resolve the Beezio order id so downstream records can link correctly
+        let beezioOrderId: string | null = null
+        try {
+          const { data: orderRow } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('stripe_payment_intent_id', paymentIntent.id)
+            .maybeSingle()
+          beezioOrderId = (orderRow as any)?.id ?? null
+        } catch (e) {
+          // non-blocking
+        }
 
-        // Use our NEW pricing formula: Beezio gets 10% of (seller + affiliate + stripe)
-        // 1. Seller gets their desired amount (70% of listing price by default)
-        const sellerDesiredAmount = totalAmount * (sellerCommissionRate / 100)
-        // 2. Affiliate commission
-        const affiliateAmount = affiliateId ? sellerDesiredAmount * (affiliateCommissionPercent / 100) : 0
-        // 3. Stripe fee = 3% of (seller + affiliate) + $0.60
-        const stripeBase = sellerDesiredAmount + affiliateAmount
-        const stripeFee = stripeBase * 0.03 + 0.60
-        // 4. Beezio gets 10% of (seller + affiliate + stripe)
-        const totalBeforePlatform = sellerDesiredAmount + affiliateAmount + stripeFee
-        const platformFee = totalBeforePlatform * 0.10 // Beezio gets 10%
+        // Calculate distributions using metadata.allItems when available (authoritative).
+        const totalAmount = round2(paymentIntent.amount / 100)
 
-        console.log('✅ CORRECT Distribution breakdown:', {
+        let items: MetaCartItem[] = [];
+        try {
+          if (allItems) {
+            const parsed = JSON.parse(allItems);
+            if (Array.isArray(parsed)) {
+              items = parsed as MetaCartItem[];
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to parse metadata.allItems; falling back to legacy metadata fields');
+        }
+
+        // Fallback to single-item metadata if needed
+        if (!items.length) {
+          items = [
+            {
+              productId,
+              price: totalAmount,
+              quantity: 1,
+              sellerId,
+              sellerDesiredAmount: undefined,
+              affiliateId: affiliateId || null,
+              affiliateCommissionRate: parseFloat(affiliateCommissionRate || '0') || 0,
+            },
+          ];
+        }
+
+        const sellerTotals = new Map<string, number>();
+        const affiliateTotals = new Map<string, number>();
+        let platformGrossTotal = 0;
+        let stripeTotal = 0;
+        let referralTotal = 0;
+
+        for (const item of items) {
+          const unitFinalPrice = Number.isFinite(item.price) ? item.price : 0;
+          const qty = Number.isFinite(item.quantity) ? item.quantity : 0;
+          const finalPriceTotal = round2(unitFinalPrice * qty);
+
+          const sellerAskPerUnit = Number.isFinite(item.sellerDesiredAmount)
+            ? (item.sellerDesiredAmount as number)
+            : unitFinalPrice * 0.7; // best-effort fallback
+
+          const sellerAmount = round2(sellerAskPerUnit * qty);
+          const affiliatePercent = Number.isFinite(item.affiliateCommissionRate)
+            ? (item.affiliateCommissionRate as number)
+            : 0;
+          const affiliateAmount = round2(finalPriceTotal * (Math.max(0, affiliatePercent) / 100));
+
+          const platformGross = round2(
+            finalPriceTotal * PLATFORM_PERCENT + platformSurchargePerUnit(sellerAskPerUnit) * qty
+          );
+
+          // Recruiter referral:
+          // - Referral code is stored at signup: profiles.referred_by_affiliate_id on the *sale owner*.
+          // - Sale owner is the attributed affiliate when present; otherwise it's the seller.
+          let recruiterId: string | null = null;
+          let resolvedAffiliateProfileId: string | null = null;
+          let saleOwnerProfileId: string | null = null;
+
+          if (item.affiliateId) {
+            const { data: affiliateProfile } = await supabase
+              .from('profiles')
+              .select('id, referred_by_affiliate_id')
+              .or(`id.eq.${item.affiliateId},referral_code.ilike.${item.affiliateId}`)
+              .maybeSingle();
+
+            resolvedAffiliateProfileId = (affiliateProfile as any)?.id ?? null;
+            saleOwnerProfileId = resolvedAffiliateProfileId;
+            recruiterId = (affiliateProfile as any)?.referred_by_affiliate_id ?? null;
+          } else {
+            const sellerProfileId = item.sellerId || sellerId;
+            if (sellerProfileId) {
+              const { data: sellerProfile } = await supabase
+                .from('profiles')
+                .select('id, referred_by_affiliate_id')
+                .eq('id', sellerProfileId)
+                .maybeSingle();
+
+              saleOwnerProfileId = (sellerProfile as any)?.id ?? null;
+              recruiterId = (sellerProfile as any)?.referred_by_affiliate_id ?? null;
+            }
+          }
+
+          const referralAmount = recruiterId && saleOwnerProfileId
+            ? round2(finalPriceTotal * REFERRER_PERCENT_OF_SALE)
+            : 0;
+
+          if (recruiterId && saleOwnerProfileId && referralAmount > 0) {
+            // Best-effort record (non-blocking)
+            try {
+              await supabase
+                .from('referral_commissions')
+                .insert({
+                  referrer_id: recruiterId,
+                  referred_affiliate_id: saleOwnerProfileId,
+                  order_id: beezioOrderId,
+                  sale_amount: finalPriceTotal,
+                  commission_amount: referralAmount,
+                  commission_rate: 5.0,
+                  status: 'pending'
+                });
+            } catch (e) {
+              console.warn('Failed to record referral_commissions (non-blocking):', e);
+            }
+          }
+
+          const stripeFee = round2(finalPriceTotal * STRIPE_PERCENT + STRIPE_FIXED * qty);
+
+          const sellerKey = item.sellerId || sellerId;
+          sellerTotals.set(sellerKey, round2((sellerTotals.get(sellerKey) || 0) + sellerAmount));
+
+          // Use the resolved affiliate profile id when possible, else raw affiliateId
+          const affiliateKey = resolvedAffiliateProfileId || (item.affiliateId ? String(item.affiliateId) : '');
+          if (affiliateKey && affiliateAmount > 0) {
+            affiliateTotals.set(affiliateKey, round2((affiliateTotals.get(affiliateKey) || 0) + affiliateAmount));
+          }
+
+          platformGrossTotal += platformGross;
+          stripeTotal += stripeFee;
+          referralTotal += referralAmount;
+        }
+
+        const sellerTotal = round2(Array.from(sellerTotals.values()).reduce((a, b) => a + b, 0));
+        const affiliateTotal = round2(Array.from(affiliateTotals.values()).reduce((a, b) => a + b, 0));
+        platformGrossTotal = round2(platformGrossTotal);
+        stripeTotal = round2(stripeTotal);
+        referralTotal = round2(referralTotal);
+
+        const platformNet = round2(Math.max(platformGrossTotal - referralTotal, 0));
+
+        // Keep transaction totals consistent. Any remainder (shipping/rounding) stays with platform.
+        const distributedMerchandiseTotal = round2(sellerTotal + affiliateTotal + platformNet + stripeTotal);
+        const remainder = round2(Math.max(totalAmount - distributedMerchandiseTotal, 0));
+        const platformAmount = round2(platformNet + remainder);
+
+        console.log('✅ Distribution breakdown (unified):', {
           totalAmount,
-          sellerDesiredAmount,
-          affiliateAmount,
-          stripeFee,
-          platformFee,
-          totalBeforePlatform,
-          verification: totalBeforePlatform + platformFee
+          sellerTotal,
+          affiliateTotal,
+          platformGrossTotal,
+          referralTotal,
+          platformNet,
+          stripeTotal,
+          remainder
         })
 
-        const sellerAmount = sellerDesiredAmount
-        const platformAmount = platformFee
-
         // Create payment distribution records
-        const distributions = [
-          {
-            transaction_id: transaction.id,
-            recipient_type: 'seller',
-            recipient_id: sellerId,
-            amount: sellerAmount,
-            percentage: sellerCommissionRate,
-            status: 'pending'
-          },
-          {
-            transaction_id: transaction.id,
-            recipient_type: 'platform',
-            recipient_id: null,
-            amount: platformAmount,
-            percentage: 100 - sellerCommissionRate - affiliateCommissionPercent,
-            status: 'completed' // Platform gets paid immediately
-          }
-        ]
+        const distributions: any[] = []
 
-        // Add affiliate distribution if applicable
-        if (affiliateId && affiliateAmount > 0) {
+        // Seller distributions (grouped)
+        for (const [sellerRecipientId, amount] of sellerTotals.entries()) {
+          if (!sellerRecipientId) continue
           distributions.push({
             transaction_id: transaction.id,
-            recipient_type: 'affiliate',
-            recipient_id: affiliateId,
-            amount: affiliateAmount,
-            percentage: affiliateCommissionPercent,
+            recipient_type: 'seller',
+            recipient_id: sellerRecipientId,
+            amount,
+            percentage: 0,
             status: 'pending'
           })
         }
 
-        const { error: distributionError } = await supabase
-          .from('payment_distributions')
-          .insert(distributions)
+        // Affiliate distributions (grouped)
+        for (const [affiliateRecipientId, amount] of affiliateTotals.entries()) {
+          if (!affiliateRecipientId) continue
+          distributions.push({
+            transaction_id: transaction.id,
+            recipient_type: 'affiliate',
+            recipient_id: affiliateRecipientId,
+            amount,
+            percentage: 0,
+            status: 'pending'
+          })
+        }
+
+        // Platform distribution (net + remainder)
+        distributions.push({
+          transaction_id: transaction.id,
+          recipient_type: 'platform',
+          recipient_id: null,
+          amount: platformAmount,
+          percentage: 0,
+          status: 'completed'
+        })
+
+        // Insert payment distributions using whichever linkage column exists
+        const paymentDistributionsUsesTransactionId = await tableHasColumn('payment_distributions', 'transaction_id')
+        const paymentDistributionsUsesOrderId = await tableHasColumn('payment_distributions', 'order_id')
+
+        const distributionsToInsert = distributions
+          .map((d) => {
+            const row: any = { ...d }
+            if (!paymentDistributionsUsesTransactionId) {
+              delete row.transaction_id
+            }
+            if (paymentDistributionsUsesOrderId && beezioOrderId) {
+              row.order_id = beezioOrderId
+            }
+            return row
+          })
+          .filter((row) => {
+            if (paymentDistributionsUsesOrderId && !beezioOrderId) return false
+            if (paymentDistributionsUsesTransactionId && !row.transaction_id) return false
+            return true
+          })
+
+        const { error: distributionError } = distributionsToInsert.length
+          ? await supabase
+              .from('payment_distributions')
+              .insert(distributionsToInsert)
+          : { error: null as any }
 
         if (distributionError) {
           console.error('Error creating payment distributions:', distributionError)
@@ -177,17 +388,30 @@ serve(async (req) => {
 
         // Record platform revenue
         const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
-        const { error: revenueError } = await supabase
-          .from('platform_revenue')
-          .insert({
-            transaction_id: transaction.id,
+        try {
+          const platformRevenueUsesTransactionId = await tableHasColumn('platform_revenue', 'transaction_id')
+          const platformRevenueUsesOrderId = await tableHasColumn('platform_revenue', 'order_id')
+
+          const revenueRow: any = {
             amount: platformAmount,
             revenue_type: 'commission',
-            month_year: currentMonth
-          })
+            month_year: currentMonth,
+          }
+          if (platformRevenueUsesTransactionId) {
+            revenueRow.transaction_id = transaction.id
+          } else if (platformRevenueUsesOrderId && beezioOrderId) {
+            revenueRow.order_id = beezioOrderId
+          }
 
-        if (revenueError) {
-          console.error('Error recording platform revenue:', revenueError)
+          const { error: revenueError } = await supabase
+            .from('platform_revenue')
+            .insert(revenueRow)
+
+          if (revenueError) {
+            console.error('Error recording platform revenue:', revenueError)
+          }
+        } catch (e) {
+          console.error('Error recording platform revenue:', e)
         }
 
         // Update order status
@@ -223,7 +447,7 @@ serve(async (req) => {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                  'Authorization': `Bearer ${serviceRoleKey}`,
                 },
                 body: JSON.stringify({ orderId: orderData.id }),
               }
@@ -233,6 +457,32 @@ serve(async (req) => {
               console.error('Failed to trigger automated fulfillment:', await fulfillmentResponse.text())
             } else {
               console.log('Automated fulfillment triggered successfully')
+            }
+
+            // Trigger CJ Dropshipping fulfillment for dropship products
+            try {
+              console.log('Triggering CJ fulfillment for order:', orderData.id)
+              const cjResponse = await fetch(
+                `${Deno.env.get('NETLIFY_FUNCTIONS_URL') || 'https://beezio.co'}/.netlify/functions/cj-fulfill-order`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ orderId: orderData.id }),
+                }
+              )
+
+              if (!cjResponse.ok) {
+                const errorText = await cjResponse.text()
+                console.error('Failed to trigger CJ fulfillment:', errorText)
+              } else {
+                const cjResult = await cjResponse.json()
+                console.log('CJ fulfillment response:', cjResult)
+              }
+            } catch (cjError) {
+              console.error('Error triggering CJ fulfillment:', cjError)
+              // Don't throw - CJ fulfillment failure shouldn't block the webhook
             }
           }
         } catch (error) {

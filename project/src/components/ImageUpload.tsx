@@ -79,6 +79,91 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       .map(segment => encodeURIComponent(segment))
       .join('/');
 
+  const readFileAsBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string | null;
+        if (!result) {
+          reject(new Error('Unable to encode file for upload'));
+          return;
+        }
+        const [, base64] = result.split(',');
+        if (!base64) {
+          reject(new Error('Unable to encode file for upload'));
+          return;
+        }
+        resolve(base64);
+      };
+      reader.onerror = () => reject(new Error('Unable to read file for upload'));
+      reader.readAsDataURL(file);
+    });
+
+  const getAccessToken = async (): Promise<string> => {
+    if (session?.access_token) {
+      return session.access_token;
+    }
+
+    const { data, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !data?.session?.access_token) {
+      throw new Error('Unable to refresh session token. Please sign in again.');
+    }
+
+    return data.session.access_token;
+  };
+
+  const uploadViaFunction = async (storagePath: string, file: File, retryCount = 0): Promise<string> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const maxRetries = 2;
+
+    try {
+      const accessToken = await getAccessToken();
+      const fileData = await readFileAsBase64(file);
+
+      const response = await fetch('/.netlify/functions/upload-product-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          bucket,
+          path: storagePath,
+          fileData,
+          contentType: file.type || 'application/octet-stream',
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(`Netlify function upload failed (${response.status}): ${errorText || response.statusText}`);
+      }
+
+      const payload = await response.json().catch(() => null);
+      const publicUrl = payload?.publicUrl;
+      if (!publicUrl) {
+        throw new Error('Upload succeeded but no public URL was returned');
+      }
+
+      return publicUrl;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      const message = error instanceof Error ? error.message : 'Netlify function upload failed';
+      const shouldRetry = retryCount < maxRetries && (message.includes('timeout') || message.includes('aborted'));
+
+      if (shouldRetry) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return uploadViaFunction(storagePath, file, retryCount + 1);
+      }
+
+      throw error;
+    }
+  };
+
   const uploadWithFetch = async (storagePath: string, file: File, retryCount = 0): Promise<void> => {
     const maxRetries = 2;
     console.log(`🔄 Starting REST upload (attempt ${retryCount + 1}/${maxRetries + 1})...`);
@@ -163,6 +248,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       file.size,
       file.type
     );
+
+    try {
+      return await uploadViaFunction(storagePath, file);
+    } catch (functionError) {
+      console.warn('Netlify function upload failed, falling back to Supabase client', functionError);
+    }
 
     try {
       const uploadPromise = supabase.storage

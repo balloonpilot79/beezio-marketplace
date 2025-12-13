@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ChatSupportDashboard from './ChatSupportDashboard';
 
@@ -93,7 +94,15 @@ const AdminDashboard: React.FC = () => {
       {/* Add more admin tools as needed */}
       <section className="bg-white/90 rounded-2xl shadow-xl p-8 border border-gray-100">
         <h2 className="text-2xl font-bold mb-5 text-yellow-700 flex items-center gap-2"><span>🛠️</span>Other Admin Tools</h2>
-        <div className="text-gray-500">[Add sales issue management, logs, etc. here]</div>
+        <div className="space-y-3">
+          <Link
+            to="/admin/products"
+            className="inline-flex items-center px-5 py-3 rounded-lg bg-[#101820] text-[#ffcb05] font-semibold hover:bg-black transition-colors"
+          >
+            Open Admin Product Hub
+          </Link>
+          <div className="text-gray-500">[Add sales issue management, logs, etc. here]</div>
+        </div>
       </section>
 
       {/* Chat Support Dashboard */}

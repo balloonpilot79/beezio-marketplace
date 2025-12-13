@@ -10,7 +10,7 @@ const PlatformSettings: React.FC = () => {
   });
 
   const [testPrice, setTestPrice] = useState(100);
-  const [testCommission, setTestCommission] = useState(15);
+  const [testCommission, setTestCommission] = useState(20);
 
   const testCalculation = calculateFees(testPrice, testCommission);
 

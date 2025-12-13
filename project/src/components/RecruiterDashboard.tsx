@@ -51,7 +51,8 @@ export default function RecruiterDashboard() {
   const generateRecruitmentLink = () => {
     if (!profile) return;
     const baseUrl = window.location.origin;
-    const link = `${baseUrl}/signup?ref=${profile.username || profile.id}`;
+    const code = (profile as any).referral_code || (profile as any).referralCode || profile.username || profile.id;
+    const link = `${baseUrl}/signup?ref=${encodeURIComponent(code)}`;
     setRecruitmentLink(link);
   };
 
