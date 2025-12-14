@@ -44,7 +44,7 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     const serviceRoleKey =
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ??
       Deno.env.get('SERVICE_ROLE_KEY') ??
@@ -74,17 +74,21 @@ serve(async (req) => {
     // Admin-only by email fallback (matches UI gate); also allow DB role=admin.
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
-    const { data: callerProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('id, role, primary_role')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    const callerRole = (callerProfile?.primary_role || callerProfile?.role || '').toLowerCase()
-    const isAllowed =
-      email === 'jason@beezio.co' ||
-      email === 'jasonlovingsr@gmail.com' ||
-      callerRole === 'admin'
+    const emailWhitelisted = email === 'jason@beezio.co' || email === 'jasonlovingsr@gmail.com'
+    let isAllowed = emailWhitelisted
+    if (!isAllowed) {
+      try {
+        const { data: callerProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('role, primary_role')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        const callerRole = (callerProfile?.primary_role || callerProfile?.role || '').toLowerCase()
+        isAllowed = callerRole === 'admin'
+      } catch {
+        isAllowed = false
+      }
+    }
 
     if (!isAllowed) {
       return json(403, { error: 'Forbidden' })
@@ -123,6 +127,35 @@ serve(async (req) => {
     const pricing = body?.pricing || { markup: 115, affiliateCommission: 30 }
     const detailed = body?.detailedProduct || null
 
+    // Resolve category id server-side (do not rely on client DB calls)
+    let categoryId: string | null = body?.categoryId ?? null
+    try {
+      if (!categoryId) {
+        const normalized = String(body?.beezioCategory || '').trim()
+        if (normalized) {
+          const { data: exact } = await supabaseAdmin
+            .from('categories')
+            .select('id')
+            .ilike('name', normalized)
+            .limit(1)
+            .maybeSingle()
+          categoryId = (exact as any)?.id ?? null
+        }
+      }
+
+      if (!categoryId) {
+        const { data: other } = await supabaseAdmin
+          .from('categories')
+          .select('id')
+          .ilike('name', 'Other')
+          .limit(1)
+          .maybeSingle()
+        categoryId = (other as any)?.id ?? null
+      }
+    } catch {
+      // categoryId stays null
+    }
+
     const insertPayload: any = {
       seller_id: user.id,
       title: cjProduct.productNameEn,
@@ -134,7 +167,7 @@ serve(async (req) => {
       seller_ask_price: sellerAsk,
       price: finalPrice,
       category: body?.beezioCategory || cjProduct.categoryName || 'Other',
-      category_id: body?.categoryId || null,
+      category_id: categoryId,
       image_url: cjProduct.productImage,
       images: detailed?.productImageList?.length ? detailed.productImageList : [cjProduct.productImage],
       sku: cjProduct.productSku,

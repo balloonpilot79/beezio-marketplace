@@ -142,6 +142,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const applyFallbackProfile = (authUser: User) => {
+    const fallbackRole =
+      (authUser.user_metadata as any)?.role ||
+      (authUser.email === 'jason@beezio.co' || authUser.email === 'jasonlovingsr@gmail.com' ? 'admin' : 'buyer');
+    setProfile({
+      id: authUser.id,
+      user_id: authUser.id,
+      email: authUser.email,
+      role: fallbackRole,
+      primary_role: fallbackRole,
+    });
+    setCurrentRole(fallbackRole);
+    setUserRoles([fallbackRole]);
+  };
+
   useEffect(() => {
     const getSession = async () => {
       try {
@@ -177,6 +192,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             error = (result as any).error;
           } catch (e) {
             console.warn('AuthContext: Profile fetch timed out or failed:', e);
+            // Don't block UI on DB fetch. Apply a fallback role immediately.
+            applyFallbackProfile(session.user);
+            // Best-effort background repair/refetch.
+            void (async () => {
+              await ensureMinimalProfileExists(session.user);
+            })();
+            console.log('AuthContext: Loading complete (fallback profile)');
+            setLoading(false);
+            return;
           }
           
           if (error && error.code !== 'PGRST116') {
@@ -185,16 +209,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           // Legacy accounts may be missing a profiles row; create it and refetch.
           if (!profile) {
-            await ensureMinimalProfileExists(session.user);
-            const refetch = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
-            profile = refetch.data;
-            if (refetch.error && refetch.error.code !== 'PGRST116') {
-              console.error('AuthContext: Error refetching profile:', refetch.error);
-            }
+            // Apply fallback immediately, then attempt a DB repair in the background.
+            applyFallbackProfile(session.user);
+            void (async () => {
+              await ensureMinimalProfileExists(session.user);
+              const refetch = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+              if (refetch.data) {
+                const safeRole = deriveRole(refetch.data);
+                setProfile(refetch.data);
+                setCurrentRole(safeRole);
+                const roles = await fetchUserRoles(session.user.id);
+                setUserRoles(roles.length > 0 ? roles : [safeRole]);
+              }
+            })();
+            console.log('AuthContext: Loading complete (fallback profile)');
+            setLoading(false);
+            return;
           }
           
           console.log('AuthContext: Profile loaded:', profile ? 'Yes' : 'No');
@@ -209,19 +243,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('AuthContext: User roles:', roles);
           } else {
             console.log('AuthContext: No profile found, user may need to complete profile');
-            // Provide a safe fallback to avoid "Role: undefined" UI.
-            const fallbackRole =
-              (session.user.user_metadata as any)?.role ||
-              (session.user.email === 'jason@beezio.co' || session.user.email === 'jasonlovingsr@gmail.com' ? 'admin' : 'buyer');
-            setProfile({
-              id: session.user.id,
-              user_id: session.user.id,
-              email: session.user.email,
-              role: fallbackRole,
-              primary_role: fallbackRole,
-            });
-            setCurrentRole(fallbackRole);
-            setUserRoles([fallbackRole]);
+            applyFallbackProfile(session.user);
           }
         }
         
@@ -263,6 +285,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               error = (result as any).error;
             } catch (e) {
               console.warn('AuthContext: Auth change profile fetch timed out or failed:', e);
+              applyFallbackProfile(session.user);
+              setLoading(false);
+              return;
             }
             
             if (error && error.code !== 'PGRST116') {
@@ -270,16 +295,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             if (!profile) {
-              await ensureMinimalProfileExists(session.user);
-              const refetch = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('user_id', session.user.id)
-                .maybeSingle();
-              profile = refetch.data;
-              if (refetch.error && refetch.error.code !== 'PGRST116') {
-                console.error('AuthContext: Auth state change - profile refetch error:', refetch.error);
-              }
+              applyFallbackProfile(session.user);
+              void (async () => {
+                await ensureMinimalProfileExists(session.user);
+              })();
+              setLoading(false);
+              return;
             }
             
             if (profile) {
@@ -293,18 +314,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setUserRoles(roles.length > 0 ? roles : [safeRole]);
             } else {
               console.log('AuthContext: Auth state change - no profile found');
-              const fallbackRole =
-                (session.user.user_metadata as any)?.role ||
-                (session.user.email === 'jason@beezio.co' || session.user.email === 'jasonlovingsr@gmail.com' ? 'admin' : 'buyer');
-              setProfile({
-                id: session.user.id,
-                user_id: session.user.id,
-                email: session.user.email,
-                role: fallbackRole,
-                primary_role: fallbackRole,
-              });
-              setCurrentRole(fallbackRole);
-              setUserRoles([fallbackRole]);
+              applyFallbackProfile(session.user);
             }
 
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {

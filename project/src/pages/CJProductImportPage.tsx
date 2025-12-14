@@ -32,6 +32,21 @@ const CJProductImportPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
 
+  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+    let timeoutHandle: number | undefined;
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      timeoutHandle = window.setTimeout(() => {
+        reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutHandle) window.clearTimeout(timeoutHandle);
+    }
+  };
+
   // Pricing settings for each product
   const [pricingSettings, setPricingSettings] = useState<Record<string, { markup: number; affiliateCommission: number }>>({});
 
@@ -221,7 +236,9 @@ const CJProductImportPage: React.FC = () => {
       // Get detailed product info (best-effort). CJ can be heavily rate-limited.
       let detailedProduct: any = null;
       try {
-        detailedProduct = await getCJProductDetail(cjProduct.pid);
+        console.log('🟣 CJ Import: Fetching CJ product detail (best-effort)...');
+        detailedProduct = await withTimeout(getCJProductDetail(cjProduct.pid), 6000, 'CJ product detail');
+        console.log('🟣 CJ Import: CJ detail loaded');
       } catch (e) {
         console.warn('CJ detail fetch failed; importing with list data only', e);
       }
@@ -236,25 +253,32 @@ const CJProductImportPage: React.FC = () => {
 
       // Map CJ category to Beezio category
       const beezioCategory = mapCJCategoryToBeezio(cjProduct.categoryName);
-      const categoryId = await resolveCategoryId(beezioCategory);
-
-      const sellerProfileId = await resolveSellerProfileId();
+      // IMPORTANT: avoid client-side DB lookups here (they can hang under RLS/network)
+      // The edge function will resolve category_id and ensure a profile exists using service role.
+      const categoryId = null;
 
       // Prefer server-side import to bypass RLS/permission issues.
       try {
-        const { data: serverData, error: serverError } = await supabase.functions.invoke('import-cj-product', {
-          body: {
-            cjProduct,
-            detailedProduct,
-            pricing,
-            beezioCategory,
-            categoryId,
-            computed: {
-              finalPrice: priceBreakdown.finalPrice,
-              sellerAsk: (priceBreakdown.cjCost ?? cjProduct.sellPrice) + (priceBreakdown.yourProfit ?? 0),
+        console.log('🟣 CJ Import: Calling import-cj-product edge function...');
+        const { data: serverData, error: serverError } = await withTimeout(
+          supabase.functions.invoke('import-cj-product', {
+            body: {
+              cjProduct,
+              detailedProduct,
+              pricing,
+              beezioCategory,
+              categoryId,
+              computed: {
+                finalPrice: priceBreakdown.finalPrice,
+                sellerAsk: (priceBreakdown.cjCost ?? cjProduct.sellPrice) + (priceBreakdown.yourProfit ?? 0),
+              },
             },
-          },
-        });
+          }),
+          15000,
+          'import-cj-product'
+        );
+
+        console.log('🟣 CJ Import: Edge function response received');
 
         if (serverError) {
           const message = (serverError as any)?.message || String(serverError);
@@ -278,6 +302,9 @@ const CJProductImportPage: React.FC = () => {
       }
 
       // Create product in Beezio database
+      const sellerProfileId = await resolveSellerProfileId();
+      const categoryIdFallback = await resolveCategoryId(beezioCategory);
+
       const { data: newProduct, error: productError } = await supabase
         .from('products')
         .insert({
@@ -292,7 +319,7 @@ const CJProductImportPage: React.FC = () => {
           // Keep the stored listing price for compatibility with existing UI.
           price: priceBreakdown.finalPrice,
           category: beezioCategory,
-          category_id: categoryId,
+          category_id: categoryIdFallback,
           image_url: cjProduct.productImage,
           images: detailedProduct?.productImageList || [cjProduct.productImage],
           sku: cjProduct.productSku,
