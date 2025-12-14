@@ -87,6 +87,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   const deriveRole = (profile: any) => profile?.primary_role || profile?.role || 'buyer';
 
+  const ensureMinimalProfileExists = async (authUser: User) => {
+    try {
+      const { data: existing, error: existsError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+
+      if (existsError && existsError.code !== 'PGRST116') {
+        console.warn('[AuthContext] ensureMinimalProfileExists: profile lookup error:', existsError);
+        return;
+      }
+      if (existing?.id) return;
+
+      const fallbackRole = (authUser.user_metadata as any)?.role || 'buyer';
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            id: authUser.id,
+            user_id: authUser.id,
+            email: authUser.email,
+            full_name: (authUser.user_metadata as any)?.full_name || (authUser.user_metadata as any)?.name || '',
+            role: fallbackRole,
+            primary_role: fallbackRole,
+          },
+          { onConflict: 'id' }
+        );
+
+      if (upsertError) {
+        console.warn('[AuthContext] ensureMinimalProfileExists: upsert error:', upsertError);
+      }
+    } catch (e) {
+      console.warn('[AuthContext] ensureMinimalProfileExists: unexpected error:', e);
+    }
+  };
+
   useEffect(() => {
     const getSession = async () => {
       try {
@@ -106,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           console.log('AuthContext: Fetching profile for user:', session.user.id);
           // Fetch profile
-          const { data: profile, error } = await supabase
+          let { data: profile, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('user_id', session.user.id)
@@ -114,6 +151,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           if (error && error.code !== 'PGRST116') {
             console.error('AuthContext: Error fetching profile:', error);
+          }
+
+          // Legacy accounts may be missing a profiles row; create it and refetch.
+          if (!profile) {
+            await ensureMinimalProfileExists(session.user);
+            const refetch = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .maybeSingle();
+            profile = refetch.data;
+            if (refetch.error && refetch.error.code !== 'PGRST116') {
+              console.error('AuthContext: Error refetching profile:', refetch.error);
+            }
           }
           
           console.log('AuthContext: Profile loaded:', profile ? 'Yes' : 'No');
@@ -156,7 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (session?.user) {
             console.log('AuthContext: Auth state change - fetching profile for:', session.user.id);
             // Fetch profile
-            const { data: profile, error } = await supabase
+            let { data: profile, error } = await supabase
               .from('profiles')
               .select('*')
               .eq('user_id', session.user.id)
@@ -164,6 +215,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             if (error && error.code !== 'PGRST116') {
               console.error('AuthContext: Auth state change - profile error:', error);
+            }
+
+            if (!profile) {
+              await ensureMinimalProfileExists(session.user);
+              const refetch = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+              profile = refetch.data;
+              if (refetch.error && refetch.error.code !== 'PGRST116') {
+                console.error('AuthContext: Auth state change - profile refetch error:', refetch.error);
+              }
             }
             
             if (profile) {

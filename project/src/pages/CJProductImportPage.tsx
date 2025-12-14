@@ -50,6 +50,10 @@ const CJProductImportPage: React.FC = () => {
     if (profile?.id) return profile.id;
     if (!user?.id) throw new Error('You must be signed in to import products');
 
+    // Prefer the canonical model used across the app:
+    // - profiles.id == auth.users.id
+    // - profiles.user_id == auth.users.id
+    // Some legacy accounts may be missing the profiles row entirely; attempt to create it.
     const { data, error } = await supabase
       .from('profiles')
       .select('id')
@@ -57,8 +61,35 @@ const CJProductImportPage: React.FC = () => {
       .maybeSingle();
 
     if (error) throw error;
-    if (!data?.id) throw new Error('Could not find your profile (profiles.id). Please complete signup/profile and try again.');
-    return data.id;
+    if (data?.id) return data.id;
+
+    // Create a minimal profile (best-effort) so downstream inserts that FK to profiles.id can succeed.
+    const { data: created, error: createError } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: user.id,
+          user_id: user.id,
+          email: user.email ?? null,
+          full_name: (user.user_metadata as any)?.full_name ?? (user.user_metadata as any)?.name ?? null,
+          role: 'buyer',
+          primary_role: 'buyer',
+        },
+        { onConflict: 'id' }
+      )
+      .select('id')
+      .maybeSingle();
+
+    if (createError) {
+      console.error('Failed to auto-create profile for CJ import:', createError);
+      throw new Error(
+        `Could not find/create your profile (profiles.id). Please sign out/in, complete profile setup, then retry. Details: ${createError.message}`
+      );
+    }
+
+    if (created?.id) return created.id;
+    // As a last resort, return auth uid (matches profiles.id convention), but note FK may still fail.
+    return user.id;
   };
 
   const resolveCategoryId = async (categoryName: string): Promise<string | null> => {
