@@ -57,7 +57,7 @@ const CJProductImportPage: React.FC = () => {
     const { data, error } = await supabase
       .from('profiles')
       .select('id')
-      .eq('user_id', user.id)
+      .or(`user_id.eq.${user.id},id.eq.${user.id}`)
       .maybeSingle();
 
     if (error) throw error;
@@ -217,6 +217,7 @@ const CJProductImportPage: React.FC = () => {
     // Allow importing multiple products in parallel without race conditions.
     markImporting(cjProduct.pid, true);
     try {
+      console.log('🟣 CJ Import: Starting import for pid', cjProduct.pid);
       // Get detailed product info (best-effort). CJ can be heavily rate-limited.
       let detailedProduct: any = null;
       try {
@@ -238,6 +239,33 @@ const CJProductImportPage: React.FC = () => {
       const categoryId = await resolveCategoryId(beezioCategory);
 
       const sellerProfileId = await resolveSellerProfileId();
+
+      // Prefer server-side import to bypass RLS/permission issues.
+      try {
+        const { data: serverData, error: serverError } = await supabase.functions.invoke('import-cj-product', {
+          body: {
+            cjProduct,
+            detailedProduct,
+            pricing,
+            beezioCategory,
+            categoryId,
+            computed: {
+              finalPrice: priceBreakdown.finalPrice,
+              sellerAsk: (priceBreakdown.cjCost ?? cjProduct.sellPrice) + (priceBreakdown.yourProfit ?? 0),
+            },
+          },
+        });
+
+        if (serverError) {
+          console.warn('🟠 CJ Import: import-cj-product failed, falling back to client insert', serverError);
+        } else if (serverData?.product?.id) {
+          alert(`✅ Product "${cjProduct.productNameEn}" imported successfully!`);
+          setCjProducts(prev => prev.filter(p => p.pid !== cjProduct.pid));
+          return;
+        }
+      } catch (e) {
+        console.warn('🟠 CJ Import: import-cj-product threw, falling back to client insert', e);
+      }
 
       // Create product in Beezio database
       const { data: newProduct, error: productError } = await supabase
@@ -279,7 +307,8 @@ const CJProductImportPage: React.FC = () => {
         .single();
 
       if (productError) {
-        throw productError;
+        console.error('CJ Import: product insert failed:', productError);
+        throw new Error(`Product insert failed: ${productError.message} (code: ${productError.code || 'n/a'})`);
       }
 
       // Store CJ product mapping

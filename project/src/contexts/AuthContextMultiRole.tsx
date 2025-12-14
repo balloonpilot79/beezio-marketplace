@@ -127,6 +127,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+    let timeoutHandle: number | undefined;
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      timeoutHandle = window.setTimeout(() => {
+        reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutHandle) window.clearTimeout(timeoutHandle);
+    }
+  };
+
   useEffect(() => {
     const getSession = async () => {
       try {
@@ -146,11 +161,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           console.log('AuthContext: Fetching profile for user:', session.user.id);
           // Fetch profile
-          let { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
+          let profile: any = null;
+          let error: any = null;
+          try {
+            const result = await withTimeout(
+              supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .maybeSingle(),
+              8000,
+              'profiles.select'
+            );
+            profile = (result as any).data;
+            error = (result as any).error;
+          } catch (e) {
+            console.warn('AuthContext: Profile fetch timed out or failed:', e);
+          }
           
           if (error && error.code !== 'PGRST116') {
             console.error('AuthContext: Error fetching profile:', error);
@@ -182,9 +209,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('AuthContext: User roles:', roles);
           } else {
             console.log('AuthContext: No profile found, user may need to complete profile');
-            setProfile(null);
-            setCurrentRole('buyer');
-            setUserRoles(['buyer']);
+            // Provide a safe fallback to avoid "Role: undefined" UI.
+            const fallbackRole =
+              (session.user.user_metadata as any)?.role ||
+              (session.user.email === 'jason@beezio.co' || session.user.email === 'jasonlovingsr@gmail.com' ? 'admin' : 'buyer');
+            setProfile({
+              id: session.user.id,
+              user_id: session.user.id,
+              email: session.user.email,
+              role: fallbackRole,
+              primary_role: fallbackRole,
+            });
+            setCurrentRole(fallbackRole);
+            setUserRoles([fallbackRole]);
           }
         }
         
@@ -210,11 +247,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (session?.user) {
             console.log('AuthContext: Auth state change - fetching profile for:', session.user.id);
             // Fetch profile
-            let { data: profile, error } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
+            let profile: any = null;
+            let error: any = null;
+            try {
+              const result = await withTimeout(
+                supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('user_id', session.user.id)
+                  .maybeSingle(),
+                8000,
+                'profiles.select (auth change)'
+              );
+              profile = (result as any).data;
+              error = (result as any).error;
+            } catch (e) {
+              console.warn('AuthContext: Auth change profile fetch timed out or failed:', e);
+            }
             
             if (error && error.code !== 'PGRST116') {
               console.error('AuthContext: Auth state change - profile error:', error);
@@ -244,9 +293,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setUserRoles(roles.length > 0 ? roles : [safeRole]);
             } else {
               console.log('AuthContext: Auth state change - no profile found');
-              setProfile(null);
-              setCurrentRole('buyer');
-              setUserRoles(['buyer']);
+              const fallbackRole =
+                (session.user.user_metadata as any)?.role ||
+                (session.user.email === 'jason@beezio.co' || session.user.email === 'jasonlovingsr@gmail.com' ? 'admin' : 'buyer');
+              setProfile({
+                id: session.user.id,
+                user_id: session.user.id,
+                email: session.user.email,
+                role: fallbackRole,
+                primary_role: fallbackRole,
+              });
+              setCurrentRole(fallbackRole);
+              setUserRoles([fallbackRole]);
             }
 
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
