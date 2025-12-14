@@ -4,7 +4,7 @@
 export type AffiliateCommissionType = 'percent' | 'flat';
 
 export const STRIPE_PERCENT = 0.029; // 2.9%
-export const STRIPE_FLAT = 0.60;     // $0.60 per charge
+export const STRIPE_FLAT = 0.30;     // $0.30 per charge
 
 // Legacy aliases (kept for compatibility across the app)
 export const STRIPE_PERCENT_FEE = STRIPE_PERCENT;

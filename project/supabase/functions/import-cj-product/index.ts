@@ -166,6 +166,7 @@ serve(async (req) => {
       seller_amount: sellerAsk,
       seller_ask_price: sellerAsk,
       price: finalPrice,
+      currency: 'USD',
       category: body?.beezioCategory || cjProduct.categoryName || 'Other',
       category_id: categoryId,
       image_url: cjProduct.productImage,
@@ -185,6 +186,13 @@ serve(async (req) => {
       lineage: 'CJ',
       is_promotable: true,
       is_active: true,
+      tags: [],
+      videos: [],
+      views_count: 0,
+      clicks_count: 0,
+      conversions_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }
 
     const { data: product, error: productError } = await supabaseAdmin

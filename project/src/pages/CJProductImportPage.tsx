@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, DollarSign, Package, RefreshCw, AlertCircle, Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { 
   getCJProducts, 
   getCJProductDetail, 
@@ -228,6 +228,39 @@ const CJProductImportPage: React.FC = () => {
     });
   };
 
+  const invokeImportCJProduct = async (payload: any): Promise<any> => {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+    const token = sessionData?.session?.access_token;
+    if (!token) throw new Error('You must be signed in to import products');
+
+    const url = `${supabaseUrl}/functions/v1/import-cj-product`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const text = await res.text();
+    let parsed: any = null;
+    try {
+      parsed = text ? JSON.parse(text) : null;
+    } catch {
+      parsed = null;
+    }
+
+    if (!res.ok) {
+      const detail = parsed?.details || parsed?.error || text || `HTTP ${res.status}`;
+      throw new Error(`Edge function ${res.status}: ${detail}`);
+    }
+
+    return parsed;
+  };
+
   const importProduct = async (cjProduct: CJProduct) => {
     // Allow importing multiple products in parallel without race conditions.
     markImporting(cjProduct.pid, true);
@@ -245,10 +278,12 @@ const CJProductImportPage: React.FC = () => {
 
       // Get pricing settings
       const pricing = pricingSettings[cjProduct.pid] || { markup: 100, affiliateCommission: 20 };
+      const hasRecruiter = Boolean(profile?.referred_by_affiliate_id);
       const priceBreakdown = calculateBeezioPrice(
         cjProduct.sellPrice,
         pricing.markup,
-        pricing.affiliateCommission
+        pricing.affiliateCommission,
+        hasRecruiter
       );
 
       // Map CJ category to Beezio category
@@ -260,18 +295,16 @@ const CJProductImportPage: React.FC = () => {
       // Prefer server-side import to bypass RLS/permission issues.
       try {
         console.log('🟣 CJ Import: Calling import-cj-product edge function...');
-        const { data: serverData, error: serverError } = await withTimeout(
-          supabase.functions.invoke('import-cj-product', {
-            body: {
-              cjProduct,
-              detailedProduct,
-              pricing,
-              beezioCategory,
-              categoryId,
-              computed: {
-                finalPrice: priceBreakdown.finalPrice,
-                sellerAsk: (priceBreakdown.cjCost ?? cjProduct.sellPrice) + (priceBreakdown.yourProfit ?? 0),
-              },
+        const serverData = await withTimeout(
+          invokeImportCJProduct({
+            cjProduct,
+            detailedProduct,
+            pricing,
+            beezioCategory,
+            categoryId,
+            computed: {
+              finalPrice: priceBreakdown.finalPrice,
+              sellerAsk: (priceBreakdown.cjCost ?? cjProduct.sellPrice) + (priceBreakdown.yourProfit ?? 0),
             },
           }),
           15000,
@@ -280,16 +313,7 @@ const CJProductImportPage: React.FC = () => {
 
         console.log('🟣 CJ Import: Edge function response received');
 
-        if (serverError) {
-          const message = (serverError as any)?.message || String(serverError);
-          const isMissingFunction = /not found|404/i.test(message);
-          console.warn('🟠 CJ Import: import-cj-product failed', serverError);
-          if (!isMissingFunction) {
-            throw new Error(`Server import failed: ${message}`);
-          }
-          // Local/dev fallback when function isn't deployed.
-          console.warn('🟠 CJ Import: import-cj-product not deployed, falling back to client insert');
-        } else if (serverData?.product?.id) {
+        if (serverData?.product?.id) {
           alert(`✅ Product "${cjProduct.productNameEn}" imported successfully!`);
           setCjProducts(prev => prev.filter(p => p.pid !== cjProduct.pid));
           return;
@@ -509,7 +533,13 @@ const CJProductImportPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {filteredProducts.map(product => {
                 const pricing = pricingSettings[product.pid] || { markup: 100, affiliateCommission: 20 };
-                const priceBreakdown = calculateBeezioPrice(product.sellPrice, pricing.markup, pricing.affiliateCommission);
+                const hasRecruiter = Boolean(profile?.referred_by_affiliate_id);
+                const priceBreakdown = calculateBeezioPrice(
+                  product.sellPrice,
+                  pricing.markup,
+                  pricing.affiliateCommission,
+                  hasRecruiter
+                );
 
                 return (
                   <div key={product.pid} className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -577,9 +607,15 @@ const CJProductImportPage: React.FC = () => {
                             <span className="font-medium text-purple-600">${priceBreakdown.recruiterCommission.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Beezio Fee (10%):</span>
+                            <span className="text-gray-600">Beezio Fee (15%):</span>
                             <span className="font-medium">${priceBreakdown.beezioFee.toFixed(2)}</span>
                           </div>
+                          {hasRecruiter && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Beezio Net (10%):</span>
+                              <span className="font-medium">${priceBreakdown.beezioNet.toFixed(2)}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between">
                             <span className="text-gray-600">Stripe Fee:</span>
                             <span className="font-medium">${priceBreakdown.stripeFee.toFixed(2)}</span>

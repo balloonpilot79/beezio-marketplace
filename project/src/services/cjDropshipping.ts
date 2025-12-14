@@ -264,6 +264,7 @@ export function calculateBeezioPrice(
   affiliateCommission: number;
   recruiterCommission: number;
   beezioFee: number;
+  beezioNet: number;
   stripeFee: number;
   finalPrice: number;
   breakdown: string;
@@ -287,6 +288,7 @@ export function calculateBeezioPrice(
   const affiliateCommission = payouts.affiliateAmount;
   const recruiterCommission = payouts.referralAffiliateAmount;
   const beezioFee = payouts.platformGrossAmount;
+  const beezioNet = payouts.beezioNetAmount;
   const stripeFee = payouts.stripePercentAmount + payouts.stripeFixedFee;
 
   // 9. Create breakdown text
@@ -296,7 +298,8 @@ Customer Pays: $${finalPrice.toFixed(2)}
 ├─ Your Profit: $${yourProfit.toFixed(2)} (${markupPercent}% markup)
 ├─ Affiliate Commission: $${affiliateCommission.toFixed(2)} (${affiliateCommissionPercent}% of sale)
 ${hasRecruiter ? `├─ Recruiter Commission: $${recruiterCommission.toFixed(2)} (5% of sale, funded from Beezio fee)` : ''}
-├─ Beezio Fee: $${beezioFee.toFixed(2)} (15% platform fee${sellerAsk <= 20 ? ' + $1 under-$20 surcharge' : ''})
+├─ Beezio Fee (Gross): $${beezioFee.toFixed(2)} (15% platform fee${sellerAsk <= 20 ? ' + $1 under-$20 surcharge' : ''})
+${hasRecruiter ? `├─ Beezio Fee (Net): $${beezioNet.toFixed(2)} (Beezio keeps 10% of sale${sellerAsk <= 20 ? ' + $1 under-$20 surcharge' : ''})` : ''}
 └─ Stripe Fee: $${stripeFee.toFixed(2)} (${payouts.stripePercentAmount.toFixed(2)} + ${payouts.stripeFixedFee.toFixed(2)})
 `;
 
@@ -306,6 +309,7 @@ ${hasRecruiter ? `├─ Recruiter Commission: $${recruiterCommission.toFixed(2)
     affiliateCommission: parseFloat(affiliateCommission.toFixed(2)),
     recruiterCommission: parseFloat(recruiterCommission.toFixed(2)),
     beezioFee: parseFloat(beezioFee.toFixed(2)),
+    beezioNet: parseFloat(beezioNet.toFixed(2)),
     stripeFee: parseFloat(stripeFee.toFixed(2)),
     finalPrice: parseFloat(finalPrice.toFixed(2)),
     breakdown,

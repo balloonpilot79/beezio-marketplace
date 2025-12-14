@@ -7,7 +7,7 @@ export const PLATFORM_FEE_UNDER_20_SURCHARGE = 1;
 export const PLATFORM_FEE_UNDER_20_THRESHOLD = 20;
 export const REFERRAL_OVERRIDE_PERCENT_OF_SALE = 5; // Paid to referrer, funded out of platform fee
 export const STRIPE_PERCENT = 2.9; // Stripe variable fee %
-export const STRIPE_FIXED_FEE = 0.6; // Stripe fixed fee per order
+export const STRIPE_FIXED_FEE = 0.3; // Stripe fixed fee per order
 export const DEFAULT_AFFILIATE_COMMISSION_PERCENT = 10;
 export const DEFAULT_FUNDRAISER_PERCENT = 0;
 
