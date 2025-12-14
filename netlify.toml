@@ -1,10 +1,14 @@
 [build]
-  # Build from current directory
-  base = "."
-  # Use the existing npm build script from package.json
+  # The actual Vite app (package.json) lives in ./project
+  base = "project"
   command = "npm run build"
-  # Vite output directory relative to base
   publish = "dist"
+  # Netlify Functions used by the app live alongside the Vite project
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_FLAGS = "--production=false"
 
 # Cache control headers
 [[headers]]
