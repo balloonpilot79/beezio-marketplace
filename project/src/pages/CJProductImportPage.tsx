@@ -64,6 +64,9 @@ const CJProductImportPage: React.FC = () => {
     if (data?.id) return data.id;
 
     // Create a minimal profile (best-effort) so downstream inserts that FK to profiles.id can succeed.
+    const email = user.email || '';
+    const defaultRole = (email === 'jason@beezio.co' || email === 'jasonlovingsr@gmail.com') ? 'admin' : 'buyer';
+
     const { data: created, error: createError } = await supabase
       .from('profiles')
       .upsert(
@@ -72,8 +75,8 @@ const CJProductImportPage: React.FC = () => {
           user_id: user.id,
           email: user.email ?? null,
           full_name: (user.user_metadata as any)?.full_name ?? (user.user_metadata as any)?.name ?? null,
-          role: 'buyer',
-          primary_role: 'buyer',
+          role: defaultRole,
+          primary_role: defaultRole,
         },
         { onConflict: 'id' }
       )

@@ -101,7 +101,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       if (existing?.id) return;
 
-      const fallbackRole = (authUser.user_metadata as any)?.role || 'buyer';
+      const email = authUser.email || '';
+      const fallbackRole =
+        (authUser.user_metadata as any)?.role ||
+        (email === 'jason@beezio.co' || email === 'jasonlovingsr@gmail.com' ? 'admin' : 'buyer');
       const { error: upsertError } = await supabase
         .from('profiles')
         .upsert(
