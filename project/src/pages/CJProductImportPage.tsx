@@ -257,14 +257,24 @@ const CJProductImportPage: React.FC = () => {
         });
 
         if (serverError) {
-          console.warn('🟠 CJ Import: import-cj-product failed, falling back to client insert', serverError);
+          const message = (serverError as any)?.message || String(serverError);
+          const isMissingFunction = /not found|404/i.test(message);
+          console.warn('🟠 CJ Import: import-cj-product failed', serverError);
+          if (!isMissingFunction) {
+            throw new Error(`Server import failed: ${message}`);
+          }
+          // Local/dev fallback when function isn't deployed.
+          console.warn('🟠 CJ Import: import-cj-product not deployed, falling back to client insert');
         } else if (serverData?.product?.id) {
           alert(`✅ Product "${cjProduct.productNameEn}" imported successfully!`);
           setCjProducts(prev => prev.filter(p => p.pid !== cjProduct.pid));
           return;
+        } else {
+          throw new Error('Server import returned no product id');
         }
       } catch (e) {
-        console.warn('🟠 CJ Import: import-cj-product threw, falling back to client insert', e);
+        console.error('🛑 CJ Import: server import failed:', e);
+        throw e;
       }
 
       // Create product in Beezio database
