@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import { apiPost } from '../utils/netlifyApi';
 
 type Conversation = {
   id: string;
@@ -173,7 +174,9 @@ const UniversalInbox: React.FC = () => {
       .order('created_at', { ascending: true });
     if (!msgError) setMessages((data as StoreMessage[]) || []);
     try {
-      await supabase.functions.invoke('mark-store-conversation-read', { body: { conversationId } });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const apiSession = sessionData?.session ?? null;
+      await apiPost('/.netlify/functions/mark-store-conversation-read', apiSession, { conversationId });
     } catch {
       // non-fatal
     }
@@ -184,10 +187,9 @@ const UniversalInbox: React.FC = () => {
     const body = String(draft || '').trim();
     if (!body) return;
     try {
-      const { error: sendError } = await supabase.functions.invoke('send-store-message', {
-        body: { conversationId: activeConversationId, body },
-      });
-      if (sendError) throw sendError;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const apiSession = sessionData?.session ?? null;
+      await apiPost('/.netlify/functions/send-store-message', apiSession, { conversationId: activeConversationId, body });
       setDraft('');
       await loadMessages(activeConversationId);
       await refreshConversations();
@@ -228,7 +230,9 @@ const UniversalInbox: React.FC = () => {
       .order('created_at', { ascending: true });
     if (!msgError) setSupportMessages((data as SupportMessage[]) || []);
     try {
-      await supabase.functions.invoke('mark-support-thread-read', { body: { threadId } });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const apiSession = sessionData?.session ?? null;
+      await apiPost('/.netlify/functions/mark-support-thread-read', apiSession, { threadId });
     } catch {
       // non-fatal
     }
@@ -242,10 +246,13 @@ const UniversalInbox: React.FC = () => {
       return;
     }
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('create-support-thread', {
-        body: { subject: subject || null, message },
-      });
-      if (fnError) throw fnError;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const apiSession = sessionData?.session ?? null;
+      const data = await apiPost<{ thread: { id: string } }>(
+        '/.netlify/functions/create-support-thread',
+        apiSession,
+        { subject: subject || null, message }
+      );
       const threadId = String((data as any)?.thread?.id || '');
       if (!threadId) throw new Error('Failed to create thread');
       setSupportSubject('');
@@ -263,10 +270,9 @@ const UniversalInbox: React.FC = () => {
     const body = String(supportDraft || '').trim();
     if (!body) return;
     try {
-      const { error: sendError } = await supabase.functions.invoke('send-support-message', {
-        body: { threadId: activeSupportThreadId, body },
-      });
-      if (sendError) throw sendError;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const apiSession = sessionData?.session ?? null;
+      await apiPost('/.netlify/functions/send-support-message', apiSession, { threadId: activeSupportThreadId, body });
       setSupportDraft('');
       await loadSupportMessages(activeSupportThreadId);
       await refreshSupportThreads();
@@ -307,7 +313,9 @@ const UniversalInbox: React.FC = () => {
 
   const markAnnouncementRead = async (announcementId: string) => {
     try {
-      await supabase.functions.invoke('mark-announcement-read', { body: { announcementId } });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const apiSession = sessionData?.session ?? null;
+      await apiPost('/.netlify/functions/mark-announcement-read', apiSession, { announcementId });
       setAnnouncementReads((prev) => ({ ...prev, [announcementId]: true }));
     } catch {
       // ignore
@@ -323,8 +331,9 @@ const UniversalInbox: React.FC = () => {
       return;
     }
     try {
-      const { error: fnError } = await supabase.functions.invoke('admin-create-announcement', { body: { title, body } });
-      if (fnError) throw fnError;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const apiSession = sessionData?.session ?? null;
+      await apiPost('/.netlify/functions/admin-create-announcement', apiSession, { title, body });
       setBroadcastTitle('');
       setBroadcastBody('');
       setTab('announcements');
@@ -344,8 +353,9 @@ const UniversalInbox: React.FC = () => {
       return;
     }
     try {
-      const { error: fnError } = await supabase.functions.invoke('admin-send-direct-message', { body: { email, subject, body } });
-      if (fnError) throw fnError;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const apiSession = sessionData?.session ?? null;
+      await apiPost('/.netlify/functions/admin-send-direct-message', apiSession, { email, subject, body });
       setDirectEmail('');
       setDirectBody('');
       setTab('support');
@@ -725,4 +735,3 @@ const UniversalInbox: React.FC = () => {
 };
 
 export default UniversalInbox;
-

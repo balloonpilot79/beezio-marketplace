@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { ensureSellerProductInOrder } from '../utils/sellerProductOrder';
 import ImageUpload from '../components/ImageUpload';
+import { apiPost } from '../utils/netlifyApi';
 
 interface ProductItem {
   id: string;
@@ -118,31 +119,29 @@ const StreamlinedAddProducts: React.FC = () => {
         throw new Error('Please add at least one valid product with name and price');
       }
 
-      for (const product of validProducts) {
-        const { data: created, error } = await supabase.from('products').insert({
-          title: product.name,
-          description: product.description,
-          sku: product.sku || null,
-          price: product.price,
-          stock_quantity: product.inventory,
-          images: product.images,
-          category_id: product.category_id || null,
-          seller_id: profile.id,
-          affiliate_enabled: product.affiliate_enabled,
-          status: product.affiliate_enabled ? 'active' : 'store_only',
-          is_promotable: product.affiliate_enabled,
-          is_active: true,
-          commission_rate: 20, // Default 20%
-          commission_type: 'percentage',
-          seller_amount: product.price * 0.70, // Rough calculation
-          platform_fee: product.price * 0.10,
-          requires_shipping: true
-        }).select('id').single();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const apiSession = sessionData?.session ?? null;
 
-        if (error) throw error;
+      for (const product of validProducts) {
+        const created = await apiPost<{ id: string }>(
+          '/.netlify/functions/product-create',
+          apiSession,
+          {
+            title: product.name,
+            description: product.description,
+            sku: product.sku || null,
+            price: product.price,
+            stock_quantity: product.inventory,
+            images: product.images,
+            category_id: product.category_id || null,
+            affiliate_enabled: Boolean(product.affiliate_enabled),
+          }
+        );
+
+        if (!created?.id) throw new Error('Product create failed');
 
         // Ensure it shows in seller storefront + seller ordering dashboard.
-        await ensureSellerProductInOrder({ sellerId: profile.id, productId: (created as any)?.id });
+        await ensureSellerProductInOrder({ sellerId: profile.id, productId: String(created.id) });
       }
 
       alert(`Successfully added ${validProducts.length} products!`);

@@ -121,16 +121,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     // Avoid `.or(id.eq...,user_id.eq...)` which can force slow plans on large tables.
-    // Try primary key first (fast), then fall back to user_id.
+    // Prefer user_id because many schemas store profiles.id != auth.users.id (and user_id should be indexed).
+    const byUserId = await fetchBy('user_id', 12000);
+    const rowsUserId = (byUserId as any)?.data;
+    if (Array.isArray(rowsUserId) && rowsUserId.length) return rowsUserId;
+
     const byId = await fetchBy('id', 12000);
     const rowsId = (byId as any)?.data;
     if (Array.isArray(rowsId) && rowsId.length) return rowsId;
 
-    const byUserId = await fetchBy('user_id', 20000);
-    const rowsUserId = (byUserId as any)?.data;
-    if (Array.isArray(rowsUserId) && rowsUserId.length) return rowsUserId;
-
-    return Array.isArray(rowsId) ? rowsId : Array.isArray(rowsUserId) ? rowsUserId : [];
+    return Array.isArray(rowsUserId) ? rowsUserId : Array.isArray(rowsId) ? rowsId : [];
   };
 
   const backgroundFetchProfile = async (authUser: User, label: string) => {

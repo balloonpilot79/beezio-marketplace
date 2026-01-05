@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import { apiPost } from '../utils/netlifyApi';
 
 interface StoreContactFormProps {
   storeOwnerId: string;
@@ -25,7 +26,9 @@ const StoreContactForm: React.FC<StoreContactFormProps> = ({ storeOwnerId, store
     setMessages(Array.isArray(data) ? data : []);
 
     try {
-      await supabase.functions.invoke('mark-store-conversation-read', { body: { conversationId: id } });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const apiSession = sessionData?.session ?? null;
+      await apiPost('/.netlify/functions/mark-store-conversation-read', apiSession, { conversationId: id });
     } catch {
       // non-fatal
     }
@@ -60,10 +63,13 @@ const StoreContactForm: React.FC<StoreContactFormProps> = ({ storeOwnerId, store
     const start = async () => {
       setStatus('starting');
       try {
-        const { data, error } = await supabase.functions.invoke('start-store-conversation', {
-          body: { ownerId: resolvedOwnerUserId, ownerType: storeType, storeName },
-        });
-        if (error) throw error;
+        const { data: sessionData } = await supabase.auth.getSession();
+        const apiSession = sessionData?.session ?? null;
+        const data = await apiPost<{ conversation: { id: string } }>(
+          '/.netlify/functions/start-store-conversation',
+          apiSession,
+          { ownerId: resolvedOwnerUserId, ownerType: storeType, storeName }
+        );
         const id = String((data as any)?.conversation?.id || '');
         if (!id) throw new Error('Failed to start conversation');
         setConversationId(id);
@@ -86,10 +92,9 @@ const StoreContactForm: React.FC<StoreContactFormProps> = ({ storeOwnerId, store
 
     setStatus('sending');
     try {
-      const { error } = await supabase.functions.invoke('send-store-message', {
-        body: { conversationId, body },
-      });
-      if (error) throw error;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const apiSession = sessionData?.session ?? null;
+      await apiPost('/.netlify/functions/send-store-message', apiSession, { conversationId, body });
       setInput('');
       await loadMessages(conversationId);
     } catch (e) {
