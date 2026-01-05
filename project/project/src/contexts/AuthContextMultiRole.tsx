@@ -107,6 +107,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const PROFILE_SELECT = 'id,user_id,email,role,primary_role,stripe_account_id';
 
+  const fetchProfileRowsForUser = async (authUserId: string, label: string) => {
+    const fetchBy = async (column: 'id' | 'user_id', timeoutMs: number) => {
+      return withTimeout(
+        supabase
+          .from('profiles')
+          .select(PROFILE_SELECT)
+          .eq(column, authUserId)
+          .limit(10),
+        timeoutMs,
+        `${label} profiles.select by ${column}`
+      );
+    };
+
+    // Avoid `.or(id.eq...,user_id.eq...)` which can force slow plans on large tables.
+    // Try primary key first (fast), then fall back to user_id.
+    const byId = await fetchBy('id', 12000);
+    const rowsId = (byId as any)?.data;
+    if (Array.isArray(rowsId) && rowsId.length) return rowsId;
+
+    const byUserId = await fetchBy('user_id', 20000);
+    const rowsUserId = (byUserId as any)?.data;
+    if (Array.isArray(rowsUserId) && rowsUserId.length) return rowsUserId;
+
+    return Array.isArray(rowsId) ? rowsId : Array.isArray(rowsUserId) ? rowsUserId : [];
+  };
+
   const backgroundFetchProfile = async (authUser: User, label: string) => {
     try {
       const refetch = await supabase
@@ -262,18 +288,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           let profile: any = null;
           let error: any = null;
           try {
-            const result = await withTimeout(
-              supabase
-                .from('profiles')
-                .select(PROFILE_SELECT)
-                .or(`id.eq.${session.user.id},user_id.eq.${session.user.id}`)
-                .limit(10),
-              20000,
-              'profiles.select'
-            );
-            const rows = (result as any).data;
-            error = (result as any).error;
-            profile = Array.isArray(rows) ? pickBestProfileRow(rows, session.user.id) : rows;
+            const rows = await fetchProfileRowsForUser(session.user.id, 'getSession');
+            error = null;
+            profile = pickBestProfileRow(rows, session.user.id);
           } catch (e) {
             console.warn('AuthContext: Profile fetch timed out or failed:', e);
             // Don't block UI on DB fetch. Apply a fallback role immediately.
@@ -298,12 +315,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               applyFallbackProfile(session.user);
               void (async () => {
                 await ensureMinimalProfileExists(session.user);
-                 const refetch = await supabase
-                   .from('profiles')
-                   .select(PROFILE_SELECT)
-                   .or(`id.eq.${session.user.id},user_id.eq.${session.user.id}`)
-                   .limit(10);
-                 const refetchProfile = Array.isArray(refetch.data) ? pickBestProfileRow(refetch.data, session.user.id) : refetch.data;
+                 const refetchRows = await fetchProfileRowsForUser(session.user.id, 'getSession refetch');
+                 const refetchProfile = pickBestProfileRow(refetchRows, session.user.id);
                  if (refetchProfile) {
                    const safeRole = deriveRole(refetchProfile);
                    setProfile({ ...refetchProfile, __is_fallback: false });
@@ -358,18 +371,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             let profile: any = null;
             let error: any = null;
              try {
-               const result = await withTimeout(
-                 supabase
-                   .from('profiles')
-                   .select(PROFILE_SELECT)
-                   .or(`id.eq.${session.user.id},user_id.eq.${session.user.id}`)
-                   .limit(10),
-                 20000,
-                 'profiles.select (auth change)'
-               );
-              const rows = (result as any).data;
-              error = (result as any).error;
-              profile = Array.isArray(rows) ? pickBestProfileRow(rows, session.user.id) : rows;
+              const rows = await fetchProfileRowsForUser(session.user.id, 'auth change');
+              error = null;
+              profile = pickBestProfileRow(rows, session.user.id);
             } catch (e) {
               console.warn('AuthContext: Auth change profile fetch timed out or failed:', e);
               applyFallbackProfile(session.user);
