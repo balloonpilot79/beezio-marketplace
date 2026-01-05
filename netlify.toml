@@ -1,49 +1,77 @@
 [build]
-  # The actual Vite app (package.json) lives in ./project
-  base = "project"
-  command = "npm run build"
+  base = "project/project"
   publish = "dist"
-  # Netlify Functions used by the app live alongside the Vite project
   functions = "netlify/functions"
+  command = "npm run build"
 
 [build.environment]
   NODE_VERSION = "18"
   NPM_FLAGS = "--production=false"
 
-# Cache control headers
-[[headers]]
-  for = "/*.html"
-  [headers.values]
-    Cache-Control = "no-cache, no-store, must-revalidate"
-    
-[[headers]]
-  for = "/*.css"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-    
-[[headers]]
-  for = "/*.js"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# Environment variables should be set in the Netlify UI or via the Netlify CLI.
-# DO NOT store secrets here in the repo.
-
-# Force HTTPS
+# Redirect www to non-www
 [[redirects]]
-  from = "http://beezio.co/*"
+  from = "https://www.beezio.co/*"
   to = "https://beezio.co/:splat"
   status = 301
   force = true
 
+# API routes (keep above SPA fallback)
 [[redirects]]
-  from = "http://www.beezio.co/*"
-  to = "https://beezio.co/:splat"
-  status = 301
-  force = true
+  from = "/api/affiliate/link"
+  to = "/.netlify/functions/affiliate-link"
+  status = 200
 
-# SPA fallback
+[[redirects]]
+  from = "/api/affiliate/enable"
+  to = "/.netlify/functions/affiliate-enable"
+  status = 200
+
+[[redirects]]
+  from = "/api/analytics/share_click"
+  to = "/.netlify/functions/analytics-share-click"
+  status = 200
+
+[[redirects]]
+  from = "/api/checkout/create"
+  to = "/.netlify/functions/checkout-create"
+  status = 200
+
+[[redirects]]
+  from = "/api/stripe/webhook"
+  to = "/.netlify/functions/stripe-webhook"
+  status = 200
+
+[[redirects]]
+  from = "/api/stripe/account-status"
+  to = "/.netlify/functions/stripe-account-status"
+  status = 200
+
+[[redirects]]
+  from = "/api/stripe/create-embedded-account"
+  to = "/.netlify/functions/stripe-create-embedded-account"
+  status = 200
+
+[[redirects]]
+  from = "/api/user-earnings"
+  to = "/.netlify/functions/user-earnings"
+  status = 200
+
+# SPA routing - redirect all routes to index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Cache static assets for 1 year
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "max-age=31536000, immutable"
+
+# Security headers for main HTML
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
