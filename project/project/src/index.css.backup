@@ -1,0 +1,289 @@
+
+/* Beezio Honeycomb Theme */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom CSS Variables for Beezio Bee Theme */
+:root {
+  --honey-yellow: #F7B633;
+  --honey-amber: #FFA500;
+  --honey-gold: #FFD700;
+  --bee-black: #2D1810;
+  --honeycomb-brown: #8B4513;
+  --pollen-orange: #FF8C00;
+  --royal-jelly: #FFFACD;
+  --hive-gray: #F5F5DC;
+  --nectar-green: #228B22;
+  
+  /* Gradients */
+  --honey-gradient: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #F7B633 100%);
+  --hive-gradient: linear-gradient(45deg, #F5F5DC 0%, #FFFACD 100%);
+  --bee-gradient: linear-gradient(135deg, #2D1810 0%, #8B4513 100%);
+}
+
+/* Honeycomb Hexagon Pattern Background */
+.honeycomb-bg {
+  background-image: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 20px,
+      rgba(247, 182, 51, 0.05) 20px,
+      rgba(247, 182, 51, 0.05) 22px
+    ),
+    repeating-linear-gradient(
+      60deg,
+      transparent,
+      transparent 20px,
+      rgba(247, 182, 51, 0.05) 20px,
+      rgba(247, 182, 51, 0.05) 22px
+    ),
+    repeating-linear-gradient(
+      120deg,
+      transparent,
+      transparent 20px,
+      rgba(247, 182, 51, 0.05) 20px,
+      rgba(247, 182, 51, 0.05) 22px
+    );
+}
+
+/* Hexagon Shapes */
+.hexagon {
+  position: relative;
+  width: 100px;
+  height: 57.735px;
+  background: var(--honey-gradient);
+  margin: 28.8675px 0;
+  border-radius: 6px;
+}
+
+.hexagon:before,
+.hexagon:after {
+  content: "";
+  position: absolute;
+  width: 0;
+  border-left: 50px solid transparent;
+  border-right: 50px solid transparent;
+}
+
+.hexagon:before {
+  bottom: 100%;
+  border-bottom: 28.8675px solid #F7B633;
+}
+
+.hexagon:after {
+  top: 100%;
+  border-top: 28.8675px solid #F7B633;
+}
+
+/* Animated Hexagon Grid */
+.hexagon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, 120px);
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+}
+
+.hexagon-card {
+  clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+  background: var(--honey-gradient);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.hexagon-card:hover {
+  transform: scale(1.05) rotate(5deg);
+  box-shadow: 0 10px 25px rgba(247, 182, 51, 0.3);
+}
+
+/* Bee-themed Buttons */
+.btn-honey {
+  background: var(--honey-gradient);
+  color: var(--bee-black);
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 600;
+  border: 2px solid transparent;
+  border-radius: 25px;
+  padding: 12px 24px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-honey:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s;
+}
+
+.btn-honey:hover:before {
+  left: 100%;
+}
+
+.btn-honey:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(247, 182, 51, 0.4);
+  border-color: var(--honey-amber);
+}
+
+/* Bee Stripes Pattern */
+.bee-stripes {
+  background: repeating-linear-gradient(
+    45deg,
+    #FFD700,
+    #FFD700 10px,
+    #2D1810 10px,
+    #2D1810 20px
+  );
+  background-size: 28.28px 28.28px;
+}
+
+/* Floating Animation for Bee Elements */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-10px) rotate(1deg); }
+  66% { transform: translateY(5px) rotate(-1deg); }
+}
+
+.floating {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Hexagon Loading Spinner */
+@keyframes hexagon-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.hexagon-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(247, 182, 51, 0.3);
+  border-top: 3px solid var(--honey-yellow);
+  border-radius: 0;
+  clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+  animation: hexagon-spin 1s linear infinite;
+}
+
+/* Honey Drip Effect */
+.honey-drip {
+  position: relative;
+  overflow: hidden;
+}
+
+.honey-drip:after {
+  content: '';
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  width: 6px;
+  height: 50px;
+  background: var(--honey-gradient);
+  border-radius: 0 0 50% 50%;
+  transform: translateX(-50%);
+  animation: drip 2s ease-in-out infinite;
+}
+
+@keyframes drip {
+  0% { top: -50px; opacity: 1; }
+  70% { top: 100%; opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* Mobile-first responsive base styles */
+@layer base {
+  html {
+    font-size: 16px;
+    font-family: 'Inter', sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fredoka', sans-serif;
+  }
+  
+  /* Prevent horizontal scroll on mobile */
+  body {
+    overflow-x: hidden;
+    background: var(--royal-jelly);
+  }
+  
+  /* Better touch targets for mobile */
+  button, a, input {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Responsive images */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* Mobile-specific utilities */
+@layer utilities {
+  /* Safe area padding for mobile devices */
+  .safe-area-padding {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Prevent text from being too small on mobile */
+  .text-mobile-friendly {
+    font-size: clamp(14px, 4vw, 16px);
+  }
+  
+  /* Better mobile scrolling */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Slider dot styles for PricingSlider */
+.slider-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f59e0b;
+  margin: 0 6px;
+  opacity: 0.5;
+  transition: opacity 0.3s;
+}
+.slider-dot.active {
+  opacity: 1;
+}
+@keyframes progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+/* Mobile responsive improvements */
+@media (max-width: 640px) {
+  /* Better spacing on mobile */
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Ensure modals are mobile-friendly */
+  .modal-content {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+  }
+  
+  /* Better button sizing on mobile */
+  .btn-mobile {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+  }
+}

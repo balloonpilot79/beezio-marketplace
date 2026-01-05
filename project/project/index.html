@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/bumblebee.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Mobile Optimizations -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Beezio" />
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#d97706" />
+    <meta name="msapplication-TileColor" content="#d97706" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/bumblebee.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/bumblebee.svg" />
+    
+    <!-- Description for Mobile -->
+    <meta name="description" content="The revolutionary affiliate marketing ecommerce platform where sellers, affiliates, and causes thrive together" />
+    <meta name="keywords" content="affiliate marketing, ecommerce, sellers, fundraising, mobile commerce" />
+    
+    <!-- Cache Buster: Force fresh CSS load - Nov 11 2025 -->
+    <meta name="build-version" content="3.0.1" />
+    <meta name="build-timestamp" content="1731283200" />
+    
+    <title>Beezio - Affiliate Marketing Ecommerce Platform</title>
+    
+    <!-- Emergency inline styles to prevent blank page while CSS loads -->
+    <style>
+      /* Minimal critical CSS to prevent unstyled content flash */
+      body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
+      #root { min-height: 100vh; }
+      .loading-fallback { display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <!-- Fallback content: will be visible if the JS bundle fails to run on mobile -->
+      <div style="font-family:system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding:24px; max-width:720px; margin:32px auto; color:#111;">
+        <h1 style="font-size:20px; margin-bottom:8px;">Beezio</h1>
+        <p style="margin:0 0 12px 0; color:#333;">If this page is blank, your browser failed to run the app's JavaScript bundle.</p>
+        <p style="margin:0 0 12px 0; color:#333;">Quick fixes you can try on your phone:</p>
+        <ol style="margin:0 0 12px 18px; color:#333;">
+          <li>Open <strong>/debug-sw</strong> (https://beezio.co/debug-sw) and use the <em>Unregister all service workers</em> button, then reload.</li>
+          <li>Clear site data for beezio.co in your browser settings (Storage / Site settings → Clear data).</li>
+          <li>Try loading the site in a different mobile browser or in private/incognito mode.</li>
+        </ol>
+        <p style="margin:0; color:#666; font-size:13px;">If that doesn't help, screenshot this message and the browser you used (Chrome/Firefox/Safari) and I'll help diagnose further.</p>
+      </div>
+    </div>
+    <!-- Service worker registration is handled by client script (swRegister) to provide a safe update flow -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

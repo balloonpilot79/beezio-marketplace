@@ -1,0 +1,633 @@
+import React, { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import ProductGrid from '../components/ProductGrid';
+import AffiliateStoreCustomization from '../components/AffiliateStoreCustomization';
+import { useAuth } from '../contexts/AuthContextMultiRole';
+import StoreContactModal from '../components/StoreContactModal';
+import { Settings, User, Award, Heart, Star, Globe, Share2, Facebook, Instagram, Twitter, Youtube, ExternalLink, Package } from 'lucide-react';
+import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
+
+interface AffiliateStorePageProps {
+  affiliateId?: string;
+  isCustomDomain?: boolean;
+}
+
+const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: propAffiliateId, isCustomDomain = false }) => {
+  const { affiliateId: paramAffiliateId } = useParams<{ affiliateId: string }>();
+  const affiliateId = propAffiliateId || paramAffiliateId;
+  const { profile, user } = useAuth();
+  const [affiliate, setAffiliate] = useState<any>(null);
+  const [storeSettings, setStoreSettings] = useState<any>(null);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [canonicalAffiliateId, setCanonicalAffiliateId] = useState<string | null>(null);
+  const [showCustomization, setShowCustomization] = useState(false);
+  const [customPages, setCustomPages] = useState<any[]>([]);
+  const [contactModal, setContactModal] = useState(false);
+
+  useEffect(() => {
+    console.log('[AffiliateStorePage] useEffect triggered with affiliateId:', affiliateId);
+    
+    if (!affiliateId) {
+      console.error('[AffiliateStorePage] No affiliateId provided');
+      setLoading(false);
+      setAffiliate(null);
+      return;
+    }
+
+    const loadAffiliateStore = async () => {
+      try {
+        console.log('[AffiliateStorePage] Starting data fetch for affiliateId:', affiliateId);
+        setLoading(true);
+        
+        // Allow friendly slug from affiliate_store_settings.subdomain
+        let lookupId = affiliateId;
+        const { data: slugMatch, error: slugError } = await supabase
+          .from('affiliate_store_settings')
+          .select('affiliate_id')
+          .eq('subdomain', lookupId || '')
+          .maybeSingle();
+        if (slugError && slugError.code !== 'PGRST116') {
+          console.warn('[AffiliateStorePage] Error checking subdomain slug (non-fatal):', slugError);
+        }
+        if (slugMatch?.affiliate_id) {
+          lookupId = slugMatch.affiliate_id;
+        }
+
+        console.log('[AffiliateStorePage] Fetching affiliate profile from database...');
+        const { data: affiliateRecord, error: affiliateError } = await supabase
+          .from('profiles')
+          .select('*')
+          .or(`id.eq.${lookupId},user_id.eq.${lookupId}`)
+          .maybeSingle();
+
+        if (affiliateError) {
+          console.error('[AffiliateStorePage] Database error fetching profile:', affiliateError);
+          setAffiliate(null);
+          setLoading(false);
+          return;
+        }
+
+        if (!affiliateRecord) {
+          console.log('[AffiliateStorePage] No affiliate record found for:', affiliateId);
+          setAffiliate(null);
+          setProducts([]);
+          setStoreSettings(null);
+          setLoading(false);
+          return;
+        }
+
+        console.log('[AffiliateStorePage] Affiliate found:', affiliateRecord.full_name, 'ID:', affiliateRecord.id);
+        setAffiliate(affiliateRecord);
+        setCanonicalAffiliateId(affiliateRecord.id);
+
+        const canonicalId = affiliateRecord.id;
+
+        console.log('[AffiliateStorePage] Fetching store settings and products for:', canonicalId);
+        const [{ data: storeSettingsData, error: settingsError }, { data: productRows, error: productsError }] = await Promise.all([
+          supabase
+            .from('affiliate_store_settings')
+            .select('*')
+            .eq('affiliate_id', canonicalId)
+            .maybeSingle(),
+          supabase
+            .from('affiliate_products')
+            .select(`
+              *,
+              products (
+                id,
+                title,
+                description,
+                price,
+                images,
+                category_id,
+                stock_quantity,
+                seller_id,
+                profiles!products_seller_id_fkey (full_name)
+              )
+            `)
+            .eq('affiliate_id', canonicalId)
+        ]);
+
+        if (settingsError) {
+          console.warn('[AffiliateStorePage] Error fetching store settings (non-fatal):', settingsError);
+        }
+
+        if (productsError) {
+          console.warn('[AffiliateStorePage] Error fetching products (non-fatal):', productsError);
+        }
+
+        if (storeSettingsData) {
+          console.log('[AffiliateStorePage] Store settings found');
+          setStoreSettings({
+            ...storeSettingsData,
+            subdomain: storeSettingsData.subdomain,
+            custom_domain: storeSettingsData.custom_domain
+          });
+        } else {
+          console.log('[AffiliateStorePage] No store settings found, using defaults');
+          setStoreSettings(null);
+        }
+
+        const buyerFacingProducts = (productRows || [])
+          .map((row: any) => {
+            const baseProduct = row.products;
+            if (!baseProduct) return null;
+
+            return {
+              id: baseProduct.id,
+              title: baseProduct.title,
+              description: baseProduct.description,
+              price: getBuyerFacingProductPrice(baseProduct),
+              images: baseProduct.images,
+              category_id: baseProduct.category_id,
+              stock_quantity: baseProduct.stock_quantity,
+              seller_name: baseProduct.profiles?.full_name,
+              is_featured: Boolean(row?.is_featured),
+              display_order: Number.isFinite(Number(row?.display_order)) ? Number(row.display_order) : 999,
+            };
+          })
+          .filter((product): product is any => Boolean(product))
+          .sort((a, b) => {
+            if (a.is_featured && !b.is_featured) return -1;
+            if (!a.is_featured && b.is_featured) return 1;
+            return (a.display_order ?? 0) - (b.display_order ?? 0);
+          });
+
+        console.log('[AffiliateStorePage] Found', buyerFacingProducts.length, 'products');
+        setProducts(buyerFacingProducts);
+
+        // Load custom pages
+        const { data: pagesData, error: pagesError } = await supabase
+          .from('custom_pages')
+          .select('page_slug,page_title,is_active,display_order')
+          .eq('owner_id', canonicalId)
+          .eq('owner_type', 'affiliate')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+        if (pagesError) {
+          console.warn('[AffiliateStorePage] Error fetching custom pages (non-fatal):', pagesError);
+        }
+        setCustomPages(pagesData || []);
+
+        if (buyerFacingProducts.length > 0) {
+          // Track views (non-fatal errors)
+          await Promise.all(
+            (productRows || []).map(product =>
+              supabase.rpc('increment_affiliate_product_metric', {
+                p_affiliate_id: canonicalId,
+                p_product_id: product.product_id,
+                p_metric: 'views'
+              }).then(undefined, (err: Error) => {
+                console.warn('[AffiliateStorePage] Could not increment view metric:', err);
+                return undefined;
+              })
+            )
+          );
+        }
+
+        // Set referral in localStorage
+        localStorage.setItem('affiliate_referral', canonicalId);
+        console.log('[AffiliateStorePage] Data fetch complete, setting loading to false');
+        setLoading(false);
+      } catch (error) {
+        console.error('[AffiliateStorePage] CRITICAL ERROR in loadAffiliateStore:', error);
+        setAffiliate(null);
+        setProducts([]);
+        setStoreSettings(null);
+        setLoading(false);
+      }
+    };
+
+    loadAffiliateStore();
+  }, [affiliateId]);
+
+  const resolvedAffiliateId = canonicalAffiliateId || affiliateId || '';
+  const isOwner = Boolean(
+    (profile?.id && resolvedAffiliateId && profile.id === resolvedAffiliateId) ||
+    (profile?.user_id && affiliateId && profile.user_id === affiliateId) ||
+    (user?.id && affiliateId && user.id === affiliateId)
+  );
+
+  if (loading) return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+        <p className="mt-4 text-lg font-medium text-gray-600">Loading affiliate store...</p>
+      </div>
+    </div>
+  );
+  
+  if (!affiliate) return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex items-center justify-center">
+      <div className="text-center">
+        <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Affiliate Not Found</h2>
+        <p className="text-gray-600">The affiliate store you're looking for doesn't exist.</p>
+      </div>
+    </div>
+  );
+
+  if (showCustomization && isOwner) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+        <div className="max-w-7xl mx-auto py-8 px-4">
+          <div className="mb-6">
+            <button
+              onClick={() => setShowCustomization(false)}
+              className="flex items-center gap-2 text-purple-600 hover:text-purple-700 font-medium"
+            >
+              ← Back to Store
+            </button>
+          </div>
+          <AffiliateStoreCustomization affiliateId={resolvedAffiliateId || affiliateId || ''} />
+        </div>
+      </div>
+    );
+  }
+
+  const getThemeClasses = (theme: string) => {
+    switch (theme) {
+      case 'vibrant':
+        return 'from-pink-500 to-purple-500';
+      case 'energetic':
+        return 'from-orange-500 to-red-500';
+      case 'nature':
+        return 'from-green-400 to-blue-500';
+      case 'elegant':
+        return 'from-purple-600 to-blue-600';
+      case 'minimal':
+        return 'from-gray-400 to-gray-600';
+      case 'sunset':
+        return 'from-yellow-400 to-pink-500';
+      default:
+        return 'from-purple-500 to-pink-500';
+    }
+  };
+
+  // Share URL priority: custom domain → subdomain → path-based URL.
+  // Path-based supports the "friendly slug" because AffiliateStorePage can resolve `affiliate_store_settings.subdomain`.
+  const storeUrl = storeSettings?.custom_domain
+    ? `https://${storeSettings.custom_domain}`
+    : storeSettings?.subdomain
+    ? `https://${storeSettings.subdomain}.beezio.co`
+    : `${window.location.origin}/affiliate/${resolvedAffiliateId}`;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+      {/* Admin Toolbar - Only visible to store owner when logged in */}
+      {isOwner && isCustomDomain && (
+        <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-3 shadow-lg sticky top-0 z-50">
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              <span className="font-semibold">Affiliate Store Owner View</span>
+              <span className="text-purple-100 text-sm">| You're viewing your custom domain store</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowCustomization(true)}
+                className="px-4 py-1.5 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-colors text-sm font-medium"
+              >
+                Customize Store
+              </button>
+              <a
+                href="https://beezio.co/dashboard"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium flex items-center gap-1"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Beezio Dashboard
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="max-w-6xl mx-auto py-8 px-4">
+        {/* Store Header */}
+        <div className={`bg-gradient-to-r ${getThemeClasses(storeSettings?.store_theme || 'vibrant')} rounded-2xl p-8 text-white mb-8 relative overflow-hidden`}>
+          {storeSettings?.store_banner && (
+            <div 
+              className="absolute inset-0 bg-cover bg-center opacity-30"
+              style={{ backgroundImage: `url(${storeSettings.store_banner})` }}
+            />
+          )}
+          <div className="relative z-10 flex flex-col md:flex-row items-start justify-between gap-6">
+            <div className="flex items-start gap-6">
+              {(storeSettings?.store_logo || affiliate?.avatar_url) && (
+                <img
+                  src={storeSettings?.store_logo || affiliate?.avatar_url}
+                  alt="Profile"
+                  className="w-20 h-20 rounded-full border-4 border-white/20 object-cover"
+                />
+              )}
+              <div>
+                <h1 className="text-4xl font-extrabold mb-2 tracking-tight">
+                  {storeSettings?.store_name || `${affiliate.full_name}'s Store`}
+                </h1>
+                <p className="text-lg text-white/90 mb-4">
+                  {storeSettings?.store_description || 'Discover amazing products with great affiliate commissions!'}
+                </p>
+                {storeSettings?.commission_goal && (
+                  <div className="flex items-center gap-2 text-white/90">
+                    <Award className="w-5 h-5" />
+                    <span>Monthly Goal: ${storeSettings.commission_goal.toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {storeSettings?.social_links?.website && (
+                <a
+                  href={storeSettings.social_links.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                  <span className="hidden sm:inline">Website</span>
+                </a>
+              )}
+
+              {/* Share Button */}
+              <button 
+                onClick={() => navigator.share?.({ url: storeUrl, title: `${affiliate.full_name}'s Store` }) || 
+                         navigator.clipboard.writeText(storeUrl)}
+                className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+              >
+                <Share2 className="w-5 h-5" />
+                <span className="hidden sm:inline">Share</span>
+              </button>
+
+              <button
+                onClick={() => setContactModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-400 text-black rounded-lg hover:bg-amber-500 transition-colors font-semibold"
+              >
+                <ExternalLink className="w-5 h-5" />
+                <span>Contact</span>
+              </button>
+
+              {customPages.filter(p => p.page_slug !== 'contact').map((p) => {
+                const username = String((affiliate as any)?.username || '').trim();
+                const pageUrl = username ? `/affiliate/${username}/${p.page_slug}` : `/affiliate/${canonicalAffiliateId || affiliateId}`;
+                return (
+                  <Link
+                    key={p.page_slug}
+                    to={pageUrl}
+                    className="px-3 py-2 border border-white/40 text-white rounded-lg hover:bg-white/10 text-sm font-semibold"
+                  >
+                    {p.page_title}
+                  </Link>
+                );
+              })}
+
+              {/* Customize Button (only for owner) */}
+              {isOwner && (
+                <button
+                  onClick={() => setShowCustomization(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-white/90 transition-colors font-medium"
+                >
+                  <Settings className="w-5 h-5" />
+                  <span>Customize Store</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Social Proof & Stats - HIDE earnings from buyers, show trust signals */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Star className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{products.length}</p>
+                <p className="text-sm text-gray-600">Curated Products</p>
+              </div>
+            </div>
+            <p className="text-sm text-green-600 font-medium">Hand-picked for quality</p>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <User className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">1,247</p>
+                <p className="text-sm text-gray-600">Happy Customers</p>
+              </div>
+            </div>
+            <p className="text-sm text-blue-600 font-medium">Customers I've helped</p>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Award className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">4.9★</p>
+                <p className="text-sm text-gray-600">Average Rating</p>
+              </div>
+            </div>
+            <p className="text-sm text-purple-600 font-medium">Trusted by thousands</p>
+          </div>
+        </div>
+
+        {/* Customer Testimonials */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Heart className="w-5 h-5 text-red-500" />
+            What Customers Are Saying
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border border-gray-100 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <div className="flex text-yellow-400">
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                </div>
+                <span className="text-sm text-gray-600 ml-2">Sarah M.</span>
+              </div>
+              <p className="text-sm text-gray-700 italic">"Thanks to this affiliate's recommendation, I found exactly what I was looking for. Great products and even better service!"</p>
+            </div>
+            <div className="border border-gray-100 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <div className="flex text-yellow-400">
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                </div>
+                <span className="text-sm text-gray-600 ml-2">Mike R.</span>
+              </div>
+              <p className="text-sm text-gray-700 italic">"I've purchased through this affiliate multiple times. They only recommend quality products and the commissions clearly support their work."</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Favorite Categories */}
+        {storeSettings?.favorite_categories && storeSettings.favorite_categories.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Heart className="w-5 h-5 text-red-500" />
+              My Favorite Categories
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {storeSettings.favorite_categories.map((category: string) => (
+                <span key={category} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                  {category}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Store Stats - HIDE commission info from buyers */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 text-center">
+            <div className="text-3xl font-bold text-purple-600 mb-2">{products.length}</div>
+            <div className="text-gray-600 font-medium">Products Available</div>
+          </div>
+          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 text-center">
+            <div className="text-3xl font-bold text-green-600 mb-2">
+              <Heart className="w-8 h-8 inline text-red-500" />
+            </div>
+            <div className="text-gray-600 font-medium">Curated Selection</div>
+          </div>
+          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 text-center">
+            <div className="text-3xl font-bold text-orange-600 mb-2">
+              <Star className="w-8 h-8 inline text-yellow-500" />
+            </div>
+            <div className="text-gray-600 font-medium">Trusted Affiliate</div>
+          </div>
+        </div>
+
+        {/* Products Section */}
+        <div className="bg-white/90 rounded-2xl shadow-xl p-6 border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <Globe className="w-7 h-7 text-purple-600" />
+              Featured Products
+            </h2>
+            <div className="text-sm text-gray-600">
+              {products.length} products available
+            </div>
+          </div>
+
+          {/* Call to Action Banner - Transparent about affiliate support */}
+          {products.length > 0 ? (
+            <>
+              <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6 mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      🎯 Support Quality Content & Great Products
+                    </h3>
+                    <p className="text-gray-700 text-sm mb-3">
+                      When you shop through my store, you're getting amazing products AND
+                      supporting independent creators like myself at no extra cost to you!
+                    </p>
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <span className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-500" />
+                        Quality Products
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Heart className="w-4 h-4 text-red-500" />
+                        Creator Support
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Award className="w-4 h-4 text-purple-500" />
+                        Same Prices
+                      </span>
+                    </div>
+                  </div>
+                  <div className="hidden md:block">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600 mb-1">Your Purchase</div>
+                      <div className="text-sm text-gray-600">Helps creators like me</div>
+                      <div className="text-sm text-gray-600">continue making content</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <ProductGrid 
+                products={products} 
+                gridLayout={storeSettings?.layout_config?.grid_layout || 'standard'}
+                colorScheme={storeSettings?.color_scheme}
+              />
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <Package className="w-20 h-20 text-purple-400 mx-auto mb-6" />
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                {isOwner ? "Start Curating Your Store!" : "Store Coming Soon"}
+              </h3>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                {isOwner 
+                  ? "Your affiliate store is ready! Browse the marketplace and add products you love to your curated collection."
+                  : "This affiliate is currently setting up their store. Check back soon for hand-picked product recommendations!"
+                }
+              </p>
+              
+              {isOwner && !isCustomDomain && (
+                <div className="space-y-4">
+                  <Link
+                    to="/marketplace"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium shadow-lg"
+                  >
+                    <Globe className="w-5 h-5" />
+                    Browse Marketplace
+                  </Link>
+                  
+                  <div className="mt-8 pt-8 border-t border-gray-200">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">How It Works</h4>
+                    <div className="grid md:grid-cols-3 gap-4 text-left">
+                      <div className="p-4 bg-purple-50 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600 mb-2">1</div>
+                        <h5 className="font-semibold text-gray-900 mb-1">Find Products</h5>
+                        <p className="text-sm text-gray-600">Browse marketplace and select products you want to promote</p>
+                      </div>
+                      <div className="p-4 bg-purple-50 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600 mb-2">2</div>
+                        <h5 className="font-semibold text-gray-900 mb-1">Customize Store</h5>
+                        <p className="text-sm text-gray-600">Set your branding, bio, and custom domain</p>
+                      </div>
+                      <div className="p-4 bg-purple-50 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600 mb-2">3</div>
+                        <h5 className="font-semibold text-gray-900 mb-1">Earn Commissions</h5>
+                        <p className="text-sm text-gray-600">Share your store and earn on every sale</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <StoreContactModal
+        isOpen={contactModal}
+        onClose={() => setContactModal(false)}
+        ownerId={canonicalAffiliateId || affiliateId || ''}
+        ownerType="affiliate"
+        storeName={affiliate?.full_name}
+      />
+    </div>
+  );
+};
+
+export default AffiliateStorePage;

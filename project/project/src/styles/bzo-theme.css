@@ -1,0 +1,181 @@
+/* BZO The Bee - Brand Color Palette */
+:root {
+  /* Iowa Hawkeye Inspired Colors */
+  --bzo-yellow-primary: #ffcb05;    /* Hawkeye gold */
+  --bzo-yellow-secondary: #e0b000;  /* deeper gold accent */
+  --bzo-yellow-light: #fff9d4;      /* pale gold wash */
+  --bzo-black: #101820;             /* Hawkeye black */
+  --bzo-white: #ffffff;             /* bright white base */
+  
+  /* Semantic Colors */
+  --primary: var(--bzo-yellow-primary);
+  --primary-hover: var(--bzo-yellow-secondary);
+  --secondary: var(--bzo-black);
+  --background: var(--bzo-white);
+  --surface: var(--bzo-yellow-light);
+  --text-primary: var(--bzo-black);
+  --text-secondary: #4A4A4A;
+  --text-muted: #6B7280;
+  
+  /* Interactive States */
+  --button-primary-bg: var(--bzo-yellow-primary);
+  --button-primary-hover: #ffdf5c;
+  --button-primary-text: var(--bzo-black);
+  --button-secondary-bg: var(--bzo-black);
+  --button-secondary-hover: #000000;
+  --button-secondary-text: var(--bzo-yellow-primary);
+  
+  /* Borders & Shadows */
+  --border-color: #E5E7EB;
+  --border-focus: var(--bzo-yellow-primary);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-strong: 0 18px 50px -12px rgba(15, 23, 42, 0.22);
+  --shadow-ultra: 0 25px 80px -18px rgba(0, 0, 0, 0.28);
+  
+  /* Success/Error States */
+  --success: #10B981;
+  --success-light: #D1FAE5;
+  --error: #EF4444;
+  --error-light: #FEE2E2;
+  --warning: var(--bzo-yellow-secondary);
+  --warning-light: #FEF3C7;
+  --info: #3B82F6;
+  --info-light: #DBEAFE;
+}
+
+/* BZO Button Styles */
+.btn-bzo-primary {
+  background: linear-gradient(135deg, var(--bzo-yellow-primary) 0%, var(--bzo-yellow-secondary) 100%);
+  color: var(--bzo-black);
+  border: 2px solid transparent;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-bzo-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  background: linear-gradient(135deg, var(--bzo-yellow-secondary) 0%, var(--bzo-yellow-primary) 100%);
+}
+
+.btn-bzo-secondary {
+  background: var(--bzo-black);
+  color: var(--bzo-white);
+  border: 2px solid var(--bzo-black);
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-bzo-secondary:hover {
+  background: transparent;
+  color: var(--bzo-black);
+  border-color: var(--bzo-black);
+}
+
+.btn-bzo-outline {
+  background: transparent;
+  color: var(--bzo-yellow-primary);
+  border: 2px solid var(--bzo-yellow-primary);
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-bzo-outline:hover {
+  background: var(--bzo-yellow-primary);
+  color: var(--bzo-black);
+}
+
+/* BZO Card Styles */
+.card-bzo {
+  background: var(--bzo-white);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--shadow-ultra);
+  transition: all 0.3s ease;
+}
+
+.card-bzo:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-ultra);
+  border-color: var(--bzo-yellow-primary);
+}
+
+/* BZO Input Styles */
+.input-bzo {
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+  background: var(--bzo-white);
+}
+
+.input-bzo:focus {
+  outline: none;
+  border-color: var(--bzo-yellow-primary);
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+}
+
+/* Strong elevation for white surfaces sitewide */
+.bg-white, .panel-white {
+  box-shadow: var(--shadow-strong);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[class*="bg-white/5"], [class*="bg-white/10"], [class*="bg-white/15"], [class*="bg-white/20"] {
+  box-shadow: var(--shadow-strong);
+}
+
+/* BZO Typography */
+.text-bzo-primary {
+  color: var(--bzo-yellow-primary);
+}
+
+.text-bzo-secondary {
+  color: var(--bzo-black);
+}
+
+.bg-bzo-gradient {
+  background: #ffffff;
+}
+
+/* BZO Hero Section */
+.hero-bzo {
+  background: linear-gradient(135deg, var(--bzo-yellow-light) 0%, var(--bzo-white) 50%, var(--bzo-yellow-light) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-bzo::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FFD700' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* Animation for BZO mascot */
+@keyframes bzoBounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+.bzo-mascot {
+  animation: bzoBounce 2s infinite;
+}
+
+.bzo-mascot:hover {
+  animation: bzoBounce 0.6s infinite;
+}
