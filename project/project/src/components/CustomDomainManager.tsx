@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, CheckCircle, AlertCircle, Copy, ExternalLink } from 'lucide-react';
+import { Globe, CheckCircle, AlertCircle, Copy, ExternalLink, HelpCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { resolveProfileIdForUser } from '../utils/resolveProfileId';
 import { normalizeStoreSlug } from '../utils/normalizeStoreSlug';
@@ -416,6 +416,30 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
         </p>
       </div>
 
+      <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="flex items-start gap-3">
+            <Globe className="mt-0.5 h-5 w-5 text-emerald-700" />
+            <div>
+              <h4 className="font-semibold text-gray-900">Use your own domain</h4>
+              <p className="mt-1 text-sm text-gray-700">
+                Connect a domain you already own, like mystore.com or shop.mystore.com, to this custom site.
+              </p>
+              <p className="mt-2 text-xs text-gray-600">
+                Save the domain below, update DNS at your domain provider, then use Re-check now after DNS updates.
+              </p>
+            </div>
+          </div>
+          <a
+            href="/faq/custom-domains"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+          >
+            <HelpCircle className="h-4 w-4" />
+            Domain FAQ
+          </a>
+        </div>
+      </div>
+
       {/* Custom Domain Input */}
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -458,12 +482,12 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
           <div>2) In your DNS provider, add the record(s) below:</div>
           <div className="mt-2">
             <div className="font-medium text-gray-800">Root domain (example.com)</div>
-            <div>A @ → 104.198.14.52</div>
-            <div>CNAME www → beezio-marketplace.netlify.app</div>
+            <div>A @ to 104.198.14.52</div>
+            <div>CNAME www to beezio-marketplace.netlify.app</div>
           </div>
           <div className="mt-2">
             <div className="font-medium text-gray-800">Subdomain (shop.example.com)</div>
-            <div>CNAME shop → beezio-marketplace.netlify.app</div>
+            <div>CNAME shop to beezio-marketplace.netlify.app</div>
           </div>
           <div className="mt-2 text-xs text-gray-600">
             DNS can take 5-30 minutes (up to 48 hours). Use the "Re-check now" button once it propagates.
@@ -659,6 +683,12 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
               <p className="text-sm text-gray-600">
                 Need help? Contact our support team with your domain name and we'll assist with the setup.
               </p>
+                <a
+                  href="/faq/custom-domains"
+                  className="mt-2 mr-4 inline-block text-sm text-blue-700 hover:text-blue-800 font-medium"
+                >
+                  Read the custom domain FAQ
+                </a>
                 <a
                   href="/contact-support"
                   className="mt-2 inline-block text-sm text-bzo-yellow-primary hover:text-bzo-yellow-secondary font-medium"

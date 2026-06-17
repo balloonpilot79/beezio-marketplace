@@ -72,6 +72,7 @@ const DisputePolicy = lazy(() => import('./pages/legal/DisputePolicy'));
 const PayoutPolicy = lazy(() => import('./pages/legal/PayoutPolicy'));
 const PrivacyPolicy = lazy(() => import('./pages/legal/PrivacyPolicy'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
+const CustomDomainFAQPage = lazy(() => import('./pages/CustomDomainFAQPage'));
 const ReturnsPage = lazy(() => import('./pages/ReturnsPage'));
 const ShippingPage = lazy(() => import('./pages/ShippingPage'));
 const SellerProductFormPage = lazy(() => import('./pages/SellerProductFormPage'));
@@ -853,6 +854,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/returns" element={<ReturnsPage />} />
                     <Route path="/shipping" element={<ShippingPage />} />
                     <Route path="/faq" element={<FAQPage />} />
+                    <Route path="/faq/custom-domains" element={<CustomDomainFAQPage />} />
                     <Route path="/affiliate-guide" element={<AffiliateGuide />} />
                     <Route path="/admin" element={<AdminRoute><Navigate to="/dashboard/admin" replace /></AdminRoute>} />
                     <Route path="/admin/cj-bulk-import" element={<AdminRoute><Navigate to="/admin/cj-import" replace /></AdminRoute>} />
