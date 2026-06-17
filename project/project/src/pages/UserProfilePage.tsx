@@ -1,10 +1,67 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import RoleManagement from '../components/RoleManagement';
-import { User, Settings, Shield, Bell, CreditCard, HelpCircle } from 'lucide-react';
+import { User, Settings, Shield, Bell, CreditCard, HelpCircle, Lock } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const UserProfilePage: React.FC = () => {
   const { user, profile } = useAuth();
+  const [saleEmailNotifications, setSaleEmailNotifications] = useState(true);
+  const [notificationSaving, setNotificationSaving] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationError, setNotificationError] = useState('');
+
+  useEffect(() => {
+    const profileValue = (profile as any)?.sale_email_notifications;
+    if (typeof profileValue === 'boolean') {
+      setSaleEmailNotifications(profileValue);
+      return;
+    }
+
+    const profileId = String((profile as any)?.id || '').trim();
+    if (!profileId) return;
+
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('sale_email_notifications')
+        .eq('id', profileId)
+        .maybeSingle();
+
+      if (cancelled || error) return;
+      const value = (data as any)?.sale_email_notifications;
+      setSaleEmailNotifications(value !== false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile]);
+
+  const updateSaleEmailNotifications = async (enabled: boolean) => {
+    const profileId = String((profile as any)?.id || '').trim();
+    if (!profileId) return;
+
+    setSaleEmailNotifications(enabled);
+    setNotificationSaving(true);
+    setNotificationMessage('');
+    setNotificationError('');
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ sale_email_notifications: enabled } as any)
+      .eq('id', profileId);
+
+    setNotificationSaving(false);
+    if (error) {
+      setSaleEmailNotifications(!enabled);
+      setNotificationError(error.message || 'Could not update notification preference.');
+      return;
+    }
+
+    setNotificationMessage(enabled ? 'Sale email notifications are on.' : 'Sale email notifications are off.');
+  };
 
   if (!user || !profile) {
     return (
@@ -65,6 +122,10 @@ const UserProfilePage: React.FC = () => {
                   <HelpCircle className="w-5 h-5" />
                   <span>Help & Support</span>
                 </a>
+                <a href="/change-password" className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                  <Lock className="w-5 h-5" />
+                  <span>Change Password</span>
+                </a>
               </nav>
             </div>
           </div>
@@ -76,7 +137,7 @@ const UserProfilePage: React.FC = () => {
               <div className="mb-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">Role Management</h2>
                 <p className="text-gray-600">
-                  Manage your roles in Beezio. You can be a seller, affiliate, fundraiser, or any combination to maximize your earning potential.
+                  Manage your roles in Beezio. You can be a seller, affiliate, or any combination to maximize your earning potential.
                 </p>
               </div>
               <RoleManagement />
@@ -103,12 +164,39 @@ const UserProfilePage: React.FC = () => {
                   <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">{profile.location || 'Not set'}</p>
                 </div>
               </div>
+              <div className="mt-6">
+                <a
+                  href="/change-password"
+                  className="inline-flex items-center px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  Change password
+                </a>
+              </div>
             </div>
 
             {/* Placeholder sections for future features */}
             <div id="notifications" className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Notification Preferences</h2>
-              <p className="text-gray-600">Notification settings will be available soon.</p>
+              <div className="rounded-lg border border-gray-200 p-4">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={saleEmailNotifications}
+                    disabled={notificationSaving}
+                    onChange={(event) => void updateSaleEmailNotifications(event.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>
+                    <span className="block font-medium text-gray-900">Email me when one of my products sells</span>
+                    <span className="block text-sm text-gray-600">
+                      Buyers still receive receipts. This only controls seller sale notification emails.
+                    </span>
+                  </span>
+                </label>
+                {notificationMessage && <p className="mt-3 text-sm text-green-700">{notificationMessage}</p>}
+                {notificationError && <p className="mt-3 text-sm text-red-700">{notificationError}</p>}
+              </div>
             </div>
 
             <div id="billing" className="bg-white rounded-lg shadow-sm p-6">

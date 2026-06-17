@@ -1,3 +1,6 @@
+import { getInfluencerBonusPerSlot, getInfluencerReserveTotal } from '../../shared/referralBonus';
+import { computeBeezioPlatformFee } from '../../shared/beezioFee';
+
 export type BeezioSplitInput = {
   items_subtotal: number;
   shipping_amount: number;
@@ -24,9 +27,6 @@ export type BeezioSplitResult = {
   validation_reason?: string;
 };
 
-const BEEZIO_FEE_RATE = 0.15;
-const REFERRAL_RATE = 0.05;
-
 function toCents(amount: number): number {
   if (!Number.isFinite(amount)) return 0;
   return Math.round((amount + Number.EPSILON) * 100);
@@ -49,59 +49,23 @@ export function calculateBeezioSplit(input: BeezioSplitInput): BeezioSplitResult
 
   const affiliateRate = normalizeRate(input.affiliate_rate);
   const hasAffiliate = Boolean(input.affiliate_id);
-  const hasReferrer = Boolean(input.referrer_id);
+  const hasReferrer = Boolean(input.referrer_id && input.affiliate_id);
 
-  const platformGrossCents = Math.round(itemsSubtotalCents * BEEZIO_FEE_RATE);
-  // Referral override is 5 percentage points of the sale base, paid out of Beezio's 15% fee.
-  const referralFeeCents = hasReferrer ? Math.min(platformGrossCents, Math.round(itemsSubtotalCents * REFERRAL_RATE)) : 0;
-  const beezioFeeCents = platformGrossCents - referralFeeCents;
   const affiliateCommissionCents = hasAffiliate ? Math.round(itemsSubtotalCents * affiliateRate) : 0;
+  const platformBaseCents = toCents(computeBeezioPlatformFee(input.items_subtotal));
+  const influencerReservePoolCents = toCents(getInfluencerReserveTotal(input.items_subtotal));
+  const platformGrossCents = platformBaseCents + influencerReservePoolCents;
+  // Referral payout is funded out of Beezio's kept reserve pool / fee, not added on top of the buyer price.
+  const referralFeeCents = hasReferrer ? toCents(getInfluencerBonusPerSlot(input.items_subtotal)) : 0;
+  const beezioFeeCents = Math.max(0, platformGrossCents - referralFeeCents);
 
-  const sellerNetItemsCents = itemsSubtotalCents - platformGrossCents - affiliateCommissionCents;
-  if (sellerNetItemsCents < 0) {
-    return {
-      beezio_fee_amount: fromCents(beezioFeeCents),
-      referral_fee_amount: fromCents(referralFeeCents),
-      affiliate_commission_amount: fromCents(affiliateCommissionCents),
-      seller_net_items_amount: fromCents(sellerNetItemsCents),
-      seller_total_transfer_amount: fromCents(sellerNetItemsCents + shippingCents),
-      beezio_kept_amount: 0,
-      referrer_amount: 0,
-      affiliate_amount: 0,
-      tax_amount: fromCents(taxCents),
-      shipping_amount: fromCents(shippingCents),
-      items_subtotal: fromCents(itemsSubtotalCents),
-      validation_ok: false,
-      validation_reason:
-        'Seller net items would be negative. Reduce affiliate_rate and/or ensure items_subtotal covers platform/referral/affiliate amounts.',
-    };
-  }
+  const sellerNetItemsCents = itemsSubtotalCents;
 
-  const referrerAmountCents = hasReferrer ? referralFeeCents : 0;
+  const referrerAmountCents = referralFeeCents;
   const beezioKeptCents = beezioFeeCents;
 
   const affiliateAmountCents = affiliateCommissionCents;
   const sellerTransferCents = sellerNetItemsCents + shippingCents;
-
-  const reconciliationOk = itemsSubtotalCents === sellerNetItemsCents + platformGrossCents + affiliateCommissionCents;
-
-  if (!reconciliationOk) {
-    return {
-      beezio_fee_amount: fromCents(beezioFeeCents),
-      referral_fee_amount: fromCents(referralFeeCents),
-      affiliate_commission_amount: fromCents(affiliateCommissionCents),
-      seller_net_items_amount: fromCents(sellerNetItemsCents),
-      seller_total_transfer_amount: fromCents(sellerTransferCents),
-      beezio_kept_amount: fromCents(beezioKeptCents),
-      referrer_amount: fromCents(referrerAmountCents),
-      affiliate_amount: fromCents(affiliateAmountCents),
-      tax_amount: fromCents(taxCents),
-      shipping_amount: fromCents(shippingCents),
-      items_subtotal: fromCents(itemsSubtotalCents),
-      validation_ok: false,
-      validation_reason: 'Reconciliation failed: items_subtotal != seller_net_items + platform_gross + affiliate_commission.',
-    };
-  }
 
   return {
     beezio_fee_amount: fromCents(beezioFeeCents),

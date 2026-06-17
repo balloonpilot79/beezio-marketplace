@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PASSWORD_REQUIREMENT_MESSAGE, validatePasswordPolicy } from '../utils/passwordPolicy';
 
 const ResetWithCodePage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -14,12 +15,17 @@ const ResetWithCodePage: React.FC = () => {
         setMessage('Please provide email, recovery code, and a new password.');
         return;
       }
+      const passwordError = validatePasswordPolicy(password);
+      if (passwordError) {
+        setMessage(passwordError);
+        return;
+      }
       setLoading(true);
     try {
       const res = await fetch('/.netlify/functions/reset-with-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code, newPassword })
+        body: JSON.stringify({ email, code, newPassword: password })
       });
         const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -51,7 +57,8 @@ const ResetWithCodePage: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">New Password</label>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full border px-3 py-2 rounded" />
+              <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full border px-3 py-2 rounded" />
+              <p className="mt-1 text-xs text-gray-500">{PASSWORD_REQUIREMENT_MESSAGE}</p>
           </div>
           <div>
             <button disabled={loading} className="w-full py-2 px-4 bg-purple-600 text-white rounded">{loading ? 'Updating...' : 'Update Password'}</button>

@@ -13,7 +13,7 @@ export const testScenarios = [
       seller: 100.00,
       affiliate: 20.00,
       platform: 12.36,
-      stripe: 4.24,
+      processing: 4.24,
       customer: 136.60
     }
   },
@@ -25,7 +25,7 @@ export const testScenarios = [
       seller: 50.00,
       affiliate: 7.50,
       platform: 6.08,
-      stripe: 2.32,
+      processing: 2.32,
       customer: 65.90
     }
   },
@@ -37,7 +37,7 @@ export const testScenarios = [
       seller: 200.00,
       affiliate: 50.00,
       platform: 25.78,
-      stripe: 8.10,
+      processing: 8.10,
       customer: 283.88
     }
   },
@@ -50,7 +50,7 @@ export const testScenarios = [
       seller: 75.00,
       affiliate: 15.00,
       platform: 9.27,
-      stripe: 3.30,
+      processing: 3.30,
       customer: 102.57
     }
   }
@@ -115,8 +115,8 @@ export const verifyPaymentDistribution = async (transactionId: string) => {
   return true;
 };
 
-// Test payment processing with Stripe test cards
-export const testStripePayments = async () => {
+// Test payment processing with test card scenarios
+export const testPaymentProcessing = async () => {
   const testCards = [
     { number: '4242424242424242', name: 'Success Card', expectedResult: 'success' },
     { number: '4000000000000002', name: 'Declined Card', expectedResult: 'declined' },
@@ -124,14 +124,14 @@ export const testStripePayments = async () => {
     { number: '4000000000009995', name: 'Insufficient Funds', expectedResult: 'declined' }
   ];
 
-  console.log('🧪 Testing Stripe Payment Processing...\n');
+  console.log('🧪 Testing Payment Processing...\n');
 
   for (const card of testCards) {
     console.log(`Testing ${card.name} (${card.number}):`);
     
     try {
-      // This would be replaced with actual Stripe test in real implementation
-      const mockResult = await simulateStripePayment(card.number);
+      // This would be replaced with an actual processor test in a real implementation
+      const mockResult = await simulateCardPayment(card.number);
       
       if (mockResult.status === card.expectedResult) {
         console.log(`✅ ${card.name}: Expected result (${card.expectedResult})`);
@@ -146,8 +146,8 @@ export const testStripePayments = async () => {
   }
 };
 
-// Simulate Stripe payment for testing
-const simulateStripePayment = async (cardNumber: string) => {
+// Simulate a card payment for testing
+const simulateCardPayment = async (cardNumber: string) => {
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 500));
   
@@ -158,7 +158,7 @@ const simulateStripePayment = async (cardNumber: string) => {
     case '4000000000000002':
       return { status: 'declined', error: 'generic_decline' };
     case '4000002500003155':
-      return { status: 'requires_action', next_action: 'use_stripe_sdk' };
+      return { status: 'requires_action', next_action: 'use_processor_sdk' };
     case '4000000000009995':
       return { status: 'declined', error: 'insufficient_funds' };
     default:
@@ -249,9 +249,9 @@ export const runCompleteTest = async () => {
   console.log('🚀 Starting Complete Marketplace Test...\n');
   
   try {
-    // Test 1: Stripe Payment Processing
-    console.log('=== TEST 1: STRIPE PAYMENTS ===');
-    await testStripePayments();
+    // Test 1: Payment Processing
+    console.log('=== TEST 1: PAYMENT PROCESSING ===');
+      await testPaymentProcessing();
     
     // Test 2: Get recent transactions for verification
     console.log('\n=== TEST 2: RECENT TRANSACTIONS ===');
@@ -290,7 +290,7 @@ export const runCompleteTest = async () => {
 export default {
   testScenarios,
   verifyPaymentDistribution,
-  testStripePayments,
+    testPaymentProcessing,
   verifyAffiliateCommissions,
   verifyPlatformRevenue,
   runCompleteTest

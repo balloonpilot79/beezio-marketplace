@@ -1,17 +1,33 @@
 import React, { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import AuthModal from '../components/AuthModal';
 import PublicLayout from '../components/layout/PublicLayout';
+import { setPostAuthPath } from '../utils/storefrontScope';
 
 interface AuthPageProps {
   mode: 'login' | 'register';
 }
 
 const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('open-auth-modal', { detail: { mode } }));
-  }, [mode]);
+    const params = new URLSearchParams(location.search);
+    const next = String(params.get('next') || '').trim();
+    if (next) {
+      setPostAuthPath(next);
+    }
+  }, [mode, location.search]);
 
   return (
     <PublicLayout>
+      <AuthModal
+        isOpen={true}
+        mode={mode}
+        audience="business"
+        onClose={() => navigate('/', { replace: true })}
+      />
       <div className="max-w-xl space-y-4 relative">
         <a
           href="/"
@@ -25,8 +41,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
           {mode === 'login' ? 'Log in to Beezio' : 'Create your Beezio account'}
         </h1>
         <p className="text-gray-700 leading-relaxed">
-          Use the modal to {mode === 'login' ? 'sign in to' : 'join'} the marketplace. Sellers, affiliates, buyers, and fundraisers all share the same
-          transparent checkout and payout system.
+          Use the modal to {mode === 'login' ? 'sign in to' : 'join'} the marketplace. Sellers, affiliates, and buyers all share the same transparent
+          checkout and payout system.
         </p>
       </div>
     </PublicLayout>

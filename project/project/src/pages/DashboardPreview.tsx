@@ -1,8 +1,18 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ExternalLink, ArrowRight, User, Store } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 
 const DashboardPreview: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [navigate, user]);
+
   // Mock data for preview
   const mockProfile = {
     id: 'demo-seller-123',
@@ -108,7 +118,7 @@ const DashboardPreview: React.FC = () => {
             
             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-amber-500">
               <h3 className="font-semibold text-gray-900 mb-2">💳 Payment Processing</h3>
-              <p className="text-gray-600 text-sm mb-4">Integrated Stripe payments, subscription billing, and automated payout management.</p>
+              <p className="text-gray-600 text-sm mb-4">Integrated payments and automated payout management.</p>
               <div className="text-amber-600 hover:text-amber-700 text-sm font-medium cursor-pointer">
                 Configure Payments →
               </div>
@@ -175,9 +185,9 @@ const DashboardPreview: React.FC = () => {
           <h2 className="text-xl font-semibold mb-2">API Integrations</h2>
           <div className="bg-white rounded shadow p-6">
             <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">Connect with Stripe, PayPal, and other payment providers</p>
+              <p className="text-gray-500 mb-4">Connect with supported payment providers</p>
               <div className="bg-gray-100 text-gray-500 px-4 py-2 rounded hover:bg-gray-200 transition-colors inline-block">
-                Connect Stripe (Demo)
+                Connect Payments (Demo)
               </div>
             </div>
           </div>

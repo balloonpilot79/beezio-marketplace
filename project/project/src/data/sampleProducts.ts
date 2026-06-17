@@ -3,6 +3,7 @@
 
 import { isProductSampleDataEnabled } from '../config/sampleDataConfig';
 import { buildPricedProduct } from '../utils/pricing';
+import { normalizeAverageRating, normalizeReviewCount } from '../utils/socialProof';
 
 export const ENABLE_SAMPLE_DATA = isProductSampleDataEnabled();
 
@@ -27,6 +28,8 @@ export interface SampleProduct {
   seller_ask?: number;
   sale_price?: number;
   currency?: string;
+  sample_enabled?: boolean;
+  sample_price?: number;
 }
 
 // High quality Unsplash images for each category
@@ -591,7 +594,15 @@ export const getRandomProducts = (count: number = 6): SampleProduct[] => {
   return shuffled.slice(0, count);
 };
 
-export const SAMPLE_PRODUCTS: SampleProduct[] = RAW_SAMPLE_PRODUCTS.map((product) => buildPricedProduct(product));
+export const SAMPLE_PRODUCTS: SampleProduct[] = RAW_SAMPLE_PRODUCTS.map((product) => {
+  const reviewCount = normalizeReviewCount(product.reviews);
+  const averageRating = normalizeAverageRating(product.rating, reviewCount);
+  return buildPricedProduct({
+    ...product,
+    reviews: reviewCount,
+    rating: averageRating,
+  });
+});
 
 export default SAMPLE_PRODUCTS;
 

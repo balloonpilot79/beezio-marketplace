@@ -34,6 +34,7 @@ const ProductDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const isOutOfStock = Number(product?.stock_quantity ?? 0) <= 0;
 
   useEffect(() => {
     if (productId) {
@@ -189,6 +190,12 @@ const ProductDetailPage: React.FC = () => {
                 </span>
               )}
             </div>
+
+            {isOutOfStock && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                Out of stock
+              </span>
+            )}
             
             {product.shipping_cost && (
               <p className="text-gray-600">+ ${product.shipping_cost.toFixed(2)} shipping</p>
@@ -247,7 +254,12 @@ const ProductDetailPage: React.FC = () => {
             </div>
 
             <div className="flex space-x-4">
-              <button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2">
+              <button
+                disabled={isOutOfStock}
+                className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 ${
+                  isOutOfStock ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-amber-500 hover:bg-amber-600 text-white'
+                }`}
+              >
                 <ShoppingCart className="w-5 h-5" />
                 <span>Add to Cart</span>
               </button>
@@ -269,10 +281,10 @@ const ProductDetailPage: React.FC = () => {
             />
           </div>
 
-          {/* Affiliate Section */}
+          {/* Partner Section */}
           {profile?.role === 'affiliate' && (
             <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Affiliate Tools</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Partner Tools</h3>
               <AffiliateLink
                 productId={product.id}
                 commissionRate={product.commission_rate}
@@ -283,23 +295,6 @@ const ProductDetailPage: React.FC = () => {
             </div>
           )}
 
-          {/* Trust Badges */}
-          <div className="border-t pt-6">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="flex flex-col items-center space-y-2">
-                <Shield className="w-8 h-8 text-green-600" />
-                <span className="text-sm text-gray-600">Secure Payment</span>
-              </div>
-              <div className="flex flex-col items-center space-y-2">
-                <Truck className="w-8 h-8 text-blue-600" />
-                <span className="text-sm text-gray-600">Fast Shipping</span>
-              </div>
-              <div className="flex flex-col items-center space-y-2">
-                <RotateCcw className="w-8 h-8 text-amber-600" />
-                <span className="text-sm text-gray-600">Easy Returns</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 

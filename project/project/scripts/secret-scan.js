@@ -4,6 +4,14 @@ const fs = await import('fs');
 const path = await import('path');
 
 const ROOT = process.cwd();
+const SCAN_PATHS = [
+  'src',
+  'netlify',
+  'server',
+  'shared',
+  'supabase/functions',
+  'scripts',
+];
 const patterns = [
   /sk_live_[0-9a-zA-Z]{24,}/g,
   /sk_test_[0-9a-zA-Z]{24,}/g,
@@ -14,8 +22,6 @@ const patterns = [
   // Note: variable-name matches removed to reduce false positives in docs
 ];
 
-// Files to intentionally ignore (local dev files)
-const IGNORE_FILES = ['.env.local', '.env.*.local'];
 let found = false;
 
 function walk(dir) {
@@ -23,12 +29,13 @@ function walk(dir) {
   for (const e of entries) {
     const full = path.join(dir, e.name);
     if (e.isDirectory()) {
-      if (['.git', 'node_modules', 'dist'].includes(e.name)) continue;
+      if (['.git', '.netlify', 'node_modules', 'dist'].includes(e.name)) continue;
       walk(full);
     } else {
-      // skip local-only env files (they may contain keys intentionally)
+      // Skip local-only env files and this scanner implementation file.
       const base = path.basename(full);
-      if (base === '.env.local' || base.match(/^\.env\..*\.local$/)) continue;
+      if (base === 'secret-scan.js') continue;
+      if (base === '.env' || base === '.env.local' || base === '.env.example' || base.match(/^\.env\..*\.local$/)) continue;
       scanFile(full);
     }
   }
@@ -36,6 +43,12 @@ function walk(dir) {
 
 function scanFile(file) {
   try {
+    const base = path.basename(file).toLowerCase();
+    if (base.startsWith('browser-session-') && base.endsWith('.json')) {
+      console.log(`POTENTIAL_SECRET: ${file} -> browser session artifact`);
+      found = true;
+      return;
+    }
     const text = fs.readFileSync(file, 'utf8');
     for (const p of patterns) {
       const m = text.match(p);
@@ -51,7 +64,10 @@ function scanFile(file) {
 }
 
 console.log('Running lightweight secret scan...');
-walk(ROOT);
+for (const rel of SCAN_PATHS) {
+  const full = path.join(ROOT, rel);
+  if (fs.existsSync(full)) walk(full);
+}
 console.log('Scan complete. If any POTENTIAL_SECRET lines appeared, remove/rotate and add to .gitignore.');
 if (found) {
   console.error('\nSecret scan detected potential secrets outside allowed local files. Failing.');

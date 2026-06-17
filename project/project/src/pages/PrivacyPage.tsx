@@ -23,7 +23,7 @@ const PrivacyPage: React.FC = () => {
           </h2>
           <ul className="text-amber-700 space-y-2">
             <li>• We only collect information necessary to operate our marketplace</li>
-            <li>• Your payment information is securely handled by Stripe</li>
+            <li>• Your payment information is securely handled by our payment processor</li>
             <li>• We never sell your personal data to third parties</li>
             <li>• You have full control over your account and data</li>
           </ul>
@@ -45,7 +45,7 @@ const PrivacyPage: React.FC = () => {
                 <ul className="list-disc list-inside text-gray-600 space-y-1 ml-4">
                   <li>Full name and email address</li>
                   <li>Profile information you choose to share</li>
-                  <li>Role preferences (buyer, seller, affiliate)</li>
+                  <li>Role preferences (buyer, seller, partner)</li>
                 </ul>
               </div>
 
@@ -55,7 +55,7 @@ const PrivacyPage: React.FC = () => {
                 <ul className="list-disc list-inside text-gray-600 space-y-1 ml-4">
                   <li>Product purchases and sales history</li>
                   <li>Shipping addresses for order fulfillment</li>
-                  <li>Commission and earning records (for sellers/affiliates)</li>
+                  <li>Order and settlement records (for sellers/partners)</li>
                 </ul>
               </div>
 
@@ -109,9 +109,9 @@ const PrivacyPage: React.FC = () => {
             </h2>
             
             <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-              <h3 className="font-semibold text-green-800 mb-3">Stripe Payment Processing</h3>
+              <h3 className="font-semibold text-green-800 mb-3">Payment Processing</h3>
               <p className="text-green-700 mb-3">
-                All payment processing is handled by Stripe, a PCI DSS compliant payment processor. We never store your credit card information on our servers.
+                Payment processing is handled by a PCI-compliant payment processor. We never store your credit card information on our servers.
               </p>
               <ul className="text-green-700 space-y-1">
                 <li>• End-to-end encryption for all transactions</li>
@@ -134,7 +134,7 @@ const PrivacyPage: React.FC = () => {
             <div className="space-y-3">
               <div className="border-l-4 border-amber-500 pl-4">
                 <h3 className="font-semibold text-gray-800">Service Providers</h3>
-                <p className="text-gray-600">Trusted partners who help us operate the platform (Supabase for data storage, Stripe for payments, email providers).</p>
+                <p className="text-gray-600">Trusted partners who help us operate the platform (Supabase for data storage, payment processing providers, email providers).</p>
               </div>
               
               <div className="border-l-4 border-amber-500 pl-4">

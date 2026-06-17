@@ -59,7 +59,7 @@ const AffiliatePromotionPage: React.FC = () => {
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Affiliate Promotion Center
+            Partner Promotion Center
           </h1>
           <p className="text-lg text-gray-600">
             Choose how you want to promote products and earn commissions
@@ -99,7 +99,7 @@ const AffiliatePromotionPage: React.FC = () => {
                     <p className="text-white/90">
                       {promotionMethod === 'store' 
                         ? 'Customize your branded storefront and share your custom domain'
-                        : 'Generate custom affiliate links and QR codes for any product'}
+                        : 'Generate custom partner links and QR codes for any product'}
                     </p>
                   </div>
                 </div>
@@ -197,7 +197,7 @@ const AffiliatePromotionPage: React.FC = () => {
 
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-600">
-              💡 <strong>Pro Tip:</strong> You can switch between modes anytime! Many affiliates start 
+              💡 <strong>Pro Tip:</strong> You can switch between modes anytime! Many partners start 
               with links to test products, then build a full store once they find what works. Or use 
               both - run a store AND share individual product links on social media.
             </p>

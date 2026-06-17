@@ -6,7 +6,7 @@ import {
   getExchangeRates, 
   convertCurrency 
 } from '../lib/geolocation';
-import { SupportedCurrency, SUPPORTED_CURRENCIES } from '../lib/stripe';
+import { SupportedCurrency, SUPPORTED_CURRENCIES } from '../lib/currency';
 
 interface GlobalContextType {
   location: LocationData | null;
@@ -197,7 +197,7 @@ export const GlobalProvider: React.FC<GlobalProviderProps> = ({ children }) => {
     
     switch (feature) {
       case 'fundraising':
-        return ['US', 'CA', 'AU', 'UK', 'DE', 'FR'].includes(country);
+        return false;
       case 'crypto':
         return ['US', 'CA', 'DE', 'NL', 'SG'].includes(country);
       default:

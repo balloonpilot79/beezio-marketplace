@@ -7,9 +7,9 @@ const AffiliateCompletePage: React.FC = () => {
       {/* Header */}
       <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-bold mb-4">🤝 Become a Beezio Affiliate</h1>
+          <h1 className="text-4xl font-bold mb-4">🤝 Become a Beezio Partner</h1>
           <p className="text-xl opacity-90">
-            Earn money by promoting products you love. No inventory, no customer service, just commissions.
+            Earn commissions by promoting products you love. No inventory, no customer service, just transparent payouts.
           </p>
         </div>
       </div>
@@ -18,7 +18,7 @@ const AffiliateCompletePage: React.FC = () => {
         
         {/* How It Works */}
         <section className="mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">How Affiliate Marketing Works</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">How Partner Marketing Works</h2>
           
           <div className="grid md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white p-6 rounded-lg shadow-sm border text-center">
@@ -37,7 +37,7 @@ const AffiliateCompletePage: React.FC = () => {
               </div>
               <h3 className="text-lg font-semibold mb-2">2. Get Your Link</h3>
               <p className="text-gray-600 text-sm">
-                Generate unique affiliate links that track your referrals automatically.
+                Generate unique partner links that track influencer attribution automatically.
               </p>
             </div>
             
@@ -89,7 +89,7 @@ const AffiliateCompletePage: React.FC = () => {
                 
                 <div className="flex justify-between items-center py-3">
                   <span className="font-medium">Payment Schedule</span>
-                  <span className="text-xl font-bold">Weekly</span>
+                  <span className="text-xl font-bold">Up to 14 days</span>
                 </div>
               </div>
             </div>
@@ -122,7 +122,7 @@ const AffiliateCompletePage: React.FC = () => {
 
         {/* Benefits */}
         <section className="mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">🎯 Why Choose Beezio Affiliate Program?</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">🎯 Why Choose Beezio Partner Program?</h2>
           
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-lg shadow-sm border">
@@ -156,14 +156,14 @@ const AffiliateCompletePage: React.FC = () => {
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <h3 className="text-xl font-semibold mb-3">💳 Fast Payments</h3>
               <p className="text-gray-600">
-                Weekly payouts via PayPal, bank transfer, or crypto. Minimum payout of just $25.
+                Payouts are issued after the standard review period to the PayPal email on file. Minimum payout is $25.
               </p>
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <h3 className="text-xl font-semibold mb-3">🤝 Dedicated Support</h3>
               <p className="text-gray-600">
-                Personal affiliate manager, training resources, and 24/7 support to maximize your earnings.
+                Personal partner support, training resources, and 24/7 help to improve your results.
               </p>
             </div>
           </div>
@@ -221,7 +221,7 @@ const AffiliateCompletePage: React.FC = () => {
           <h2 className="text-3xl font-bold text-gray-900 mb-6">🎯 Start Earning Today</h2>
           
           <div className="bg-gradient-to-r from-green-50 to-blue-50 p-8 rounded-lg border">
-            <h3 className="text-2xl font-semibold mb-4">Join Our Affiliate Program</h3>
+            <h3 className="text-2xl font-semibold mb-4">Join Our Partner Program</h3>
             <p className="text-gray-700 mb-6">
               Start earning commissions today. It's free to join, and you can begin promoting products immediately.
             </p>
@@ -231,14 +231,14 @@ const AffiliateCompletePage: React.FC = () => {
                 to="/signup"
                 className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-blue-700 transition-all duration-200 text-center"
               >
-                Join as Affiliate
+                Join as Partner
               </Link>
               
               <Link
                 to="/affiliate-dashboard-preview"
                 className="border border-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors duration-200 text-center"
               >
-                View Affiliate Dashboard
+                View Partner Dashboard
               </Link>
             </div>
           </div>
@@ -246,27 +246,27 @@ const AffiliateCompletePage: React.FC = () => {
 
         {/* FAQ */}
         <section>
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">❓ Affiliate FAQ</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">❓ Partner FAQ</h2>
           
           <div className="space-y-4">
             <details className="bg-white p-6 rounded-lg shadow-sm border">
               <summary className="font-semibold cursor-pointer">How much can I earn?</summary>
               <p className="mt-3 text-gray-600">
-                Top affiliates earn $10,000+ per month. Your earnings depend on your audience size, engagement, and the products you promote.
+                Earnings vary based on your audience, engagement, and the products you promote. There are no guarantees.
               </p>
             </details>
             
             <details className="bg-white p-6 rounded-lg shadow-sm border">
               <summary className="font-semibold cursor-pointer">Is there a cost to join?</summary>
               <p className="mt-3 text-gray-600">
-                No! Joining our affiliate program is completely free. You start earning commissions immediately without any upfront costs.
+                No. Joining our partner program is free, and you can start promoting products right away.
               </p>
             </details>
             
             <details className="bg-white p-6 rounded-lg shadow-sm border">
               <summary className="font-semibold cursor-pointer">How do I get paid?</summary>
               <p className="mt-3 text-gray-600">
-                We pay weekly via PayPal, bank transfer, or cryptocurrency. Minimum payout is $25, and payments are processed every Friday.
+                Payouts are issued after the standard review period to the PayPal email on file. Minimum payout is $25.
               </p>
             </details>
             

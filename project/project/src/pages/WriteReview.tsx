@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Star, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import { getUserProductReviewStatus, submitProductReview } from '../services/reviewService';
 
 const WriteReview: React.FC = () => {
   const { productId } = useParams();
@@ -12,6 +13,7 @@ const WriteReview: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [eligibleToReview, setEligibleToReview] = useState(true);
   
   const [review, setReview] = useState({
     rating: 5,
@@ -45,15 +47,11 @@ const WriteReview: React.FC = () => {
 
   const checkExistingReview = async () => {
     if (!user || !productId) return;
-    
-    const { data } = await supabase
-      .from('product_reviews')
-      .select('id')
-      .eq('product_id', productId)
-      .eq('reviewer_id', user.id)
-      .single();
 
-    if (data) {
+    const status = await getUserProductReviewStatus(productId, user.id);
+    setEligibleToReview(status.verifiedPurchase);
+
+    if (status.hasReviewed) {
       // User already reviewed this product
       navigate(`/product/${productId}`);
     }
@@ -66,21 +64,18 @@ const WriteReview: React.FC = () => {
     setSubmitting(true);
     setError(null);
 
-    const { error } = await supabase
-      .from('product_reviews')
-      .insert({
-        product_id: productId,
-        reviewer_id: user.id,
+    try {
+      await submitProductReview({
+        productId,
+        userId: user.id,
         rating: review.rating,
         title: review.title,
         content: review.content,
-        verified_purchase: false // TODO: Check if user actually purchased this product
+        requireVerifiedPurchase: true,
       });
-
-    if (error) {
-      setError('Failed to submit review. Please try again.');
-    } else {
       navigate(`/product/${productId}`);
+    } catch (submitError: any) {
+      setError(String(submitError?.message || 'Failed to submit review. Please try again.'));
     }
 
     setSubmitting(false);
@@ -130,7 +125,7 @@ const WriteReview: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow-sm p-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-6">Write a Review</h1>
-          
+
           {/* Product Info */}
           <div className="flex items-center space-x-4 mb-8 p-4 bg-gray-50 rounded-lg">
             {product.images?.[0] && (
@@ -199,7 +194,15 @@ const WriteReview: React.FC = () => {
 
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-                {error}
+                {error === 'Only customers who purchased this product can leave a review.'
+                  ? 'Reviews unlock after a completed purchase from this account.'
+                  : error}
+              </div>
+            )}
+
+            {!eligibleToReview && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-slate-600">
+                Reviews unlock after a completed purchase from this account.
               </div>
             )}
 
@@ -207,7 +210,7 @@ const WriteReview: React.FC = () => {
             <div className="flex space-x-4 pt-4">
               <button
                 type="submit"
-                disabled={submitting || !review.title.trim() || !review.content.trim()}
+                disabled={submitting || !review.title.trim() || !review.content.trim() || !eligibleToReview}
                 className="flex-1 bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Submitting...' : 'Submit Review'}

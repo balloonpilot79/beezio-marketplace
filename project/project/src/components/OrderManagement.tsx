@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
-import { Package, Clock, CheckCircle, XCircle, Eye } from 'lucide-react';
+import { Package, Clock, CheckCircle, XCircle, Eye, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface OrderItem {
@@ -13,19 +13,72 @@ interface OrderItem {
   products: {
     title: string;
     image_url: string;
+    shipping_options?: Array<{
+      estimated_days?: string;
+      name?: string;
+      cost?: number;
+    }>;
   };
 }
 
 interface Order {
   id: string;
+  order_number?: string | null;
   total_amount: number;
   currency: string;
   status: string;
   payment_status: string;
   billing_name: string;
   created_at: string;
+  tracking_number?: string | null;
+  tracking_url?: string | null;
+  shipping_carrier?: string | null;
   order_items: OrderItem[];
 }
+
+const parseTransitDayRange = (estimated: string | undefined): { minDays: number; maxDays: number } | null => {
+  const raw = String(estimated || '').trim();
+  if (!raw) return null;
+  const matches = raw.match(/\d+/g);
+  if (!matches || matches.length === 0) return null;
+  const numbers = matches
+    .map((value) => Number.parseInt(value, 10))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  if (numbers.length === 0) return null;
+  if (numbers.length === 1) {
+    return { minDays: numbers[0], maxDays: numbers[0] };
+  }
+  const [first, second] = numbers;
+  return { minDays: Math.min(first, second), maxDays: Math.max(first, second) };
+};
+
+const formatEstimatedArrival = (orderDate: string, estimated: string | undefined): string | null => {
+  const range = parseTransitDayRange(estimated);
+  if (!range) return null;
+  const base = new Date(orderDate);
+  if (Number.isNaN(base.getTime())) return null;
+
+  const addDays = (date: Date, days: number) => {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+  };
+
+  const minDate = addDays(base, range.minDays);
+  const maxDate = addDays(base, range.maxDays);
+  const fmt = (date: Date) =>
+    date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+
+  if (range.minDays === range.maxDays) {
+    return fmt(minDate);
+  }
+
+  return `${fmt(minDate)} - ${fmt(maxDate)}`;
+};
 
 const OrderManagement: React.FC = () => {
   const { user } = useAuth();
@@ -50,15 +103,48 @@ const OrderManagement: React.FC = () => {
             *,
             products (
               title,
-              image_url
+              image_url,
+              shipping_options
             )
           )
         `)
-        .eq('user_id', user?.id)
+        .or(`buyer_id.eq.${String(user?.id || '').trim()},user_id.eq.${String(user?.id || '').trim()}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
+
+      const orderRows = (data || []) as any[];
+      const orderIds = orderRows.map((row) => String(row?.id || '').trim()).filter(Boolean);
+      const cjMetaByOrderId: Record<string, { trackingNumber?: string; trackingUrl?: string; carrier?: string }> = {};
+
+      if (orderIds.length > 0) {
+        const { data: cjRows } = await supabase
+          .from('cj_orders')
+          .select('beezio_order_id,cj_tracking_number,cj_tracking_url,cj_logistic_name')
+          .in('beezio_order_id', orderIds);
+
+        (cjRows || []).forEach((row: any) => {
+          const key = String(row?.beezio_order_id || '').trim();
+          if (!key) return;
+          cjMetaByOrderId[key] = {
+            trackingNumber: String(row?.cj_tracking_number || '').trim() || undefined,
+            trackingUrl: String(row?.cj_tracking_url || '').trim() || undefined,
+            carrier: String(row?.cj_logistic_name || '').trim() || undefined,
+          };
+        });
+      }
+
+      const normalizedOrders: Order[] = orderRows.map((row) => {
+        const meta = cjMetaByOrderId[String(row?.id)] || {};
+        return {
+          ...row,
+          tracking_number: row?.tracking_number || meta.trackingNumber || null,
+          tracking_url: row?.tracking_url || meta.trackingUrl || null,
+          shipping_carrier: meta.carrier || null,
+        } as Order;
+      });
+
+      setOrders(normalizedOrders);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch orders');
     } finally {
@@ -166,7 +252,7 @@ const OrderManagement: React.FC = () => {
                     <div className="flex items-center space-x-3 mb-2">
                       {getStatusIcon(order.status, order.payment_status)}
                       <span className="font-semibold text-gray-900">
-                        Order #{order.id.slice(-8)}
+                        Order #{order.order_number || order.id.slice(-8)}
                       </span>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         order.payment_status === 'paid' && order.status === 'completed'
@@ -207,6 +293,39 @@ const OrderManagement: React.FC = () => {
                         <p className="text-sm text-gray-600">
                           ${item.unit_price.toFixed(2)} each
                         </p>
+                        <div className="mt-2 text-xs text-gray-600 space-y-1">
+                          {order.tracking_number ? (
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <Truck className="w-3.5 h-3.5 text-gray-500" />
+                              <span>Tracking: {order.tracking_number}</span>
+                              {order.shipping_carrier ? <span className="text-gray-500">({order.shipping_carrier})</span> : null}
+                              {order.tracking_url ? (
+                                <a
+                                  className="text-blue-600 hover:text-blue-700 underline"
+                                  href={order.tracking_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Track package
+                                </a>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Truck className="w-3.5 h-3.5 text-gray-400" />
+                              <span>Tracking will appear when this item ships.</span>
+                            </div>
+                          )}
+                          {formatEstimatedArrival(order.created_at, item.products?.shipping_options?.[0]?.estimated_days) ? (
+                            <div>
+                              Estimated arrival: {formatEstimatedArrival(order.created_at, item.products?.shipping_options?.[0]?.estimated_days)}
+                            </div>
+                          ) : item.products?.shipping_options?.[0]?.estimated_days ? (
+                            <div>
+                              Estimated transit: {item.products.shipping_options[0].estimated_days}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">

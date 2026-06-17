@@ -4,6 +4,8 @@ import type { SampleProduct } from '../data/sampleProducts';
 import { buildPricedProduct } from '../utils/pricing';
 import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
 import { getCJProductDetail } from './cjDropshipping';
+import { resolveSamplePrice } from '../utils/samplePricing';
+import { normalizeAverageRating, normalizeReviewCount } from '../utils/socialProof';
 
 export interface MarketplaceProduct extends SampleProduct {}
 
@@ -21,9 +23,65 @@ type ProductRowWithJoins = ProductRow & {
 const PLACEHOLDER_IMAGE = '/api/placeholder/300/200';
 const PUBLIC_BUCKET_BASE = `${supabaseUrl}/storage/v1/object/public/product-images`;
 
+const tryDecodeURIComponent = (value: string): string => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+const extractFirstStringFromJson = (value: unknown): string | null => {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const extracted = extractFirstStringFromJson(entry);
+      if (extracted) return extracted;
+    }
+    return null;
+  }
+  if (typeof value === 'object') {
+    const candidate =
+      (value as any).image_url ||
+      (value as any).url ||
+      (value as any).src ||
+      (value as any).path ||
+      null;
+    return typeof candidate === 'string' ? candidate : null;
+  }
+  return null;
+};
+
+const resolveJsonEncodedImageString = (raw: string): string | null => {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const decoded = /%5B|%7B|%22/i.test(trimmed) ? tryDecodeURIComponent(trimmed) : trimmed;
+  const decodedTrimmed = decoded.trim();
+  if (!decodedTrimmed.startsWith('[') && !decodedTrimmed.startsWith('{')) return null;
+
+  try {
+    const parsed = JSON.parse(decodedTrimmed);
+    const candidate = extractFirstStringFromJson(parsed);
+    return typeof candidate === 'string' ? candidate.trim() : null;
+  } catch {
+    return null;
+  }
+};
+
 // Normalize any stored path (full URL, bucket-prefixed path, or bare filename) to a usable public URL
-const resolveImageUrl = (path?: string | null) => {
+export const resolveImageUrl = (path?: string | null) => {
   if (!path) return PLACEHOLDER_IMAGE;
+  if (path === PLACEHOLDER_IMAGE) return PLACEHOLDER_IMAGE;
+  if (path.startsWith('/api/placeholder')) return PLACEHOLDER_IMAGE;
+  if (path.startsWith('api/placeholder')) return PLACEHOLDER_IMAGE;
+
+  // Handle JSON/URL-encoded JSON strings like '["https://..."]' or '%5B%22https...%22%5D'
+  const jsonCandidate = typeof path === 'string' ? resolveJsonEncodedImageString(path) : null;
+  if (jsonCandidate) {
+    return resolveImageUrl(jsonCandidate);
+  }
 
   // If we already have a full URL, just use it
   if (path.startsWith('http')) {
@@ -40,6 +98,10 @@ const resolveImageUrl = (path?: string | null) => {
 
   // If someone stored "product-images/..." keep the inner path
   cleaned = cleaned.replace(/^product-images\//, '');
+
+  if (!cleaned || cleaned.startsWith('api/placeholder')) {
+    return PLACEHOLDER_IMAGE;
+  }
 
   const { data } = supabase.storage.from('product-images').getPublicUrl(cleaned);
   if (data?.publicUrl) {
@@ -61,6 +123,11 @@ const mapProductRowToMarketplaceProduct = (row: ProductRowWithJoins): Marketplac
     (row as any).thumbnail ||
     row.images?.[0];
 
+  const lineage = String((row as any).lineage || '').toUpperCase();
+  const sampleEligible = lineage === 'CJ' || lineage === 'BEEZIO_HOUSE';
+  const sampleEnabled = sampleEligible && (row as any).sample_enabled !== false;
+  const reviewCount = normalizeReviewCount((row as any).review_count);
+  const averageRating = normalizeAverageRating((row as any).average_rating, reviewCount);
   const baseProduct: MarketplaceProduct = {
     id: row.id,
     name: row.title,
@@ -71,12 +138,12 @@ const mapProductRowToMarketplaceProduct = (row: ProductRowWithJoins): Marketplac
     images: row.images?.map(resolveImageUrl) ?? (primaryImage ? [resolveImageUrl(primaryImage)] : undefined),
     lineage: (row as any).lineage,
     dropship_provider: (row as any).dropship_provider,
-    rating: 4.8,
-    category: row.categories?.name ?? 'Marketplace',
+    rating: averageRating,
+    category: row.categories?.name ?? 'Other',
     description: sanitizeDescriptionForDisplay(row.description ?? '', (row as any).lineage),
     seller: row.profiles?.full_name ?? 'Marketplace Seller',
     sellerId: row.seller_id ?? undefined,
-    reviews: row.views_count ?? 0,
+    reviews: reviewCount,
     commission_rate: row.commission_rate ?? 0,
     commission_type: row.commission_type ?? 'percentage',
     flat_commission_amount: row.flat_commission_amount ?? 0,
@@ -85,10 +152,23 @@ const mapProductRowToMarketplaceProduct = (row: ProductRowWithJoins): Marketplac
     shipping_price: (row as any).shipping_price ?? row.shipping_cost ?? 0,
     shipping_cost: (row as any).shipping_price ?? row.shipping_cost ?? 0,
     stock_quantity: row.stock_quantity ?? undefined,
-    created_at: row.created_at ?? new Date().toISOString()
+    created_at: row.created_at ?? new Date().toISOString(),
+    sample_enabled: sampleEnabled,
+    sample_price: (row as any).sample_price ?? undefined,
   };
 
-  return buildPricedProduct(baseProduct);
+  const priced = buildPricedProduct(baseProduct);
+  const resolvedSamplePrice = resolveSamplePrice({
+    sample_enabled: sampleEnabled,
+    sample_price: (row as any).sample_price,
+    base_cost: (row as any).cj_cost ?? (row as any).base_cost ?? (row as any).seller_amount ?? (row as any).seller_ask ?? row.price,
+  });
+
+  return {
+    ...priced,
+    sample_enabled: sampleEnabled,
+    sample_price: resolvedSamplePrice ?? undefined,
+  };
 };
 
 const baseSelectWithCategories = `*, profiles:seller_id ( full_name ), categories:category_id ( name )`;
@@ -116,8 +196,6 @@ const fetchProductsWithSelfHealing = async (params: {
     ? []
     : [
         { column: 'is_active', value: true },
-        { column: 'is_promotable', value: true },
-        { column: 'affiliate_enabled', value: true },
       ];
 
   let lastError: any = null;
@@ -292,7 +370,7 @@ const parseLooseNumber = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const ATTRIBUTE_PART_SPLIT = /[|,;\/]+/;
+const ATTRIBUTE_PART_SPLIT = /[|,;/]+/;
 
 // The CJ import pipeline sometimes stores raw CJ variants in `products.variants` JSONB.
 // This helper mirrors the server-side attribute parsing so the UI can render Size/Color selectors

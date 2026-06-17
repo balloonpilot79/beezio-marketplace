@@ -1,31 +1,30 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import { apiPost } from '../utils/netlifyApi';
 
 interface StoreContactModalProps {
   isOpen: boolean;
   onClose: () => void;
   ownerId: string;
-  ownerType: 'seller' | 'affiliate' | 'fundraiser';
+  ownerType: 'seller' | 'affiliate';
   storeName?: string;
 }
 
 const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, ownerId, ownerType, storeName }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<'idle' | 'starting' | 'sending' | 'error'>('idle');
-
   const [resolvedOwnerUserId, setResolvedOwnerUserId] = useState<string>('');
+  const [resolvedOwnerProfileId, setResolvedOwnerProfileId] = useState<string>('');
+  const [useLegacyMessaging, setUseLegacyMessaging] = useState(false);
 
   const canMessage = Boolean(user?.id) && Boolean(resolvedOwnerUserId) && resolvedOwnerUserId !== user?.id;
 
   const headerLabel = useMemo(() => {
     if (ownerType === 'seller') return 'Message Seller';
     if (ownerType === 'affiliate') return 'Message Store Owner';
-    if (ownerType === 'fundraiser') return 'Message Fundraiser';
     return 'Message';
   }, [ownerType]);
 
@@ -38,12 +37,22 @@ const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, 
     setMessages(Array.isArray(data) ? data : []);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const apiSession = sessionData?.session ?? null;
-      await apiPost('/.netlify/functions/mark-store-conversation-read', apiSession, { conversationId: id });
+      await supabase.functions.invoke('mark-store-conversation-read', { body: { conversationId: id } });
     } catch {
       // non-fatal
     }
+  };
+
+  const loadLegacyMessages = async (profileId: string) => {
+    const senderEmail = String(user?.email || '').trim();
+    if (!senderEmail) return;
+    const { data } = await supabase
+      .from('store_messages')
+      .select('id, sender_name, sender_email, subject, message, created_at')
+      .eq('store_owner_id', profileId)
+      .eq('sender_email', senderEmail)
+      .order('created_at', { ascending: true });
+    setMessages(Array.isArray(data) ? data : []);
   };
 
   useEffect(() => {
@@ -53,21 +62,24 @@ const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, 
     setMessages([]);
     setConversationId(null);
     setStatus('idle');
+    setUseLegacyMessaging(false);
 
     const resolveOwner = async () => {
       const raw = String(ownerId || '').trim();
       if (!raw) {
         setResolvedOwnerUserId('');
+        setResolvedOwnerProfileId('');
         return;
       }
-      // ownerId might be profiles.id or auth.users.id; resolve to auth.users.id for messaging tables.
       const { data } = await supabase
         .from('profiles')
         .select('user_id')
         .or(`id.eq.${raw},user_id.eq.${raw}`)
         .maybeSingle();
-      const uid = String((data as any)?.user_id || raw);
-      setResolvedOwnerUserId(uid);
+      const resolvedUserId = String((data as any)?.user_id || raw);
+      const resolvedProfileId = String((data as any)?.id || raw);
+      setResolvedOwnerUserId(resolvedUserId);
+      setResolvedOwnerProfileId(resolvedProfileId);
     };
 
     void resolveOwner();
@@ -80,20 +92,52 @@ const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, 
     const start = async () => {
       setStatus('starting');
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const apiSession = sessionData?.session ?? null;
-        const data = await apiPost<{ conversation: { id: string } }>(
-          '/.netlify/functions/start-store-conversation',
-          apiSession,
-          { ownerId: resolvedOwnerUserId, ownerType, storeName: storeName || null }
-        );
+        const { data, error } = await supabase.functions.invoke('start-store-conversation', {
+          body: { ownerId: resolvedOwnerUserId, ownerType, storeName: storeName || null },
+        });
+        if (error) throw error;
         const id = String((data as any)?.conversation?.id || '');
         if (!id) throw new Error('Failed to start conversation');
         setConversationId(id);
         await loadMessages(id);
       } catch (e) {
         console.error(e);
-        setStatus('error');
+        try {
+          const { data: convo, error: convoError } = await supabase
+            .from('store_conversations')
+            .upsert(
+              {
+                owner_id: resolvedOwnerUserId,
+                owner_type: ownerType,
+                customer_id: user?.id,
+                store_name: storeName || null,
+              },
+              { onConflict: 'owner_id,owner_type,customer_id' }
+            )
+            .select('id')
+            .single();
+          if (convoError) throw convoError;
+          const directId = String((convo as any)?.id || '');
+          if (!directId) throw new Error('Failed to create conversation');
+          setConversationId(directId);
+          await supabase
+            .from('store_conversation_participants')
+            .upsert(
+              [
+                { conversation_id: directId, user_id: resolvedOwnerUserId },
+                { conversation_id: directId, user_id: user?.id },
+              ],
+              { onConflict: 'conversation_id,user_id' }
+            );
+          await loadMessages(directId);
+        } catch {
+          if (resolvedOwnerProfileId) {
+            setUseLegacyMessaging(true);
+            await loadLegacyMessages(resolvedOwnerProfileId);
+          } else {
+            setStatus('error');
+          }
+        }
       } finally {
         setStatus('idle');
       }
@@ -103,17 +147,37 @@ const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, 
   }, [isOpen, canMessage, resolvedOwnerUserId, ownerType, storeName]);
 
   const send = async () => {
-    if (!conversationId) return;
     const body = String(input || '').trim();
     if (!body) return;
 
     setStatus('sending');
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const apiSession = sessionData?.session ?? null;
-      await apiPost('/.netlify/functions/send-store-message', apiSession, { conversationId, body });
-      setInput('');
-      await loadMessages(conversationId);
+      if (useLegacyMessaging) {
+        const senderName = String(profile?.full_name || user?.email || 'Customer');
+        const senderEmail = String(user?.email || 'unknown@example.com');
+        const { error } = await supabase.from('store_messages').insert({
+          store_owner_id: resolvedOwnerProfileId,
+          store_type: ownerType,
+          sender_name: senderName,
+          sender_email: senderEmail,
+          subject: storeName ? `Message for ${storeName}` : 'Store message',
+          message: body,
+          status: 'unread',
+        });
+        if (error) throw error;
+        setInput('');
+        if (resolvedOwnerProfileId) {
+          await loadLegacyMessages(resolvedOwnerProfileId);
+        }
+      } else {
+        if (!conversationId) return;
+        const { error } = await supabase.functions.invoke('send-store-message', {
+          body: { conversationId, body },
+        });
+        if (error) throw error;
+        setInput('');
+        await loadMessages(conversationId);
+      }
     } catch (e) {
       console.error(e);
       setStatus('error');
@@ -147,12 +211,12 @@ const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, 
               <h2 className="text-2xl font-bold text-gray-900">{headerLabel}</h2>
               <p className="text-xs text-green-600 font-semibold flex items-center gap-1">
                 <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                Protected platform messaging - logged and auditable
+                {useLegacyMessaging ? 'Messages are delivered to the store inbox' : 'Messages are delivered in-app'}
               </p>
             </div>
           </div>
           <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
-            Messages stay inside Beezio to protect buyers and sellers. Replies happen in-dashboard, and the full history is retained.
+            Your conversation stays in the store inbox and is logged for support.
           </p>
         </div>
 
@@ -162,7 +226,7 @@ const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, 
           </div>
         ) : resolvedOwnerUserId === user.id ? (
           <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
-            This is your store. Reply to customers from your dashboard inbox.
+            This is your store. Customer replies are sent by email for now.
           </div>
         ) : (
           <>
@@ -177,14 +241,15 @@ const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, 
                     <div
                       key={m.id}
                       className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
-                        m.sender_id === user.id
+                        !useLegacyMessaging && m.sender_id === user.id
                           ? 'ml-auto bg-green-600 text-white'
                           : 'bg-white text-gray-900 border border-gray-200'
                       }`}
                     >
-                      {m.body}
-                      <div className={`mt-1 text-[11px] ${m.sender_id === user.id ? 'text-green-100' : 'text-gray-500'}`}>
+                      {useLegacyMessaging ? m.message : m.body}
+                      <div className={`mt-1 text-[11px] ${!useLegacyMessaging && m.sender_id === user.id ? 'text-green-100' : 'text-gray-500'}`}>
                         {new Date(m.created_at).toLocaleString()}
+                        {useLegacyMessaging && m.sender_name ? ` · ${m.sender_name}` : ''}
                       </div>
                     </div>
                   ))}

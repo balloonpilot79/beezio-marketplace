@@ -53,16 +53,25 @@ serve(async (req) => {
     // Resolve profile id
     const { data: profileRow } = await supabaseAdmin
       .from('profiles')
-      .select('id, user_id, stripe_account_id, seller_verification_status, identity_verification_status')
+      .select('id, user_id, seller_verification_status, identity_verification_status')
       .or(`id.eq.${userData.user.id},user_id.eq.${userData.user.id}`)
       .maybeSingle()
 
     const profileId = profileRow?.id ? String(profileRow.id) : null
     if (!profileId) return json(400, { error: 'Missing profile for user' })
 
-    // Must have Stripe connected to receive transfers/payouts
-    const stripeAccountId = (profileRow as any)?.stripe_account_id ? String((profileRow as any).stripe_account_id) : ''
-    if (!stripeAccountId) return json(400, { error: 'Connect Stripe before requesting a payout' })
+    const paypalRole = requestedRole === 'seller' ? 'SELLER' : 'PARTNER'
+    const { data: paypalAccount } = await supabaseAdmin
+      .from('paypal_accounts')
+      .select('paypal_email, is_verified')
+      .eq('user_id', profileId)
+      .eq('role', paypalRole)
+      .maybeSingle()
+
+    const payoutEmail = String((paypalAccount as any)?.paypal_email || '').trim()
+    if (!payoutEmail || !(paypalAccount as any)?.is_verified) {
+      return json(400, { error: 'Connect and verify your PayPal payout email before requesting a payout' })
+    }
 
     // Sellers must pass verification before payouts (fraud/shipping risk control).
     if (requestedRole === 'seller') {
@@ -102,6 +111,8 @@ serve(async (req) => {
         user_id: profileId,
         role: requestedRole,
         amount: rounded,
+        payout_provider: 'paypal',
+        payout_destination_email: payoutEmail,
         status: 'pending',
         requested_at: new Date().toISOString(),
       })

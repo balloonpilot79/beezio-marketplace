@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700;800&family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap');
 @import './styles/bzo-theme.css';
 @tailwind base;
 @tailwind components;
@@ -94,7 +94,6 @@ body {
   a[href] {
     min-height: 44px; /* Apple's minimum touch target size */
     min-width: 44px;
-    padding: 12px 24px;
   }
 }
 
@@ -305,4 +304,115 @@ input:focus, textarea:focus, select:focus {
   .bzo-dashboard-tabs {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+
+/* Marketing page visual layers (Home + How It Works) */
+.bzo-marketing-shell {
+  position: relative;
+  overflow-x: clip;
+  background:
+    radial-gradient(circle at 12% 16%, rgba(255, 203, 5, 0.18) 0, rgba(255, 203, 5, 0) 35%),
+    radial-gradient(circle at 88% 28%, rgba(16, 24, 32, 0.07) 0, rgba(16, 24, 32, 0) 32%),
+    linear-gradient(180deg, #fffdf5 0%, #ffffff 42%, #f7faf8 100%);
+}
+
+.bzo-marketing-shell::before,
+.bzo-marketing-shell::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  border-radius: 9999px;
+  filter: blur(52px);
+  opacity: 0.45;
+}
+
+.bzo-marketing-shell::before {
+  width: 18rem;
+  height: 18rem;
+  left: -6rem;
+  top: 8rem;
+  background: rgba(255, 203, 5, 0.35);
+}
+
+.bzo-marketing-shell::after {
+  width: 16rem;
+  height: 16rem;
+  right: -5rem;
+  top: 24rem;
+  background: rgba(132, 204, 22, 0.28);
+}
+
+.bzo-marketing-band {
+  border: 1px solid #f3e9ca;
+  background: linear-gradient(130deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 252, 237, 0.78) 100%);
+  box-shadow: 0 16px 44px -34px rgba(15, 23, 42, 0.45);
+}
+
+@media (max-width: 768px) {
+  .bzo-marketing-shell::before,
+  .bzo-marketing-shell::after {
+    opacity: 0.26;
+  }
+}
+
+/* Dashboard palette normalization: keep dashboard accents aligned to Beezio gold/black. */
+.dashboard-theme :is(
+  [class*="text-blue-"], [class*="text-green-"], [class*="text-purple-"], [class*="text-indigo-"],
+  [class*="text-emerald-"], [class*="text-red-"], [class*="text-pink-"], [class*="text-rose-"],
+  [class*="text-violet-"], [class*="text-fuchsia-"], [class*="text-teal-"], [class*="text-cyan-"],
+  [class*="text-lime-"]
+) {
+  color: #92400e !important;
+}
+
+.dashboard-theme :is(
+  [class*="border-blue-"], [class*="border-green-"], [class*="border-purple-"], [class*="border-indigo-"],
+  [class*="border-emerald-"], [class*="border-red-"], [class*="border-pink-"], [class*="border-rose-"],
+  [class*="border-violet-"], [class*="border-fuchsia-"], [class*="border-teal-"], [class*="border-cyan-"],
+  [class*="border-lime-"]
+) {
+  border-color: #fde68a !important;
+}
+
+.dashboard-theme :is(
+  [class*="bg-blue-"], [class*="bg-green-"], [class*="bg-purple-"], [class*="bg-indigo-"],
+  [class*="bg-emerald-"], [class*="bg-red-"], [class*="bg-pink-"], [class*="bg-rose-"],
+  [class*="bg-violet-"], [class*="bg-fuchsia-"], [class*="bg-teal-"], [class*="bg-cyan-"],
+  [class*="bg-lime-"]
+) {
+  background-color: #fffbeb !important;
+}
+
+.dashboard-theme :is(
+  [class*="hover:bg-blue-"], [class*="hover:bg-green-"], [class*="hover:bg-purple-"], [class*="hover:bg-indigo-"],
+  [class*="hover:bg-emerald-"], [class*="hover:bg-red-"], [class*="hover:bg-pink-"], [class*="hover:bg-rose-"],
+  [class*="hover:bg-violet-"], [class*="hover:bg-fuchsia-"], [class*="hover:bg-teal-"], [class*="hover:bg-cyan-"],
+  [class*="hover:bg-lime-"]
+):hover {
+  background-color: #fef3c7 !important;
+}
+
+.dashboard-theme :is(
+  [class*="from-blue-"], [class*="from-green-"], [class*="from-purple-"], [class*="from-indigo-"],
+  [class*="from-emerald-"], [class*="from-red-"], [class*="from-pink-"], [class*="from-rose-"],
+  [class*="from-violet-"], [class*="from-fuchsia-"], [class*="from-teal-"], [class*="from-cyan-"],
+  [class*="from-lime-"]
+) {
+  --tw-gradient-from: #fef3c7 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(254 243 199 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.dashboard-theme :is(
+  [class*="to-blue-"], [class*="to-green-"], [class*="to-purple-"], [class*="to-indigo-"],
+  [class*="to-emerald-"], [class*="to-red-"], [class*="to-pink-"], [class*="to-rose-"],
+  [class*="to-violet-"], [class*="to-fuchsia-"], [class*="to-teal-"], [class*="to-cyan-"],
+  [class*="to-lime-"]
+) {
+  --tw-gradient-to: #fbbf24 var(--tw-gradient-to-position) !important;
+}
+
+.dashboard-theme :is([class*="bg-blue-"], [class*="bg-green-"], [class*="bg-purple-"], [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-red-"]) :is([class*="text-white"], .text-white),
+.dashboard-theme :is([class*="bg-blue-"], [class*="bg-green-"], [class*="bg-purple-"], [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-red-"]).text-white {
+  color: #111827 !important;
 }

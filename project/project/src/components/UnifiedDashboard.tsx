@@ -1,91 +1,447 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import { 
-  User, 
-  ShoppingCart, 
-  Store, 
-  Target, 
-  Heart,
-  Settings,
-  LogOut,
-  ChevronDown,
-  Plus,
-  Check
+import { canAccessCJImport } from '../utils/cjImportAccess';
+import { copyTextToClipboard } from '../utils/clipboard';
+import { getInfluencerPublicCode } from '../utils/promoLinks';
+import { supabase } from '../lib/supabase';
+import {
+  AlertTriangle,
+  Copy,
+  Link as LinkIcon,
+  Truck,
 } from 'lucide-react';
-import EnhancedSellerDashboard from './EnhancedSellerDashboard';
-import EnhancedAffiliateDashboard from './EnhancedAffiliateDashboard';
-import EnhancedBuyerDashboard from './EnhancedBuyerDashboard';
+import EnhancedSellerDashboard, { type SellerDashboardTab } from './EnhancedSellerDashboard';
+import EnhancedBuyerDashboard, { type BuyerDashboardTab } from './EnhancedBuyerDashboard';
+import PlatformAdminDashboard from './PlatformAdminDashboard';
 
-const UnifiedDashboard: React.FC = () => {
-  const { user, profile, userRoles, currentRole, switchRole, addRole, signOut, loading: authLoading } = useAuth();
+interface UnifiedDashboardProps {
+  initialSellerTab?: SellerDashboardTab;
+  initialSection?: 'buyer' | 'seller' | 'affiliate' | 'influencer' | 'admin';
+}
+
+type DashboardSection = 'buyer' | 'seller' | 'affiliate' | 'influencer' | 'admin';
+type BusinessDashboardSection = Extract<DashboardSection, 'seller' | 'affiliate' | 'influencer'>;
+
+type SellerFulfillmentAlert = {
+  needsOrdering: number;
+  total: number;
+};
+
+const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, initialSection }) => {
+  const { user, profile, userRoles, currentRole, addRole, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
-  const [showAddRoleMenu, setShowAddRoleMenu] = useState(false);
-  const [switchingRole, setSwitchingRole] = useState(false);
+  const location = useLocation();
 
-  const roleConfig = {
-    buyer: {
-      name: 'Buyer',
-      icon: ShoppingCart,
-      color: 'blue',
-      gradient: 'from-blue-500 to-blue-600',
-      description: 'Shop and purchase products'
-    },
-    seller: {
-      name: 'Seller',
-      icon: Store,
-      color: 'orange',
-      gradient: 'from-orange-500 to-orange-600',
-      description: 'Manage your store and products'
-    },
-    affiliate: {
-      name: 'Affiliate',
-      icon: Target,
-      color: 'purple',
-      gradient: 'from-purple-500 to-purple-600',
-      description: 'Promote products and earn commissions'
-    },
-    fundraiser: {
-      name: 'Fundraiser',
-      icon: Heart,
-      color: 'pink',
-      gradient: 'from-pink-500 to-pink-600',
-      description: 'Raise funds for causes'
+  const normalizedProfileRole = String(profile?.primary_role || profile?.role || '').toLowerCase();
+  const normalizedUserRoles = (userRoles || []).map((role) => String(role || '').toLowerCase());
+  const isAdminUser = Boolean(
+    normalizedUserRoles.includes('admin') ||
+    normalizedProfileRole === 'admin' ||
+    canAccessCJImport(user?.email)
+  );
+
+  const effectiveRoles = useMemo(() => {
+    const activeRoles = new Set<string>();
+    const normalizedCurrentRole = String(currentRole || '').toLowerCase();
+    if (normalizedCurrentRole) activeRoles.add(normalizedCurrentRole);
+    if (normalizedProfileRole) activeRoles.add(normalizedProfileRole);
+    normalizedUserRoles.forEach((role) => activeRoles.add(role));
+    if (activeRoles.has('partner')) {
+      activeRoles.delete('partner');
+      activeRoles.add('affiliate');
+    }
+    if (isAdminUser) activeRoles.add('admin');
+    return Array.from(activeRoles);
+  }, [currentRole, isAdminUser, normalizedProfileRole, normalizedUserRoles]);
+
+  const visibleRoles = useMemo<DashboardSection[]>(() => {
+    const roles = new Set<DashboardSection>(['buyer']);
+    if (effectiveRoles.includes('seller')) roles.add('seller');
+    if (effectiveRoles.includes('affiliate')) roles.add('affiliate');
+    if (effectiveRoles.includes('influencer')) roles.add('influencer');
+    if (isAdminUser) {
+      roles.add('seller');
+      roles.add('affiliate');
+      roles.add('influencer');
+      roles.add('admin');
+    }
+    return Array.from(roles);
+  }, [effectiveRoles, isAdminUser]);
+
+  const hasBusinessSectionAccess = (section: string): section is BusinessDashboardSection => {
+    if (section !== 'seller' && section !== 'affiliate' && section !== 'influencer') return false;
+    return isAdminUser || effectiveRoles.includes(section);
+  };
+
+  const firstBusinessSection = useMemo<BusinessDashboardSection | null>(() => {
+    if (visibleRoles.includes('seller')) return 'seller';
+    if (visibleRoles.includes('affiliate')) return 'affiliate';
+    if (visibleRoles.includes('influencer')) return 'influencer';
+    return null;
+  }, [visibleRoles]);
+
+  const defaultSection = useMemo<DashboardSection>(() => {
+    if (initialSection === 'buyer') return 'buyer';
+    if (initialSection === 'admin' && visibleRoles.includes('admin')) return 'admin';
+    if (initialSection && hasBusinessSectionAccess(initialSection)) return 'seller';
+    if (firstBusinessSection) return 'seller';
+    return 'buyer';
+  }, [firstBusinessSection, initialSection, visibleRoles]);
+
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const requestedSection = String(searchParams.get('section') || '').toLowerCase();
+  const requestedBusinessSection = hasBusinessSectionAccess(requestedSection) ? requestedSection : null;
+  const isUnauthorizedBusinessSectionRequest =
+    requestedSection === 'seller' || requestedSection === 'affiliate' || requestedSection === 'influencer';
+  const isFallbackBusinessHydration =
+    Boolean(user) &&
+    Boolean((profile as any)?.__is_fallback) &&
+    isUnauthorizedBusinessSectionRequest;
+  const businessSectionForShell = requestedBusinessSection || firstBusinessSection;
+  const activeSection: DashboardSection =
+    requestedSection === 'buyer'
+      ? 'buyer'
+      : requestedSection === 'admin' && visibleRoles.includes('admin')
+      ? 'admin'
+      : isFallbackBusinessHydration
+      ? 'seller'
+      : isUnauthorizedBusinessSectionRequest && !requestedBusinessSection
+      ? 'buyer'
+      : requestedBusinessSection
+      ? 'seller'
+      : defaultSection;
+
+  const requestedTab = String(searchParams.get('tab') || '').toLowerCase();
+
+  const [sellerTab, setSellerTab] = useState<SellerDashboardTab>(initialSellerTab || 'products');
+  const [buyerTab, setBuyerTab] = useState<BuyerDashboardTab>('overview');
+  const [copiedInvite, setCopiedInvite] = useState(false);
+  const [sellerFulfillmentAlert, setSellerFulfillmentAlert] = useState<SellerFulfillmentAlert | null>(null);
+  const [sellerFulfillmentAlertDismissed, setSellerFulfillmentAlertDismissed] = useState(false);
+  const [recruiterStoreSlug, setRecruiterStoreSlug] = useState('');
+  const [recruiterStoreName, setRecruiterStoreName] = useState('');
+
+  const sellerTabList: SellerDashboardTab[] = [
+    'products',
+    'orders',
+    'financials',
+    'links',
+    'single-product',
+    'influencer-promo',
+    'bulk-upload',
+    'customers',
+    'analytics',
+    'integrations',
+    'store-customization',
+    'messages',
+    'support'
+  ];
+  const buyerTabList: BuyerDashboardTab[] = [
+    'overview',
+    'orders',
+    'purchases',
+    'wishlist',
+    'recommendations',
+    'affiliates',
+    'watchlist',
+    'community',
+    'support',
+  ];
+  useEffect(() => {
+    if (activeSection === 'buyer') {
+      if (!buyerTabList.includes(requestedTab as BuyerDashboardTab)) {
+        setBuyerTab('overview');
+        return;
+      }
+      setBuyerTab(requestedTab as BuyerDashboardTab);
+      return;
+    }
+    if (initialSellerTab && !requestedTab) {
+      setSellerTab(initialSellerTab);
+      return;
+    }
+    if (activeSection !== 'seller') return;
+    if (requestedTab === 'fulfillment' || requestedTab === 'orders') {
+      setSellerTab('orders');
+      return;
+    }
+    if (requestedTab === 'overview') {
+      setSellerTab('products');
+      return;
+    }
+    if (requestedTab === 'earnings' || requestedTab === 'payouts') {
+      setSellerTab('financials');
+      return;
+    }
+    if (!sellerTabList.includes(requestedTab as SellerDashboardTab)) return;
+    setSellerTab(requestedTab as SellerDashboardTab);
+  }, [activeSection, initialSellerTab, requestedTab]);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (activeSection === 'admin') return;
+    if (activeSection !== 'buyer' && !effectiveRoles.includes(activeSection)) {
+      return;
+    }
+    if (activeSection === 'buyer' && !effectiveRoles.includes('buyer')) {
+      void addRole('buyer');
+    }
+  }, [activeSection, addRole, authLoading, effectiveRoles, user]);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (visibleRoles.length > 0) return;
+    navigate('/marketplace', { replace: true });
+  }, [authLoading, navigate, user, visibleRoles.length]);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/', { replace: true });
+    }
+  }, [authLoading, navigate, user]);
+
+  useEffect(() => {
+    if (authLoading || isFallbackBusinessHydration) return;
+    if (!requestedSection || activeSection === requestedSection) return;
+    const requestedBusiness =
+      requestedSection === 'seller' || requestedSection === 'affiliate' || requestedSection === 'influencer';
+    if (requestedBusiness && !requestedBusinessSection) {
+      navigate('/dashboard?section=buyer&tab=orders', { replace: true });
+      return;
+    }
+    if (activeSection === 'buyer') {
+      navigate(`/dashboard?section=buyer${requestedTab ? `&tab=${encodeURIComponent(requestedTab)}` : ''}`, { replace: true });
+      return;
+    }
+    if (activeSection === 'seller' && businessSectionForShell) {
+      navigate(`/dashboard?section=${businessSectionForShell}${requestedTab ? `&tab=${encodeURIComponent(requestedTab)}` : ''}`, { replace: true });
+    }
+  }, [activeSection, authLoading, businessSectionForShell, isFallbackBusinessHydration, navigate, requestedBusinessSection, requestedSection, requestedTab]);
+
+  useEffect(() => {
+    if (!user || !visibleRoles.includes('seller')) {
+      setSellerFulfillmentAlert(null);
+      setSellerFulfillmentAlertDismissed(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadSellerFulfillmentAlert = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) return;
+
+        const response = await fetch('/.netlify/functions/manual-fulfillment-queue', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ action: 'list', scope: 'seller' }),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) return;
+
+        const needsOrdering = Number((payload as any)?.summary?.needsOrdering || 0);
+        const total = Number((payload as any)?.summary?.total || 0);
+        if (cancelled) return;
+
+        if (needsOrdering > 0) {
+          setSellerFulfillmentAlert({ needsOrdering, total });
+          try {
+            const dismissalKey = `beezio_seller_fulfillment_alert_${user.id}_${needsOrdering}`;
+            setSellerFulfillmentAlertDismissed(sessionStorage.getItem(dismissalKey) === 'dismissed');
+          } catch {
+            setSellerFulfillmentAlertDismissed(false);
+          }
+          return;
+        }
+
+        setSellerFulfillmentAlert(null);
+        setSellerFulfillmentAlertDismissed(false);
+      } catch {
+        if (!cancelled) {
+          setSellerFulfillmentAlert(null);
+        }
+      }
+    };
+
+    void loadSellerFulfillmentAlert();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, visibleRoles]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadRecruiterStoreIdentity = async () => {
+      const profileId = String((profile as any)?.id || '').trim();
+      if (!profileId) {
+        if (!cancelled) {
+          setRecruiterStoreSlug('');
+          setRecruiterStoreName('');
+        }
+        return;
+      }
+
+      try {
+        const [affiliateStoreRes, affiliateSettingsRes] = await Promise.all([
+          supabase
+            .from('affiliate_stores')
+            .select('store_slug, store_name')
+            .eq('profile_id', profileId)
+            .maybeSingle(),
+          supabase
+            .from('affiliate_store_settings')
+            .select('subdomain, store_name')
+            .eq('affiliate_id', profileId)
+            .maybeSingle(),
+        ]);
+
+        if (cancelled) return;
+
+        const resolvedSlug = String(
+          (affiliateStoreRes.data as any)?.store_slug ||
+          (affiliateSettingsRes.data as any)?.subdomain ||
+          (profile as any)?.store_slug ||
+          (profile as any)?.subdomain ||
+          ''
+        ).trim();
+        const resolvedName = String(
+          (affiliateStoreRes.data as any)?.store_name ||
+          (affiliateSettingsRes.data as any)?.store_name ||
+          ''
+        ).trim();
+
+        setRecruiterStoreSlug(resolvedSlug);
+        setRecruiterStoreName(resolvedName);
+      } catch {
+        if (!cancelled) {
+          setRecruiterStoreSlug(String((profile as any)?.store_slug || (profile as any)?.subdomain || '').trim());
+          setRecruiterStoreName('');
+        }
+      }
+    };
+
+    void loadRecruiterStoreIdentity();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile]);
+
+  const recruiterCode = useMemo(() => {
+    return getInfluencerPublicCode({
+      username: (profile as any)?.username,
+      storeSlug: recruiterStoreSlug || (profile as any)?.store_slug || (profile as any)?.subdomain || (profile as any)?.slug,
+      storeName: recruiterStoreName,
+      referralCode: (profile as any)?.referral_code,
+      profileId: (profile as any)?.id,
+    });
+  }, [profile, recruiterStoreName, recruiterStoreSlug]);
+
+  const recruiterInviteLink = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    if (!recruiterCode) return '';
+    return `${window.location.origin}/i/${encodeURIComponent(recruiterCode)}`;
+  }, [recruiterCode]);
+
+  const sellerDashboardCopy = useMemo(() => {
+    if (sellerTab === 'single-product') {
+      return {
+        title: 'Single Product Promo Studio',
+        description: 'Pick one seller or affiliate product and promote it with direct links, landing pages, QR codes, social copy, email, SMS, posters, scripts, and embeds.',
+      };
+    }
+    if (sellerTab === 'influencer-promo') {
+      return {
+        title: 'Recruit Sellers and Affiliates',
+        description: 'Use your direct seller and affiliate signup links to recruit under your influencer code. Financial totals are kept in the Financials tab.',
+      };
+    }
+    if (sellerTab === 'financials') {
+      return {
+        title: 'Financials',
+        description: 'Track seller sales, affiliate sales, influencer payments, held funds, available payout amounts, and the next Beezio payday.',
+      };
+    }
+    if (businessSectionForShell === 'affiliate') {
+      return {
+        title: 'Affiliate Account',
+        description: 'See the sales you drove, what you earned, and what to promote next.',
+      };
+    }
+    if (businessSectionForShell === 'influencer') {
+      return {
+        title: 'Influencer Account',
+        description: 'Track recruited sales activity, progress over time, and the links driving your network.',
+      };
+    }
+    return {
+      title: 'Seller Account',
+      description: 'See your business account summary, seller activity, payouts, and next actions in one place.',
+    };
+  }, [businessSectionForShell, sellerTab]);
+
+  const showRecruiterInviteBar = Boolean(
+    recruiterInviteLink &&
+      activeSection === 'seller' &&
+      sellerTab !== 'influencer-promo' &&
+      sellerTab !== 'single-product'
+  );
+
+  const handleCopyInviteLink = async () => {
+    if (!recruiterInviteLink) return;
+    const copied = await copyTextToClipboard(recruiterInviteLink);
+    if (copied) {
+      setCopiedInvite(true);
+      window.setTimeout(() => setCopiedInvite(false), 1500);
     }
   };
 
-  const handleRoleSwitch = async (role: string) => {
-    setSwitchingRole(true);
-    setShowRoleMenu(false);
-    
-    const success = await switchRole(role);
-    if (success) {
-      // Optionally show success message
-      console.log(`Switched to ${roleConfig[role as keyof typeof roleConfig].name} dashboard`);
-    } else {
-      console.error('Failed to switch role');
+  const dismissSellerFulfillmentAlert = () => {
+    if (!user || !sellerFulfillmentAlert) {
+      setSellerFulfillmentAlertDismissed(true);
+      return;
     }
-    
-    setSwitchingRole(false);
-  };
-
-  const handleAddRole = async (role: string) => {
-    setShowAddRoleMenu(false);
-    
-    const success = await addRole(role);
-    if (success) {
-      console.log(`Added ${roleConfig[role as keyof typeof roleConfig].name} role`);
-      // Optionally switch to the new role immediately
-      await handleRoleSwitch(role);
-    } else {
-      console.error('Failed to add role');
+    setSellerFulfillmentAlertDismissed(true);
+    try {
+      const dismissalKey = `beezio_seller_fulfillment_alert_${user.id}_${sellerFulfillmentAlert.needsOrdering}`;
+      sessionStorage.setItem(dismissalKey, 'dismissed');
+    } catch {
+      // ignore storage failures
     }
   };
 
-  const availableRoles = ['buyer', 'seller', 'affiliate', 'fundraiser'].filter(role => !userRoles.includes(role));
+  const handleSectionTabSelect = (tab: string) => {
+    if (activeSection === 'seller') {
+      const next = tab as SellerDashboardTab;
+      setSellerTab(next);
+      navigate(`/dashboard?section=${businessSectionForShell || 'seller'}&tab=${encodeURIComponent(next)}`);
+      return;
+    }
+    if (activeSection === 'buyer') {
+      const next = tab as BuyerDashboardTab;
+      setBuyerTab(next);
+      navigate(`/dashboard?section=buyer&tab=${encodeURIComponent(next)}`);
+      return;
+    }
+  };
 
-  if (authLoading) {
+  const sellerOrdersRoute = '/dashboard?section=seller&tab=orders';
+
+  const openSellerOrders = () => {
+    setSellerTab('orders');
+    navigate(sellerOrdersRoute);
+  };
+
+  if (authLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -96,152 +452,108 @@ const UnifiedDashboard: React.FC = () => {
     );
   }
 
-  if (!user) {
-    navigate('/');
-    return null;
-  }
-
-  const currentRoleConfig = roleConfig[currentRole as keyof typeof roleConfig];
-  const RoleIcon = currentRoleConfig?.icon || User;
+  if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header with Role Switcher */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Beezio</h1>
-            </div>
-
-            {/* Role Switcher */}
-            <div className="flex items-center space-x-4">
-              {/* Current Role Display */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowRoleMenu(!showRoleMenu)}
-                  disabled={switchingRole}
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg bg-gradient-to-r ${currentRoleConfig?.gradient || 'from-gray-500 to-gray-600'} text-white hover:shadow-lg transition-all duration-200 disabled:opacity-50`}
-                >
-                  <RoleIcon className="w-5 h-5" />
-                  <span className="font-medium">{currentRoleConfig?.name || 'Dashboard'}</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${showRoleMenu ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Role Menu Dropdown */}
-                {showRoleMenu && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">Switch Dashboard</p>
-                      <p className="text-xs text-gray-500">Choose your active role</p>
-                    </div>
-                    
-                    {userRoles.map((role) => {
-                      const config = roleConfig[role as keyof typeof roleConfig];
-                      const Icon = config?.icon || User;
-                      const isActive = role === currentRole;
-                      
-                      return (
-                        <button
-                          key={role}
-                          onClick={() => !isActive && handleRoleSwitch(role)}
-                          className={`w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors ${
-                            isActive ? 'bg-gray-50' : ''
-                          }`}
-                          disabled={isActive || switchingRole}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className={`p-1.5 rounded-lg bg-gradient-to-r ${config?.gradient || 'from-gray-500 to-gray-600'}`}>
-                              <Icon className="w-4 h-4 text-white" />
-                            </div>
-                            <div className="text-left">
-                              <p className="font-medium text-gray-900">{config?.name}</p>
-                              <p className="text-xs text-gray-500">{config?.description}</p>
-                            </div>
-                          </div>
-                          {isActive && <Check className="w-4 h-4 text-green-600" />}
-                        </button>
-                      );
-                    })}
-
-                    {availableRoles.length > 0 && (
-                      <>
-                        <div className="border-t border-gray-100 my-2"></div>
-                        <div className="px-4 py-2">
-                          <div className="relative">
-                            <button
-                              onClick={() => setShowAddRoleMenu(!showAddRoleMenu)}
-                              className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors"
-                            >
-                              <Plus className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm text-gray-600 font-medium">Add New Role</span>
-                            </button>
-
-                            {showAddRoleMenu && (
-                              <div className="absolute left-0 top-full mt-2 w-full bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-60">
-                                {availableRoles.map((role) => {
-                                  const config = roleConfig[role as keyof typeof roleConfig];
-                                  const Icon = config?.icon || User;
-                                  
-                                  return (
-                                    <button
-                                      key={role}
-                                      onClick={() => handleAddRole(role)}
-                                      className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-                                    >
-                                      <div className={`p-1.5 rounded-lg bg-gradient-to-r ${config?.gradient || 'from-gray-500 to-gray-600'}`}>
-                                        <Icon className="w-4 h-4 text-white" />
-                                      </div>
-                                      <div className="text-left">
-                                        <p className="font-medium text-gray-900">{config?.name}</p>
-                                        <p className="text-xs text-gray-500">{config?.description}</p>
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    )}
+    <div className="dashboard-theme min-h-screen bg-gray-50">
+      <main>
+        {sellerFulfillmentAlert && !sellerFulfillmentAlertDismissed && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-amber-900">
+                    <AlertTriangle className="w-4 h-4" />
+                    <p className="text-sm font-semibold">Seller fulfillment alert</p>
                   </div>
-                )}
-              </div>
-
-              {/* User Menu */}
-              <div className="flex items-center space-x-3">
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">{profile?.full_name || 'User'}</p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
+                  <p className="mt-1 text-sm text-amber-900">
+                    You have {sellerFulfillmentAlert.needsOrdering} order{sellerFulfillmentAlert.needsOrdering === 1 ? '' : 's'} ready to fulfill.
+                    {' '}
+                    <button
+                      type="button"
+                      onClick={openSellerOrders}
+                      className="font-semibold underline underline-offset-2"
+                    >
+                      Open the fulfillment queue
+                    </button>
+                    {' '}
+                    to review order details and shipping information.
+                  </p>
                 </div>
-                
-                <button
-                  onClick={() => navigate('/profile')}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <Settings className="w-5 h-5 text-gray-600" />
-                </button>
-                
-                <button
-                  onClick={signOut}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <LogOut className="w-5 h-5 text-gray-600" />
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={openSellerOrders}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+                  >
+                    <Truck className="w-4 h-4" />
+                    View orders
+                  </button>
+                  <button
+                    type="button"
+                    onClick={dismissSellerFulfillmentAlert}
+                    className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+                  >
+                    Dismiss
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </header>
-
-      {/* Dashboard Content */}
-      <main>
-        {currentRole === 'buyer' && <EnhancedBuyerDashboard />}
-        {currentRole === 'seller' && <EnhancedSellerDashboard />}
-        {currentRole === 'affiliate' && <EnhancedAffiliateDashboard />}
-        {currentRole === 'fundraiser' && <EnhancedAffiliateDashboard />}
+        )}
+        {showRecruiterInviteBar && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-emerald-900">
+                    <LinkIcon className="w-4 h-4" />
+                    <p className="text-sm font-semibold">Your invite link</p>
+                  </div>
+                  <p className="mt-1 text-xs text-emerald-800">Share this link to recruit partners. You earn recurring influencer commission on their sales.</p>
+                </div>
+                <div className="flex w-full sm:w-auto gap-2">
+                  <input
+                    readOnly
+                    value={recruiterInviteLink}
+                    className="w-full sm:w-[420px] rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs sm:text-sm text-gray-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyInviteLink}
+                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-800"
+                  >
+                    <Copy className="w-4 h-4" />
+                    {copiedInvite ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {activeSection === 'buyer' && (
+          <EnhancedBuyerDashboard
+            key={`buyer-${buyerTab}`}
+            activeTabOverride={buyerTab}
+            onTabChange={(tab) => handleSectionTabSelect(tab)}
+            hideInternalTabs
+            title="Buyer Dashboard"
+            subtitle="Review orders, receipts, saved products, and support"
+          />
+        )}
+        {activeSection === 'seller' && (
+          <EnhancedSellerDashboard
+            key={`seller-${sellerTab}`}
+            initialTab={initialSellerTab}
+            activeTabOverride={sellerTab}
+            onTabChange={(tab) => handleSectionTabSelect(tab)}
+            hideInternalTabs
+            title={sellerDashboardCopy.title}
+            description={sellerDashboardCopy.description}
+            mode={businessSectionForShell || 'seller'}
+          />
+        )}
+        {activeSection === 'admin' && <PlatformAdminDashboard key="admin" />}
       </main>
     </div>
   );

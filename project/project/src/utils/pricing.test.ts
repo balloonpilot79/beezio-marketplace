@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { PLATFORM_FEE_PERCENT } from '../config/beezioConfig';
+import { getAssignedInfluencerPayoutTotal, getInfluencerReserveTotal } from '../../shared/referralBonus';
 import {
   DEFAULT_AFFILIATE_RATE,
-  REFERRAL_OF_BEEZIO_RATE,
-  STRIPE_FLAT,
-  STRIPE_PERCENT,
+  PROCESSING_FLAT,
+  PROCESSING_PERCENT,
   calculatePayouts,
   calculateSalePriceFromSellerAsk,
   roundUpToTwoDecimals,
@@ -22,13 +21,56 @@ describe('pricing utilities', () => {
     const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, 0.2);
 
     // Unified ask-based pricing model (matches pricingEngine/beezioConfig):
-    // - Platform fee: 15%
+    // - Platform fee: $2 under $20, otherwise 15% of ask
     // - Affiliate: 20% of ask
-    // - Stripe: 2.9% + $0.30 (charged on final price)
-    expect(salePrice).toBeCloseTo(139.34, 2);
+    // - Processing is baked into the listing price (buyer pays)
+    // Includes baked-in influencer reserve for both seller and affiliate influencer slots:
+    // - >= $20 ask => $2.00 reserve per sale
+    expect(salePrice).toBeCloseTo(137, 2);
   });
 
-  it('calculatePayouts with affiliate and referrer', () => {
+  it('bakes in $1.00 total influencer reserve for products under $20', () => {
+    const sellerAsk = 19.99;
+    const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, 0.2);
+    expect(salePrice).toBeGreaterThan(0);
+    expect(salePrice).toBeCloseTo(28.74, 2);
+  });
+
+  it('bakes in $2.00 total influencer reserve for products at or above $20', () => {
+    const sellerAsk = 20;
+    const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, 0.2);
+    expect(salePrice).toBeGreaterThan(0);
+    expect(salePrice).toBeCloseTo(29.79, 2);
+  });
+
+  it('keeps the flat $2 Beezio fee through $24.99, then switches PayPal inside the platform pool at $25', () => {
+    const belowThreshold = calculatePayouts(
+      calculateSalePriceFromSellerAsk(24.99, DEFAULT_AFFILIATE_RATE),
+      24.99,
+      {
+        hasAffiliate: true,
+        hasAffiliateReferrer: true,
+        affiliateRate: DEFAULT_AFFILIATE_RATE,
+        influencerCount: 2,
+      }
+    );
+    const atThreshold = calculatePayouts(
+      calculateSalePriceFromSellerAsk(25, DEFAULT_AFFILIATE_RATE),
+      25,
+      {
+        hasAffiliate: true,
+        hasAffiliateReferrer: true,
+        affiliateRate: DEFAULT_AFFILIATE_RATE,
+        influencerCount: 2,
+      }
+    );
+
+    expect(belowThreshold.beezioNet).toBe(2);
+    expect(atThreshold.salePrice).toBe(36.04);
+    expect(atThreshold.beezioNet).toBe(2);
+  });
+
+  it('calculatePayouts with affiliate and one influencer', () => {
     const sellerAsk = 100;
     const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, DEFAULT_AFFILIATE_RATE);
     const payouts = calculatePayouts(salePrice, sellerAsk, {
@@ -37,18 +79,18 @@ describe('pricing utilities', () => {
       affiliateRate: DEFAULT_AFFILIATE_RATE,
     });
 
-    const expectedBeezioGross = roundToCurrency(sellerAsk * (PLATFORM_FEE_PERCENT / 100));
     const expectedAffiliate = roundToCurrency(sellerAsk * DEFAULT_AFFILIATE_RATE);
-    const expectedReferral = roundToCurrency(expectedBeezioGross * REFERRAL_OF_BEEZIO_RATE);
-    const expectedNet = roundToCurrency(expectedBeezioGross - expectedReferral);
-    const expectedStripe = roundToCurrency(salePrice * STRIPE_PERCENT + STRIPE_FLAT);
+    const expectedBeezioGross = 17;
+    const expectedReferral = getAssignedInfluencerPayoutTotal(sellerAsk, 1);
+    const expectedProcessing = 6.07;
+    const expectedNet = roundToCurrency(expectedBeezioGross - expectedReferral - expectedProcessing);
 
     expect(payouts.sellerPayout).toBe(roundToCurrency(sellerAsk));
     expect(payouts.affiliateCommission).toBe(expectedAffiliate);
     expect(payouts.beezioGross).toBe(expectedBeezioGross);
     expect(payouts.referralBonus).toBe(expectedReferral);
     expect(payouts.beezioNet).toBe(expectedNet);
-    expect(payouts.stripeFee).toBe(expectedStripe);
+    expect(payouts.processingFee).toBe(expectedProcessing);
   });
 
   it('calculatePayouts without affiliate', () => {
@@ -63,5 +105,34 @@ describe('pricing utilities', () => {
     expect(payouts.affiliateCommission).toBe(0);
     expect(payouts.referralBonus).toBe(0);
     expect(payouts.sellerPayout).toBe(roundToCurrency(sellerAsk));
+    expect(payouts.beezioGross).toBe(9.5);
+    expect(payouts.beezioNet).toBe(6.33);
+  });
+
+  it('uses the lower flat referral bonus under $20', () => {
+    const sellerAsk = 19.99;
+    const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, DEFAULT_AFFILIATE_RATE);
+    const payouts = calculatePayouts(salePrice, sellerAsk, {
+      hasAffiliate: true,
+      hasAffiliateReferrer: true,
+      affiliateRate: DEFAULT_AFFILIATE_RATE,
+    });
+
+    expect(payouts.referralBonus).toBe(0.5);
+  });
+
+  it('pays both influencer slots when two influencers are assigned', () => {
+    const sellerAsk = 19.99;
+    const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, DEFAULT_AFFILIATE_RATE);
+    const payouts = calculatePayouts(salePrice, sellerAsk, {
+      hasAffiliate: true,
+      hasAffiliateReferrer: true,
+      affiliateRate: DEFAULT_AFFILIATE_RATE,
+      influencerCount: 2,
+    });
+
+    expect(payouts.referralBonus).toBe(getInfluencerReserveTotal(sellerAsk));
+    expect(payouts.beezioNet).toBe(roundToCurrency(payouts.beezioGross - payouts.referralBonus));
+    expect(payouts.beezioNet).toBe(2);
   });
 });

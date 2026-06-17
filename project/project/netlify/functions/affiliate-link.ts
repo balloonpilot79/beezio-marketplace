@@ -2,7 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 
 type ShareChannel = 'copy' | 'facebook' | 'sms' | 'email' | 'x' | 'whatsapp';
-type ShareTargetType = 'product' | 'store' | 'collection' | 'fundraiser';
+type ShareTargetType = 'product' | 'store' | 'collection';
 
 function json(statusCode: number, body: unknown) {
   return {
@@ -27,37 +27,84 @@ function buildOrigin(event: any): string {
   return `${proto}://${host}`;
 }
 
-function randomCode(len: number): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let out = '';
-  for (let i = 0; i < len; i++) out += chars.charAt(Math.floor(Math.random() * chars.length));
-  return out;
+function slugify(value: string): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
 }
 
-async function generateLinkCode(supabaseAdmin: any): Promise<string> {
+function extractMissingColumnName(message: string): string | null {
+  const msg = String(message || '');
+  const pg = msg.match(/column\s+"([^"]+)"\s+of\s+relation\s+"[^"]+"\s+does\s+not\s+exist/i);
+  if (pg?.[1]) return pg[1];
+  const pgDot = msg.match(/column\s+([a-z0-9_]+\.[a-z0-9_]+)\s+does\s+not\s+exist/i);
+  if (pgDot?.[1]) return pgDot[1].split('.').pop() || pgDot[1];
+  const pgrst = msg.match(/Could not find the '([^']+)' column of '[^']+' in the schema cache/i);
+  if (pgrst?.[1]) return pgrst[1];
+  return null;
+}
+
+async function insertAffiliateLinkResilient(supabaseAdmin: any, payload: Record<string, any>) {
+  let working = { ...payload };
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const { data, error } = await supabaseAdmin
+      .from('affiliate_links')
+      .insert(working)
+      .select('*')
+      .maybeSingle();
+    if (!error) return { data, error: null };
+    const code = String(error?.code || '').trim();
+    if (code === '23505') return { data: null, error: null };
+    const missing = extractMissingColumnName(String(error?.message || ''));
+    if (missing && Object.prototype.hasOwnProperty.call(working, missing)) {
+      delete (working as any)[missing];
+      continue;
+    }
+    return { data: null, error };
+  }
+  return { data: null, error: new Error('Failed to insert affiliate link') };
+}
+
+async function resolveAffiliatePublicToken(supabaseAdmin: any, profileId: string): Promise<string> {
   try {
-    const { data, error } = await supabaseAdmin.rpc('generate_affiliate_link_code');
-    if (!error && data) return String(data);
+    const { data: storeSettings } = await supabaseAdmin
+      .from('affiliate_store_settings')
+      .select('subdomain, store_name')
+      .eq('affiliate_id', profileId)
+      .maybeSingle();
+    const subdomain = slugify((storeSettings as any)?.subdomain || '');
+    if (subdomain) return subdomain;
+    const storeName = slugify((storeSettings as any)?.store_name || '');
+    if (storeName) return storeName;
   } catch {
     // ignore
   }
 
-  // Fallback: random with collision check (best-effort).
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const candidate = randomCode(8);
-    try {
-      const { data } = await supabaseAdmin
-        .from('affiliate_links')
-        .select('id')
-        .eq('link_code', candidate)
-        .limit(1)
-        .maybeSingle();
-      if (!data) return candidate;
-    } catch {
-      return candidate;
+  try {
+    const { data: profileRow } = await supabaseAdmin
+      .from('profiles')
+      .select('referral_code, username, full_name, email')
+      .eq('id', profileId)
+      .maybeSingle();
+    const candidates = [
+      (profileRow as any)?.username,
+      (profileRow as any)?.referral_code,
+      (profileRow as any)?.full_name,
+      String((profileRow as any)?.email || '').split('@')[0],
+      profileId,
+    ];
+    for (const candidate of candidates) {
+      const token = slugify(candidate || '');
+      if (token) return token;
     }
+  } catch {
+    // ignore
   }
-  return randomCode(10);
+
+  return slugify(profileId) || profileId;
 }
 
 async function resolveProfileId(supabaseAdmin: any, userId: string): Promise<string | null> {
@@ -135,7 +182,10 @@ export const handler: Handler = async (event) => {
     if (!allowed) return json(403, { error: 'Not an affiliate' });
 
     const origin = buildOrigin(event);
-    const linkCode = await generateLinkCode(supabaseAdmin);
+    const publicToken = await resolveAffiliatePublicToken(supabaseAdmin, profileId);
+    const internalLinkCode = targetType === 'product'
+      ? `${publicToken}-${String(targetId).trim().slice(0, 8).toLowerCase()}`
+      : publicToken;
 
     const utm = (() => {
       const parts: string[] = [];
@@ -159,19 +209,17 @@ export const handler: Handler = async (event) => {
           return `${origin}/store/${encodeURIComponent(targetId)}`;
         case 'collection':
           return `${origin}/c/${encodeURIComponent(targetId)}`;
-        case 'fundraiser':
-          return `${origin}/fundraiser/${encodeURIComponent(targetId)}`;
         default:
           return origin;
       }
     })();
 
-    const fullUrl = `${baseTargetUrl}?ref=${encodeURIComponent(profileId)}&code=${encodeURIComponent(linkCode)}&${utm}`;
+    const fullUrl = `${baseTargetUrl}?ref=${encodeURIComponent(publicToken)}&code=${encodeURIComponent(publicToken)}&${utm}`;
 
     const insertPayload: any = {
       affiliate_id: profileId,
       product_id: targetType === 'product' ? targetId : null,
-      link_code: linkCode,
+      link_code: internalLinkCode,
       full_url: fullUrl,
       is_active: true,
     };
@@ -182,34 +230,26 @@ export const handler: Handler = async (event) => {
     // Try modern schema insert; fall back to legacy schema variants.
     let created: any = null;
     let insertError: any = null;
-    ({ data: created, error: insertError } = await supabaseAdmin
-      .from('affiliate_links')
-      .insert(insertPayload)
-      .select('link_code, full_url')
-      .maybeSingle());
+    ({ data: created, error: insertError } = await insertAffiliateLinkResilient(supabaseAdmin, insertPayload));
 
     if (insertError) {
       const legacyPayload: any = {
         affiliate_id: profileId,
         product_id: targetType === 'product' ? targetId : null,
-        link_code: linkCode,
-        link_url: `${origin}/af/${encodeURIComponent(linkCode)}`,
+        link_code: internalLinkCode,
+        link_url: fullUrl,
         full_url: fullUrl,
         is_active: true,
         custom_name: title ? `Share: ${title}` : null,
       };
-      const { data: legacy, error: legacyError } = await supabaseAdmin
-        .from('affiliate_links')
-        .insert(legacyPayload)
-        .select('link_code, full_url')
-        .maybeSingle();
+      const { data: legacy, error: legacyError } = await insertAffiliateLinkResilient(supabaseAdmin, legacyPayload);
       if (legacyError) return json(500, { error: 'Failed to create affiliate link', details: legacyError.message });
       created = legacy;
     }
 
     return json(200, {
-      trackedUrl: `${origin}/af/${encodeURIComponent(String(created?.link_code || linkCode))}`,
-      linkCode: String(created?.link_code || linkCode),
+      trackedUrl: String(created?.full_url || fullUrl),
+      linkCode: publicToken,
       fullUrl: String(created?.full_url || fullUrl),
       campaign,
       source,

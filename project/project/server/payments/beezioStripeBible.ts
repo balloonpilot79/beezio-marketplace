@@ -17,18 +17,19 @@ export type BeezioSplitOutput = {
 const roundCents = (n: number) => Math.round(n);
 
 export function computeBeezioFees(input: BeezioSplitInput): BeezioSplitOutput {
-  const hasRefOrFundraiser = Boolean(input.hasReferral || input.isFundraiser);
-  const beezioRate = hasRefOrFundraiser ? 0.1 : 0.15;
-  const refRate = hasRefOrFundraiser ? 0.05 : 0;
-
   const ps = Math.max(0, Math.floor(input.productSubtotalCents || 0));
   const affiliateFeeCents = Math.max(0, Math.floor(input.affiliateFeeCents || 0));
+  const baseCents = ps + affiliateFeeCents;
+  // Stripe-compliance hardening: disable recruiter/referrer overrides (second-tier payouts).
+  // Keep the input flag for backwards compatibility, but ignore it.
+  const beezioRate = 0.15;
+  const refRate = 0;
 
   return {
     productSubtotalCents: ps,
     affiliateFeeCents,
-    beezioFeeCents: roundCents(ps * beezioRate),
-    refOrFundraiserFeeCents: roundCents(ps * refRate),
+    beezioFeeCents: roundCents(baseCents * beezioRate),
+    refOrFundraiserFeeCents: roundCents(baseCents * refRate),
   };
 }
 
@@ -62,4 +63,3 @@ export function envStripeProcessingFeeFixedCents(): number {
   // Default to 30 cents; override in env if needed.
   return toCents(0.3);
 }
-

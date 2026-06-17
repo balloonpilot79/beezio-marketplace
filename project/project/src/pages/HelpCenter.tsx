@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { 
   BookOpen, 
   Users, 
-  Heart, 
   DollarSign, 
   HelpCircle, 
   FileText,
@@ -29,18 +28,11 @@ const HelpCenter: React.FC = () => {
       link: '/seller-guide'
     },
     {
-      title: 'Complete Affiliate Guide', 
-      description: 'Master affiliate marketing and start earning commissions',
+      title: 'Complete Partner Guide', 
+      description: 'Master partner marketing and start earning commissions',
       icon: Share2,
       color: 'pink',
       link: '/affiliate-guide'
-    },
-    {
-      title: 'Fundraising Guide',
-      description: 'Learn how to fundraise through commerce for your cause',
-      icon: Heart,
-      color: 'emerald',
-      link: '/fundraising-guide'
     },
     {
       title: 'Frequently Asked Questions',
@@ -58,7 +50,7 @@ const HelpCenter: React.FC = () => {
       color: 'green',
       items: [
         { title: 'Creating Your Account', desc: 'Sign up and set up your profile' },
-        { title: 'Choosing Your Account Type', desc: 'Seller, Affiliate, or Buyer - what\'s right for you?' },
+        { title: 'Choosing Your Account Type', desc: 'Seller, Partner, or Buyer - what\'s right for you?' },
         { title: 'Dashboard Overview', desc: 'Navigate your dashboard like a pro' },
         { title: 'Profile Setup', desc: 'Complete your profile for maximum success' }
       ]
@@ -71,34 +63,20 @@ const HelpCenter: React.FC = () => {
         { title: 'Adding Your First Product', desc: 'Step-by-step product upload guide' },
         { title: 'Store Customization', desc: 'Brand your store and make it unique' }, 
         { title: 'Pricing Strategy', desc: 'How transparent pricing works' },
-        { title: 'Store Integrations', desc: 'Connect Shopify, Etsy, Amazon and more' },
         { title: 'Managing Orders', desc: 'Process and fulfill customer orders' },
         { title: 'Analytics & Insights', desc: 'Track your store performance' }
       ]
     },
     {
-      category: 'For Affiliates',
+      category: 'For Partners',
       icon: Share2,
       color: 'pink',
       items: [
-        { title: 'Generating Affiliate Links', desc: 'Create tracking links that earn commissions' },
+        { title: 'Generating Partner Links', desc: 'Create tracking links that earn commissions' },
         { title: 'QR Code Marketing', desc: 'Use QR codes for offline promotion' },
         { title: 'Social Media Strategies', desc: 'Promote products on social platforms' },
-        { title: 'Import Products', desc: 'Import from external platforms to promote' },
+        { title: 'Import Products', desc: 'Choose marketplace products to promote' },
         { title: 'Performance Tracking', desc: 'Monitor clicks, conversions, and earnings' }
-      ]
-    },
-    {
-      category: 'Fundraising',
-      icon: Heart,
-      color: 'emerald',
-      items: [
-        { title: 'Setting Up Your Cause', desc: 'Register your organization or cause' },
-        { title: 'Recruiting Supporters', desc: 'Turn supporters into fundraising partners' },
-        { title: 'Product Selection', desc: 'Choose products that align with your cause' },
-        { title: 'Training Materials', desc: 'Help your supporters become effective fundraisers' },
-        { title: 'Tracking Impact', desc: 'Monitor fundraising performance and results' },
-        { title: 'Success Stories', desc: 'Learn from successful fundraising campaigns' }
       ]
     },
     {
@@ -106,7 +84,7 @@ const HelpCenter: React.FC = () => {
       icon: DollarSign,
       color: 'yellow',
       items: [
-        { title: 'Setting Up Stripe', desc: 'Connect your payment account' },
+        { title: 'Payment Setup', desc: 'Connect your payout details' },
         { title: 'Understanding Commissions', desc: 'How commission rates work' },
         { title: 'Payment Schedules', desc: 'When and how you get paid' },
         { title: 'Tax Information', desc: 'Important tax considerations' },
@@ -120,7 +98,6 @@ const HelpCenter: React.FC = () => {
       color: 'gray',
       items: [
         { title: 'Account Security', desc: 'Keep your account safe and secure' },
-        { title: 'API Integrations', desc: 'Connect external platforms' },
         { title: 'Mobile Optimization', desc: 'Using Beezio on mobile devices' },
         { title: 'Browser Compatibility', desc: 'Supported browsers and requirements' },
         { title: 'Troubleshooting', desc: 'Fix common technical issues' },
@@ -150,7 +127,7 @@ const HelpCenter: React.FC = () => {
           <BookOpen className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-4 md:mb-6" />
           <h1 className="text-3xl md:text-4xl lg:text-6xl font-bold mb-4 md:mb-6">Help Center</h1>
           <p className="text-lg md:text-xl lg:text-2xl opacity-90 max-w-3xl mx-auto px-2">
-            Your comprehensive guide to succeeding on Beezio as a seller, affiliate, or fundraiser
+            Your comprehensive guide to succeeding on Beezio as a seller or partner
           </p>
         </div>
       </section>
@@ -236,8 +213,7 @@ const HelpCenter: React.FC = () => {
             {[
               { title: 'Getting Started on Beezio', duration: '5:30', views: '2.1K' },
               { title: 'Upload Your First Product', duration: '8:15', views: '1.8K' },
-              { title: 'Generate Affiliate Links', duration: '6:45', views: '3.2K' },
-              { title: 'Set Up Fundraising Campaign', duration: '12:30', views: '956' },
+              { title: 'Generate Partner Links', duration: '6:45', views: '3.2K' },
               { title: 'Customize Your Store', duration: '9:20', views: '1.4K' },
               { title: 'Track Your Performance', duration: '7:10', views: '1.1K' }
             ].map((video, index) => (
@@ -311,14 +287,13 @@ const HelpCenter: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[
-              { title: 'How to increase your commission earnings', views: '5.2K', category: 'Affiliates' },
-              { title: 'Setting up your Stripe account for payments', views: '4.8K', category: 'Payments' },
+              { title: 'How to increase your commission earnings', views: '5.2K', category: 'Partners' },
+              { title: 'Setting up payout details for payments', views: '4.8K', category: 'Payments' },
               { title: 'Best practices for product photography', views: '3.9K', category: 'Sellers' },
-              { title: 'Recruiting supporters for your cause', views: '3.1K', category: 'Fundraising' },
               { title: 'Understanding the transparent pricing model', views: '2.7K', category: 'General' },
-              { title: 'Integrating your existing Shopify store', views: '2.4K', category: 'Sellers' },
-              { title: 'Creating effective QR code campaigns', views: '2.1K', category: 'Affiliates' },
-              { title: 'Tax implications for affiliate earnings', views: '1.9K', category: 'Payments' }
+              { title: 'Creating a strong product catalog', views: '2.4K', category: 'Sellers' },
+              { title: 'Creating effective QR code campaigns', views: '2.1K', category: 'Partners' },
+              { title: 'Tax implications for partner earnings', views: '1.9K', category: 'Payments' }
             ].map((article, index) => (
               <div key={index} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer">
                 <div className="flex justify-between items-start mb-2">
@@ -348,8 +323,8 @@ const HelpCenter: React.FC = () => {
               <p className="text-gray-600 text-sm">All data transmitted is encrypted with 256-bit SSL</p>
             </div>
             <div className="bg-blue-50 rounded-lg p-6">
-              <h3 className="font-bold text-gray-900 mb-2">Stripe Payments</h3>
-              <p className="text-gray-600 text-sm">Secure payment processing by industry leader Stripe</p>
+              <h3 className="font-bold text-gray-900 mb-2">Payment Processing</h3>
+              <p className="text-gray-600 text-sm">Secure payment processing with industry-standard protections</p>
             </div>
             <div className="bg-purple-50 rounded-lg p-6">
               <h3 className="font-bold text-gray-900 mb-2">GDPR Compliant</h3>

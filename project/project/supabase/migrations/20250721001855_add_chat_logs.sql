@@ -1,5 +1,7 @@
+create extension if not exists pgcrypto;
+
 create table if not exists public.chat_logs (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id),
   event text not null,
   metadata jsonb,

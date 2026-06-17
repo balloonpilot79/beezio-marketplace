@@ -27,8 +27,14 @@ const APIIntegrationManager: React.FC = () => {
   });
 
   useEffect(() => {
+    if (!profile?.id) {
+      setConnections([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     fetchConnections();
-  }, []);
+  }, [profile?.id]);
 
   const fetchConnections = async () => {
     try {
@@ -47,6 +53,10 @@ const APIIntegrationManager: React.FC = () => {
   };
 
   const addConnection = async () => {
+    if (!profile?.id) {
+      alert('Please sign in to add integrations.');
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('api_connections')
@@ -157,6 +167,14 @@ const APIIntegrationManager: React.FC = () => {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+      </div>
+    );
+  }
+
+  if (!profile?.id) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-xl p-6 text-sm text-gray-700">
+        Sign in to manage API integrations.
       </div>
     );
   }

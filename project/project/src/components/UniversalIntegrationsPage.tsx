@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
+import INTEGRATIONS_CONFIG from '../config/integrationsConfig';
 import { Settings, Plus, ExternalLink, Check, AlertCircle, Download, Upload, Sync, Store, Package, Link as LinkIcon, Eye } from 'lucide-react';
 
 interface Integration {
@@ -10,6 +11,9 @@ interface Integration {
   logo: string;
   isConnected: boolean;
   status: 'active' | 'inactive' | 'error' | 'syncing';
+  isAvailable: boolean;
+  isVisible: boolean;
+  availabilityLabel?: string;
   apiKey?: string;
   storeUrl?: string;
   lastSync?: string;
@@ -18,25 +22,20 @@ interface Integration {
   features: string[];
 }
 
-interface ImportedProduct {
-  external_id: string;
-  title: string;
-  description: string;
-  price: number;
-  images: string[];
-  category: string;
-  tags: string[];
-  inventory_count: number;
-  source_platform: string;
-  source_url: string;
-}
-
 const UniversalIntegrationsPage: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, currentRole } = useAuth();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [importPreview, setImportPreview] = useState<Array<{
+    product_id?: string | null;
+    external_id: string;
+    title: string;
+    image?: string | null;
+    status: 'created' | 'updated' | 'skipped';
+    platform: 'printify' | 'printful';
+  }>>([]);
   const [connectionData, setConnectionData] = useState({
     apiKey: '',
     storeUrl: '',
@@ -52,30 +51,35 @@ const UniversalIntegrationsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string>('');
 
+  const getAuthHeader = async () => {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    return token ? `Bearer ${token}` : '';
+  };
+
+  const normalizedRole = String(profile?.primary_role || profile?.role || currentRole || '').toLowerCase();
+  const effectiveRole: 'seller' | 'affiliate' =
+    normalizedRole === 'affiliate' || normalizedRole === 'partner' ? 'affiliate' : 'seller';
+
   useEffect(() => {
     initializeIntegrations();
     loadUserIntegrations();
-  }, [profile]);
+  }, [effectiveRole, profile?.id]);
 
   const initializeIntegrations = () => {
+    const printfulEnabled = INTEGRATIONS_CONFIG.ENABLE_PRINTFUL;
+
     const availableIntegrations: Integration[] = [
-      {
-        id: 'shopify',
-        name: 'Shopify',
-        description: 'Import products from your Shopify store',
-        logo: '🛍️',
-        isConnected: false,
-        status: 'inactive',
-        supportedRoles: ['seller', 'affiliate'],
-        features: ['Product Import', 'Inventory Sync', 'Order Management', 'Auto Updates']
-      },
+
       {
         id: 'printify',
         name: 'Printify',
         description: 'Connect your Print-on-Demand products',
-        logo: '🖨️',
+        logo: 'PFY',
         isConnected: false,
         status: 'inactive',
+        isAvailable: true,
+        isVisible: true,
         supportedRoles: ['seller', 'affiliate'],
         features: ['Product Import', 'Design Sync', 'Order Fulfillment', 'Shipping Integration']
       },
@@ -83,87 +87,20 @@ const UniversalIntegrationsPage: React.FC = () => {
         id: 'printful',
         name: 'Printful',
         description: 'Sync your Printful products and fulfillment',
-        logo: '📦',
+        logo: 'PFL',
         isConnected: false,
         status: 'inactive',
+        isAvailable: printfulEnabled,
+        isVisible: printfulEnabled,
+        availabilityLabel: printfulEnabled ? undefined : 'Hidden',
         supportedRoles: ['seller', 'affiliate'],
         features: ['Product Catalog', 'Mockup Generation', 'Order Processing', 'Quality Control']
-      },
-      {
-        id: 'etsy',
-        name: 'Etsy',
-        description: 'Import your handmade and vintage items',
-        logo: '🎨',
-        isConnected: false,
-        status: 'inactive',
-        supportedRoles: ['seller', 'affiliate'],
-        features: ['Listing Import', 'Shop Sync', 'Review Integration', 'SEO Data']
-      },
-      {
-        id: 'amazon',
-        name: 'Amazon Seller',
-        description: 'Connect your Amazon Seller Central account',
-        logo: '📱',
-        isConnected: false,
-        status: 'inactive',
-        supportedRoles: ['seller'],
-        features: ['Product Catalog', 'FBA Integration', 'Analytics', 'Inventory Management']
-      },
-      {
-        id: 'ebay',
-        name: 'eBay',
-        description: 'Import your eBay listings and auctions',
-        logo: '🏷️',
-        isConnected: false,
-        status: 'inactive',
-        supportedRoles: ['seller', 'affiliate'],
-        features: ['Listing Import', 'Auction Sync', 'Feedback Integration', 'Category Mapping']
-      },
-      {
-        id: 'woocommerce',
-        name: 'WooCommerce',
-        description: 'Connect your WordPress WooCommerce store',
-        logo: '🌐',
-        isConnected: false,
-        status: 'inactive',
-        supportedRoles: ['seller', 'affiliate'],
-        features: ['Product Import', 'Order Sync', 'Customer Data', 'Plugin Integration']
-      },
-      {
-        id: 'square',
-        name: 'Square',
-        description: 'Import from your Square online store',
-        logo: '⬜',
-        isConnected: false,
-        status: 'inactive',
-        supportedRoles: ['seller'],
-        features: ['Product Catalog', 'POS Integration', 'Payment Processing', 'Analytics']
-      },
-      {
-        id: 'bigcommerce',
-        name: 'BigCommerce',
-        description: 'Connect your BigCommerce storefront',
-        logo: '🏪',
-        isConnected: false,
-        status: 'inactive',
-        supportedRoles: ['seller', 'affiliate'],
-        features: ['Store Sync', 'Multi-channel', 'API Integration', 'Analytics']
-      },
-      {
-        id: 'csv',
-        name: 'CSV Import',
-        description: 'Upload products via CSV file',
-        logo: '📊',
-        isConnected: false,
-        status: 'inactive',
-        supportedRoles: ['seller', 'affiliate'],
-        features: ['Bulk Import', 'Custom Mapping', 'Data Validation', 'Template Download']
       }
     ];
 
     // Filter by user role
     const roleSpecificIntegrations = availableIntegrations.filter(integration =>
-      integration.supportedRoles.includes(profile?.role as 'seller' | 'affiliate')
+      integration.supportedRoles.includes(effectiveRole)
     );
 
     setIntegrations(roleSpecificIntegrations);
@@ -172,22 +109,28 @@ const UniversalIntegrationsPage: React.FC = () => {
   const loadUserIntegrations = async () => {
     if (!profile?.id) return;
 
-    const { data } = await supabase
-      .from('user_integrations')
-      .select('*')
-      .eq('user_id', profile.id);
+    const authHeader = await getAuthHeader();
+    if (!authHeader) return;
 
-    if (data) {
+    const response = await fetch('/api/integrations/list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+      body: JSON.stringify({}),
+    });
+    const payload = await response.json().catch(() => ({}));
+    const data = Array.isArray(payload?.integrations) ? payload.integrations : [];
+
+    if (data.length) {
       setIntegrations(prev => prev.map(integration => {
-        const userIntegration = data.find(ui => ui.platform === integration.id);
+        const userIntegration = data.find((ui: any) => ui.platform === integration.id);
         return userIntegration ? {
           ...integration,
-          isConnected: userIntegration.is_active,
+          isConnected: Boolean(userIntegration.is_active),
           status: userIntegration.status,
           apiKey: userIntegration.api_key,
           storeUrl: userIntegration.store_url,
           lastSync: userIntegration.last_sync,
-          productCount: userIntegration.product_count || 0
+          productCount: userIntegration.product_count || 0,
         } : integration;
       }));
     }
@@ -198,33 +141,29 @@ const UniversalIntegrationsPage: React.FC = () => {
 
     setLoading(true);
     try {
-      // Test the connection first
-      if (selectedIntegration.id !== 'csv') {
-        const isValid = await testApiConnection(selectedIntegration.id, connectionData.apiKey, connectionData.storeUrl);
-        if (!isValid) {
-          alert('Connection failed. Please check your credentials.');
-          setLoading(false);
-          return;
-        }
+      const authHeader = await getAuthHeader();
+      if (!authHeader) {
+        alert('Please sign in to connect integrations.');
+        setLoading(false);
+        return;
       }
 
-      // Save integration
-      const { error } = await supabase
-        .from('user_integrations')
-        .upsert({
-          user_id: profile.id,
+      const response = await fetch('/api/integrations/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+        body: JSON.stringify({
           platform: selectedIntegration.id,
-          api_key: connectionData.apiKey,
-          store_url: connectionData.storeUrl,
-          webhook_url: connectionData.webhookUrl,
-          is_active: true,
-          status: 'active',
-          connected_at: new Date().toISOString()
-        });
+          apiKey: connectionData.apiKey,
+          storeUrl: connectionData.storeUrl,
+          autoSync: importSettings.autoSync,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const detail = payload?.error || payload?.details || 'Failed to connect integration.';
+        throw new Error(detail);
+      }
 
-      if (error) throw error;
-
-      // Update local state
       setIntegrations(prev => prev.map(integration =>
         integration.id === selectedIntegration.id
           ? { ...integration, isConnected: true, status: 'active' as const }
@@ -235,8 +174,9 @@ const UniversalIntegrationsPage: React.FC = () => {
       setConnectionData({ apiKey: '', storeUrl: '', webhookUrl: '' });
       alert('Integration connected successfully!');
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to connect integration.';
       console.error('Connection error:', error);
-      alert('Failed to connect integration.');
+      alert(message);
     }
     setLoading(false);
   };
@@ -248,49 +188,36 @@ const UniversalIntegrationsPage: React.FC = () => {
     setSyncStatus('Fetching products...');
 
     try {
-      let importedProducts: ImportedProduct[] = [];
-
-      // Different import strategies based on platform
-      switch (selectedIntegration.id) {
-        case 'shopify':
-          importedProducts = await importFromShopify(selectedIntegration.apiKey!, selectedIntegration.storeUrl!);
-          break;
-        case 'printify':
-          importedProducts = await importFromPrintify(selectedIntegration.apiKey!);
-          break;
-        case 'printful':
-          importedProducts = await importFromPrintful(selectedIntegration.apiKey!);
-          break;
-        case 'etsy':
-          importedProducts = await importFromEtsy(selectedIntegration.apiKey!);
-          break;
-        case 'csv':
-          // Handle CSV import separately
-          break;
-        default:
-          importedProducts = await importFromGenericAPI(selectedIntegration);
+      const authHeader = await getAuthHeader();
+      if (!authHeader) {
+        alert('Please sign in to import products.');
+        setLoading(false);
+        return;
       }
 
-      setSyncStatus(`Processing ${importedProducts.length} products...`);
+      const response = await fetch('/api/integrations/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+        body: JSON.stringify({
+          platform: selectedIntegration.id,
+          commissionRate: importSettings.setCommissionRate,
+          markAsAffiliate: importSettings.markAsAffiliate,
+          autoSync: importSettings.autoSync,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to import products.');
+      }
 
-      // Process and save products
-      const processedProducts = await processImportedProducts(importedProducts);
-      await saveImportedProducts(processedProducts);
+      const created = payload?.results?.created ?? 0;
+      const updated = payload?.results?.updated ?? 0;
+      const skipped = payload?.results?.skipped ?? 0;
+      const preview = Array.isArray(payload?.results?.preview) ? payload.results.preview : [];
+      setImportPreview(preview);
+      setSyncStatus(`Imported ${created} new, updated ${updated}, skipped ${skipped}.`);
 
-      // Update integration stats
-      await supabase
-        .from('user_integrations')
-        .update({
-          last_sync: new Date().toISOString(),
-          product_count: importedProducts.length,
-          status: 'active'
-        })
-        .eq('user_id', profile.id)
-        .eq('platform', selectedIntegration.id);
-
-      setShowImportModal(false);
-      setSyncStatus('');
-      alert(`Successfully imported ${importedProducts.length} products!`);
+      alert(`Import complete. Created ${created}, updated ${updated}, skipped ${skipped}.`);
       
     } catch (error) {
       console.error('Import error:', error);
@@ -299,133 +226,18 @@ const UniversalIntegrationsPage: React.FC = () => {
     setLoading(false);
   };
 
-  const testApiConnection = async (platform: string, apiKey: string, storeUrl?: string): Promise<boolean> => {
-    // Mock API connection test - replace with actual API calls
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return apiKey.length > 10; // Simple validation
-  };
-
-  const importFromShopify = async (apiKey: string, storeUrl: string): Promise<ImportedProduct[]> => {
-    // Mock Shopify import - replace with actual Shopify API integration
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    return [
-      {
-        external_id: 'shopify_123',
-        title: 'Premium T-Shirt',
-        description: 'High-quality cotton t-shirt',
-        price: 24.99,
-        images: ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500'],
-        category: 'Clothing',
-        tags: ['apparel', 'cotton', 'casual'],
-        inventory_count: 50,
-        source_platform: 'shopify',
-        source_url: `${storeUrl}/products/premium-t-shirt`
-      }
-      // Add more mock products...
-    ];
-  };
-
-  const importFromPrintify = async (apiKey: string): Promise<ImportedProduct[]> => {
-    // Mock Printify import
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    return [
-      {
-        external_id: 'printify_456',
-        title: 'Custom Mug Design',
-        description: 'Personalized ceramic mug',
-        price: 15.99,
-        images: ['https://images.unsplash.com/photo-1514228742587-6b1558fcf400?w=500'],
-        category: 'Home & Kitchen',
-        tags: ['mug', 'custom', 'ceramic'],
-        inventory_count: 999,
-        source_platform: 'printify',
-        source_url: 'https://printify.com/product/456'
-      }
-    ];
-  };
-
-  const importFromPrintful = async (apiKey: string): Promise<ImportedProduct[]> => {
-    // Mock Printful import
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    return [
-      {
-        external_id: 'printful_789',
-        title: 'Eco-Friendly Tote Bag',
-        description: 'Sustainable canvas tote bag',
-        price: 18.50,
-        images: ['https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500'],
-        category: 'Accessories',
-        tags: ['tote', 'eco-friendly', 'canvas'],
-        inventory_count: 999,
-        source_platform: 'printful',
-        source_url: 'https://printful.com/product/789'
-      }
-    ];
-  };
-
-  const importFromEtsy = async (apiKey: string): Promise<ImportedProduct[]> => {
-    // Mock Etsy import
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    return [
-      {
-        external_id: 'etsy_101',
-        title: 'Handmade Jewelry Set',
-        description: 'Artisan crafted silver jewelry',
-        price: 45.00,
-        images: ['https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=500'],
-        category: 'Jewelry',
-        tags: ['handmade', 'silver', 'artisan'],
-        inventory_count: 5,
-        source_platform: 'etsy',
-        source_url: 'https://etsy.com/listing/101'
-      }
-    ];
-  };
-
-  const importFromGenericAPI = async (integration: Integration): Promise<ImportedProduct[]> => {
-    // Generic API import handler
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return [];
-  };
-
-  const processImportedProducts = async (products: ImportedProduct[]): Promise<any[]> => {
-    return products.map(product => ({
-      title: product.title,
-      description: product.description,
-      price: product.price,
-      images: product.images,
-      category: product.category,
-      tags: product.tags,
-      quantity: product.inventory_count,
-      seller_id: profile?.id,
-      is_active: true,
-      commission_rate: importSettings.setCommissionRate,
-      commission_type: 'percentage',
-      external_id: product.external_id,
-      source_platform: product.source_platform,
-      source_url: product.source_url,
-      is_affiliate_product: importSettings.markAsAffiliate && profile?.role === 'affiliate'
-    }));
-  };
-
-  const saveImportedProducts = async (products: any[]) => {
-    const { error } = await supabase
-      .from('products')
-      .insert(products);
-    
-    if (error) throw error;
-  };
-
   const handleDisconnect = async (integrationId: string) => {
     if (!profile?.id) return;
 
-    const { error } = await supabase
-      .from('user_integrations')
-      .update({ is_active: false, status: 'inactive' })
-      .eq('user_id', profile.id)
-      .eq('platform', integrationId);
+    const authHeader = await getAuthHeader();
+    if (!authHeader) return;
 
-    if (!error) {
+    const response = await fetch('/api/integrations/disconnect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+      body: JSON.stringify({ platform: integrationId }),
+    });
+    if (response.ok) {
       setIntegrations(prev => prev.map(integration =>
         integration.id === integrationId
           ? { ...integration, isConnected: false, status: 'inactive' as const }
@@ -434,34 +246,129 @@ const UniversalIntegrationsPage: React.FC = () => {
     }
   };
 
-  const roleTitle = profile?.role === 'seller' ? 'Seller' : 'Affiliate';
+  const isSeller = effectiveRole === 'seller';
+  const roleTitle = isSeller ? 'Seller' : 'Affiliate';
   const filteredIntegrations = integrations.filter(integration =>
-    integration.supportedRoles.includes(profile?.role as 'seller' | 'affiliate')
+    integration.supportedRoles.includes(effectiveRole)
   );
+
+  // Hide integrations unless explicitly enabled, but always show if already connected.
+  const visibleIntegrations = filteredIntegrations.filter(integration =>
+    integration.isVisible || integration.isConnected
+  );
+
+  const featuredIntegration = visibleIntegrations.find(i => i.id === 'printify') || null;
+  const otherIntegrations = visibleIntegrations.filter(i => i.id !== 'printify');
 
   return (
     <div className="max-w-6xl mx-auto px-2 py-4">
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg">
-          <div className="text-3xl font-bold">{filteredIntegrations.filter(i => i.isConnected).length}</div>
+          <div className="text-3xl font-bold">{visibleIntegrations.filter(i => i.isConnected).length}</div>
           <div className="text-sm text-blue-100">Connected Platforms</div>
         </div>
         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white shadow-lg">
           <div className="text-3xl font-bold">
-            {filteredIntegrations.reduce((sum, i) => sum + (i.productCount || 0), 0)}
+            {visibleIntegrations.reduce((sum, i) => sum + (i.productCount || 0), 0)}
           </div>
           <div className="text-sm text-green-100">Imported Products</div>
         </div>
         <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg">
-          <div className="text-3xl font-bold">{filteredIntegrations.length}</div>
+          <div className="text-3xl font-bold">{visibleIntegrations.length}</div>
           <div className="text-sm text-purple-100">Available Integrations</div>
         </div>
       </div>
 
-      {/* Integration Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredIntegrations.map((integration) => (
+      {/* Featured Integration (Printify) */}
+      {featuredIntegration && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="text-4xl">{featuredIntegration.logo}</div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-gray-900">{featuredIntegration.name}</h2>
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                    Recommended
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-gray-700">Fastest way to start selling print-on-demand products.</p>
+                <p className="mt-2 text-sm text-gray-600">{featuredIntegration.description}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <a
+                href="https://printify.com/app/account/api"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-50"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Get API Token
+              </a>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {featuredIntegration.isConnected ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
+                <Check className="h-4 w-4" /> Connected
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
+                <AlertCircle className="h-4 w-4" /> Not connected
+              </span>
+            )}
+
+            {featuredIntegration.isConnected && (
+              <span className="text-sm text-gray-600">Products: <span className="font-semibold">{featuredIntegration.productCount || 0}</span></span>
+            )}
+
+            {featuredIntegration.isConnected && (
+              <span className="text-sm text-gray-600">Last sync: <span className="font-semibold">{featuredIntegration.lastSync ? new Date(featuredIntegration.lastSync).toLocaleDateString() : 'Never'}</span></span>
+            )}
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {!featuredIntegration.isConnected ? (
+              <button
+                onClick={() => {
+                  setSelectedIntegration(featuredIntegration);
+                  setShowConnectionModal(true);
+                }}
+                className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600"
+              >
+                <Plus className="h-4 w-4" /> Connect Printify
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    setSelectedIntegration(featuredIntegration);
+                    setShowImportModal(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  <Download className="h-4 w-4" /> Import products
+                </button>
+                <button
+                  onClick={() => handleDisconnect(featuredIntegration.id)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Disconnect
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Integration Grid (everything except featured Printify) */}
+      {otherIntegrations.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {otherIntegrations.map((integration) => (
           <div key={integration.id} className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center space-x-3">
@@ -478,6 +385,13 @@ const UniversalIntegrationsPage: React.FC = () => {
                   <span className="text-sm text-green-600">Connected</span>
                 </div>
               )}
+              {!integration.isAvailable && !integration.isConnected && (
+                <div className="flex items-center space-x-1">
+                  <AlertCircle className="w-4 h-4 text-gray-400" />
+                  <span className="text-xs text-gray-500">{integration.availabilityLabel || 'Coming soon'}</span>
+                </div>
+              )}
+
             </div>
 
             {/* Features */}
@@ -517,12 +431,14 @@ const UniversalIntegrationsPage: React.FC = () => {
               {!integration.isConnected ? (
                 <button
                   onClick={() => {
+                    if (!integration.isAvailable) return;
                     setSelectedIntegration(integration);
                     setShowConnectionModal(true);
                   }}
-                  className="flex-1 bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition-colors text-sm font-medium"
+                  disabled={!integration.isAvailable}
+                  className="flex-1 bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Connect
+                  {integration.isAvailable ? 'Connect' : (integration.availabilityLabel || 'Coming soon')}
                 </button>
               ) : (
                 <>
@@ -546,7 +462,23 @@ const UniversalIntegrationsPage: React.FC = () => {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
+
+      {/* Empty / Coming Soon */}
+      {otherIntegrations.length === 0 && (
+        <div className="mt-2 rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center">
+          <h3 className="text-base font-semibold text-gray-900">More integrations are coming</h3>
+          <p className="mt-1 text-sm text-gray-600">We’re focusing on a clean, reliable Printify flow first.</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {['Shopify', 'Etsy', 'WooCommerce', 'CSV import'].map((name) => (
+              <span key={name} className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Connection Modal */}
       {showConnectionModal && selectedIntegration && (
@@ -597,6 +529,7 @@ const UniversalIntegrationsPage: React.FC = () => {
                       <li>Click "Generate New Token"</li>
                       <li>Copy the Personal Access Token</li>
                       <li>Paste it in the API Key field above</li>
+                      <li>We connect the first Printify shop on this token (disconnect + reconnect to change).</li>
                     </>
                   )}
                   {selectedIntegration.id === 'printful' && (
@@ -605,6 +538,7 @@ const UniversalIntegrationsPage: React.FC = () => {
                       <li>Go to "Store Settings" → "API"</li>
                       <li>Enable API access and copy your API key</li>
                       <li>Paste it above to connect</li>
+                      <li>We connect the first Printful store on this token (disconnect + reconnect to change).</li>
                     </>
                   )}
                   {selectedIntegration.id === 'shopify' && (
@@ -673,21 +607,23 @@ const UniversalIntegrationsPage: React.FC = () => {
                 </label>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Commission Rate (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={importSettings.setCommissionRate}
-                  onChange={(e) => setImportSettings(prev => ({ ...prev, setCommissionRate: parseInt(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                />
-              </div>
+              {isSeller && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Commission Rate (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={importSettings.setCommissionRate}
+                    onChange={(e) => setImportSettings(prev => ({ ...prev, setCommissionRate: parseInt(e.target.value) }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                </div>
+              )}
 
-              {profile?.role === 'affiliate' && (
+              {effectiveRole === 'affiliate' && (
                 <div>
                   <label className="flex items-center space-x-2">
                     <input
@@ -714,6 +650,9 @@ const UniversalIntegrationsPage: React.FC = () => {
                 <p className="text-sm text-gray-600 mt-1">
                   Automatically sync new products and inventory changes
                 </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  POD imports default to $0 shipping in Beezio. You can edit shipping on each product after import.
+                </p>
               </div>
 
               {syncStatus && (
@@ -721,10 +660,45 @@ const UniversalIntegrationsPage: React.FC = () => {
                   <p className="text-sm text-blue-800">{syncStatus}</p>
                 </div>
               )}
+
+              {importPreview.length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="text-sm font-semibold text-gray-900 mb-3">Imported items (latest)</div>
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    {importPreview.map((item, index) => (
+                      <div key={`${item.external_id}-${index}`} className="flex items-center gap-3">
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            className="h-10 w-10 rounded border object-cover"
+                            onError={(event) => {
+                              const target = event.currentTarget;
+                              target.onerror = null;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded border bg-gray-100 flex items-center justify-center text-xs text-gray-500">
+                            No img
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate">{item.title}</div>
+                          <div className="text-xs text-gray-500">
+                            {item.status.toUpperCase()} - {item.platform}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">Showing up to the latest 25 items.</p>
+                </div>
+              )}
             </div>
             <div className="p-6 border-t flex space-x-3">
               <button
-                onClick={() => setShowImportModal(false)}
+                onClick={() => { setShowImportModal(false); setImportPreview([]); setSyncStatus(''); }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
@@ -745,3 +719,5 @@ const UniversalIntegrationsPage: React.FC = () => {
 };
 
 export default UniversalIntegrationsPage;
+
+

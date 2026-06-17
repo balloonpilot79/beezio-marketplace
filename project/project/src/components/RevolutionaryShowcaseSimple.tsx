@@ -41,7 +41,7 @@ const RevolutionaryShowcase: React.FC = () => {
           </div>
           <h3 className="text-xl font-bold text-green-900 mb-3">Monthly Recurring Commissions</h3>
           <p className="text-green-800 mb-4">
-            Affiliates earn EVERY MONTH customers stay subscribed. Build true wealth through recurring income.
+            Partners earn every month customers stay subscribed. Build long-term commissions through recurring sales.
           </p>
           <div className="bg-green-600 text-white p-3 rounded-lg text-sm">
             <strong>Game Changer:</strong> Earn 1,800% more than one-time commission platforms

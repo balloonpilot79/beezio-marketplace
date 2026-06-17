@@ -1,6 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import Stripe from 'npm:stripe@14.21.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,10 +56,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       serviceRoleKey
     )
-
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2023-10-16',
-    })
 
     // 1. Get order details with items
     const { data: order, error: orderError } = await supabase
@@ -366,7 +361,7 @@ async function sendEmail({ to, subject, template, data }: {
 
   const msg = {
     to,
-    from: 'orders@beezio.co',
+    from: 'mail@beezio.co',
     subject,
     templateId: getTemplateId(template),
     dynamicTemplateData: data

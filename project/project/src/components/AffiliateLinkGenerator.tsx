@@ -42,6 +42,14 @@ const AffiliateLinkGenerator: React.FC<AffiliateLinkGeneratorProps> = ({ affilia
     loadData();
   }, [affiliateId]);
 
+  useEffect(() => {
+    const handler = () => {
+      void loadData();
+    };
+    window.addEventListener('affiliate-products-changed', handler as any);
+    return () => window.removeEventListener('affiliate-products-changed', handler as any);
+  }, [affiliateId]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -55,10 +63,12 @@ const AffiliateLinkGenerator: React.FC<AffiliateLinkGeneratorProps> = ({ affilia
             title,
             price,
             images,
-            seller_id
+            seller_id,
+            is_active
           )
         `)
-        .eq('affiliate_id', affiliateId);
+        .eq('affiliate_id', affiliateId)
+        .eq('products.is_active', true);
 
       if (productsError) throw productsError;
       
@@ -267,7 +277,7 @@ const AffiliateLinkGenerator: React.FC<AffiliateLinkGeneratorProps> = ({ affilia
             <LinkIcon className="w-8 h-8" />
           </div>
           <div>
-            <h2 className="text-3xl font-bold">Affiliate Links & QR Codes</h2>
+            <h2 className="text-3xl font-bold">Partner Links & QR Codes</h2>
             <p className="text-blue-100">Generate custom links to promote products anywhere</p>
           </div>
         </div>
@@ -366,7 +376,7 @@ const AffiliateLinkGenerator: React.FC<AffiliateLinkGeneratorProps> = ({ affilia
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                        <h4 className="text-lg font-bold text-gray-900">{link.custom_name || 'Affiliate Link'}</h4>
+                        <h4 className="text-lg font-bold text-gray-900">{link.custom_name || 'Partner Link'}</h4>
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${
                         link.is_active 
                           ? 'bg-green-100 text-green-700' 

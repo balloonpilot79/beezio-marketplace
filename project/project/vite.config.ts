@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Consolidated Vite config: single default export, React plugin, stable dev server port
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {

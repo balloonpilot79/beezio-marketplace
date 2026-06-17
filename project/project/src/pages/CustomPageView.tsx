@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { AlertCircle, ArrowLeft, Store } from 'lucide-react';
+import { AlertCircle, ArrowLeft, LogOut, Store, UserCircle } from 'lucide-react';
 import DOMPurify from 'dompurify';
+import { useAuth } from '../contexts/AuthContextMultiRole';
 
 interface CustomPage {
   id: string;
   owner_id: string;
-  owner_type: 'seller' | 'affiliate' | 'fundraiser';
+  owner_type: 'seller' | 'affiliate';
   page_slug: string;
   page_title: string;
   page_content: string;
@@ -22,9 +23,33 @@ interface OwnerProfile {
   avatar_url?: string;
 }
 
+const ALLOWED_PLATFORM_PATH_PREFIXES = [
+  '/marketplace',
+  '/products',
+  '/product/',
+  '/store/',
+  '/partner/',
+  '/checkout',
+  '/cart',
+  '/about',
+  '/contact',
+  '/faq',
+  '/shipping',
+  '/returns',
+  '/privacy',
+  '/terms',
+];
+
+const isAllowedPlatformPath = (pathname: string): boolean => {
+  const path = String(pathname || '/').toLowerCase();
+  if (path === '/') return true;
+  return ALLOWED_PLATFORM_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix));
+};
+
 export default function CustomPageView() {
+  const { user, profile, signOut } = useAuth();
   const { ownerType, username, pageSlug } = useParams<{
-    ownerType: 'seller' | 'affiliate' | 'fundraiser';
+    ownerType: 'seller' | 'affiliate';
     username: string;
     pageSlug: string;
   }>();
@@ -33,6 +58,11 @@ export default function CustomPageView() {
   const [owner, setOwner] = useState<OwnerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const signedInLabel =
+    String(profile?.full_name || '').trim() ||
+    String(user?.user_metadata?.full_name || user?.user_metadata?.name || '').trim() ||
+    user?.email ||
+    'Customer';
 
   useEffect(() => {
     loadPage();
@@ -105,20 +135,25 @@ export default function CustomPageView() {
     };
 
     // Hook to strip or neutralize checkout-bypass links
+    DOMPurify.removeAllHooks();
     DOMPurify.addHook('afterSanitizeAttributes', function (node) {
       if (node.tagName === 'A' && node.hasAttribute('href')) {
         const href = node.getAttribute('href') || '';
         const isMailTel = href.startsWith('mailto:') || href.startsWith('tel:');
-        const isRelative = href.startsWith('/') || href.startsWith('#');
+        const isHashOnly = href.startsWith('#');
+        const isRelative = href.startsWith('/');
         let isAllowedHost = false;
+        let isAllowedPath = false;
         try {
           const url = new URL(href, window.location.origin);
           isAllowedHost = allowedHosts.some(h => url.host.endsWith(h));
+          isAllowedPath = isAllowedPlatformPath(url.pathname);
         } catch (e) {
           // leave as not allowed
         }
 
-        if (!(isMailTel || isRelative || isAllowedHost)) {
+        const allow = isMailTel || isHashOnly || (isRelative && isAllowedPath) || (isAllowedHost && isAllowedPath);
+        if (!allow) {
           node.removeAttribute('href');
           node.setAttribute('data-blocked', 'external-checkout-blocked');
           node.textContent = node.textContent || 'Link blocked';
@@ -127,6 +162,18 @@ export default function CustomPageView() {
     });
 
     return DOMPurify.sanitize(html, config);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate(
+      ownerType === 'affiliate' && owner?.id
+        ? `/partner/${owner.id}`
+        : owner?.id
+          ? `/store/${owner.id}`
+          : '/',
+      { replace: true }
+    );
   };
 
   if (loading) {
@@ -172,24 +219,47 @@ export default function CustomPageView() {
               )}
               <div>
                  <h2 className="text-sm text-gray-600">
-                   {ownerType === 'seller' ? "Seller's" : ownerType === 'fundraiser' ? "Fundraiser's" : "Affiliate's"} Custom Page
+                  {ownerType === 'seller' ? "Seller's" : "Partner's"} Custom Page
                  </h2>
                 <h1 className="text-2xl font-bold text-gray-900">{owner.full_name}</h1>
               </div>
             </div>
-            <Link
-              to={
-                ownerType === 'affiliate'
-                  ? `/affiliate/${owner.id}`
-                  : ownerType === 'fundraiser'
-                  ? `/fundraiser/${owner.id}`
-                  : `/store/${owner.id}`
-              }
-              className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-colors"
-            >
-              <Store className="w-4 h-4" />
-              Visit Store
-            </Link>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              {user ? (
+                <div className="flex max-w-full flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1">
+                  <div className="flex min-w-0 items-center gap-2 px-1">
+                    <UserCircle className="h-4 w-4 shrink-0 text-gray-500" />
+                    <div className="min-w-0 leading-tight">
+                      <div className="truncate text-xs font-semibold text-gray-900">{signedInLabel}</div>
+                      {user.email && signedInLabel !== user.email ? (
+                        <div className="truncate text-[0.68rem] text-gray-500">{user.email}</div>
+                      ) : (
+                        <div className="text-[0.68rem] text-gray-500">Signed in</div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    Sign Out
+                  </button>
+                </div>
+              ) : null}
+              <Link
+                to={
+                  ownerType === 'affiliate'
+                    ? `/partner/${owner.id}`
+                    : `/store/${owner.id}`
+                }
+                className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-colors"
+              >
+                <Store className="w-4 h-4" />
+                Visit Store
+              </Link>
+            </div>
           </div>
         </div>
       </div>

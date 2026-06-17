@@ -64,14 +64,14 @@ export const PaymentSetupGuide: React.FC<PaymentSetupGuideProps> = ({ userType, 
         description: 'From product sales (after platform fees)',
         breakdown: [
           'Product Price: $50',
-          'Platform Fee: $5 (10%)',
-          'Your Earnings: $45'
+          'Platform Fee: $7.50 (15%)',
+          'Your Earnings: $42.50'
         ]
       }
     } else {
       return {
         potential: '$100-1000/month',
-        description: 'From referral commissions',
+        description: 'From influencer commissions',
         breakdown: [
           'Product Sale: $50',
           'Commission Rate: 15%',
@@ -116,7 +116,7 @@ export const PaymentSetupGuide: React.FC<PaymentSetupGuideProps> = ({ userType, 
               <div className="flex items-start space-x-3">
                 <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5" />
                 <div>
-                  <p className="text-blue-900 font-medium">All payments processed by Stripe</p>
+                  <p className="text-blue-900 font-medium">Payments are processed securely</p>
                   <p className="text-blue-700 text-sm">Secure, fast, and handled entirely within Beezio</p>
                 </div>
               </div>
@@ -222,7 +222,7 @@ export const PaymentSetupGuide: React.FC<PaymentSetupGuideProps> = ({ userType, 
                 <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
                 <div>
                   <p className="text-yellow-900 font-medium">Payment method setup happens in the next step</p>
-                  <p className="text-yellow-700 text-sm">You'll connect your bank account through Stripe's secure, embedded interface</p>
+                  <p className="text-yellow-700 text-sm">You'll connect your bank account through a secure, embedded interface</p>
                 </div>
               </div>
             </div>

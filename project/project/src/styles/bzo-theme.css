@@ -179,3 +179,58 @@
 .bzo-mascot:hover {
   animation: bzoBounce 0.6s infinite;
 }
+
+/* BZO homepage hero styling */
+.bzo-home {
+  font-family: "Sora", "Segoe UI", sans-serif;
+  color: #f8fafc;
+}
+
+.bzo-home h1,
+.bzo-home h2,
+.bzo-home h3,
+.bzo-home h4,
+.bzo-home h5,
+.bzo-home h6 {
+  font-family: "Fraunces", "Times New Roman", serif;
+  letter-spacing: -0.02em;
+}
+
+.bzo-hero-shell {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(255, 203, 5, 0.18), transparent 45%),
+    radial-gradient(circle at 85% 20%, rgba(255, 214, 51, 0.16), transparent 40%),
+    radial-gradient(circle at 60% 85%, rgba(250, 193, 95, 0.22), transparent 45%),
+    linear-gradient(135deg, #fff7dc 0%, #fff1c3 45%, #fff7e8 100%);
+}
+
+.bzo-hero-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 70% 30%, rgba(255, 203, 5, 0.22), transparent 55%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.bzo-hero-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 15% 70%, rgba(255, 214, 51, 0.18), transparent 55%);
+  pointer-events: none;
+}
+
+.bzo-hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.bzo-hero-panel {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 203, 5, 0.35);
+  box-shadow: 0 18px 50px rgba(88, 61, 0, 0.12);
+  backdrop-filter: blur(8px);
+}

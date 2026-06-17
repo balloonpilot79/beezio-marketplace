@@ -34,6 +34,7 @@ const ProductDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const isOutOfStock = Number(product?.stock_quantity ?? 0) <= 0;
 
   useEffect(() => {
     if (productId) {
@@ -188,6 +189,12 @@ const ProductDetailPage: React.FC = () => {
                 </span>
               )}
             </div>
+
+            {isOutOfStock && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                Out of stock
+              </span>
+            )}
             
             {product.commission_rate > 0 && (
               <div className="text-green-600 font-medium">
@@ -239,7 +246,12 @@ const ProductDetailPage: React.FC = () => {
             </div>
 
             <div className="flex space-x-4">
-              <button className="flex-1 bg-amber-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-amber-700 transition-colors flex items-center justify-center space-x-2">
+              <button
+                disabled={isOutOfStock}
+                className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 ${
+                  isOutOfStock ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-amber-600 text-white hover:bg-amber-700'
+                }`}
+              >
                 <ShoppingCart className="w-5 h-5" />
                 <span>Add to Cart</span>
               </button>
@@ -250,23 +262,6 @@ const ProductDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Trust Badges */}
-          <div className="border-t pt-6">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="flex flex-col items-center space-y-2">
-                <Shield className="w-8 h-8 text-green-600" />
-                <span className="text-sm text-gray-600">Secure Payment</span>
-              </div>
-              <div className="flex flex-col items-center space-y-2">
-                <Truck className="w-8 h-8 text-blue-600" />
-                <span className="text-sm text-gray-600">Fast Shipping</span>
-              </div>
-              <div className="flex flex-col items-center space-y-2">
-                <RotateCcw className="w-8 h-8 text-amber-600" />
-                <span className="text-sm text-gray-600">Easy Returns</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Maximize2, Star, Heart, Share2 } from 'lucide-react';
 
 interface ProductImage {
@@ -23,29 +23,54 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   // Sort images by display order, with primary image first
-  const sortedImages = [...images].sort((a, b) => {
-    if (a.is_primary) return -1;
-    if (b.is_primary) return 1;
-    return a.display_order - b.display_order;
-  });
+  const sortedImages = useMemo(
+    () => [...images].sort((a, b) => {
+      if (a.is_primary) return -1;
+      if (b.is_primary) return 1;
+      return a.display_order - b.display_order;
+    }),
+    [images]
+  );
+
+  const visibleImages = useMemo(
+    () => sortedImages.filter((image) => {
+      const url = String(image.image_url || '').trim();
+      if (!url) return false;
+      if (url.startsWith('/api/placeholder') || url.startsWith('api/placeholder')) return false;
+      return !failedImages[image.id || url];
+    }),
+    [failedImages, sortedImages]
+  );
 
   useEffect(() => {
     setCurrentImageIndex(0);
     setIsImageLoaded(false);
+    setFailedImages({});
   }, [images]);
+
+  useEffect(() => {
+    if (visibleImages.length === 0) {
+      if (currentImageIndex !== 0) setCurrentImageIndex(0);
+      return;
+    }
+    if (currentImageIndex >= visibleImages.length) {
+      setCurrentImageIndex(visibleImages.length - 1);
+    }
+  }, [currentImageIndex, visibleImages.length]);
 
   const goToNext = () => {
     setCurrentImageIndex((prev) => 
-      prev === sortedImages.length - 1 ? 0 : prev + 1
+      prev === visibleImages.length - 1 ? 0 : prev + 1
     );
     setIsImageLoaded(false);
   };
 
   const goToPrevious = () => {
     setCurrentImageIndex((prev) => 
-      prev === 0 ? sortedImages.length - 1 : prev - 1
+      prev === 0 ? visibleImages.length - 1 : prev - 1
     );
     setIsImageLoaded(false);
   };
@@ -68,7 +93,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isFullscreen]);
 
-  if (sortedImages.length === 0) {
+  if (visibleImages.length === 0) {
     return (
       <div className={`bg-gray-200 rounded-lg flex items-center justify-center ${className}`}>
         <div className="text-center py-12">
@@ -81,7 +106,13 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
     );
   }
 
-  const currentImage = sortedImages[currentImageIndex];
+  const currentImage = visibleImages[currentImageIndex];
+  const markImageFailed = (image: ProductImage) => {
+    const key = image.id || String(image.image_url || '').trim();
+    if (!key) return;
+    setFailedImages((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+    setIsImageLoaded(false);
+  };
 
   return (
     <>
@@ -95,7 +126,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
               isImageLoaded ? 'opacity-100' : 'opacity-0'
             }`}
             onLoad={() => setIsImageLoaded(true)}
-            onError={() => setIsImageLoaded(true)}
+            onError={() => markImageFailed(currentImage)}
           />
 
           {/* Loading Skeleton */}
@@ -113,7 +144,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
           )}
 
           {/* Navigation Arrows */}
-          {sortedImages.length > 1 && (
+          {visibleImages.length > 1 && (
             <>
               <button
                 onClick={goToPrevious}
@@ -143,17 +174,17 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
           </button>
 
           {/* Image Counter */}
-          {sortedImages.length > 1 && (
+          {visibleImages.length > 1 && (
             <div className="absolute bottom-3 right-3 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
-              {currentImageIndex + 1} / {sortedImages.length}
+              {currentImageIndex + 1} / {visibleImages.length}
             </div>
           )}
         </div>
 
         {/* Thumbnail Strip */}
-        {sortedImages.length > 1 && (
+        {visibleImages.length > 1 && (
           <div className="mt-4 flex space-x-2 overflow-x-auto pb-2">
-            {sortedImages.map((image, index) => (
+            {visibleImages.map((image, index) => (
               <button
                 key={image.id}
                 onClick={() => goToImage(index)}
@@ -167,6 +198,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
                   src={image.image_url}
                   alt={image.alt_text || `Thumbnail ${index + 1}`}
                   className="w-full h-full object-cover"
+                  onError={() => markImageFailed(image)}
                 />
                 {image.is_primary && (
                   <div className="absolute top-0 right-0 w-3 h-3 bg-yellow-500 rounded-full transform translate-x-1 -translate-y-1 border border-white"></div>
@@ -201,7 +233,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
             />
 
             {/* Navigation in Fullscreen */}
-            {sortedImages.length > 1 && (
+            {visibleImages.length > 1 && (
               <>
                 <button
                   onClick={goToPrevious}
@@ -231,7 +263,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
                   )}
                 </div>
                 <div className="text-sm">
-                  Image {currentImageIndex + 1} of {sortedImages.length}
+                  Image {currentImageIndex + 1} of {visibleImages.length}
                   {currentImage.is_primary && (
                     <span className="ml-2 bg-yellow-500 px-2 py-1 rounded text-xs">Primary</span>
                   )}
@@ -240,9 +272,9 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
             </div>
 
             {/* Thumbnail Strip in Fullscreen */}
-            {sortedImages.length > 1 && (
+            {visibleImages.length > 1 && (
               <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                {sortedImages.map((image, index) => (
+                {visibleImages.map((image, index) => (
                   <button
                     key={image.id}
                     onClick={() => goToImage(index)}
@@ -256,6 +288,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
                       src={image.image_url}
                       alt={`Thumbnail ${index + 1}`}
                       className="w-full h-full object-cover"
+                      onError={() => markImageFailed(image)}
                     />
                   </button>
                 ))}

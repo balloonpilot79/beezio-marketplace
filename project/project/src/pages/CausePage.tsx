@@ -45,13 +45,18 @@ const CausePage: React.FC = () => {
             ></div>
           </div>
         </div>
-        {/* Donate Button */}
         <div className="mt-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Want to help directly?</h2>
-          <button className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors font-bold">
-            Donate to this Cause
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Want to help?</h2>
+          <button
+            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-bold"
+            onClick={() => {
+              const el = document.getElementById('cause-products');
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          >
+            Shop products to support
           </button>
-          <div className="text-xs text-gray-500 mt-2">(Secure donation processing via Stripe)</div>
+          <div className="text-xs text-gray-500 mt-2">Support is provided through product purchases.</div>
         </div>
       {/* Add Product to Cause Form - Only for authenticated users */}
       <div className="mt-8 mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
@@ -82,6 +87,10 @@ const CausePage: React.FC = () => {
                 images: image_url ? [image_url] : [],
                 cause_id: id,
                 is_active: true,
+                status: 'active',
+                in_stock: true,
+                stock_quantity: 1,
+                total_inventory: 1,
                 seller_id: profile.id,
               });
               if (!error) {
@@ -112,7 +121,7 @@ const CausePage: React.FC = () => {
         )}
       </div>
       </div>
-      <div className="mb-8">
+      <div id="cause-products" className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Support this Cause by Buying Products</h2>
         {products.length === 0 ? (
           <div className="text-gray-500">No products linked to this cause yet.</div>

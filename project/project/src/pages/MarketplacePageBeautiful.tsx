@@ -78,7 +78,7 @@ const MarketplacePageBeautiful = () => {
               Discover Amazing <span className="text-amber-600">Products</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              Browse thousands of quality products from trusted sellers. Transparent pricing, competitive commissions, guaranteed satisfaction.
+              Browse thousands of quality products from trusted sellers. Transparent pricing, competitive commissions, and responsive support.
             </p>
           </div>
 

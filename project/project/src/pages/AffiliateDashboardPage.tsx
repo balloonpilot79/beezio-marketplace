@@ -13,19 +13,29 @@ import {
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useAffiliate } from '../contexts/AffiliateContext';
 import { products } from '../data/sampleProducts';
-import ReferralDashboard from '../components/ReferralDashboard';
-import ReferredAffiliatesList from '../components/ReferredAffiliatesList';
 
 const AffiliateDashboardPage: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { selectedProducts, affiliateStats, generateAffiliateLink } = useAffiliate();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading your partner dashboard</h2>
+          <p className="text-gray-600">Restoring your account and product links...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Log In</h2>
-          <p className="text-gray-600 mb-6">You need to be logged in to view your affiliate dashboard.</p>
+          <p className="text-gray-600 mb-6">You need to be logged in to view your partner dashboard.</p>
           <Link to="/" className="btn-primary">Go to Home</Link>
         </div>
       </div>
@@ -49,16 +59,6 @@ const AffiliateDashboardPage: React.FC = () => {
     }
   };
 
-  const recruiterCode =
-    (profile as any)?.referral_code ||
-    (profile as any)?.referralCode ||
-    (profile as any)?.username ||
-    (profile as any)?.id ||
-    user?.id ||
-    '';
-
-  const recruiterLink = `${window.location.origin}/affiliate-signup?role=affiliate&recruit=${encodeURIComponent(String(recruiterCode))}`;
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -66,15 +66,15 @@ const AffiliateDashboardPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Affiliate Dashboard</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Partner Dashboard</h1>
               <p className="mt-2 text-gray-600">
-                Track your performance, share your referral link, and manage products.
+                Track your performance and manage products.
               </p>
               <div className="mt-3 grid gap-2 text-sm text-gray-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <div className="font-semibold text-blue-800">Quick start</div>
                 <div>• Add products from the marketplace to your store.</div>
                 <div>• Customize your store theme/pages (Store Settings → Customize).</div>
-                <div>• Share your store link or referral link to earn.</div>
+                <div>• Share your store link or partner link to earn.</div>
               </div>
             </div>
             <Link
@@ -89,62 +89,6 @@ const AffiliateDashboardPage: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Referral link + code */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-gray-700 mb-1">Your referral link</p>
-              <div className="flex items-center gap-2">
-                <code className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-800 break-all">
-                  {recruiterLink}
-                </code>
-                <button
-                  onClick={() => copyToClipboard(recruiterLink)}
-                  className="p-2 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-                  title="Copy referral link"
-                >
-                  <Copy className="w-4 h-4 text-gray-700" />
-                </button>
-                <a
-                  href={`/affiliate-signup?role=affiliate&recruit=${encodeURIComponent(String(recruiterCode))}`}
-                  className="p-2 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
-                  title="Open signup page"
-                >
-                  <ExternalLink className="w-4 h-4 text-blue-600" />
-                </a>
-              </div>
-              <p className="text-xs text-gray-600 mt-2">
-                Anyone who signs up with your link or code below is tied to you for life. They earn as normal; you earn 5% from Beezio’s 15% platform fee, so Beezio nets 10%.
-              </p>
-              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
-                <div className="font-semibold mb-1">How it works:</div>
-                <ol className="list-decimal list-inside space-y-1">
-                  <li>Share your link or code. When someone signs up, they’re tagged to you forever.</li>
-                  <li>They sell/earn as usual. Their commissions are untouched.</li>
-                  <li>Beezio pays you 5% from its 15% platform fee on every sale they generate. Beezio keeps 10%.</li>
-                  <li>No double dipping: the buyer price already includes all fees, so nobody loses their share.</li>
-                </ol>
-              </div>
-            </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 min-w-[260px]">
-              <p className="text-sm font-semibold text-gray-800 mb-1">Referral code</p>
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-2 bg-white border border-blue-200 rounded text-base font-bold text-blue-700">
-                  {String(recruiterCode)}
-                </span>
-                <button
-                  onClick={() => copyToClipboard(String(recruiterCode))}
-                  className="p-2 bg-white hover:bg-blue-100 rounded transition-colors"
-                  title="Copy referral code"
-                >
-                  <Copy className="w-4 h-4 text-blue-700" />
-                </button>
-              </div>
-              <p className="text-xs text-gray-600 mt-2">Share this code if you can’t share a link.</p>
-            </div>
-          </div>
-        </div>
-
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -320,7 +264,7 @@ const AffiliateDashboardPage: React.FC = () => {
             >
               <Copy className="w-8 h-8 mb-2" />
               <h3 className="font-semibold">Manage Links</h3>
-              <p className="text-sm text-blue-100">Organize your affiliate links</p>
+              <p className="text-sm text-blue-100">Organize your partner links</p>
             </Link>
             <Link
               to="/affiliate/earnings"
@@ -333,20 +277,6 @@ const AffiliateDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Referral Program Section */}
-        <div className="mt-12">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">🚀 Referral Program</h2>
-            <p className="text-gray-600">
-              Grow your income by referring other affiliates. Earn 2% from all their sales!
-            </p>
-          </div>
-          
-          <div className="space-y-8">
-            <ReferralDashboard />
-            <ReferredAffiliatesList />
-          </div>
-        </div>
       </div>
     </div>
   );

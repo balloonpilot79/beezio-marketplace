@@ -8,40 +8,40 @@ const MonetizationHelper: React.FC = () => {
     {
       id: 'print-on-demand',
       title: '🎨 Print-on-Demand Empire',
-      subtitle: 'Design once, profit forever',
-      description: 'Create t-shirts on Printify, connect via API, let affiliates sell your designs',
-      potential: '$1,000+ passive monthly income',
+      subtitle: 'Design once, earn over time',
+      description: 'Create t-shirts on Printify, connect via API, let partners sell your designs',
+      potential: '$1,000+ monthly commissions',
       difficulty: 'Easy',
       timeToProfit: '2-4 weeks',
       steps: [
         'Design 10 t-shirts on Printify',
         'Connect Printify API in Integrations tab',
-        'Set retail price: $25, affiliate commission: $7',
-        'Recruit affiliates to promote your designs',
-        'You earn $5.50 per affiliate sale + $13 per direct sale'
+        'Set retail price: $25, partner commission: $7',
+        'Invite partners to promote your designs',
+        'You earn $5.50 per partner sale + $13 per direct sale'
       ]
     },
     {
       id: 'digital-products',
       title: '📚 Digital Product Multiplication',
       subtitle: 'Sell unlimited copies of digital goods',
-      description: 'Create e-books, courses, templates - sell infinite copies through affiliates',
+      description: 'Create e-books, courses, templates - sell infinite copies through partners',
       potential: '$500-5,000 monthly',
       difficulty: 'Medium',
       timeToProfit: '1-3 weeks',
       steps: [
         'Create valuable digital product (e-book, course, etc.)',
         'Set up custom API integration for automated delivery',
-        'Price at $50-200 with 40% affiliate commission',
-        'One sale per day = $1,500+ monthly profit',
+        'Price at $50-200 with 40% partner commission',
+        'One sale per day = $1,500+ monthly revenue',
         'Scale by creating product bundles'
       ]
     },
     {
       id: 'dropshipping',
       title: '📦 Dropshipping 2.0',
-      subtitle: 'No inventory, maximum profits',
-      description: 'Connect supplier APIs, set your margins, let affiliates drive sales',
+      subtitle: 'No inventory, clear margins',
+      description: 'Connect supplier APIs, set your margins, let partners drive sales',
       potential: '$2,000+ monthly',
       difficulty: 'Medium',
       timeToProfit: '2-6 weeks',
@@ -49,14 +49,14 @@ const MonetizationHelper: React.FC = () => {
         'Find suppliers with API access (AliExpress, Spocket, etc.)',
         'Connect via Custom API integration',
         'Markup products 100-200%',
-        'Offer 30% affiliate commissions',
+        'Offer 30% partner commissions',
         'Automate order fulfillment with webhooks'
       ]
     },
     {
       id: 'service-marketplace',
       title: '🔧 Service Marketplace',
-      subtitle: 'Sell your skills, scale with affiliates',
+      subtitle: 'Sell your skills, scale with partners',
       description: 'Offer consulting, design, or virtual services through Beezio',
       potential: '$100-300 per hour',
       difficulty: 'Easy',
@@ -64,7 +64,7 @@ const MonetizationHelper: React.FC = () => {
       steps: [
         'Package your expertise into service offerings',
         'Set up booking system with calendar API',
-        'Offer referral commissions to affiliates',
+        'Offer influencer commissions to partners',
         'Deliver high value, get testimonials',
         'Scale by training others to deliver similar services'
       ]
@@ -86,7 +86,7 @@ const MonetizationHelper: React.FC = () => {
         </div>
         <div>
           <h3 className="text-lg font-semibold text-gray-900">💰 Monetization Strategies</h3>
-          <p className="text-gray-600 text-sm">Turn your API connections into profit machines</p>
+          <p className="text-gray-600 text-sm">Turn your API connections into revenue engines</p>
         </div>
       </div>
 
@@ -102,16 +102,16 @@ const MonetizationHelper: React.FC = () => {
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
           <div className="flex items-center space-x-2">
             <Zap className="w-4 h-4 text-blue-600" />
-            <span className="text-sm font-medium text-blue-800">Time to Profit</span>
+            <span className="text-sm font-medium text-blue-800">Time to Earnings</span>
           </div>
           <p className="text-2xl font-bold text-blue-900">1-4 weeks</p>
         </div>
         <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
           <div className="flex items-center space-x-2">
             <Users className="w-4 h-4 text-purple-600" />
-            <span className="text-sm font-medium text-purple-800">Affiliate Power</span>
+            <span className="text-sm font-medium text-purple-800">Partner Reach</span>
           </div>
-          <p className="text-2xl font-bold text-purple-900">Multiply Sales</p>
+          <p className="text-2xl font-bold text-purple-900">Grow Sales</p>
         </div>
       </div>
 
@@ -201,7 +201,7 @@ const MonetizationHelper: React.FC = () => {
             <Zap className="w-6 h-6 text-orange-600" />
           </div>
           <div>
-            <h5 className="font-semibold text-gray-900">Ready to Start Making Money?</h5>
+            <h5 className="font-semibold text-gray-900">Ready to Start Earning?</h5>
             <p className="text-sm text-gray-700 mt-1">
               The fastest way is the Print-on-Demand strategy. Create 5 t-shirt designs and connect Printify today!
             </p>

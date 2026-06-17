@@ -96,10 +96,34 @@ const AdminDashboard: React.FC = () => {
         <h2 className="text-2xl font-bold mb-5 text-yellow-700 flex items-center gap-2"><span>🛠️</span>Other Admin Tools</h2>
         <div className="space-y-3">
           <Link
+            to="/admin/cj-import"
+            className="inline-flex items-center px-5 py-3 rounded-lg bg-amber-500 text-black font-semibold hover:bg-amber-600 transition-colors"
+          >
+            Open CJ Catalog
+          </Link>
+          <Link
             to="/admin/products"
             className="inline-flex items-center px-5 py-3 rounded-lg bg-[#101820] text-[#ffcb05] font-semibold hover:bg-black transition-colors"
           >
             Open Admin Product Hub
+          </Link>
+          <Link
+            to="/admin/eggracks-import"
+            className="inline-flex items-center px-5 py-3 rounded-lg bg-slate-800 text-white font-semibold hover:bg-slate-900 transition-colors"
+          >
+            Open EggRacks Import
+          </Link>
+          <Link
+            to="/admin/payouts"
+            className="inline-flex items-center px-5 py-3 rounded-lg bg-blue-700 text-white font-semibold hover:bg-blue-800 transition-colors"
+          >
+            Open PayPal Payouts
+          </Link>
+          <Link
+            to="/admin/users"
+            className="inline-flex items-center px-5 py-3 rounded-lg bg-emerald-700 text-white font-semibold hover:bg-emerald-800 transition-colors"
+          >
+            Open Admin Users Panel
           </Link>
           <div className="text-gray-500">[Add sales issue management, logs, etc. here]</div>
         </div>

@@ -9,7 +9,7 @@ const resources = {
     translation: {
       // Navigation
       'nav.products': 'Products',
-      'nav.affiliates': 'Affiliates',
+      'nav.affiliates': 'Partners',
       'nav.cart': 'Cart',
       'nav.signin': 'Sign In',
       'nav.signup': 'Sign Up',
@@ -17,16 +17,15 @@ const resources = {
       'nav.profile': 'Profile',
       'nav.signout': 'Sign Out',
       'nav.help': 'Help',
-      'nav.fundraisers': 'Fundraisers',
       'nav.sellers': 'For Sellers',
       'nav.how_it_works': 'How It Works',
       
       // Homepage
       'home.title': 'Empowering Global Commerce',
-      'home.subtitle': 'The Future of International Affiliate Marketing',
+      'home.subtitle': 'The Future of International Partner Marketing',
       'home.featured': 'Featured Products',
       'home.cta.title': 'Ready to Join the Global Beezio Community?',
-      'home.cta.description': 'Whether you\'re a seller or affiliate, there\'s a place for you here.',
+      'home.cta.description': 'Whether you\'re a seller or partner, there\'s a place for you here.',
       'home.cta.start_selling': 'Start Selling',
       
       // Authentication
@@ -43,7 +42,7 @@ const resources = {
       'auth.role': 'Account Type',
       'auth.role.buyer': 'Buyer',
       'auth.role.seller': 'Seller',
-      'auth.role.affiliate': 'Affiliate',
+      'auth.role.affiliate': 'Partner',
       'auth.password_min': 'Password must be at least 6 characters',
       'auth.no_account': 'Don\'t have an account?',
       'auth.have_account': 'Already have an account?',

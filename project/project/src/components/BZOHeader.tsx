@@ -5,6 +5,7 @@ import CartIcon from './CartIcon';
 import LanguageSwitcher from './LanguageSwitcher';
 import CurrencySwitcher from './CurrencySwitcher';
 import { Menu, X, User, ChevronDown } from 'lucide-react';
+import { getPartnerLabel, getPartnerSingularLabel } from '../utils/processorSafeCopy';
 
 interface HeaderProps {
   onOpenAuthModal: (config: { isOpen: boolean; mode: 'login' | 'register' }) => void;
@@ -57,7 +58,7 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
     { to: '/', label: 'Home', hover: 'hover:text-white' },
     { to: '/marketplace', label: 'Marketplace', hover: 'hover:text-white' },
     { to: '/sellers', label: 'Sellers', hover: 'hover:text-white' },
-    { to: '/affiliates', label: 'Affiliates', hover: 'hover:text-white' },
+    { to: '/affiliates', label: getPartnerLabel(), hover: 'hover:text-white' },
     { to: '/contact', label: 'Contact', hover: 'hover:text-white' }
   ];
 
@@ -125,7 +126,7 @@ const BZOHeader: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                         <p className="text-sm font-medium text-black">{user.email}</p>
                         <p className="text-xs text-gray-600">
                           {profile?.role === 'seller' ? '🏪 Seller Account' : 
-                           profile?.role === 'affiliate' ? '🤝 Affiliate Account' : 
+                           profile?.role === 'affiliate' ? `🤝 ${getPartnerSingularLabel()} Account` : 
                            '👤 User Account'}
                         </p>
                       </div>

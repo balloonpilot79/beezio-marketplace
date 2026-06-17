@@ -28,7 +28,7 @@ begin
     end;
   end if;
 
-  return email_claim in ('jason@beezio.co', 'jasonlovingsr@gmail.com');
+  return email_claim in ('jason@beezio.co', 'jasonlovingsr@gmail.com', 'shop@beezio.co');
 end;
 $$;
 

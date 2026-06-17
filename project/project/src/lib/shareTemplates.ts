@@ -1,4 +1,4 @@
-export type ShareTargetType = 'product' | 'store' | 'collection' | 'fundraiser';
+export type ShareTargetType = 'product' | 'store' | 'collection';
 
 export type ShareChannel = 'copy' | 'facebook' | 'sms' | 'email' | 'x' | 'whatsapp';
 
@@ -84,27 +84,6 @@ export const SHARE_TEMPLATES: ShareTemplatesByType = {
     ],
     whatsapp: [
       { id: 'c2', label: 'Gift ideas', text: 'Gift ideas list I put together: {link}' },
-    ],
-  },
-  fundraiser: {
-    copy: [
-      { id: 'f1', label: 'Support cause', text: 'Support this cause in seconds — here’s the link: {link}' },
-      { id: 'f2', label: 'Small purchase helps', text: 'Even a small purchase helps. Sharing too: {link}' },
-    ],
-    facebook: [
-      { id: 'f1', label: 'Support cause', text: 'Support this cause in seconds — here’s the link: {link}' },
-    ],
-    sms: [
-      { id: 'f2', label: 'Small purchase helps', text: 'Even a small purchase helps. Sharing too: {link}' },
-    ],
-    email: [
-      { id: 'f1', label: 'Support cause', text: 'Support this cause in seconds — here’s the link: {link}' },
-    ],
-    x: [
-      { id: 'f1', label: 'Support cause', text: 'Support this cause in seconds — here’s the link: {link}' },
-    ],
-    whatsapp: [
-      { id: 'f2', label: 'Small purchase helps', text: 'Even a small purchase helps. Sharing too: {link}' },
     ],
   },
 };

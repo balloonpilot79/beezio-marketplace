@@ -13,8 +13,7 @@ const navLinks = [
   { to: '/dashboard/products', label: 'My products' },
   { to: '/dashboard/orders', label: 'Orders' },
   { to: '/dashboard/earnings', label: 'Earnings' },
-  { to: '/dashboard/affiliates', label: 'Affiliate / Fundraisers' },
-  { to: '/dashboard/inbox', label: 'Inbox', custom: true },
+  { to: '/dashboard/affiliates', label: 'Affiliate' },
 ];
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ title, subtitle, children }) => {
@@ -47,10 +46,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ title, subtitle, chil
                 <nav className="space-y-2 p-2">
                   {navLinks.map((link) => {
                     const active = location.pathname.startsWith(link.to);
-                    if (link.custom && link.label === 'Inbox') {
-                      const InboxTab = require('../InboxTab').default;
-                      return <InboxTab key={link.to} />;
-                    }
                     return (
                       <Link
                         key={link.to}
@@ -84,10 +79,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ title, subtitle, chil
           <nav className="space-y-2">
             {navLinks.map((link) => {
               const active = location.pathname.startsWith(link.to);
-              if (link.custom && link.label === 'Inbox') {
-                const InboxTab = require('../InboxTab').default;
-                return <InboxTab key={link.to} />;
-              }
               return (
                 <Link
                   key={link.to}

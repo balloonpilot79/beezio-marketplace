@@ -15,6 +15,17 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+function deriveSupabaseStorageKey(url) {
+  try {
+    const host = new URL(url).host;
+    const ref = host.split('.')[0];
+    if (!ref) return null;
+    return `sb-${ref}-auth-token`;
+  } catch {
+    return null;
+  }
+}
+
 // Fail fast helpers
 process.on('uncaughtException', (err) => {
   console.error('Uncaught exception:', err && (err.message || err));
@@ -123,13 +134,14 @@ async function runUserFlow(user) {
   // Persist Playwright-compatible storage state so we can reuse the session in browser tests
   try {
     const fs = await import('fs');
+    const storageKey = deriveSupabaseStorageKey(SUPABASE_URL) || 'supabase.auth.token';
     const storage = {
       cookies: [],
       origins: [
         {
           origin: 'http://localhost:5173',
           localStorage: [
-            { name: 'supabase.auth.token', value: JSON.stringify(signInData.session) }
+            { name: storageKey, value: JSON.stringify(signInData.session) }
           ]
         }
       ]

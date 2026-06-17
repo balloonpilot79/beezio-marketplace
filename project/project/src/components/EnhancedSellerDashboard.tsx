@@ -1,1977 +1,2064 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  ArrowRight,
+  CreditCard,
+  ExternalLink,
+  HelpCircle,
+  Mail,
+  Package,
+  PackagePlus,
+  Plus,
+  Settings,
+  ShoppingCart,
+  TrendingUp,
+  Truck,
+  Upload,
+  Users,
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
-import { ensureSellerProductInOrder } from '../utils/sellerProductOrder';
-import { testSupabaseConnection } from '../utils/testSupabaseConnection';
-import APIIntegrationManager from './APIIntegrationManager';
+import { apiPost } from '../utils/netlifyApi';
 import StoreCustomization from './StoreCustomization';
+import UniversalInbox from './UniversalInbox';
+import UniversalIntegrationsPage from './UniversalIntegrationsPage';
+import IssueCenterPage from '../pages/IssueCenterPage';
+import SingleProductPromoStudio from './affiliate/SingleProductPromoStudio';
+import InfluencerDashboard from './InfluencerDashboard';
+import ManualFulfillmentQueue from './ManualFulfillmentQueue';
+import AccountPayoutDashboard from './AccountPayoutDashboard';
+import { normalizeProductImages } from '../utils/imageHelpers';
+import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
+import { resolveProfileIdForUser } from '../utils/resolveProfileId';
+import { archiveProductById } from '../utils/archiveProduct';
+import { resolveAffiliateCommission } from '../utils/pricing';
 
-import MonetizationHelper from './MonetizationHelper';
-import { ExternalLink, TrendingUp, DollarSign, Package, Users, ShoppingCart, BarChart3, CreditCard, AlertTriangle, Star, Truck, Target, Box, Settings, Zap, Bot, CheckCircle, Mail, Upload, FileSpreadsheet } from 'lucide-react';
-import StripeSellerDashboard from './StripeSellerDashboard';
-import { useNavigate } from 'react-router-dom';
-import Papa from 'papaparse';
-import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
-import { calculatePricing } from '../utils/pricing';
+export type SellerDashboardTab =
+  | 'overview'
+  | 'products'
+  | 'links'
+  | 'single-product'
+  | 'influencer-promo'
+  | 'bulk-upload'
+  | 'orders'
+  | 'shipping'
+  | 'fulfillment'
+  | 'inventory'
+  | 'analytics'
+  | 'customers'
+  | 'financials'
+  | 'integrations'
+  | 'store-customization'
+  | 'support'
+  | 'messages';
+
+interface EnhancedSellerDashboardProps {
+  initialTab?: SellerDashboardTab;
+  activeTabOverride?: SellerDashboardTab;
+  onTabChange?: (tab: SellerDashboardTab) => void;
+  hideInternalTabs?: boolean;
+  title?: string;
+  description?: string;
+  mode?: 'seller' | 'affiliate' | 'influencer';
+}
 
 interface Product {
   id: string;
   title: string;
-  description: string;
-  price: number;
-  stock_quantity?: number;
-  commission_rate?: number;
-  images: string[];
-  videos?: string[];
-  sales_count: number;
-  total_revenue: number;
+  description?: string | null;
+  price?: number | null;
+  calculated_customer_price?: number | null;
+  seller_ask?: number | null;
+  seller_amount?: number | null;
+  seller_ask_price?: number | null;
+  category?: string | null;
+  images?: unknown;
+  image_url?: string | null;
+  affiliate_commission_rate?: number | null;
+  affiliate_commission_type?: 'percent' | 'flat' | null;
+  affiliate_commission_value?: number | null;
+  commission_rate?: number | null;
+  commission_type?: string | null;
+  flat_commission_amount?: number | null;
+  stock_quantity?: number | null;
+  created_at?: string | null;
+  seller_id?: string | null;
+  status?: string | null;
 }
 
-interface SalesData {
-  total_sales: number;
-  total_revenue: number;
-  total_commissions_paid: number;
-  active_subscriptions: number;
-  pending_orders: number;
-  low_stock_items: number;
-  monthly_growth: number;
-  avg_order_value: number;
-}
-
-interface Order {
+interface OrderRow {
   id: string;
-  customer_name: string;
-  customer_email: string;
-  product_title: string;
-  amount: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  created_at: string;
-  tracking_number?: string;
+  order_number?: string | null;
+  total_amount?: number | null;
+  total_charged?: number | null;
+  status?: string | null;
+  payment_status?: string | null;
+  created_at?: string | null;
+  customer_email?: string | null;
+  billing_email?: string | null;
 }
 
-interface Customer {
+interface PayoutSnapshotActivityRow {
   id: string;
-  name: string;
-  email: string;
-  total_orders: number;
-  total_spent: number;
-  last_order_date: string;
-  location: string;
+  order_id: string | null;
+  amount: number | null;
+  status: string | null;
+  created_at: string | null;
+  hold_release_at?: string | null;
+  snapshot_json?: {
+    order_number?: string | null;
+    total_charged?: number | null;
+    items?: Array<{ product_title?: string | null }>;
+  } | null;
 }
 
-const EnhancedSellerDashboard: React.FC = () => {
-  const { user, profile } = useAuth();
-  const navigate = useNavigate();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [recruiterCode, setRecruiterCode] = useState<string | null>(null);
-  const [salesData, setSalesData] = useState<SalesData>({
-    total_sales: 0,
-    total_revenue: 0,
-    total_commissions_paid: 1250.75,
-    active_subscriptions: 23,
-    pending_orders: 5,
-    low_stock_items: 3,
-    monthly_growth: 12.5,
-    avg_order_value: 42.50
-  });
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'bulk-upload' | 'orders' | 'fulfillment' | 'inventory' | 'analytics' | 'customers' | 'financials' | 'integrations' | 'store-customization' | 'affiliate-tools' | 'automation'>('overview');
-  const [loading, setLoading] = useState(false); // Changed to false to prevent white screen
-  const [showProductForm, setShowProductForm] = useState(false);
-  const [newProduct, setNewProduct] = useState({
-    title: '',
-    description: '',
-    price: 0,
-    category: '',
-    affiliate_commission_rate: 10,
-    stock_quantity: 1,
-    images: [] as string[],
-    video_url: '',
-    api_integration: {
-      enabled: false,
-      provider: '' as '' | 'printful' | 'printify' | 'shopify' | 'custom',
-      product_id: '',
-      webhook_url: ''
-    },
-    shipping_cost: 0
-  });
+interface AffiliateSalePulse {
+  id: string;
+  orderId: string | null;
+  orderLabel: string;
+  productTitle: string;
+  earnedAmount: number;
+  totalCharged: number;
+  status: string;
+  createdAt: string | null;
+}
 
-  // Bulk upload states
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadedProducts, setUploadedProducts] = useState<any[]>([]);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadResults, setUploadResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+interface InfluencerProgressSummary {
+  todaySales: number;
+  weekSales: number;
+  monthSales: number;
+  yearSales: number;
+  totalEarned: number;
+  recentSales: AffiliateSalePulse[];
+}
 
-  // Fulfillment states
-  const [fulfillmentOrders, setFulfillmentOrders] = useState<any[]>([]);
-  const [fulfillmentFilter, setFulfillmentFilter] = useState<'all' | 'pending' | 'fulfilled'>('all');
-  const [trackingNumber, setTrackingNumber] = useState<{ [key: string]: string }>({});
+type ProductSalesSummary = {
+  orderCount: number;
+  quantitySold: number;
+};
 
-  const categories = [
-    'Electronics', 'Fashion', 'Home & Garden', 'Health & Beauty',
-    'Sports & Outdoors', 'Books & Media', 'Toys & Games', 'Food & Beverages',
-    'Travel & Experiences', 'Art & Crafts', 'Business & Industrial', 'Automotive', 'Other'
+const money = (value: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(value || 0));
+const PRODUCT_IMAGE_FALLBACK = 'https://placehold.co/400x300?text=No+Image';
+
+const extractMissingColumnName = (message: string): string | null => {
+  const pg = message.match(/column\s+"([^"]+)"\s+of\s+relation\s+"[^"]+"\s+does\s+not\s+exist/i);
+  if (pg?.[1]) return pg[1];
+  const pgDot = message.match(/column\s+([a-z0-9_]+\.[a-z0-9_]+)\s+does\s+not\s+exist/i);
+  if (pgDot?.[1]) return pgDot[1].split('.').pop() || pgDot[1];
+  const pgrst = message.match(/Could not find the '([^']+)' column of '[^']+' in the schema cache/i);
+  if (pgrst?.[1]) return pgrst[1];
+  const generic = message.match(/column ['"]?([a-zA-Z0-9_]+)['"]? does not exist/i);
+  if (generic?.[1]) return generic[1];
+  return null;
+};
+
+const removeSelectedField = (fields: string, missing: string): string =>
+  fields
+    .split(',')
+    .map((field) => field.trim())
+    .filter((field) => field && field !== missing)
+    .join(',');
+
+const getFirstImageUrl = (images: unknown, fallback?: string | null) => {
+  const normalized = normalizeProductImages(images);
+  return normalized[0] || fallback || '';
+};
+
+const getStatusTone = (status: string) => {
+  const normalized = String(status || '').toUpperCase();
+  if (normalized === 'PAID') return 'bg-emerald-100 text-emerald-800';
+  if (normalized === 'READY_TO_PAY') return 'bg-blue-100 text-blue-800';
+  if (normalized === 'ON_HOLD_DISPUTE') return 'bg-rose-100 text-rose-800';
+  return 'bg-amber-100 text-amber-800';
+};
+
+const getOrderLabel = (row: PayoutSnapshotActivityRow) => {
+  const orderNumber = String(row.snapshot_json?.order_number || '').trim();
+  if (orderNumber) return orderNumber;
+  const orderId = String(row.order_id || '').trim();
+  return orderId ? `Order ${orderId.slice(0, 8)}` : 'Tracked sale';
+};
+
+const getProductTitle = (row: PayoutSnapshotActivityRow) => {
+  const items = Array.isArray(row.snapshot_json?.items) ? row.snapshot_json?.items : [];
+  const title = items
+    .map((item) => String(item?.product_title || '').trim())
+    .find(Boolean);
+  return title || 'Marketplace sale';
+};
+
+const getSellerAskValue = (product: Product) => {
+  const candidates = [
+    Number(product?.seller_ask ?? NaN),
+    Number(product?.seller_amount ?? NaN),
+    Number(product?.seller_ask_price ?? NaN),
+    Number(product?.price ?? NaN),
   ];
+  return candidates.find((value) => Number.isFinite(value) && value > 0) || 0;
+};
+
+const getAffiliateCommissionSummary = (product: Product) => {
+  const commission = resolveAffiliateCommission(product as any);
+  return commission.type === 'flat' ? money(commission.value) : `${Number(commission.value || 0)}%`;
+};
+
+const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
+  initialTab,
+  activeTabOverride,
+  onTabChange,
+  hideInternalTabs = false,
+  title = 'Seller Dashboard',
+  description = 'Sell your own products, promote marketplace products, and manage everything from one dashboard.',
+  mode = 'seller',
+}) => {
+  const { user, profile, session } = useAuth();
+  const normalizeTab = React.useCallback(
+    (tab: SellerDashboardTab | undefined): SellerDashboardTab => {
+      const requested = tab || 'products';
+      if (requested === 'overview') return 'products';
+      if (requested === 'shipping' || requested === 'fulfillment') return 'orders';
+      return requested;
+    },
+    [mode]
+  );
+  const [activeTab, setActiveTab] = useState<SellerDashboardTab>(normalizeTab(activeTabOverride || initialTab || (mode === 'seller' ? 'products' : 'overview')));
+  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [promotedProducts, setPromotedProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [productSales, setProductSales] = useState<Record<string, ProductSalesSummary>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [resolvedAffiliateId, setResolvedAffiliateId] = useState<string>('');
+  const [copiedAffiliateProductId, setCopiedAffiliateProductId] = useState<string>('');
+  const [unlistingAffiliateProductId, setUnlistingAffiliateProductId] = useState<string>('');
+  const [removingSellerProductId, setRemovingSellerProductId] = useState<string>('');
+  const [storePath, setStorePath] = useState<string>('/stores');
+  const [affiliateSalePulse, setAffiliateSalePulse] = useState<AffiliateSalePulse[]>([]);
+  const [influencerProgress, setInfluencerProgress] = useState<InfluencerProgressSummary>({
+    todaySales: 0,
+    weekSales: 0,
+    monthSales: 0,
+    yearSales: 0,
+    totalEarned: 0,
+    recentSales: [],
+  });
+
+  const sellerId = String(profile?.id || user?.id || '').trim();
+  const affiliateOwnerId = String(resolvedAffiliateId || profile?.id || user?.id || '').trim();
+  const affiliateOwnerIds = React.useMemo(
+    () => (affiliateOwnerId ? [affiliateOwnerId] : []),
+    [affiliateOwnerId]
+  );
+  const dashboardOwnerIds = React.useMemo(
+    () =>
+      Array.from(
+        new Set([sellerId, ...affiliateOwnerIds].map((value) => String(value || '').trim()).filter(Boolean))
+      ),
+    [affiliateOwnerIds, sellerId]
+  );
+  useEffect(() => {
+    let alive = true;
+    if (!user?.id) {
+      setResolvedAffiliateId('');
+      return;
+    }
+
+    void (async () => {
+      const resolved = await resolveProfileIdForUser(user.id);
+      if (alive) {
+        setResolvedAffiliateId(String(resolved || profile?.id || user.id).trim());
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [user?.id, profile?.id]);
 
   useEffect(() => {
-    // Always load sample data immediately to prevent loading screen
-    console.log('Loading seller dashboard with sample data...');
-    setSalesData({
-      total_sales: 0,
-      total_revenue: 0,
-      total_commissions_paid: 1250.75,
-      active_subscriptions: 23,
-      pending_orders: 5,
-      low_stock_items: 3,
-      monthly_growth: 12.5,
-      avg_order_value: 42.50
-    });
-    setLoading(false);
+    const next = normalizeTab(activeTabOverride);
+    if (activeTabOverride && next !== activeTab) {
+      setActiveTab(next);
+    }
+  }, [activeTab, activeTabOverride, normalizeTab]);
 
-    // Try to load real data if user is available
-    const initializeDashboard = async () => {
-      if (user) {
+  useEffect(() => {
+    if (initialTab && !activeTabOverride) {
+      setActiveTab(normalizeTab(initialTab));
+    }
+  }, [activeTabOverride, initialTab, normalizeTab]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDashboardData = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const ownerIds = Array.from(new Set([profile?.id, (profile as any)?.user_id, user.id].map((id) => String(id || '').trim()).filter(Boolean)));
+        let productRows: Product[] = [];
+        if (ownerIds.length) {
+          const { data, error: productsError } = await supabase
+            .from('products')
+            .select('*')
+            .in('seller_id', ownerIds)
+            .neq('status', 'archived')
+            .order('created_at', { ascending: false })
+            .limit(200);
+          if (productsError) throw productsError;
+          productRows = (data as Product[]) || [];
+        }
+
+        if (!cancelled) setProducts(productRows);
+
+        if (mode === 'seller' && session) {
+          try {
+            const payload = await apiPost<any>('/.netlify/functions/seller-dashboard-sales', session, {});
+            const orderRows = Array.isArray(payload?.orders) ? payload.orders : [];
+            const salesSummary = orderRows.reduce((acc: Record<string, ProductSalesSummary>, order: any) => {
+              const items = Array.isArray(order?.order_items) ? order.order_items : [];
+              items.forEach((row: any) => {
+                const productId = String(row?.product_id || '').trim();
+                if (!productId) return;
+                const current = acc[productId] || { orderCount: 0, quantitySold: 0 };
+                current.orderCount += 1;
+                current.quantitySold += Number(row?.quantity || 1);
+                acc[productId] = current;
+              });
+              return acc;
+            }, {});
+
+            if (!cancelled) {
+              setOrders(orderRows as OrderRow[]);
+              setProductSales(salesSummary);
+            }
+          } catch (salesError) {
+            console.warn('[EnhancedSellerDashboard] seller-dashboard-sales load failed:', salesError);
+            if (!cancelled) {
+              setOrders([]);
+              setProductSales({});
+            }
+          }
+        } else if (!cancelled) {
+          setOrders([]);
+          setProductSales({});
+        }
+      } catch (err) {
+        console.error('[EnhancedSellerDashboard] load failed:', err);
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Dashboard data failed to load.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void loadDashboardData();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, profile?.id, session, user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPromotedProducts = async () => {
+      if (!user || !affiliateOwnerIds.length) {
+        setPromotedProducts([]);
+        return;
+      }
+
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const session = sessionData?.session ?? null;
+        let promotedRows: any[] = [];
+        const readRows = (payload: any): any[] => (Array.isArray(payload?.rows) ? payload.rows : []);
+        const readLocalRows = () => {
+          if (typeof window === 'undefined' || !user?.id) return [];
+          try {
+            const raw = window.localStorage.getItem(`affiliate_products_${user.id}`);
+            const selectedProducts = raw ? JSON.parse(raw) : [];
+            if (!Array.isArray(selectedProducts)) return [];
+            return selectedProducts
+              .filter((entry: any) => entry?.selected !== false)
+              .map((entry: any, index: number) => ({
+                id: `local-${entry.productId || index}`,
+                affiliate_id: affiliateOwnerId || user.id,
+                product_id: entry.productId,
+                product_snapshot: entry.product || null,
+                display_order: index,
+                created_at: entry.dateAdded || null,
+              }))
+              .filter((row: any) => String(row.product_id || '').trim());
+          } catch {
+            return [];
+          }
+        };
+
+        const publicStoreIds = Array.from(
+          new Set([affiliateOwnerId, ...affiliateOwnerIds].map((value) => String(value || '').trim()).filter(Boolean))
+        );
+        for (const storeId of publicStoreIds) {
+          try {
+            const response = await fetch(`/.netlify/functions/public-affiliate-store-get?affiliate=${encodeURIComponent(storeId)}`);
+            const payload = await response.json().catch(() => null);
+            const rows = readRows(payload);
+            if (response.ok && rows.length > 0) {
+              promotedRows = rows;
+              break;
+            }
+          } catch {
+            // Try the next alias.
+          }
+        }
+
+        if (promotedRows.length === 0) {
+          try {
+            const payload = await apiPost<any>('/.netlify/functions/affiliate-products-list', session, {
+              affiliate_id: affiliateOwnerId,
+              affiliate_ids: affiliateOwnerIds,
+            });
+            promotedRows = readRows(payload);
+          } catch {
+            try {
+              const payload = await apiPost<any>('/api/affiliate/products/list', session, {
+                affiliate_id: affiliateOwnerId,
+                affiliate_ids: affiliateOwnerIds,
+              });
+              promotedRows = readRows(payload);
+            } catch {
+              promotedRows = [];
+            }
+          }
+        }
+
+        const hydrateProductRows = async (rows: any[]) => {
+          const embeddedRows = rows
+            .map((row: any) => {
+              const product = row?.products || row?.product || row?.product_snapshot || null;
+              const productId = String(row?.product_id || row?.productId || product?.id || '').trim();
+              if (!product?.id || !productId) return null;
+              return {
+                ...row,
+                product_id: productId,
+                products: product,
+              };
+            })
+            .filter(Boolean);
+          if (embeddedRows.length === rows.length) {
+            return embeddedRows;
+          }
+
+          const productIds = Array.from(
+            new Set(
+              rows
+                .map((row: any) => String(row?.product_id || row?.productId || row?.products?.id || row?.product?.id || '').trim())
+                .filter(Boolean)
+            )
+          );
+          if (!productIds.length) return [];
+
+          let selectFields =
+            'id,title,name,description,price,seller_ask,seller_amount,seller_ask_price,commission_rate,affiliate_commission_rate,commission_type,affiliate_commission_type,flat_commission_amount,category,image_url,images,seller_id,is_active,is_promotable,status';
+          let productRows: any[] | null = null;
+          let productError: any = null;
+
+          for (let attempt = 0; attempt < 16; attempt += 1) {
+            const result = await supabase.from('products').select(selectFields).in('id', productIds);
+            if (!result.error) {
+              productRows = Array.isArray(result.data) ? result.data : [];
+              productError = null;
+              break;
+            }
+
+            productError = result.error;
+            const missing = extractMissingColumnName(String((result.error as any)?.message || ''));
+            if (missing && selectFields.split(',').map((field) => field.trim()).includes(missing)) {
+              selectFields = removeSelectedField(selectFields, missing);
+              continue;
+            }
+            break;
+          }
+
+          if (productError || !Array.isArray(productRows)) {
+            console.warn('[EnhancedSellerDashboard] product hydration failed:', productError?.message || productError);
+            return rows
+              .map((row: any) => {
+                const fallbackProduct = row?.products || row?.product || row?.product_snapshot || null;
+                return fallbackProduct?.id
+                  ? {
+                      ...row,
+                      product_id: String(row?.product_id || row?.productId || fallbackProduct.id || '').trim(),
+                      products: fallbackProduct,
+                    }
+                  : row;
+              });
+          }
+
+          const productsById = new Map(productRows.map((product: any) => [String(product.id), product]));
+          const sellerIds = Array.from(new Set(productRows.map((product: any) => String(product?.seller_id || '').trim()).filter(Boolean)));
+          const sellerNameById = new Map<string, string>();
+          if (sellerIds.length) {
+            try {
+              const { data: sellers } = await supabase
+                .from('profiles')
+                .select('id,full_name,email')
+                .in('id', sellerIds);
+              ((sellers as any[]) || []).forEach((seller: any) => {
+                const id = String(seller?.id || '').trim();
+                if (id) sellerNameById.set(id, String(seller?.full_name || seller?.email || 'Marketplace Seller'));
+              });
+            } catch {
+              // Seller names are helpful, not required for the list to render.
+            }
+          }
+
+          return rows
+            .map((row: any) => {
+              const productId = String(row?.product_id || row?.productId || row?.products?.id || row?.product?.id || '').trim();
+              const product = productsById.get(productId) || row?.products || row?.product || row?.product_snapshot || null;
+              if (!product?.id) return null;
+              const sellerIdForName = String((product as any)?.seller_id || '').trim();
+              return {
+                ...row,
+                product_id: productId,
+                products: {
+                  ...(product as any),
+                  seller_name: sellerNameById.get(sellerIdForName) || (product as any)?.seller_name || 'Marketplace Seller',
+                },
+              };
+            })
+            .filter(Boolean);
+        };
+
+        const localRows = await hydrateProductRows(readLocalRows());
+        if (localRows.length > 0) {
+          promotedRows = localRows;
+        }
+
+        const seenProductIds = new Set<string>();
+        const formatted = promotedRows
+          .map((row: any) => {
+            const product = row?.products || row?.product;
+            const productId = String(product?.id || row?.product_id || '').trim();
+            if (!productId || seenProductIds.has(productId)) return null;
+            seenProductIds.add(productId);
+            const commission = resolveAffiliateCommission(product);
+            return {
+              id: productId,
+              title: product.title || product.name || 'Product',
+              description: product.description || '',
+              price: getBuyerFacingProductPrice(product),
+              commission_rate: commission.value,
+              commission_type: commission.type === 'flat' ? 'fixed' : 'percentage',
+              category: product.category || 'General',
+              image_url: getFirstImageUrl(product.images, product.image_url),
+              seller_name: product.profiles?.full_name || product.seller_name || 'Marketplace Seller',
+              display_order: Number(row?.display_order ?? 999),
+            } as Product & { commission_type?: 'percentage' | 'fixed'; seller_name?: string; image_url?: string; display_order?: number };
+          })
+          .filter(Boolean)
+          .sort((a: any, b: any) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)) as Product[];
+
+        if (!cancelled) setPromotedProducts(formatted);
+      } catch (err) {
+        console.warn('[EnhancedSellerDashboard] promoted products load failed:', err);
+        if (!cancelled) setPromotedProducts([]);
+      }
+    };
+
+    void loadPromotedProducts();
+
+    const refresh = (event: Event) => {
+      const changedAffiliateId = String((event as CustomEvent<{ affiliateId?: string | null }>).detail?.affiliateId || '').trim();
+      if (!changedAffiliateId || affiliateOwnerIds.includes(changedAffiliateId)) {
+        void loadPromotedProducts();
+      }
+    };
+    window.addEventListener('affiliate-products-changed', refresh as EventListener);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('affiliate-products-changed', refresh as EventListener);
+    };
+  }, [affiliateOwnerId, affiliateOwnerIds.join('|'), user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadStorePath = async () => {
+      if (mode === 'affiliate') {
+        const affiliateId = String(affiliateOwnerId || sellerId || '').trim();
+        if (!affiliateId) {
+          if (!cancelled) setStorePath('/dashboard?section=affiliate&tab=products');
+          return;
+        }
+
         try {
-          await fetchSellerData();
-        } catch (error) {
-          console.error('Error fetching seller data:', error);
-          // Keep sample data on error
+          const { data } = await supabase
+            .from('affiliate_store_settings')
+            .select('subdomain, custom_domain')
+            .eq('affiliate_id', affiliateId)
+            .maybeSingle();
+
+          if (cancelled) return;
+
+          const customDomain = String(data?.custom_domain || '').trim();
+          if (customDomain) {
+            setStorePath(`https://${customDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')}`);
+            return;
+          }
+
+          const subdomain = String(data?.subdomain || '').trim().toLowerCase();
+          if (subdomain) {
+            setStorePath(`/store/${subdomain}`);
+            return;
+          }
+        } catch {
+          // Fallback below keeps affiliate storefront navigation working.
+        }
+
+        if (!cancelled) {
+          setStorePath(`/partner/${encodeURIComponent(affiliateId)}`);
+        }
+        return;
+      }
+
+      const activeSellerId = String(sellerId || '').trim();
+      if (!activeSellerId) {
+        if (!cancelled) setStorePath('/stores');
+        return;
+      }
+
+      try {
+        const [{ data }, { data: profileData }] = await Promise.all([
+          supabase
+            .from('store_settings')
+            .select('subdomain, custom_domain')
+            .eq('seller_id', activeSellerId)
+            .maybeSingle(),
+          supabase
+            .from('profiles')
+            .select('subdomain')
+            .eq('id', activeSellerId)
+            .maybeSingle(),
+        ]);
+
+        if (cancelled) return;
+
+        const customDomain = String(data?.custom_domain || '').trim();
+        if (customDomain) {
+          setStorePath(`https://${customDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')}`);
+          return;
+        }
+
+        const subdomain = String(data?.subdomain || profileData?.subdomain || '').trim().toLowerCase();
+        if (subdomain) {
+          setStorePath(`/store/${subdomain}`);
+          return;
+        }
+      } catch {
+        // Fallback below keeps seller storefront navigation working.
+      }
+
+      if (!cancelled) {
+        setStorePath(`/store/${activeSellerId}`);
+      }
+    };
+
+    void loadStorePath();
+    return () => {
+      cancelled = true;
+    };
+  }, [affiliateOwnerId, mode, sellerId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadUnifiedActivity = async () => {
+      if (!user?.id || !dashboardOwnerIds.length) {
+        if (!cancelled) {
+          setAffiliateSalePulse([]);
+          setInfluencerProgress({
+            todaySales: 0,
+            weekSales: 0,
+            monthSales: 0,
+            yearSales: 0,
+            totalEarned: 0,
+            recentSales: [],
+          });
+        }
+        return;
+      }
+
+      try {
+        if (mode === 'affiliate') {
+          const { data, error: snapshotError } = await supabase
+            .from('payout_snapshots')
+            .select('id, order_id, amount, status, created_at, hold_release_at, snapshot_json')
+            .eq('payee_role', 'PARTNER')
+            .in('payee_user_id', dashboardOwnerIds)
+            .order('created_at', { ascending: false })
+            .limit(24);
+
+          if (snapshotError) throw snapshotError;
+          if (cancelled) return;
+
+          const rows = ((data as any[]) || []) as PayoutSnapshotActivityRow[];
+          setAffiliateSalePulse(
+            rows.slice(0, 6).map((row) => ({
+              id: row.id,
+              orderId: row.order_id,
+              orderLabel: getOrderLabel(row),
+              productTitle: getProductTitle(row),
+              earnedAmount: Number(row.amount || 0),
+              totalCharged: Number(row.snapshot_json?.total_charged || 0),
+              status: String(row.status || 'PENDING_HOLD'),
+              createdAt: row.created_at || null,
+            }))
+          );
+        }
+
+        if (mode === 'influencer') {
+          const { data, error: snapshotError } = await supabase
+            .from('payout_snapshots')
+            .select('id, order_id, amount, status, created_at, hold_release_at, snapshot_json')
+            .eq('payee_role', 'INFLUENCER')
+            .in('payee_user_id', dashboardOwnerIds)
+            .order('created_at', { ascending: false })
+            .limit(250);
+
+          if (snapshotError) throw snapshotError;
+          if (cancelled) return;
+
+          const rows = ((data as any[]) || []) as PayoutSnapshotActivityRow[];
+          const now = new Date();
+          const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const startOfWeek = new Date(startOfToday);
+          startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay());
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+          const countUniqueSalesSince = (start: Date) => {
+            const saleIds = new Set<string>();
+            rows.forEach((row) => {
+              const createdAt = row.created_at ? new Date(row.created_at) : null;
+              if (!createdAt || Number.isNaN(createdAt.getTime()) || createdAt < start) return;
+              saleIds.add(String(row.order_id || row.id));
+            });
+            return saleIds.size;
+          };
+
+          setInfluencerProgress({
+            todaySales: countUniqueSalesSince(startOfToday),
+            weekSales: countUniqueSalesSince(startOfWeek),
+            monthSales: countUniqueSalesSince(startOfMonth),
+            yearSales: countUniqueSalesSince(startOfYear),
+            totalEarned: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+            recentSales: rows.slice(0, 6).map((row) => ({
+              id: row.id,
+              orderId: row.order_id,
+              orderLabel: getOrderLabel(row),
+              productTitle: getProductTitle(row),
+              earnedAmount: Number(row.amount || 0),
+              totalCharged: Number(row.snapshot_json?.total_charged || 0),
+              status: String(row.status || 'PENDING_HOLD'),
+              createdAt: row.created_at || null,
+            })),
+          });
+        }
+      } catch (activityError) {
+        console.warn('[EnhancedSellerDashboard] unified activity load failed:', activityError);
+        if (!cancelled) {
+          if (mode === 'affiliate') setAffiliateSalePulse([]);
+          if (mode === 'influencer') {
+            setInfluencerProgress({
+              todaySales: 0,
+              weekSales: 0,
+              monthSales: 0,
+              yearSales: 0,
+              totalEarned: 0,
+              recentSales: [],
+            });
+          }
         }
       }
     };
 
-    initializeDashboard();
-  }, [user, profile]);
+    void loadUnifiedActivity();
+    return () => {
+      cancelled = true;
+    };
+  }, [dashboardOwnerIds, mode, user?.id]);
 
-  useEffect(() => {
-    if (!user || !profile?.id) return;
+  const handleTabClick = (tab: SellerDashboardTab) => {
+    const next = normalizeTab(tab);
+    setActiveTab(next);
+    onTabChange?.(next);
+  };
 
-    const deterministic = `BZO${String(profile.id).replace(/-/g, '').toUpperCase().slice(0, 12)}`;
-    const existing = (profile as any)?.referral_code as string | undefined;
-    setRecruiterCode(existing || deterministic);
+  const generateAffiliateProductLink = (productId: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const uid = encodeURIComponent(affiliateOwnerId);
+    return `${origin}/partner/${affiliateOwnerId}/product/${productId}?ref=${affiliateOwnerId}&uid=${uid}`;
+  };
 
-    // Best-effort: create referral_code once if missing.
-    (async () => {
-      try {
-        await supabase
-          .from('profiles')
-          .update({ referral_code: deterministic })
-          .eq('id', profile.id)
-          .is('referral_code', null);
-      } catch {
-        // non-blocking
-      }
-    })();
-  }, [user, profile?.id]);
-
-  const fetchSellerData = async () => {
+  const copyAffiliateProductLink = async (productId: string) => {
     try {
-      // Fetch real products from Supabase
-      const { data: productsData } = await supabase
-        .from('products')
-        .select('*')
-        .eq('seller_id', profile?.id);
-
-      if (productsData) {
-        setProducts(productsData);
-      }
-
-      // Initialize formattedOrders variable
-      let formattedOrders: any[] = [];
-
-      // Fetch real orders from Supabase - using simplified query for available schema
-      const { data: ordersData } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          total_amount,
-          status,
-          created_at,
-          order_items!inner(
-            product_id,
-            quantity,
-            price,
-            products(title, seller_id)
-          )
-        `)
-        .eq('order_items.products.seller_id', profile?.id)
-        .order('created_at', { ascending: false });
-
-      if (ordersData) {
-        formattedOrders = ordersData.map(order => ({
-          id: order.id,
-          customer_name: 'Customer', // Customer name not available in current schema
-          customer_email: 'customer@example.com', // Customer email not available in current schema
-          product_title: (order.order_items[0]?.products as any)?.title || 'Product',
-          amount: order.total_amount,
-          status: order.status as 'pending' | 'shipped' | 'delivered' | 'cancelled',
-          created_at: order.created_at,
-          tracking_number: undefined // Tracking number not available in current schema
-        }));
-        setOrders(formattedOrders);
-      }
-
-      // Fetch customer data from orders - simplified for available schema
-      const { data: customerData } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          total_amount,
-          created_at,
-          order_items!inner(
-            product_id,
-            products(seller_id)
-          )
-        `)
-        .eq('order_items.products.seller_id', profile?.id);
-
-      if (customerData) {
-        // Create sample customer data since customer details aren't in current schema
-        const sampleCustomers = customerData.slice(0, 5).map((order, index) => ({
-          id: `customer_${index + 1}`,
-          name: `Customer ${index + 1}`,
-          email: `customer${index + 1}@example.com`,
-          total_orders: Math.floor(Math.random() * 5) + 1,
-          total_spent: order.total_amount,
-          last_order_date: order.created_at.split('T')[0],
-          location: ['New York', 'California', 'Texas', 'Florida', 'Illinois'][index] || 'Unknown'
-        }));
-        setCustomers(sampleCustomers);
-      }
-
-      // Enhanced sales data
-      setSalesData({
-        total_sales: productsData?.reduce((sum, p) => sum + (p.sales_count || 0), 0) || 0,
-        total_revenue: productsData?.reduce((sum, p) => sum + (p.total_revenue || 0), 0) || 0,
-        total_commissions_paid: 1250.75,
-        active_subscriptions: 23,
-        pending_orders: formattedOrders.filter(o => o.status === 'pending').length,
-        low_stock_items: 3,
-        monthly_growth: 12.5,
-        avg_order_value: 42.50
-      });
-    } catch (error) {
-      console.error('Error fetching seller data:', error);
-    } finally {
-      setLoading(false);
+      await navigator.clipboard.writeText(generateAffiliateProductLink(productId));
+      setCopiedAffiliateProductId(productId);
+      window.setTimeout(() => setCopiedAffiliateProductId(''), 1500);
+    } catch (err) {
+      console.warn('[EnhancedSellerDashboard] copy affiliate product link failed:', err);
     }
   };
 
-  const generateAffiliateLink = (productId?: string) => {
-    const baseUrl = window.location.origin;
-    const affiliateId = 'seller-' + profile?.id;
-    if (productId) {
-      return `${baseUrl}/product/${productId}?ref=${affiliateId}`;
-    }
-    return `${baseUrl}?ref=${affiliateId}`;
-  };
+  const unlistAffiliateProduct = async (productId: string) => {
+    if (!productId || !affiliateOwnerIds.length) return;
+    const confirmed = window.confirm('Unlist this affiliate product from your custom store?');
+    if (!confirmed) return;
 
-  const handleTestConnection = async () => {
-    console.log('🔍 Testing Supabase connection from Seller Dashboard...');
-    const result = await testSupabaseConnection();
-    if (result.success) {
-      alert('✅ Supabase connection successful! Check console for details.');
-    } else {
-      alert('❌ Supabase connection failed: ' + result.error);
-    }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    // You could add a toast notification here
-  };
-
-  const generateRecruitAffiliateLink = () => {
-    const baseUrl = window.location.origin;
-    const code = recruiterCode || profile?.id;
-    if (!code) return `${baseUrl}/affiliate-signup?role=affiliate`;
-    return `${baseUrl}/affiliate-signup?role=affiliate&recruit=${encodeURIComponent(String(code))}`;
-  };
-
-  const handleAddProduct = async () => {
     try {
-      setLoading(true);
+      setUnlistingAffiliateProductId(productId);
+      const { error } = await supabase
+        .from('affiliate_products')
+        .delete()
+        .in('affiliate_id', affiliateOwnerIds)
+        .eq('product_id', productId);
+      if (error) throw error;
 
-      const sellerAsk = Number.isFinite(newProduct.price) ? newProduct.price : 0;
-      const affiliateRate = Number.isFinite(newProduct.affiliate_commission_rate) ? newProduct.affiliate_commission_rate : 0;
-      const stockQuantity = Number.isFinite(newProduct.stock_quantity)
-        ? Math.max(0, Math.floor(newProduct.stock_quantity))
-        : 0;
-
-      const breakdown = calculatePricing({
-        sellerDesiredAmount: sellerAsk,
-        affiliateRate,
-        affiliateType: 'percentage',
-      });
-
-      let categoryId: string | null = null;
-      if (newProduct.category && newProduct.category.trim()) {
+      setPromotedProducts((prev) => prev.filter((product) => product.id !== productId));
+      if (typeof window !== 'undefined' && user?.id) {
         try {
-          const { data: categoryRow } = await supabase
-            .from('categories')
-            .select('id')
-            .ilike('name', newProduct.category.trim())
-            .maybeSingle();
-          categoryId = (categoryRow as any)?.id ?? null;
-        } catch (_e) {
-          categoryId = null;
+          const storageKey = `affiliate_products_${user.id}`;
+          const existing = JSON.parse(window.localStorage.getItem(storageKey) || '[]');
+          if (Array.isArray(existing)) {
+            window.localStorage.setItem(
+              storageKey,
+              JSON.stringify(existing.filter((entry: any) => String(entry?.productId || '') !== String(productId)))
+            );
+          }
+        } catch {
+          // ignore local fallback cleanup
         }
       }
-
-      const { data: created, error } = await supabase.from('products').insert({
-        seller_id: profile?.id,
-        title: newProduct.title,
-        description: newProduct.description,
-        lineage: 'SELLER_DIRECT',
-        // Stored listing price (buyer-facing)
-        price: breakdown.listingPrice,
-        // Seller ask stored explicitly for payout math
-        seller_amount: breakdown.sellerAmount,
-        seller_ask: breakdown.sellerAmount,
-        seller_ask_price: breakdown.sellerAmount,
-        // Commission fields used across the app
-        affiliate_enabled: true,
-        is_promotable: true,
-        commission_rate: affiliateRate,
-        commission_type: 'percentage',
-        flat_commission_amount: 0,
-        affiliate_commission_type: 'percent',
-        affiliate_commission_value: affiliateRate,
-        calculated_customer_price: breakdown.listingPrice,
-        // Inventory + media
-        stock_quantity: stockQuantity,
-        images: Array.isArray(newProduct.images) ? newProduct.images : [],
-        videos: newProduct.video_url ? [newProduct.video_url] : [],
-        tags: [],
-        category_id: categoryId,
-        // Shipping
-        shipping_cost: Number.isFinite(newProduct.shipping_cost) ? newProduct.shipping_cost : 0,
-        // Visibility
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }).select('id').single();
-
-      if (error) throw error;
-      await ensureSellerProductInOrder({ sellerId: profile?.id, productId: (created as any)?.id });
-      alert('Product added successfully!');
-      fetchSellerData();
-    } catch (error) {
-      console.error('Error adding product:', error);
-      alert('Failed to add product.');
+      window.dispatchEvent(
+        new CustomEvent('affiliate-products-changed', {
+          detail: { productId, affiliateId: affiliateOwnerId || null },
+        })
+      );
+    } catch (err) {
+      console.warn('[EnhancedSellerDashboard] affiliate product unlist failed:', err);
+      window.alert('Could not unlist this affiliate product. Please try again.');
     } finally {
-      setLoading(false);
+      setUnlistingAffiliateProductId('');
     }
   };
 
-  const handleAddAffiliateProduct = async (productId: string) => {
+  const removeSellerProduct = async (productId: string) => {
+    if (!productId) return;
+    const confirmed = window.confirm('Remove this product from your active dashboard and marketplace listings? Promoter links and payout history will be kept.');
+    if (!confirmed) return;
+
     try {
-      setLoading(true);
-      const { error } = await supabase.from('affiliate_products').insert({
-        affiliate_id: profile?.id,
-        product_id: productId,
-        added_at: new Date().toISOString(),
-      });
-
-      if (error) throw error;
-      alert('Product added to your store successfully!');
-      fetchSellerData();
-    } catch (error) {
-      console.error('Error adding affiliate product:', error);
-      alert('Failed to add product.');
+      setRemovingSellerProductId(productId);
+      const product = products.find((entry) => entry.id === productId);
+      const sellerId = String(product?.seller_id || profile?.id || user?.id || '').trim() || undefined;
+      await archiveProductById({ productId, sellerId });
+      setProducts((prev) => prev.filter((entry) => entry.id !== productId));
+    } catch (err) {
+      console.warn('[EnhancedSellerDashboard] seller product remove failed:', err);
+      window.alert('Could not remove this product. Please try again.');
     } finally {
-      setLoading(false);
+      setRemovingSellerProductId('');
     }
   };
 
-  const ProductForm = () => (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-lg font-bold mb-4">Add New Product</h2>
-      <form onSubmit={(e) => {
-        e.preventDefault();
-        handleAddProduct();
-      }}>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Title</label>
-          <input
-            type="text"
-            value={newProduct.title}
-            onChange={(e) => setNewProduct({ ...newProduct, title: e.target.value })}
-            className="w-full px-3 py-2 border rounded-lg"
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Description</label>
-          <textarea
-            value={newProduct.description}
-            onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-            className="w-full px-3 py-2 border rounded-lg"
-          ></textarea>
-        </div>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Price</label>
-          <input
-            type="number"
-            value={newProduct.price}
-            onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })}
-            className="w-full px-3 py-2 border rounded-lg"
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Stock Quantity</label>
-          <input
-            type="number"
-            min={0}
-            value={newProduct.stock_quantity}
-            onChange={(e) => setNewProduct({ ...newProduct, stock_quantity: parseInt(e.target.value, 10) })}
-            className="w-full px-3 py-2 border rounded-lg"
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Affiliate Commission Rate (%)</label>
-          <input
-            type="number"
-            value={newProduct.affiliate_commission_rate}
-            onChange={(e) => setNewProduct({ ...newProduct, affiliate_commission_rate: parseFloat(e.target.value) })}
-            className="w-full px-3 py-2 border rounded-lg"
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Shipping Cost</label>
-          <input
-            type="number"
-            value={newProduct.shipping_cost}
-            onChange={(e) => setNewProduct({ ...newProduct, shipping_cost: parseFloat(e.target.value) })}
-            className="w-full px-3 py-2 border rounded-lg"
-          />
-        </div>
-        <button
-          type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-        >
-          Add Product
-        </button>
-      </form>
-    </div>
+  const stats = {
+    products: products.length,
+    orders: orders.length,
+    revenue: orders.reduce((sum, order) => sum + Number(order.total_charged ?? order.total_amount ?? 0), 0),
+    lowStock: products.filter((product) => Number(product.stock_quantity ?? 0) > 0 && Number(product.stock_quantity ?? 0) <= 5).length,
+    sellingProducts: products.filter((product) => Number(productSales[product.id]?.quantitySold || 0) > 0).length,
+    unsoldProducts: products.filter((product) => Number(productSales[product.id]?.quantitySold || 0) <= 0).length,
+  };
+
+  const topSellingProducts = React.useMemo(
+    () =>
+      [...products]
+        .map((product) => ({
+          id: product.id,
+          title: product.title || 'Product',
+          quantitySold: Number(productSales[product.id]?.quantitySold || 0),
+          orderCount: Number(productSales[product.id]?.orderCount || 0),
+          price: getBuyerFacingProductPrice(product as any),
+        }))
+        .sort((a, b) => b.quantitySold - a.quantitySold || b.orderCount - a.orderCount)
+        .slice(0, 5),
+    [productSales, products]
   );
 
-  const ProductSelection = () => (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-lg font-bold mb-4">Select Products to Add</h2>
-      <ul>
-        {products.map((product) => (
-          <li key={product.id} className="flex justify-between items-center mb-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-900">{product.title}</h3>
-              <p className="text-sm text-gray-600">{sanitizeDescriptionForDisplay(product.description, (product as any).lineage)}</p>
+  const unsoldProductsPreview = React.useMemo(
+    () =>
+      products
+        .filter((product) => Number(productSales[product.id]?.quantitySold || 0) <= 0)
+        .slice(0, 5),
+    [productSales, products]
+  );
+
+  const promoProducts = React.useMemo(() => {
+    const seenProductIds = new Set<string>();
+    const ownProducts = products.map((product) => ({
+      id: product.id,
+      title: product.title || 'Product',
+      description: product.description || '',
+      price: getBuyerFacingProductPrice(product as any),
+      commission_rate: Number(product.affiliate_commission_rate ?? product.commission_rate ?? 0),
+      image_url: getFirstImageUrl(product.images, product.image_url),
+      seller_name: String(profile?.full_name || profile?.email || 'Seller'),
+      category: product.category || undefined,
+    }));
+
+    return [...ownProducts, ...promotedProducts]
+      .filter((product) => {
+        const productId = String(product?.id || '').trim();
+        if (!productId || seenProductIds.has(productId)) return false;
+        seenProductIds.add(productId);
+        return true;
+      })
+      .map((product) => ({
+        id: product.id,
+        title: product.title || 'Product',
+        description: product.description || '',
+        price: getBuyerFacingProductPrice(product as any),
+        commission_rate: Number((product as any).affiliate_commission_rate ?? product.commission_rate ?? 0),
+        image_url: getFirstImageUrl(product.images, product.image_url),
+        seller_name: String((product as any).seller_name || profile?.full_name || profile?.email || 'Seller'),
+        category: product.category || undefined,
+      }));
+  }, [products, promotedProducts, profile?.full_name, profile?.email]);
+
+  const tabs: Array<{ id: SellerDashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = mode === 'seller'
+    ? [
+        { id: 'products', label: 'Products', icon: Package },
+        { id: 'orders', label: 'Orders', icon: Truck },
+        { id: 'financials', label: 'Financials', icon: CreditCard },
+        { id: 'single-product', label: 'Single Product', icon: ExternalLink },
+        { id: 'influencer-promo', label: 'Influencer Promo', icon: Users },
+        { id: 'bulk-upload', label: 'Bulk Upload', icon: Upload },
+        { id: 'customers', label: 'Customers', icon: Users },
+        { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+        { id: 'store-customization', label: 'Custom Store', icon: Settings },
+        { id: 'integrations', label: 'Integrations', icon: Settings },
+        { id: 'messages', label: 'Messages', icon: Mail },
+        { id: 'support', label: 'Support', icon: HelpCircle },
+      ]
+    : [
+        { id: 'products', label: 'Products', icon: Package },
+        { id: 'financials', label: 'Financials', icon: CreditCard },
+        { id: 'single-product', label: 'Single Product', icon: ExternalLink },
+        { id: 'influencer-promo', label: 'Influencer Promo', icon: Users },
+        { id: 'bulk-upload', label: 'Bulk Upload', icon: Upload },
+        { id: 'customers', label: 'Customers', icon: Users },
+        { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+        { id: 'store-customization', label: 'Custom Store & Branding', icon: Settings },
+        { id: 'integrations', label: 'Integrations', icon: Settings },
+        { id: 'messages', label: 'Messages', icon: Mail },
+        { id: 'support', label: 'Support', icon: HelpCircle },
+      ];
+
+  const renderOverview = () => {
+    if (mode === 'affiliate') {
+      const totalAffiliateEarnings = affiliateSalePulse.reduce((sum, row) => sum + row.earnedAmount, 0);
+      return (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <StatCard label="Recent Sales" value={String(affiliateSalePulse.length)} />
+            <StatCard label="Recent Earnings" value={money(totalAffiliateEarnings)} />
+            <StatCard label="Promoted Products" value={String(promotedProducts.length)} />
+            <StatCard label="Links Ready" value={String(promoProducts.length)} />
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr,0.8fr]">
+            <div className="rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 p-5">
+              <h2 className="text-lg font-semibold text-gray-900">Sales You Drove</h2>
+              <p className="mt-1 text-sm text-gray-700">
+                Every tracked sale shows here with your earned amount only. Customer details stay hidden.
+              </p>
+              <div className="mt-4 space-y-3">
+                {affiliateSalePulse.length ? affiliateSalePulse.map((sale) => (
+                  <div key={sale.id} className="rounded-lg border border-white/80 bg-white px-4 py-3 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="font-semibold text-gray-900">{sale.productTitle}</div>
+                        <div className="mt-1 text-sm text-gray-500">{sale.orderLabel}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-orange-700">{money(sale.earnedAmount)}</div>
+                        <div className="text-xs text-gray-500">You earned on a {money(sale.totalCharged)} order</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+                      <span>{sale.createdAt ? new Date(sale.createdAt).toLocaleString() : 'Recently tracked'}</span>
+                      <span className={`rounded-full px-2.5 py-1 font-semibold ${getStatusTone(sale.status)}`}>
+                        {sale.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="rounded-lg border border-dashed border-orange-200 bg-white/70 px-4 py-6 text-sm text-gray-600">
+                    Your affiliate sale feed will appear here as soon as a tracked order closes.
+                  </div>
+                )}
+              </div>
             </div>
-            <button
-              onClick={() => handleAddAffiliateProduct(product.id)}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-            >
-              Add to My Store
-            </button>
-          </li>
-        ))}
-      </ul>
+            <div className="space-y-4">
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+                <h2 className="text-lg font-semibold text-gray-900">Affiliate momentum</h2>
+                <p className="mt-2 text-sm text-gray-700">
+                  Keep your product links active. New sales drop into this feed automatically from the payout ledger.
+                </p>
+              </div>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+                <h2 className="text-lg font-semibold text-gray-900">Next move</h2>
+                <p className="mt-2 text-sm text-gray-700">
+                  Add more marketplace products to your store, then share direct product links to grow your commission volume.
+                </p>
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => handleTabClick('products')}
+                    className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100"
+                  >
+                    Open Products
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <AccountPayoutDashboard />
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    if (mode === 'influencer') {
+      return (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <StatCard label="Today" value={String(influencerProgress.todaySales)} />
+            <StatCard label="This Week" value={String(influencerProgress.weekSales)} />
+            <StatCard label="This Month" value={String(influencerProgress.monthSales)} />
+            <StatCard label="This Year" value={String(influencerProgress.yearSales)} />
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr,0.9fr]">
+            <div className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-sky-50 p-5">
+              <h2 className="text-lg font-semibold text-gray-900">Influence scoreboard</h2>
+              <p className="mt-1 text-sm text-gray-700">
+                Watch your recruited sales stack up by day, week, month, and year. Each sale is counted from the payout ledger.
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <QuickMetricCard label="Tracked Earnings" value={money(influencerProgress.totalEarned)} tone="emerald" />
+                <QuickMetricCard label="Recent Influenced Sales" value={String(influencerProgress.recentSales.length)} tone="slate" />
+              </div>
+              <div className="mt-4 space-y-3">
+                {influencerProgress.recentSales.length ? influencerProgress.recentSales.map((sale) => (
+                  <div key={sale.id} className="rounded-lg border border-white/80 bg-white px-4 py-3 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="font-semibold text-gray-900">{sale.productTitle}</div>
+                        <div className="mt-1 text-sm text-gray-500">{sale.orderLabel}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-violet-700">{money(sale.earnedAmount)}</div>
+                        <div className="text-xs text-gray-500">Influencer payout logged</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+                      <span>{sale.createdAt ? new Date(sale.createdAt).toLocaleString() : 'Recently tracked'}</span>
+                      <span className={`rounded-full px-2.5 py-1 font-semibold ${getStatusTone(sale.status)}`}>
+                        {sale.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="rounded-lg border border-dashed border-violet-200 bg-white/70 px-4 py-6 text-sm text-gray-600">
+                    Your scoreboard starts filling as soon as recruited seller or affiliate sales are attributed to you.
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="rounded-xl border border-sky-200 bg-sky-50 p-5">
+                <h2 className="text-lg font-semibold text-gray-900">Progress rhythm</h2>
+                <p className="mt-2 text-sm text-gray-700">
+                  Daily wins show momentum. Monthly and yearly totals show how much of the network is now moving through your links.
+                </p>
+              </div>
+              <div className="rounded-xl border border-violet-200 bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900">Recruiting tools</h2>
+                <p className="mt-2 text-sm text-gray-700">
+                  Jump to your promo builder to copy the public invite link and update your recruiting page.
+                </p>
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => handleTabClick('influencer-promo')}
+                    className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+                  >
+                    Open Influencer Promo
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <AccountPayoutDashboard />
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <StatCard label="Products" value={String(stats.products)} />
+          <StatCard label="Orders" value={String(stats.orders)} />
+          <StatCard label="Revenue" value={money(stats.revenue)} />
+          <StatCard label="Low Stock" value={String(stats.lowStock)} />
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+            <h2 className="text-lg font-semibold text-gray-900">What happens after a sale</h2>
+            <ol className="mt-3 space-y-2 text-sm text-gray-700">
+              <li>1. The order appears in <strong>Orders</strong>.</li>
+              <li>2. You print the fulfillment sheet and shipping label.</li>
+              <li>3. You add tracking and mark the order shipped.</li>
+              <li>4. The payout ledger tracks what is held, available, and paid.</li>
+            </ol>
+          </div>
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+            <h2 className="text-lg font-semibold text-gray-900">Seller payout rule</h2>
+            <p className="mt-2 text-sm text-gray-700">
+              You keep <strong>100% of your seller ask</strong> when the order clears. Beezio platform fees are built into the buyer price and are not taken out of your seller ask.
+            </p>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+            <h2 className="text-lg font-semibold text-gray-900">Affiliate payout rule</h2>
+            <p className="mt-2 text-sm text-gray-700">
+              Affiliates receive the full commission amount shown on the product. Their earnings do not reduce your seller ask.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.25fr,1fr]">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Seller Operations</h2>
+                <p className="mt-1 text-sm text-gray-600">
+                  Review the order, print the pick sheet, add tracking, and push shipping updates back to the buyer account from one place.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleTabClick('orders')}
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+              >
+                Open Orders
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <QuickMetricCard label="Paid Orders" value={String(stats.orders)} tone="slate" />
+              <QuickMetricCard label="Revenue Logged" value={money(stats.revenue)} tone="emerald" />
+              <QuickMetricCard label="Low Stock Alerts" value={String(stats.lowStock)} tone="amber" />
+            </div>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+            <h2 className="text-lg font-semibold text-gray-900">Payouts On Overview</h2>
+            <p className="mt-1 text-sm text-gray-700">
+              Seller, affiliate, and influencer balances stay visible here so you do not have to dig through the dashboard to see what is owed.
+            </p>
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => handleTabClick('financials')}
+                className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100"
+              >
+                Open Full Payouts
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
+          <h2 className="text-lg font-semibold text-gray-900">Sell or promote products</h2>
+          <p className="mt-2 text-sm text-gray-700">
+            Sell a product when it is yours. Promote marketplace products when you want to earn from someone else's item.
+          </p>
+        </div>
+        <AccountPayoutDashboard />
+      </>
+    );
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10">
+      {!hideInternalTabs && (
+        <div className="sticky top-16 z-40 -mx-4 border-b border-gray-200 bg-white/95 px-4 backdrop-blur sm:-mx-6 sm:px-6">
+          <div className="py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="text-sm font-semibold text-gray-900">Dashboard Menu</div>
+              <div className="hidden md:block text-xs text-gray-500">Choose a section</div>
+            </div>
+            <div className="mt-3 md:hidden">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Current section
+              </label>
+              <select
+                value={activeTab}
+                onChange={(event) => handleTabClick(event.target.value as SellerDashboardTab)}
+                className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
+              >
+                {tabs.map((tab) => (
+                  <option key={tab.id} value={tab.id}>
+                    {tab.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <nav className="hidden items-center gap-5 overflow-x-auto md:flex">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => handleTabClick(tab.id)}
+                    className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-1 py-2 text-sm font-medium ${
+                      activeTab === tab.id
+                        ? 'border-orange-500 text-orange-600'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      )}
+
+      <div className="pt-6">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+            <p className="mt-2 text-gray-600">{description}</p>
+          </div>
+          <Link
+            to={storePath}
+            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
+          >
+            <ExternalLink className="h-4 w-4" />
+            View Store
+          </Link>
+        </div>
+
+        {error && (
+          <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex min-h-[360px] items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600" />
+              <p className="text-gray-600">Loading seller dashboard...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {activeTab === 'overview' && renderOverview()}
+
+            {activeTab === 'financials' && <AccountPayoutDashboard />}
+
+            {activeTab === 'products' && (
+              <div className="space-y-6">
+                <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900">Products</h2>
+                      <p className="mt-1 text-sm text-gray-700">
+                        Sell your own products or promote marketplace products from one list.
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Link
+                        to="/dashboard/products/add"
+                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Sell a Product
+                      </Link>
+                      <Link
+                        to="/marketplace"
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-orange-800 hover:bg-orange-50"
+                      >
+                        <ShoppingCart className="h-4 w-4" />
+                        Promote Products
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <SellerActionCard
+                    icon={Plus}
+                    title="Sell a Product"
+                    text="Use this when the product is yours. It goes to your dashboard, your custom store, and the marketplace."
+                    to="/dashboard/products/add"
+                    cta="Sell a Product"
+                  />
+                  <SellerActionCard
+                    icon={PackagePlus}
+                    title="Promote Products"
+                    text="Pick marketplace products, add them to your store, and earn when they sell."
+                    to="/marketplace"
+                    cta="Promote Products"
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                  <div className="min-w-0 rounded-xl border bg-white p-5">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Products You Sell</h3>
+                        <p className="mt-1 text-sm text-gray-600">Products you own and sell directly.</p>
+                      </div>
+                      <Link to="/dashboard/products/add" className="shrink-0 text-sm font-semibold text-orange-700 hover:text-orange-800">
+                        Add another
+                      </Link>
+                    </div>
+                    <ProductList
+                      products={products}
+                      removingProductId={removingSellerProductId}
+                      onRemove={removeSellerProduct}
+                    />
+                  </div>
+                  <div className="min-w-0 rounded-xl border bg-white p-5">
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Products You Promote</h3>
+                        <p className="mt-1 text-sm text-gray-600">
+                          These were added from the marketplace to your affiliate custom store. You can unlist them or promote them one item at a time.
+                        </p>
+                      </div>
+                      <span className="text-sm text-gray-500">{promotedProducts.length} total</span>
+                    </div>
+                    <AffiliatePromotionList
+                      products={promotedProducts}
+                      copiedProductId={copiedAffiliateProductId}
+                      unlistingProductId={unlistingAffiliateProductId}
+                      onCopyLink={copyAffiliateProductLink}
+                      onUnlist={unlistAffiliateProduct}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                  <div className="rounded-xl border bg-white p-5 shadow-sm">
+                    <h2 className="text-lg font-semibold text-gray-900">Products selling now</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                      These products have orders logged in Beezio and are your current movers.
+                    </p>
+                    <div className="mt-4 space-y-3">
+                      {topSellingProducts.filter((product) => product.quantitySold > 0).length ? (
+                        topSellingProducts
+                          .filter((product) => product.quantitySold > 0)
+                          .map((product) => (
+                            <div key={product.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
+                              <div>
+                                <div className="font-medium text-gray-900">{product.title}</div>
+                                <div className="text-sm text-gray-500">{money(product.price)} buyer price</div>
+                              </div>
+                              <div className="text-right text-sm">
+                                <div className="font-semibold text-gray-900">{product.quantitySold} sold</div>
+                                <div className="text-gray-500">{product.orderCount} orders</div>
+                              </div>
+                            </div>
+                          ))
+                      ) : (
+                        <div className="rounded-lg border border-dashed border-gray-300 px-4 py-4 text-sm text-gray-500">
+                          No seller product orders have been logged yet.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border bg-white p-5 shadow-sm">
+                    <h2 className="text-lg font-semibold text-gray-900">Products not selling yet</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                      These are live products with no logged orders yet. Promote or revise them first.
+                    </p>
+                    <div className="mt-4 space-y-3">
+                      {unsoldProductsPreview.length ? (
+                        unsoldProductsPreview.map((product) => (
+                          <div key={product.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
+                            <div>
+                              <div className="font-medium text-gray-900">{product.title || 'Product'}</div>
+                              <div className="text-sm text-gray-500">{money(getBuyerFacingProductPrice(product as any))} buyer price</div>
+                            </div>
+                            <div className="text-sm font-semibold text-gray-500">0 sold</div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500">
+                          Every listed product has at least one logged order.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'single-product' && (
+              <SingleProductPromoStudio
+                products={promoProducts}
+                promoterRole="seller"
+                ownerId={sellerId}
+                title="Promote one product at a time"
+              />
+            )}
+
+            {activeTab === 'links' && (
+              <Placeholder title="Links" text="Use Single Product pages and your Custom Store link to share products you sell or promote." />
+            )}
+
+            {activeTab === 'influencer-promo' && (
+              <InfluencerDashboard />
+            )}
+
+            {activeTab === 'bulk-upload' && (
+              <Placeholder title="Bulk Upload" text="Bulk upload is available from the product import tools. The stable dashboard shell is active while the full uploader is being reattached safely." />
+            )}
+
+            {(activeTab === 'orders' || activeTab === 'shipping' || activeTab === 'fulfillment') && (
+              <div className="space-y-6">
+                <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
+                  <h2 className="text-xl font-semibold text-gray-900">Current Orders</h2>
+                  <p className="mt-1 text-sm text-gray-700">
+                    Every order row opens its full purchase details. Red means it is new and still needs fulfillment. Green means it has already shipped. Add tracking inside the order before marking it shipped.
+                  </p>
+                </div>
+                <ManualFulfillmentQueue
+                  scope="seller"
+                  title="Current Orders"
+                  subtitle="Open any order row to review the purchase, print docs, add tracking, and push shipment updates back to the buyer."
+                />
+              </div>
+            )}
+
+            {activeTab === 'customers' && (
+              <Placeholder title="Customers" text="Customer history is based on completed seller orders. Detailed customer tools will be reattached after the dashboard crash is fully cleared." />
+            )}
+
+            {activeTab === 'analytics' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <StatCard label="Products Selling" value={String(stats.sellingProducts)} />
+                  <StatCard label="Products Not Selling" value={String(stats.unsoldProducts)} />
+                  <StatCard label="Orders Logged" value={String(stats.orders)} />
+                  <StatCard label="Revenue Logged" value={money(stats.revenue)} />
+                </div>
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                  <div className="rounded-xl border bg-white p-5 shadow-sm">
+                    <h2 className="text-lg font-semibold text-gray-900">Top sellers</h2>
+                    <div className="mt-4 space-y-3">
+                      {topSellingProducts.filter((product) => product.quantitySold > 0).length ? (
+                        topSellingProducts
+                          .filter((product) => product.quantitySold > 0)
+                          .map((product) => (
+                            <div key={product.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
+                              <div className="font-medium text-gray-900">{product.title}</div>
+                              <div className="text-right text-sm text-gray-600">
+                                <div>{product.quantitySold} sold</div>
+                                <div>{product.orderCount} orders</div>
+                              </div>
+                            </div>
+                          ))
+                      ) : (
+                        <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500">
+                          No product sales are logged yet.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border bg-white p-5 shadow-sm">
+                    <h2 className="text-lg font-semibold text-gray-900">Needs attention</h2>
+                    <div className="mt-4 space-y-3">
+                      {unsoldProductsPreview.length ? (
+                        unsoldProductsPreview.map((product) => (
+                          <div key={product.id} className="rounded-lg border border-gray-200 px-4 py-3">
+                            <div className="font-medium text-gray-900">{product.title || 'Product'}</div>
+                            <div className="mt-1 text-sm text-gray-500">No logged orders yet</div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500">
+                          No unsold products in the current list.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'integrations' && <UniversalIntegrationsPage />}
+
+            {activeTab === 'store-customization' && (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+                  <h2 className="text-lg font-semibold text-gray-900">Your Custom Store & Branding</h2>
+                  <p className="mt-1 text-sm text-gray-700">Preview, edit, upload your logo/banner, and share your storefront.</p>
+                  <Link to={storePath} className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800">
+                    <ExternalLink className="h-4 w-4" />
+                    View Live Store
+                  </Link>
+                </div>
+                <StoreCustomization userId={sellerId} role="seller" />
+              </div>
+            )}
+
+            {activeTab === 'messages' && (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  Internal platform messaging uses <strong>mail@beezio.co</strong>.
+                </div>
+                <UniversalInbox embedded />
+              </div>
+            )}
+
+            {activeTab === 'support' && <IssueCenterPage embedded />}
+          </div>
+        )}
+      </div>
     </div>
   );
+};
 
-  // Show loading only if auth is actually loading
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your seller dashboard...</p>
+const StatCard = ({ label, value }: { label: string; value: string }) => (
+  <div className="rounded-xl border bg-white p-5 shadow-sm">
+    <p className="text-sm text-gray-500">{label}</p>
+    <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
+  </div>
+);
+
+const QuickMetricCard = ({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'slate' | 'emerald' | 'amber';
+}) => {
+  const toneClass =
+    tone === 'emerald'
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
+      : tone === 'amber'
+        ? 'border-amber-200 bg-amber-50 text-amber-950'
+        : 'border-slate-200 bg-slate-50 text-slate-950';
+
+  return (
+    <div className={`rounded-lg border p-4 ${toneClass}`}>
+      <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">{label}</div>
+      <div className="mt-1 text-lg font-bold">{value}</div>
+    </div>
+  );
+};
+
+const SellerActionCard = ({
+  icon: Icon,
+  title,
+  text,
+  cta,
+  to,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  text: string;
+  cta: string;
+  to?: string;
+  onClick?: () => void;
+}) => {
+  const content = (
+    <>
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 text-orange-700">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-semibold text-gray-900">{title}</h3>
+          <p className="mt-1 text-sm text-gray-600">{text}</p>
         </div>
       </div>
+      <div className="mt-4 text-sm font-semibold text-orange-700">{cta}</div>
+    </>
+  );
+
+  if (to) {
+    return (
+      <Link to={to} className="rounded-xl border bg-white p-5 shadow-sm transition hover:border-orange-300 hover:shadow-md">
+        {content}
+      </Link>
     );
   }
 
-  // Auth check for production
-  if (!user) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-xl border bg-white p-5 text-left shadow-sm transition hover:border-orange-300 hover:shadow-md"
+    >
+      {content}
+    </button>
+  );
+};
+
+const ProductList = ({
+  products,
+  removingProductId,
+  onRemove,
+}: {
+  products: Product[];
+  removingProductId: string;
+  onRemove: (productId: string) => void;
+}) => {
+  if (!products.length) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
-          <p className="text-gray-600 mb-4">Please sign in to access the seller dashboard.</p>
-          <button className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700">
-            Sign In
-          </button>
-        </div>
+      <div className="rounded-lg border border-dashed p-8 text-center">
+        <div className="font-semibold text-gray-900">No products for sale yet.</div>
+        <p className="mt-1 text-sm text-gray-500">Click Sell a Product when the item is yours. Marketplace products you promote show in the promotion column.</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Seller Dashboard</h1>
-        <p className="text-gray-600">Manage your products, track sales, and grow your business</p>
-        <div className="mt-4 grid gap-2 text-sm text-gray-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <div className="font-semibold text-amber-800">Quick start</div>
-          <div>• Add products from the marketplace to your store (Marketplace → Add to store).</div>
-          <div>• Customize your store theme/pages (Store Settings → Customize).</div>
-          <div>• Share your store link or referral link to earn; checkout stays on Beezio with platform + Stripe + tax/shipping.</div>
-        </div>
-
-        <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Recruit Affiliates</h3>
-              <p className="text-sm text-gray-600">Share this link to invite new affiliates. It auto-fills your recruiter code so you get credit.</p>
+    <>
+      <div className="space-y-3 md:hidden">
+        {products.map((product) => (
+          <div
+            key={product.id}
+            onClick={() => window.location.assign(`/product/${product.id}`)}
+            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+          >
+            <div className="flex items-start gap-3">
+              {getFirstImageUrl(product.images, product.image_url) ? (
+                <img
+                  src={getFirstImageUrl(product.images, product.image_url)}
+                  alt={product.title}
+                  className="h-16 w-16 shrink-0 rounded-lg object-cover"
+                  onError={(event) => {
+                    const target = event.currentTarget;
+                    if (target.src !== PRODUCT_IMAGE_FALLBACK) {
+                      target.src = PRODUCT_IMAGE_FALLBACK;
+                    }
+                  }}
+                />
+              ) : (
+                <div className="h-16 w-16 shrink-0 rounded-lg bg-gray-100" />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold text-gray-900">{product.title || 'Untitled product'}</div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                  <Link
+                    to={`/dashboard/products/edit/${product.id}`}
+                    onClick={(event) => event.stopPropagation()}
+                    className="font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                  >
+                    Edit Product
+                  </Link>
+                  <span>Seller gets {money(getSellerAskValue(product))}</span>
+                  <span>Affiliate commission {getAffiliateCommissionSummary(product)}</span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <div className="text-gray-500">Buyer price</div>
+                    <div className="font-semibold text-gray-900">{money(getBuyerFacingProductPrice(product as any))}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500">Stock</div>
+                    <div className="font-semibold text-gray-900">{product.stock_quantity ?? '-'}</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={() => copyToClipboard(generateRecruitAffiliateLink())}
-              className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 flex items-center gap-2"
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <Link
+                to={`/dashboard/products/edit/${product.id}`}
+                onClick={(event) => event.stopPropagation()}
+                className="inline-flex flex-1 items-center justify-center rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+              >
+                Edit
+              </Link>
+              <Link
+                to="/dashboard?tab=single-product"
+                onClick={(event) => event.stopPropagation()}
+                className="inline-flex flex-1 items-center justify-center rounded-lg border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50"
+              >
+                Promote
+              </Link>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRemove(product.id);
+                }}
+                disabled={removingProductId === product.id}
+                className="inline-flex flex-1 items-center justify-center rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {removingProductId === product.id ? 'Removing' : 'Remove'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="hidden overflow-x-auto md:block">
+        <table className="min-w-full table-fixed text-sm">
+        <thead className="bg-gray-50 text-left text-gray-600">
+          <tr>
+            <th className="w-[42%] px-3 py-2">Product</th>
+            <th className="w-[18%] px-3 py-2">Category</th>
+            <th className="w-[14%] px-3 py-2 text-right">Price</th>
+            <th className="w-[10%] px-3 py-2 text-right">Stock</th>
+            <th className="w-[16%] px-3 py-2 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {products.map((product) => (
+            <tr
+              key={product.id}
+              onClick={() => window.location.assign(`/product/${product.id}`)}
+              className="h-20 cursor-pointer border-t transition hover:bg-orange-50/60"
             >
-              <ExternalLink className="w-4 h-4" />
-              Copy Link
-            </button>
-          </div>
-          <div className="mt-3">
-            <input
-              readOnly
-              value={generateRecruitAffiliateLink()}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Local Affiliate Support Banner */}
-      <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 mb-8 rounded-lg">
-        <p className="text-sm font-medium">
-          Supporting local affiliates helps keep money within our community. By shopping here, you empower small businesses and affiliates, rather than big-box stores or Amazon.
-        </p>
-      </div>
-
-      {/* Enhanced Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">${salesData.total_revenue.toLocaleString()}</p>
-              <p className="text-sm text-green-600 mt-1">+{salesData.monthly_growth}% this month</p>
-            </div>
-            <DollarSign className="w-8 h-8 text-green-600" />
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Sales</p>
-              <p className="text-2xl font-bold text-gray-900">{salesData.total_sales}</p>
-              <p className="text-sm text-gray-600 mt-1">Avg: ${salesData.avg_order_value}</p>
-            </div>
-            <TrendingUp className="w-8 h-8 text-blue-600" />
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Pending Orders</p>
-              <p className="text-2xl font-bold text-gray-900">{salesData.pending_orders}</p>
-              <p className="text-sm text-yellow-600 mt-1">Need attention</p>
-            </div>
-            <ShoppingCart className="w-8 h-8 text-yellow-600" />
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Low Stock Items</p>
-              <p className="text-2xl font-bold text-gray-900">{salesData.low_stock_items}</p>
-              <p className="text-sm text-red-600 mt-1">Restock needed</p>
-            </div>
-            <AlertTriangle className="w-8 h-8 text-red-600" />
-          </div>
-        </div>
-      </div>
-
-      {/* New Seller Welcome Section - Only show when no products */}
-      {products.length === 0 && (
-        <div className="bg-gradient-to-r from-green-500 to-blue-600 p-8 rounded-xl shadow-lg text-white mb-8">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold mb-4">🎉 Welcome to Beezio!</h2>
-            <p className="text-xl mb-6 text-green-100">You're now part of our seller community. Let's get your first product listed!</p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button
-                onClick={() => navigate('/dashboard/products/add')}
-                className="bg-white text-green-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-green-50 transition-colors flex items-center space-x-3 shadow-lg"
-              >
-                <Package className="w-6 h-6" />
-                <span>Add Your First Product</span>
-              </button>
-              <p className="text-green-100 text-sm max-w-md">
-                Start selling in minutes! Add a product, set your commission rate, and let our affiliate network promote it for you.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Navigation Tabs */}
-      <div className="border-b border-gray-200 mb-8">
-        <nav className="flex space-x-8 overflow-x-auto">
-          {[
-            { id: 'overview', label: 'Overview', icon: BarChart3 },
-            { id: 'products', label: 'Products', icon: Package },
-            { id: 'bulk-upload', label: 'Bulk Upload', icon: Upload },
-            { id: 'orders', label: 'Orders', icon: ShoppingCart },
-            { id: 'fulfillment', label: 'Orders & Shipping', icon: Truck },
-            { id: 'customers', label: 'Customers', icon: Users },
-            { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-            { id: 'financials', label: 'Financials', icon: CreditCard },
-            { id: 'affiliate-tools', label: 'Affiliate Tools', icon: Target },
-            { id: 'store-customization', label: 'Custom Store', icon: Settings },
-            { id: 'integrations', label: 'Integrations', icon: ExternalLink },
-            { id: 'automation', label: 'Automation', icon: Zap }
-          ].map((tab) => {
-            const IconComponent = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'border-orange-500 text-orange-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <IconComponent className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Tab Content */}
-      {activeTab === 'overview' && (
-        <div className="space-y-8">
-          {/* My Store Section */}
-          <div className="bg-gradient-to-r from-orange-500 to-pink-500 p-6 rounded-xl shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-[#ffcb05] mb-2">My Custom Store</h3>
-                <p className="text-orange-100 mb-4">Manage your branded storefront and customize your store settings</p>
-                <div className="flex space-x-4">
-                  <a
-                    href={`/store/${user?.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-white text-orange-600 px-4 py-2 rounded-lg font-medium hover:bg-orange-50 transition-colors flex items-center space-x-2"
+              <td className="px-3 py-3">
+                <div className="flex items-center gap-3">
+                  {getFirstImageUrl(product.images, product.image_url) ? (
+                    <img
+                      src={getFirstImageUrl(product.images, product.image_url)}
+                      alt={product.title}
+                      className="h-12 w-12 shrink-0 rounded object-cover"
+                      onError={(event) => {
+                        const target = event.currentTarget;
+                        if (target.src !== PRODUCT_IMAGE_FALLBACK) {
+                          target.src = PRODUCT_IMAGE_FALLBACK;
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="h-12 w-12 shrink-0 rounded bg-gray-100" />
+                  )}
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-gray-900">{product.title || 'Untitled product'}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                      <Link
+                        to={`/dashboard/products/edit/${product.id}`}
+                        onClick={(event) => event.stopPropagation()}
+                        className="font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                      >
+                        Edit Product
+                      </Link>
+                      <span>Seller gets {money(getSellerAskValue(product))}</span>
+                      <span>Affiliate commission {getAffiliateCommissionSummary(product)}</span>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td className="truncate px-3 py-3">{product.category || 'Uncategorized'}</td>
+              <td className="px-3 py-3 text-right">{money(getBuyerFacingProductPrice(product as any))}</td>
+              <td className="px-3 py-3 text-right">{product.stock_quantity ?? '-'}</td>
+              <td className="px-3 py-3 text-right">
+                <div className="flex justify-end gap-2">
+                  <Link
+                    to={`/dashboard/products/edit/${product.id}`}
+                    onClick={(event) => event.stopPropagation()}
+                    className="rounded-md border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                   >
-                    <ExternalLink className="w-4 h-4" />
-                    <span>View My Store</span>
-                  </a>
+                    Edit
+                  </Link>
+                  <Link
+                    to="/dashboard?tab=single-product"
+                    onClick={(event) => event.stopPropagation()}
+                    className="rounded-md border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-50"
+                  >
+                    Promote
+                  </Link>
                   <button
-                    onClick={() => setActiveTab('store-customization')}
-                    className="bg-orange-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-orange-700 transition-colors flex items-center space-x-2"
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRemove(product.id);
+                    }}
+                    disabled={removingProductId === product.id}
+                    className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <Settings className="w-4 h-4" />
-                    <span>Customize Store</span>
+                    {removingProductId === product.id ? 'Removing' : 'Remove'}
                   </button>
                 </div>
-              </div>
-              <div className="text-right">
-                <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg">
-                  <p className="text-sm text-orange-100">Store URL:</p>
-                  <p className="font-mono text-sm break-all">/store/{user?.id}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Recent Orders</h3>
-              <div className="space-y-3">
-                {orders.slice(0, 5).map((order) => (
-                  <div key={order.id} className="flex items-center justify-between py-2">
-                    <div>
-                      <span className="font-medium text-gray-900">{order.customer_name}</span>
-                      <p className="text-sm text-gray-600">{order.product_title}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-medium text-green-600">${order.amount}</span>
-                      <p className={`text-xs px-2 py-1 rounded-full ${
-                        order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                        order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {order.status}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <button 
-                  onClick={() => navigate('/dashboard/products/add')}
-                  className={`w-full text-left p-3 rounded-lg transition-colors ${
-                    products.length === 0 
-                      ? 'bg-green-500 text-white hover:bg-green-600 font-bold' 
-                      : 'bg-orange-50 hover:bg-orange-100'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Package className="w-5 h-5 text-current" />
-                    <span className="font-medium">
-                      {products.length === 0 ? '🚀 Add Your First Product' : 'Add New Product'}
-                    </span>
-                  </div>
-                </button>
-                <button 
-                  onClick={() => setActiveTab('orders')}
-                  className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Truck className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium">Process Orders</span>
-                  </div>
-                </button>
-                <button 
-                  onClick={() => setActiveTab('analytics')}
-                  className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <BarChart3 className="w-5 h-5 text-green-600" />
-                    <span className="font-medium">View Analytics</span>
-                  </div>
-                </button>
-                <button 
-                  onClick={() => setActiveTab('affiliates')}
-                  className="w-full text-left p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Target className="w-5 h-5 text-yellow-600" />
-                    <span className="font-medium">Create Promotion</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Performance Summary</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900">{customers.length}</p>
-                <p className="text-sm text-gray-600">Total Customers</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900">{products.length}</p>
-                <p className="text-sm text-gray-600">Active Products</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900">4.8★</p>
-                <p className="text-sm text-gray-600">Average Rating</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'products' && (
-        <div>
-          <button
-            onClick={() => navigate('/add-product')}
-            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 mb-4"
-          >
-            Add New Product
-          </button>
-          {showProductForm && <ProductForm />}
-        </div>
-      )}
-
-      {activeTab === 'bulk-upload' && (
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Bulk Product Upload</h3>
-                <p className="text-gray-600 mt-1">Upload hundreds of products at once using CSV files (Excel/Google Sheets compatible)</p>
-              </div>
-              <FileSpreadsheet className="w-12 h-12 text-orange-600" />
-            </div>
-
-            {/* Step 1: Download Template */}
-            <div className="mb-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h4 className="font-semibold text-blue-900 mb-2">📥 Step 1: Download Template</h4>
-              <p className="text-sm text-blue-700 mb-3">Start with our pre-formatted CSV template with all required columns</p>
-              <button
-                onClick={() => {
-                  const template = [
-                    {
-                      title: 'Example Product',
-                      description: 'High quality product description here',
-                      price: 29.99,
-                      category: 'Electronics',
-                      sku: 'PROD-001',
-                      stock_quantity: 100,
-                      supplier_name: 'Supplier Inc',
-                      supplier_product_id: 'SUP-12345',
-                      supplier_url: 'https://supplier.com/product/12345',
-                      is_dropshipped: 'TRUE',
-                      shipping_cost: 5.99,
-                      image_url_1: 'https://example.com/image1.jpg',
-                      image_url_2: '',
-                      image_url_3: '',
-                      image_url_4: '',
-                      image_url_5: '',
-                      affiliate_commission_rate: 20
-                    }
-                  ];
-                  const csv = Papa.unparse(template);
-                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                  const link = document.createElement('a');
-                  link.href = URL.createObjectURL(blob);
-                  link.download = 'beezio-product-upload-template.csv';
-                  link.click();
-                }}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-              >
-                <Upload className="w-4 h-4" />
-                <span>Download CSV Template</span>
-              </button>
-            </div>
-
-            {/* Step 2: Upload File */}
-            <div className="mb-8">
-              <h4 className="font-semibold text-gray-900 mb-3">📤 Step 2: Upload Your CSV File</h4>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setUploadFile(file);
-                      Papa.parse(file, {
-                        header: true,
-                        complete: (results) => {
-                          setUploadedProducts(results.data.filter((row: any) => row.title));
-                        },
-                        error: (error) => {
-                          alert('Error parsing CSV: ' + error.message);
-                        }
-                      });
-                    }
-                  }}
-                  className="hidden"
-                  id="bulk-upload-file"
-                />
-                <label
-                  htmlFor="bulk-upload-file"
-                  className="cursor-pointer inline-flex flex-col items-center"
-                >
-                  <Upload className="w-12 h-12 text-gray-400 mb-3" />
-                  <span className="text-sm font-medium text-gray-700">
-                    {uploadFile ? uploadFile.name : 'Click to upload CSV file'}
-                  </span>
-                  <span className="text-xs text-gray-500 mt-1">CSV files from Excel or Google Sheets</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Step 3: Preview */}
-            {uploadedProducts.length > 0 && (
-              <div className="mb-8">
-                <h4 className="font-semibold text-gray-900 mb-3">👀 Step 3: Preview ({uploadedProducts.length} products)</h4>
-                <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-100 sticky top-0">
-                      <tr>
-                        <th className="px-3 py-2 text-left">Title</th>
-                        <th className="px-3 py-2 text-left">Price</th>
-                        <th className="px-3 py-2 text-left">Category</th>
-                        <th className="px-3 py-2 text-left">SKU</th>
-                        <th className="px-3 py-2 text-left">Dropshipped</th>
-                        <th className="px-3 py-2 text-left">Supplier</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {uploadedProducts.slice(0, 10).map((product: any, idx: number) => (
-                        <tr key={idx} className="border-t border-gray-200">
-                          <td className="px-3 py-2">{product.title}</td>
-                          <td className="px-3 py-2">${product.price}</td>
-                          <td className="px-3 py-2">{product.category}</td>
-                          <td className="px-3 py-2">{product.sku}</td>
-                          <td className="px-3 py-2">
-                            {product.is_dropshipped === 'TRUE' ? (
-                              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Yes</span>
-                            ) : (
-                              <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">No</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2">{product.supplier_name || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {uploadedProducts.length > 10 && (
-                    <p className="text-xs text-gray-500 mt-3 text-center">
-                      Showing first 10 of {uploadedProducts.length} products
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: Upload Button */}
-            {uploadedProducts.length > 0 && (
-              <div className="mb-8">
-                <h4 className="font-semibold text-gray-900 mb-3">🚀 Step 4: Upload to Marketplace</h4>
-                <button
-                  onClick={async () => {
-                    setUploadProgress(0);
-                    setUploadResults(null);
-                    const errors: string[] = [];
-                    let successCount = 0;
-                    const categoryIdCache = new Map<string, string | null>();
-
-                    for (let i = 0; i < uploadedProducts.length; i++) {
-                      const product = uploadedProducts[i];
-                      try {
-                        const images: string[] = [];
-                        for (let j = 1; j <= 5; j++) {
-                          const imageUrl = product[`image_url_${j}`];
-                          if (imageUrl && imageUrl.trim()) {
-                            images.push(imageUrl.trim());
-                          }
-                        }
-
-                        const supplier_info = product.is_dropshipped === 'TRUE' ? {
-                          supplier_name: product.supplier_name || '',
-                          supplier_product_id: product.supplier_product_id || '',
-                          supplier_url: product.supplier_url || '',
-                          is_dropshipped: true
-                        } : null;
-
-                        const sellerAsk = Number.isFinite(parseFloat(product.price)) ? parseFloat(product.price) : 0;
-                        const affiliateRate = Number.isFinite(parseFloat(product.affiliate_commission_rate))
-                          ? parseFloat(product.affiliate_commission_rate)
-                          : 10;
-                        const stockQuantity = Number.isFinite(parseInt(product.stock_quantity, 10))
-                          ? Math.max(0, Math.floor(parseInt(product.stock_quantity, 10)))
-                          : 0;
-
-                        const breakdown = calculatePricing({
-                          sellerDesiredAmount: sellerAsk,
-                          affiliateRate,
-                          affiliateType: 'percentage',
-                        });
-
-                        const categoryName = (product.category || '').toString().trim();
-                        let categoryId: string | null = null;
-                        if (categoryName) {
-                          if (categoryIdCache.has(categoryName)) {
-                            categoryId = categoryIdCache.get(categoryName) ?? null;
-                          } else {
-                            try {
-                              const { data: categoryRow } = await supabase
-                                .from('categories')
-                                .select('id')
-                                .ilike('name', categoryName)
-                                .maybeSingle();
-                              categoryId = (categoryRow as any)?.id ?? null;
-                            } catch (_e) {
-                              categoryId = null;
-                            }
-                            categoryIdCache.set(categoryName, categoryId);
-                          }
-                        }
-
-                        const { data: created, error } = await supabase.from('products').insert({
-                          seller_id: profile?.id,
-                          title: product.title,
-                          description: product.description,
-                          lineage: 'SELLER_DIRECT',
-                          // Buyer-facing listing price, computed from seller ask + fees
-                          price: breakdown.listingPrice,
-                          seller_amount: breakdown.sellerAmount,
-                          seller_ask: breakdown.sellerAmount,
-                          seller_ask_price: breakdown.sellerAmount,
-                          platform_fee: breakdown.platformFee,
-                          stripe_fee: breakdown.stripeFee,
-                          calculated_customer_price: breakdown.listingPrice,
-                          category_id: categoryId,
-                          sku: product.sku || null,
-                          stock_quantity: stockQuantity,
-                          shipping_cost: Number.isFinite(parseFloat(product.shipping_cost)) ? parseFloat(product.shipping_cost) : 0,
-                          affiliate_enabled: true,
-                          is_promotable: true,
-                          commission_rate: affiliateRate,
-                          commission_type: 'percentage',
-                          flat_commission_amount: 0,
-                          affiliate_commission_type: 'percent',
-                          affiliate_commission_value: affiliateRate,
-                          affiliate_commission_rate: affiliateRate, // legacy/compat
-                          images,
-                          supplier_info,
-                          is_active: true,
-                          created_at: new Date().toISOString(),
-                          updated_at: new Date().toISOString(),
-                        }).select('id').single();
-
-                        if (error) {
-                          errors.push(`Row ${i + 1} (${product.title}): ${error.message}`);
-                        } else {
-                          await ensureSellerProductInOrder({ sellerId: profile?.id, productId: (created as any)?.id });
-                          successCount++;
-                        }
-                      } catch (err: any) {
-                        errors.push(`Row ${i + 1} (${product.title}): ${err.message}`);
-                      }
-                      setUploadProgress(Math.round(((i + 1) / uploadedProducts.length) * 100));
-                    }
-
-                    setUploadResults({
-                      success: successCount,
-                      failed: uploadedProducts.length - successCount,
-                      errors
-                    });
-
-                    if (successCount > 0) {
-                      await fetchSellerData();
-                    }
-                  }}
-                  className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 text-lg font-semibold"
-                >
-                  <Upload className="w-5 h-5" />
-                  <span>Upload All {uploadedProducts.length} Products</span>
-                </button>
-
-                {uploadProgress > 0 && uploadProgress < 100 && (
-                  <div className="mt-4">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">Uploading...</span>
-                      <span className="text-gray-900 font-medium">{uploadProgress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div
-                        className="bg-green-600 h-3 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-
-                {uploadResults && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                    <h5 className="font-semibold text-gray-900 mb-2">Upload Results</h5>
-                    <div className="flex items-center space-x-6 mb-3">
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                        <span className="text-green-700 font-medium">{uploadResults.success} Successful</span>
-                      </div>
-                      {uploadResults.failed > 0 && (
-                        <div className="flex items-center space-x-2">
-                          <AlertTriangle className="w-5 h-5 text-red-600" />
-                          <span className="text-red-700 font-medium">{uploadResults.failed} Failed</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {uploadResults.errors.length > 0 && (
-                      <div className="mt-3 max-h-48 overflow-auto">
-                        <p className="text-sm font-medium text-red-700 mb-2">Errors:</p>
-                        {uploadResults.errors.map((error, idx) => (
-                          <p key={idx} className="text-xs text-red-600 mb-1">• {error}</p>
-                        ))}
-                      </div>
-                    )}
-
-                    {uploadResults.success > 0 && (
-                      <button
-                        onClick={() => setActiveTab('products')}
-                        className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                      >
-                        View All Products
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Help Section */}
-            <div className="mt-8 p-4 bg-orange-50 rounded-lg border border-orange-200">
-              <h4 className="font-semibold text-orange-900 mb-2">💡 Tips for Bulk Upload</h4>
-              <ul className="text-sm text-orange-700 space-y-1">
-                <li>• Start with 10-20 products to test before uploading hundreds</li>
-                <li>• Make sure category names match: Electronics, Fashion, Home & Garden, etc.</li>
-                <li>• Use HTTPS image URLs from reliable sources</li>
-                <li>• Set is_dropshipped to TRUE or FALSE (not Yes/No)</li>
-                <li>• For Excel: File → Save As → CSV UTF-8 (Comma delimited)</li>
-                <li>• For Google Sheets: File → Download → Comma Separated Values (.csv)</li>
-                <li>• All prices should be numbers without $ symbols</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'orders' && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Order Management</h3>
-            <div className="flex space-x-2">
-              <select className="px-3 py-2 border border-gray-300 rounded-lg">
-                <option>All Status</option>
-                <option>Pending</option>
-                <option>Processing</option>
-                <option>Shipped</option>
-                <option>Delivered</option>
-              </select>
-              <button className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors">
-                Export Orders
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {orders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">#{order.id}</td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{order.customer_name}</p>
-                          <p className="text-sm text-gray-600">{order.customer_email}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{order.product_title}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">${order.amount}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                          order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                          order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {new Date(order.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex space-x-2">
-                          <button className="text-blue-600 hover:text-blue-700 text-sm">View</button>
-                          <button className="text-green-600 hover:text-green-700 text-sm">Ship</button>
-                          <button className="text-gray-600 hover:text-gray-700 text-sm">Message</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'fulfillment' && (
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Order Fulfillment</h3>
-                <p className="text-gray-600 mt-1">Ship orders and manage dropshipping fulfillment</p>
-              </div>
-              <Truck className="w-12 h-12 text-orange-600" />
-            </div>
-
-            {/* Filter Buttons */}
-            <div className="flex space-x-3 mb-6">
-              <button
-                onClick={() => setFulfillmentFilter('all')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  fulfillmentFilter === 'all'
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                All Orders
-              </button>
-              <button
-                onClick={() => setFulfillmentFilter('pending')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  fulfillmentFilter === 'pending'
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Pending Fulfillment
-              </button>
-              <button
-                onClick={() => setFulfillmentFilter('fulfilled')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  fulfillmentFilter === 'fulfilled'
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Fulfilled
-              </button>
-            </div>
-
-            {/* Orders List */}
-            {orders
-              .filter(order => {
-                if (fulfillmentFilter === 'all') return true;
-                if (fulfillmentFilter === 'pending') return order.status === 'pending' || order.status === 'processing';
-                if (fulfillmentFilter === 'fulfilled') return order.status === 'shipped' || order.status === 'delivered';
-                return true;
-              })
-              .map((order) => (
-                <div key={order.id} className="bg-gray-50 rounded-lg p-6 mb-4 border border-gray-200">
-                  {/* Order Header */}
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h4 className="font-semibold text-gray-900">Order #{order.id}</h4>
-                      <p className="text-sm text-gray-600">{new Date(order.created_at).toLocaleString()}</p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                      order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                      order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {order.status.toUpperCase()}
-                    </span>
-                  </div>
-
-                  {/* Customer Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="text-xs text-gray-500 mb-1">Customer</p>
-                      <p className="font-medium text-gray-900">{order.customer_name}</p>
-                      <p className="text-sm text-gray-600">{order.customer_email}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="text-xs text-gray-500 mb-1">Shipping Address</p>
-                      <p className="text-sm text-gray-700">
-                        [Address would be loaded from order_items table]
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="bg-white p-4 rounded border border-gray-200 mb-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{order.product_title}</p>
-                        <p className="text-sm text-gray-600 mt-1">Amount: ${order.amount}</p>
-                        
-                        {/* Dropshipping Info - Mock for now */}
-                        <div className="mt-3 p-3 bg-yellow-50 rounded border border-yellow-200">
-                          <p className="text-xs font-semibold text-yellow-900 mb-2">🚚 DROPSHIPPED PRODUCT</p>
-                          <div className="text-sm text-yellow-800 space-y-1">
-                            <p><strong>Supplier:</strong> Example Supplier Inc</p>
-                            <p><strong>Supplier SKU:</strong> SUP-12345</p>
-                            <div className="mt-2">
-                              <a
-                                href="https://supplier.com/product/12345"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-700 font-medium"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                <span>Order from Supplier →</span>
-                              </a>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Fulfillment Actions */}
-                  {order.status !== 'shipped' && order.status !== 'delivered' && (
-                    <div className="bg-white p-4 rounded border border-gray-200">
-                      <p className="font-medium text-gray-900 mb-3">Mark as Shipped</p>
-                      <div className="flex space-x-3">
-                        <input
-                          type="text"
-                          placeholder="Enter tracking number"
-                          value={trackingNumber[order.id] || ''}
-                          onChange={(e) => setTrackingNumber({ ...trackingNumber, [order.id]: e.target.value })}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        />
-                        <button
-                          onClick={async () => {
-                            if (!trackingNumber[order.id]) {
-                              alert('Please enter a tracking number');
-                              return;
-                            }
-                            
-                            const { error } = await supabase
-                              .from('orders')
-                              .update({
-                                status: 'shipped',
-                                tracking_number: trackingNumber[order.id],
-                                shipped_at: new Date().toISOString()
-                              })
-                              .eq('id', order.id);
-
-                            if (error) {
-                              alert('Error updating order: ' + error.message);
-                            } else {
-                              alert('Order marked as shipped!');
-                              await fetchSellerData();
-                              setTrackingNumber({ ...trackingNumber, [order.id]: '' });
-                            }
-                          }}
-                          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-                        >
-                          <Truck className="w-4 h-4" />
-                          <span>Mark Shipped</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tracking Info if shipped */}
-                  {order.tracking_number && (
-                    <div className="bg-blue-50 p-3 rounded border border-blue-200 mt-3">
-                      <p className="text-xs text-blue-700 mb-1">Tracking Number</p>
-                      <p className="font-mono text-sm text-blue-900">{order.tracking_number}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-
-            {orders.length === 0 && (
-              <div className="text-center py-12">
-                <Truck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No orders to fulfill yet</p>
-                <p className="text-sm text-gray-400 mt-1">Orders will appear here when customers make purchases</p>
-              </div>
-            )}
-
-            {/* Help Section */}
-            <div className="mt-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
-              <h4 className="font-semibold text-orange-900 mb-2">📦 Fulfillment Process</h4>
-              <ol className="text-sm text-orange-700 space-y-1 list-decimal list-inside">
-                <li>Order comes in → Customer is charged → You receive email notification</li>
-                <li>For dropshipped items: Click "Order from Supplier" link to purchase</li>
-                <li>Use customer's shipping address when ordering from supplier</li>
-                <li>Supplier ships directly to customer</li>
-                <li>Get tracking number from supplier</li>
-                <li>Mark order as shipped and enter tracking number</li>
-                <li>Customer receives tracking notification automatically</li>
-              </ol>
-            </div>
-
-            {/* Inventory Management Section */}
-            <div className="mt-6 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">Inventory Tracking</h3>
-                  <p className="text-gray-600 mt-1">Monitor stock levels for your products</p>
-                </div>
-                <Box className="w-12 h-12 text-orange-600" />
-              </div>
-              
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {products.slice(0, 5).map((product) => {
-                      const stock = product.stock_quantity || 0;
-                      const status = stock > 10 ? 'In Stock' : stock > 0 ? 'Low Stock' : 'Out of Stock';
-                      const statusColor = stock > 10 ? 'text-green-600 bg-green-50' : stock > 0 ? 'text-yellow-600 bg-yellow-50' : 'text-red-600 bg-red-50';
-                      
-                      return (
-                        <tr key={product.id}>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{product.title}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{product.sku || 'N/A'}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900">{stock} units</td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                              {status}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              
-              {products.length === 0 && (
-                <div className="text-center py-12">
-                  <Box className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No products to track</p>
-                  <p className="text-sm text-gray-400 mt-1">Add products to see inventory levels</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'analytics' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Sales Chart</h3>
-              <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-                <p className="text-gray-500">Sales trend visualization would go here</p>
-              </div>
-            </div>
-            
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Top Products</h3>
-              <div className="space-y-3">
-                {products.slice(0, 5).map((product, index) => (
-                  <div key={product.id} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
-                      <span className="text-sm font-medium text-gray-900">{product.title}</span>
-                    </div>
-                    <span className="text-sm text-gray-600">{product.sales_count || 0} sales</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Geographic Sales</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <p className="font-medium">California</p>
-                <p className="text-sm text-gray-600">35% of sales</p>
-              </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <p className="font-medium">New York</p>
-                <p className="text-sm text-gray-600">28% of sales</p>
-              </div>
-              <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                <p className="font-medium">Texas</p>
-                <p className="text-sm text-gray-600">22% of sales</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'customers' && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Customer Management</h3>
-            <div className="flex space-x-2">
-              <input 
-                type="text" 
-                placeholder="Search customers..." 
-                className="px-4 py-2 border border-gray-300 rounded-lg"
-              />
-              <button className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors">
-                Export List
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h4 className="font-semibold mb-4">Customer Segments</h4>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span>VIP Customers (5+ orders)</span>
-                  <span className="bg-gold-100 text-gold-800 px-2 py-1 rounded-full text-sm">12</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Regular Customers (2-4 orders)</span>
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">28</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>New Customers (1 order)</span>
-                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">45</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h4 className="font-semibold mb-4">Recent Reviews</h4>
-              <div className="space-y-3">
-                <div className="border-l-4 border-yellow-400 pl-4">
-                  <div className="flex items-center space-x-2">
-                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="text-sm font-medium">5.0</span>
-                    <span className="text-sm text-gray-600">- John Doe</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">"Excellent product quality!"</p>
-                </div>
-                <div className="border-l-4 border-yellow-400 pl-4">
-                  <div className="flex items-center space-x-2">
-                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="text-sm font-medium">4.8</span>
-                    <span className="text-sm text-gray-600">- Jane Smith</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">"Fast shipping, great service!"</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="p-6 border-b border-gray-200">
-              <h4 className="font-semibold">Customer List</h4>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Orders</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Spent</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Order</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {customers.map((customer) => (
-                    <tr key={customer.id}>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{customer.name}</p>
-                          <p className="text-sm text-gray-600">{customer.email}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{customer.location}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{customer.total_orders}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">${customer.total_spent}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{customer.last_order_date}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex space-x-2">
-                          <button className="text-blue-600 hover:text-blue-700 text-sm">View</button>
-                          <button className="text-green-600 hover:text-green-700 text-sm">Message</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'financials' && (
-        <div className="space-y-6">
-          <StripeSellerDashboard />
-          
-          {/* Additional Financial Metrics */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Fee Breakdown</h3>
-              <button className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors">
-                Download Statement
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center space-x-2 mb-2">
-                  <CreditCard className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium">Stripe Processing</span>
-                </div>
-                <p className="text-2xl font-bold text-blue-600">2.9% + $0.30</p>
-                <p className="text-sm text-gray-600">Per transaction</p>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Target className="w-5 h-5 text-orange-600" />
-                  <span className="font-medium">Platform Fee</span>
-                </div>
-                <p className="text-2xl font-bold text-orange-600">10%</p>
-                <p className="text-sm text-gray-600">Of your selling price</p>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Users className="w-5 h-5 text-green-600" />
-                  <span className="font-medium">Affiliate Commission</span>
-                </div>
-                <p className="text-2xl font-bold text-green-600">Variable</p>
-                <p className="text-sm text-gray-600">You set the rate</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'integrations' && (
-        <div className="space-y-6">
-          <MonetizationHelper />
-          <APIIntegrationManager />
-          
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Database Connection</h3>
-              <button 
-                onClick={handleTestConnection}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Test Supabase Connection
-              </button>
-            </div>
-            <p className="text-gray-600">Test your database connection and data flow</p>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'store-customization' && (
-        <div className="space-y-6">
-          {/* Store Quick Access */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Your Custom Store</h3>
-                <p className="text-gray-600 mb-4">Preview and share your personalized storefront</p>
-                <a
-                  href={`/store/${user?.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>View Live Store</span>
-                </a>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-600 mb-1">Store URL:</p>
-                <code className="bg-white px-3 py-1 rounded text-sm border">/store/{user?.id}</code>
-              </div>
-            </div>
-          </div>
-          
-          <StoreCustomization userId={profile?.id || ''} role="seller" />
-        </div>
-      )}
-
-      {activeTab === 'affiliate-tools' && (
-        <div>
-          <ProductSelection />
-        </div>
-      )}
-
-      {activeTab === 'automation' && (
-        <div className="space-y-8">
-          {/* Automation Status Section */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-3xl font-bold mb-2">Business Automation</h2>
-                <p className="text-blue-100 text-lg mb-4">
-                  Automate your order fulfillment, shipping, and customer communication processes.
-                  <span className="font-bold text-green-300"> Completely FREE - No hidden costs!</span>
-                </p>
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-5 h-5 text-green-300" />
-                    <span className="text-sm">Zero setup fees</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-5 h-5 text-green-300" />
-                    <span className="text-sm">No monthly charges</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-5 h-5 text-green-300" />
-                    <span className="text-sm">Free forever</span>
-                  </div>
-                </div>
-              </div>
-              <div className="hidden md:block">
-                <Bot className="w-24 h-24 text-blue-200 opacity-80" />
-              </div>
-            </div>
-          </div>
-
-          {/* Automation Settings */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Order Automation */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <ShoppingCart className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Order Processing</h3>
-                  <p className="text-sm text-gray-600">Automate order fulfillment and vendor management</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Auto Order from Vendors</h4>
-                    <p className="text-sm text-gray-600">Automatically place orders with your suppliers when customers purchase</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Auto Payment Processing</h4>
-                    <p className="text-sm text-gray-600">Automatically process payments to vendors when orders are fulfilled</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Inventory Management</h4>
-                    <p className="text-sm text-gray-600">Track stock levels and get notified when items need to be reordered</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Shipping Automation */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Truck className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Shipping & Delivery</h3>
-                  <p className="text-sm text-gray-600">Automated shipping labels and tracking updates</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Auto Shipping Labels</h4>
-                    <p className="text-sm text-gray-600">Generate and print shipping labels automatically for each order</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Tracking Updates</h4>
-                    <p className="text-sm text-gray-600">Automatically update customers with shipping status and tracking information</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Delivery Notifications</h4>
-                    <p className="text-sm text-gray-600">Send automated notifications when packages are delivered</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Communication Automation */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Star className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Customer Communication</h3>
-                <p className="text-sm text-gray-600">Automated emails and customer notifications</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="text-center p-4 border border-gray-200 rounded-lg">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <CheckCircle className="w-6 h-6 text-blue-600" />
-                </div>
-                <h4 className="font-medium text-gray-900 mb-1">Order Confirmations</h4>
-                <p className="text-xs text-gray-600">Send automatic order confirmation emails to customers</p>
-                <label className="relative inline-flex items-center cursor-pointer mt-3">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-              </div>
-
-              <div className="text-center p-4 border border-gray-200 rounded-lg">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Truck className="w-6 h-6 text-green-600" />
-                </div>
-                <h4 className="font-medium text-gray-900 mb-1">Shipping Updates</h4>
-                <p className="text-xs text-gray-600">Notify customers when their orders ship</p>
-                <label className="relative inline-flex items-center cursor-pointer mt-3">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-green-600"></div>
-                </label>
-              </div>
-
-              <div className="text-center p-4 border border-gray-200 rounded-lg">
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <CheckCircle className="w-6 h-6 text-purple-600" />
-                </div>
-                <h4 className="font-medium text-gray-900 mb-1">Delivery Confirmations</h4>
-                <p className="text-xs text-gray-600">Confirm successful delivery to customers</p>
-                <label className="relative inline-flex items-center cursor-pointer mt-3">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
-                </label>
-              </div>
-
-              <div className="text-center p-4 border border-gray-200 rounded-lg">
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <DollarSign className="w-6 h-6 text-orange-600" />
-                </div>
-                <h4 className="font-medium text-gray-900 mb-1">Commission Payments</h4>
-                <p className="text-xs text-gray-600">Automatically process affiliate commission payments</p>
-                <label className="relative inline-flex items-center cursor-pointer mt-3">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-orange-600"></div>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Automation Setup Guide */}
-          <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-8">
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">How Automation Works</h3>
-              <p className="text-gray-600 max-w-2xl mx-auto">
-                Our automation system streamlines your order fulfillment process by connecting with your vendors,
-                shipping providers, and customers automatically.
-              </p>
-              <div className="mt-4 inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
-                <span className="mr-2">🎉</span>
-                100% FREE - No Setup Required!
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <ShoppingCart className="w-8 h-8 text-blue-600" />
-                </div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">Order Processing</h4>
-                <p className="text-gray-600 text-sm">
-                  When a customer places an order, the system automatically forwards the order to your suppliers
-                  and processes the necessary payments.
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Truck className="w-8 h-8 text-green-600" />
-                </div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">Shipping & Tracking</h4>
-                <p className="text-gray-600 text-sm">
-                  Generate shipping labels automatically and provide customers with real-time tracking
-                  information throughout the delivery process.
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-8 h-8 text-purple-600" />
-                </div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">Customer Communication</h4>
-                <p className="text-gray-600 text-sm">
-                  Send automated emails to keep customers informed about their order status,
-                  shipping updates, and delivery confirmations.
-                </p>
-              </div>
-            </div>
-
-            <div className="text-center mt-8">
-              <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105">
-                🚀 Enable FREE Automation Now
-              </button>
-              <p className="text-sm text-gray-500 mt-2">No credit card required • Free forever • Cancel anytime</p>
-            </div>
-          </div>
-
-          {/* Automation Status */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-2">--</div>
-              <p className="text-sm text-gray-600">Orders Automated</p>
-              <p className="text-xs text-gray-500">This month</p>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 text-center">
-              <div className="text-3xl font-bold text-green-600 mb-2">--</div>
-              <p className="text-sm text-gray-600">Active Automations</p>
-              <p className="text-xs text-gray-500">Currently enabled</p>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 text-center">
-              <div className="text-3xl font-bold text-purple-600 mb-2">--</div>
-              <p className="text-sm text-gray-600">Emails Sent</p>
-              <p className="text-xs text-gray-500">This month</p>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 text-center">
-              <div className="text-3xl font-bold text-orange-600 mb-2">--</div>
-              <p className="text-sm text-gray-600">Time Saved</p>
-              <p className="text-xs text-gray-500">Estimated hours</p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        </table>
+      </div>
+    </>
   );
 };
+
+const AffiliatePromotionList = ({
+  products,
+  copiedProductId,
+  unlistingProductId,
+  onCopyLink,
+  onUnlist,
+}: {
+  products: Product[];
+  copiedProductId: string;
+  unlistingProductId: string;
+  onCopyLink: (productId: string) => void;
+  onUnlist: (productId: string) => void;
+}) => {
+  if (!products.length) {
+    return (
+      <div className="rounded-lg border border-dashed p-8 text-center">
+        <div className="font-semibold text-gray-900">No products promoted yet.</div>
+        <p className="mt-1 text-sm text-gray-500">Choose products from the marketplace and click Add to Store.</p>
+        <Link
+          to="/marketplace"
+          className="mt-4 inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
+        >
+          <ShoppingCart className="h-4 w-4" />
+          Promote Products
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-3 md:hidden">
+        {products.map((product: any) => {
+          const commissionAmount = Number(product.commission_rate || 0);
+          return (
+            <div
+              key={product.id}
+              onClick={() => window.location.assign(`/product/${product.id}`)}
+              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+            >
+              <div className="flex items-start gap-3">
+                {product.image_url ? (
+                  <img src={product.image_url} alt={product.title} className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+                ) : (
+                  <div className="h-16 w-16 shrink-0 rounded-lg bg-gray-100" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-gray-900">{product.title || 'Product'}</div>
+                  <div className="mt-1 text-sm text-gray-500">{product.seller_name || 'Marketplace Seller'}</div>
+                  <div className="mt-1 text-xs text-emerald-700">
+                    Affiliate commission {getAffiliateCommissionSummary(product)}
+                  </div>
+                  <div className="mt-2 text-sm text-gray-500">{product.category || 'General'}</div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-gray-500">Price</div>
+                      <div className="font-semibold text-gray-900">{money(Number(product.price || 0))}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">You earn</div>
+                      <div className="font-semibold text-green-700">{money(commissionAmount)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onCopyLink(product.id);
+                  }}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  {copiedProductId === product.id ? 'Copied' : 'Copy Link'}
+                </button>
+                <Link
+                  to="/dashboard?tab=single-product"
+                  onClick={(event) => event.stopPropagation()}
+                  className="inline-flex items-center justify-center rounded-lg border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50"
+                >
+                  Promote
+                </Link>
+                <Link
+                  to={`/product/${product.id}`}
+                  onClick={(event) => event.stopPropagation()}
+                  className="inline-flex items-center justify-center rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+                >
+                  View
+                </Link>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onUnlist(product.id);
+                  }}
+                  disabled={unlistingProductId === product.id}
+                  className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {unlistingProductId === product.id ? 'Unlisting' : 'Unlist'}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="hidden overflow-x-auto md:block">
+        <table className="min-w-full table-fixed text-sm">
+        <thead className="bg-gray-50 text-left text-gray-600">
+          <tr>
+            <th className="w-[36%] px-3 py-2">Product</th>
+            <th className="w-[16%] px-3 py-2">Seller</th>
+            <th className="w-[16%] px-3 py-2">Category</th>
+            <th className="w-[11%] px-3 py-2 text-right">Price</th>
+            <th className="w-[11%] px-3 py-2 text-right">Earn</th>
+            <th className="w-[10%] px-3 py-2 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {products.map((product: any) => {
+            const commissionAmount = Number(product.commission_rate || 0);
+            return (
+              <tr
+                key={product.id}
+                onClick={() => window.location.assign(`/product/${product.id}`)}
+                className="h-20 cursor-pointer transition hover:bg-orange-50/60"
+              >
+                <td className="px-3 py-3">
+                  <div className="flex items-center gap-3">
+                    {product.image_url ? (
+                      <img src={product.image_url} alt={product.title} className="h-12 w-12 shrink-0 rounded object-cover" />
+                    ) : (
+                      <div className="h-12 w-12 shrink-0 rounded bg-gray-100" />
+                    )}
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold text-gray-900">{product.title || 'Product'}</div>
+                      <div className="truncate text-xs text-emerald-700">
+                        Affiliate commission {getAffiliateCommissionSummary(product)}
+                      </div>
+                      <div className="truncate text-xs text-gray-500">{product.description}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="truncate px-3 py-3 text-gray-600">{product.seller_name || 'Marketplace Seller'}</td>
+                <td className="truncate px-3 py-3 text-gray-600">{product.category || 'General'}</td>
+                <td className="px-3 py-3 text-right">{money(Number(product.price || 0))}</td>
+                <td className="px-3 py-3 text-right text-green-700">{money(commissionAmount)}</td>
+                <td className="px-3 py-3 text-right">
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onCopyLink(product.id);
+                      }}
+                      className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                    >
+                      {copiedProductId === product.id ? 'Copied' : 'Copy Link'}
+                    </button>
+                    <Link
+                      to="/dashboard?tab=single-product"
+                      onClick={(event) => event.stopPropagation()}
+                      className="rounded-md border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-50"
+                    >
+                      Promote
+                    </Link>
+                    <Link
+                      to={`/product/${product.id}`}
+                      onClick={(event) => event.stopPropagation()}
+                      className="rounded-md border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                    >
+                      View
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onUnlist(product.id);
+                      }}
+                      disabled={unlistingProductId === product.id}
+                      className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {unlistingProductId === product.id ? 'Unlisting' : 'Unlist'}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+        </table>
+      </div>
+    </>
+  );
+};
+
+const OrdersPanel = ({ orders }: { orders: OrderRow[] }) => (
+  <div className="rounded-xl border bg-white p-5">
+    <h2 className="mb-4 text-xl font-semibold text-gray-900">Orders</h2>
+    {!orders.length ? (
+      <div className="rounded-lg border border-dashed p-8 text-center text-gray-500">No seller orders found yet.</div>
+    ) : (
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-50 text-left text-gray-600">
+            <tr>
+              <th className="px-3 py-2">Order</th>
+              <th className="px-3 py-2">Customer</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2 text-right">Total</th>
+              <th className="px-3 py-2">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((order) => (
+              <tr key={order.id} className="border-t">
+                <td className="px-3 py-3">
+                  <Link to={`/order/${order.id}`} className="font-mono text-orange-700 hover:text-orange-800 hover:underline">
+                    {order.order_number || order.id}
+                  </Link>
+                </td>
+                <td className="px-3 py-3">{order.billing_email || order.customer_email || 'Customer'}</td>
+                <td className="px-3 py-3">{order.payment_status || order.status || 'pending'}</td>
+                <td className="px-3 py-3 text-right">{money(Number(order.total_charged ?? order.total_amount ?? 0))}</td>
+                <td className="px-3 py-3">{order.created_at ? new Date(order.created_at).toLocaleDateString() : '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+);
+
+const Placeholder = ({ title, text }: { title: string; text: string }) => (
+  <div className="rounded-xl border bg-white p-6">
+    <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+    <p className="mt-2 text-sm text-gray-600">{text}</p>
+  </div>
+);
 
 export default EnhancedSellerDashboard;

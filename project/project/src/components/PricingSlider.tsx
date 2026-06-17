@@ -18,9 +18,9 @@ const PricingSlider: React.FC = () => {
   const slides: PricingSlide[] = [
     {
       id: 5,
-      title: "Site-Wide Affiliate Links",
+      title: "Site-Wide Partner Links",
       description:
-        "Share one link, earn from every sale! Affiliates get a universal homepage link that tracks all purchases automatically.",
+        "Share one link, earn from every sale! Partners get a universal homepage link that tracks all purchases automatically.",
       icon: <TrendingUp className="h-8 w-8 text-white" />,
       features: [
         "One link for everything",
@@ -33,14 +33,14 @@ const PricingSlider: React.FC = () => {
     },
     {
       id: 0,
-      title: "The Future of Affiliate Marketing",
-      description: "The ultimate marketplace connecting products and affiliates. Join our community of sellers and affiliates building successful partnerships.",
+      title: "The Future of Partner Marketing",
+      description: "The ultimate marketplace connecting products and partners. Join our community of sellers and partners building successful partnerships.",
       icon: <TrendingUp className="h-8 w-8 text-white" />,
       features: [
-        "Connect products with affiliates globally",
+        "Connect products with partners globally",
         "Build successful partnerships",
         "Join a thriving community",
-        "Start shopping or become an affiliate"
+        "Start shopping or become a partner"
       ],
       highlight: "Welcome to Beezio!",
       bgGradient: "from-amber-400 to-orange-500"
@@ -61,13 +61,13 @@ const PricingSlider: React.FC = () => {
     },
     {
       id: 2,
-      title: "Transparent 10% Platform Fee",
-      description: "We only succeed when you do. Beezio adds a 10% platform fee to your desired profit, plus Stripe processing fees.",
+      title: "Transparent 15% Platform Fee",
+      description: "We only succeed when you do. Beezio uses a 15% platform fee for payment processing and marketplace services.",
       icon: <DollarSign className="h-8 w-8 text-white" />,
       features: [
         "You set your desired profit amount",
-        "We add 10% platform fee on top",
-        "Stripe fees included in final price",
+        "15% platform fee on each sale",
+        "Processing fees included in final price",
         "Transparent pricing - no hidden costs"
       ],
       highlight: "You get 100% of your desired profit!",
@@ -75,8 +75,8 @@ const PricingSlider: React.FC = () => {
     },
     {
       id: 3,
-      title: "Secure Stripe Payments",
-      description: "All transactions are processed securely through Stripe, ensuring safe payments for everyone.",
+      title: "Secure Payments",
+      description: "All transactions are processed securely through certified payment infrastructure, ensuring safe payments for everyone.",
       icon: <CreditCard className="h-8 w-8 text-white" />,
       features: [
         "Industry-leading payment security",
@@ -89,7 +89,7 @@ const PricingSlider: React.FC = () => {
     },
     {
       id: 4,
-      title: "Affiliate Earnings",
+      title: "Partner Earnings",
       description: "Earn 15% to 75% commission on every sale, or choose flat-rate commissions set by sellers.",
       icon: <TrendingUp className="h-8 w-8 text-white" />,
       features: [

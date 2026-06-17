@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useAffiliate } from '../contexts/AffiliateContext';
 import AffiliateShareWidget from '../components/AffiliateShareWidget';
+import SingleProductPromoStudio from '../components/affiliate/SingleProductPromoStudio';
 import { SHARE_TEMPLATES, ShareChannel, ShareTargetType } from '../lib/shareTemplates';
 import { Link } from 'react-router-dom';
 
@@ -43,7 +44,7 @@ export default function AffiliateShareHubPage() {
 
   const myAffiliateStorePath = useMemo(() => {
     if (!profile?.id) return null;
-    return `/affiliate/${profile.id}`;
+    return `/store/${profile.id}`;
   }, [profile?.id]);
 
   useEffect(() => {
@@ -128,7 +129,7 @@ export default function AffiliateShareHubPage() {
     return (
       <div className="min-h-screen bg-gray-50 px-4 py-10">
         <div className="max-w-3xl mx-auto bg-white border border-gray-200 rounded-xl p-6">
-          <h1 className="text-2xl font-bold text-gray-900">Affiliate Share Hub</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Partner Share Hub</h1>
           <p className="mt-2 text-gray-600">Sign in to access share tools, templates, and saved products.</p>
           <div className="mt-4">
             <Link to="/auth/login" className="inline-flex px-4 py-2 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600">
@@ -145,7 +146,7 @@ export default function AffiliateShareHubPage() {
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Affiliate Share Hub</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Partner Share Hub</h1>
             <p className="mt-1 text-gray-600">Grab a link, pick a template, and post in under 10 seconds.</p>
           </div>
           <div className="text-right">
@@ -154,7 +155,7 @@ export default function AffiliateShareHubPage() {
                 to="/affiliate-signup?role=affiliate"
                 className="inline-flex px-4 py-2 rounded-lg bg-gray-900 text-white font-semibold hover:bg-gray-800"
               >
-                Become an Affiliate
+                Become a Partner
               </Link>
             )}
           </div>
@@ -170,10 +171,25 @@ export default function AffiliateShareHubPage() {
           </div>
           {myAffiliateStorePath && (
             <div className="mt-4">
-              <AffiliateShareWidget type="store" targetId={profile?.id || ''} targetPath={myAffiliateStorePath} title="My Beezio storefront" />
+              <AffiliateShareWidget type="store" targetId={profile?.id || ''} targetPath={myAffiliateStorePath} title="My storefront" />
             </div>
           )}
         </div>
+
+        <SingleProductPromoStudio
+          products={[...savedDetails, ...results, ...featured].reduce<ProductRow[]>((acc, product) => {
+            if (!acc.some((row) => row.id === product.id)) acc.push(product);
+            return acc;
+          }, []).map((product) => ({
+            id: product.id,
+            title: product.title,
+            price: Number(product.price || 0),
+            image_url: Array.isArray(product.images) ? String(product.images[0] || '') : '',
+            seller_name: '',
+            commission_rate: Number(product.commission_rate || 0),
+          }))}
+          title="Single-item promo studio"
+        />
 
         {/* Search */}
         <div className="bg-white border border-gray-200 rounded-xl p-6">
@@ -308,7 +324,6 @@ export default function AffiliateShareHubPage() {
               <option value="product">Product</option>
               <option value="store">Store</option>
               <option value="collection">Collection</option>
-              <option value="fundraiser">Fundraiser</option>
             </select>
 
             <select
@@ -348,4 +363,3 @@ export default function AffiliateShareHubPage() {
     </div>
   );
 }
-

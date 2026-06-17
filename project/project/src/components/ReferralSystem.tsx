@@ -107,7 +107,7 @@ const ReferralSystem: React.FC = () => {
     return (
       <div className="card-bzo p-6 text-center">
         <div className="text-4xl mb-4">🤝</div>
-        <h3 className="text-xl font-bold text-bzo-black mb-2">Referral System Loading...</h3>
+        <h3 className="text-xl font-bold text-bzo-black mb-2">Influencer System Loading...</h3>
         <p className="text-gray-600">Setting up your referral code...</p>
       </div>
     );
@@ -119,16 +119,16 @@ const ReferralSystem: React.FC = () => {
       <div className="text-center">
         <h2 className="text-3xl font-bold text-bzo-black mb-2 flex items-center justify-center gap-2">
           <span className="text-3xl">🤝</span>
-          Referral Program
+          Influencer Program
         </h2>
-        <p className="text-gray-600">Earn 5% commission on every sale your referrals make - for life!</p>
+        <p className="text-gray-600">Earn 5% commission on every sale your referrals make while the program is active.</p>
       </div>
 
-      {/* Referral Link Card */}
+      {/* Influencer Link Card */}
       <div className="card-bzo p-6 bg-gradient-to-r from-bzo-yellow-light to-bzo-white border-2 border-bzo-yellow-primary/30">
         <h3 className="text-xl font-bold text-bzo-black mb-4 flex items-center gap-2">
           <Share2 className="w-6 h-6 text-bzo-yellow-primary" />
-          Your Referral Link
+          Your Influencer Link
         </h3>
         
         <div className="space-y-4">
@@ -177,7 +177,7 @@ const ReferralSystem: React.FC = () => {
             <Users className="w-8 h-8 text-bzo-yellow-primary" />
           </div>
           <div className="text-2xl font-bold text-bzo-black">{stats.totalReferrals}</div>
-          <div className="text-xs text-gray-600">Total Referrals</div>
+          <div className="text-xs text-gray-600">Total Partners Referred</div>
         </div>
 
         <div className="card-bzo p-4 text-center">
@@ -222,7 +222,7 @@ const ReferralSystem: React.FC = () => {
           <div className="text-center">
             <div className="text-3xl mb-2">3️⃣</div>
             <h4 className="font-semibold text-bzo-black mb-1">You Earn 5%</h4>
-            <p className="text-sm text-gray-600">Earn 5% commission on every purchase they make - forever!</p>
+            <p className="text-sm text-gray-600">Earn 5% commission on every purchase they make while the program is active.</p>
           </div>
         </div>
       </div>
@@ -255,7 +255,7 @@ const ReferralSystem: React.FC = () => {
 
       {/* Pro Tips */}
       <div className="card-bzo p-6 bg-gradient-to-r from-bzo-yellow-light/50 to-bzo-white">
-        <h3 className="text-xl font-bold text-bzo-black mb-4">💡 Pro Tips for More Referrals</h3>
+        <h3 className="text-xl font-bold text-bzo-black mb-4">💡 Pro Tips for More Partner Referrals</h3>
         <div className="space-y-3 text-sm">
           <div className="flex items-start gap-2">
             <span className="text-bzo-yellow-primary">•</span>

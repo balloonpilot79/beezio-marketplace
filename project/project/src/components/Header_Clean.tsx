@@ -45,10 +45,10 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary-600 transition-all duration-300 group-hover:w-full"></span>
               </Link>
               <Link 
-                to="/fundraisers" 
+                to="/campaigns" 
                 className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200 relative group"
               >
-                Fundraisers
+                Campaigns
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary-600 transition-all duration-300 group-hover:w-full"></span>
               </Link>
               <div className="relative">
@@ -70,7 +70,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                       For Sellers
                     </Link>
                     <Link to="/affiliates" className="block px-4 py-2 text-gray-700 hover:bg-gray-50">
-                      For Affiliates
+                      For Partners
                     </Link>
                   </div>
                 )}
@@ -155,11 +155,11 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 Marketplace
               </Link>
               <Link 
-                to="/fundraisers" 
+                to="/campaigns" 
                 className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Fundraisers
+                Campaigns
               </Link>
               <Link 
                 to="/how-it-works" 
@@ -180,7 +180,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                For Affiliates
+                For Partners
               </Link>
               
               {/* Mobile Sign In/Up for non-authenticated users */}

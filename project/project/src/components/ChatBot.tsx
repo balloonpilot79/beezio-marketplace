@@ -15,15 +15,14 @@ const INITIAL_MESSAGES = [
 
 // Sample FAQ responses
 const FAQ_RESPONSES: Record<string, string> = {
-  'affiliate': 'As an affiliate, you earn commission on products you promote. You can share your site-wide affiliate link or create product-specific links. When someone makes a purchase using your link, you earn the commission rate set for that product.',
-  'seller': "Sellers can list products on our marketplace, set prices, and choose commission rates for affiliates. You will need to connect a Stripe account to receive payments.",
-  'commission': 'Commission rates are set by sellers for each product. Affiliates earn this percentage or flat rate on each sale made through their affiliate link.',
-  'payment': 'We process payments through Stripe. Sellers receive payments after fees and affiliate commissions are deducted. Affiliates receive commission payouts on a monthly basis.',
-  'subscription': 'Subscription products can be weekly or monthly. Affiliates earn recurring commissions for as long as the subscription remains active.',
+  'affiliate': 'As a partner, you earn commission on products you promote. You can share your site-wide partner link or create product-specific links. When someone makes a purchase using your link, you earn the commission rate set for that product.',
+  'seller': 'Sellers can list products on our marketplace, set prices, and manage fulfillment. You will need to complete payout setup in your dashboard to receive payments.',
+  'commission': 'Commission rates are set by sellers for each product. Partners earn this percentage or flat rate on each sale made through their partner link.',
+  'payment': 'Payments are processed securely by a PCI-compliant payment processor. Sellers receive payouts after applicable fees are deducted.',
+  'subscription': 'Subscription products can be weekly or monthly. Partners earn recurring commissions for as long as the subscription remains active.',
   'sign up': 'To sign up, click the "Login" button in the header and then choose "Register" in the modal that appears.',
-  'qr code': 'QR codes are generated for your store links and affiliate links. You can download these and print them on business cards or marketing materials.',
-  'stripe': "You will need to connect your Stripe account to receive payments. Go to your dashboard and click on \"Connect Stripe\" to get started.",
-  'help': 'I can help with questions about affiliate marketing, selling products, subscriptions, payments, and using our platform. Just ask away!',
+  'qr code': 'QR codes are generated for your store links and partner links. You can download these and print them on business cards or marketing materials.',
+  'help': 'I can help with questions about partner marketing, selling products, subscriptions, payments, and using our platform. Just ask away!',
 };
 
 const ChatBot = () => {

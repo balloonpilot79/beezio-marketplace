@@ -7,6 +7,7 @@ const supabaseClient = supabaseUrl && supabaseServiceRoleKey
   : null;
 
 exports.handler = async function (event) {
+  // Deprecated: email-based contact flow is postponed; keep endpoint returning ok so older builds don't break.
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 200,
@@ -24,41 +25,10 @@ exports.handler = async function (event) {
   }
 
   try {
-    const body = JSON.parse(event.body || "{}");
-    const { name, email, message, ownerId, ownerType, storeName, pageUrl } = body;
-    if (!name || !email || !message || !ownerId || !ownerType) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Missing required fields" }) };
-    }
-
-    // Basic anti-abuse guard
-    if (message.length > 2000) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Message too long" }) };
-    }
-
-    // Store in Supabase if service role is available
-    if (supabaseClient) {
-      try {
-        await supabaseClient.from("contact_messages").insert({
-          owner_id: ownerId,
-          owner_type: ownerType,
-          name,
-          email,
-          message,
-          store_name: storeName || null,
-          page_url: pageUrl || null,
-          created_at: new Date().toISOString(),
-        });
-      } catch (dbErr) {
-        console.warn("contact-form supabase insert failed", dbErr?.message || dbErr);
-      }
-    } else {
-      console.log("Contact message (no Supabase client configured)", { name, email, message, ownerId, ownerType, storeName, pageUrl });
-    }
-
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-      body: JSON.stringify({ ok: true }),
+      body: JSON.stringify({ ok: true, deprecated: true }),
     };
   } catch (err) {
     console.error("contact-form error", err);

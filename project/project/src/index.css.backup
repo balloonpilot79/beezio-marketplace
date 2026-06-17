@@ -135,8 +135,8 @@
   border-color: var(--honey-amber);
 }
 
-/* Bee Stripes Pattern */
-.bee-stripes {
+/* Bee Bands Pattern */
+.bee-bands {
   background: repeating-linear-gradient(
     45deg,
     #FFD700,

@@ -16,7 +16,7 @@ const SimpleHeader = () => {
             <nav className="hidden md:flex space-x-8">
               <Link to="/marketplace" className="text-gray-700 hover:text-yellow-600 transition-colors">Marketplace</Link>
               <Link to="/sellers" className="text-gray-700 hover:text-yellow-600 transition-colors">Sellers</Link>
-              <Link to="/affiliates" className="text-gray-700 hover:text-yellow-600 transition-colors">Affiliates</Link>
+              <Link to="/how-it-works" className="text-gray-700 hover:text-yellow-600 transition-colors">How It Works</Link>
             </nav>
           </div>
           <div className="flex items-center space-x-4">
@@ -41,7 +41,7 @@ const HomePage = () => {
             Welcome to Beezio Marketplace
           </h1>
           <p className="text-xl md:text-2xl mb-8 text-yellow-100">
-            Transparent pricing • Fair commissions • Affiliate-friendly
+            Transparent pricing • Fair commissions • Partner-friendly
           </p>
           <div className="space-x-4">
             <Link 
@@ -64,7 +64,7 @@ const HomePage = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Ready to Test Mock Seller → Affiliate → Buyer Flow?
+            Ready to Test Mock Seller → Partner → Buyer Flow?
           </h2>
           <p className="text-xl text-gray-600 mb-8">
             We have a Gaming Headset with 30% commission ready for testing!

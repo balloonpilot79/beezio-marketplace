@@ -1,167 +1,99 @@
-import React, { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, Clock, CheckCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { useEffect, useState } from 'react';
+import { DollarSign, Clock, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import { apiPost } from '../utils/netlifyApi';
+import PayoutHistoryCard from './PayoutHistoryCard';
 
-interface Earnings {
-  pending: number;
-  paid: number;
-  total: number;
-}
+type AffiliateEarningsSummary = {
+  total_earned?: number;
+  pending_payout?: number;
+  paid_out?: number;
+  current_balance?: number;
+  held_balance?: number;
+  pending_hold_balance?: number;
+  dispute_hold_balance?: number;
+  next_release_at?: string | null;
+};
 
-interface EarningRecord {
-  id: string;
-  amount: number;
-  status: 'pending' | 'paid' | 'cancelled';
-  created_at: string;
-  paid_at: string | null;
-  order_id: string;
-}
+const formatMoney = (value: unknown) =>
+  Number(value || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
 
 export default function AffiliateEarningsDashboard() {
-  const { profile } = useAuth();
-  const [earnings, setEarnings] = useState<Earnings>({ pending: 0, paid: 0, total: 0 });
-  const [earningRecords, setEarningRecords] = useState<EarningRecord[]>([]);
+  const { session } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<AffiliateEarningsSummary>({});
 
   useEffect(() => {
-    if (profile) {
-      loadEarnings();
-    }
-  }, [profile]);
+    let alive = true;
 
-  const loadEarnings = async () => {
-    if (!profile) return;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const payload = await apiPost<any>('/api/user-earnings', session ?? null, { role: 'affiliate' });
+        if (!alive) return;
+        setSummary((payload as any)?.earnings || {});
+      } catch {
+        if (!alive) return;
+        setSummary({});
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
 
-    try {
-      const { data, error } = await supabase
-        .from('affiliate_earnings')
-        .select('*')
-        .eq('affiliate_id', profile.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const records = data || [];
-      const pending = records.filter(r => r.status === 'pending').reduce((sum, r) => sum + Number(r.amount), 0);
-      const paid = records.filter(r => r.status === 'paid').reduce((sum, r) => sum + Number(r.amount), 0);
-
-      setEarnings({
-        pending,
-        paid,
-        total: pending + paid
-      });
-      setEarningRecords(records);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading earnings:', error);
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return <div className="text-center py-8">Loading earnings...</div>;
-  }
+    void load();
+    return () => {
+      alive = false;
+    };
+  }, [session]);
 
   return (
     <div className="space-y-6">
-      {/* Earnings Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-400 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-700">Pending Earnings</h3>
-            <Clock className="w-5 h-5 text-yellow-600" />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="rounded-lg border-2 border-yellow-400 bg-gradient-to-br from-yellow-50 to-yellow-100 p-6">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-medium text-gray-700">Held / Pending</h3>
+            <Clock className="h-5 w-5 text-yellow-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">${earnings.pending.toFixed(2)}</p>
-          <p className="text-xs text-gray-600 mt-1">Awaiting payout</p>
+          <p className="text-3xl font-bold text-gray-900">
+            {loading ? '...' : formatMoney(summary.held_balance ?? summary.pending_payout)}
+          </p>
+          <p className="mt-1 text-xs text-gray-600">Still inside hold or dispute review</p>
         </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-400 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-2">
+        <div className="rounded-lg border-2 border-green-400 bg-gradient-to-br from-green-50 to-green-100 p-6">
+          <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-700">Paid Out</h3>
-            <CheckCircle className="w-5 h-5 text-green-600" />
+            <CheckCircle className="h-5 w-5 text-green-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">${earnings.paid.toFixed(2)}</p>
-          <p className="text-xs text-gray-600 mt-1">All-time earnings</p>
+          <p className="text-3xl font-bold text-gray-900">{loading ? '...' : formatMoney(summary.paid_out)}</p>
+          <p className="mt-1 text-xs text-gray-600">Completed PayPal payouts</p>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-400 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-2">
+        <div className="rounded-lg border-2 border-blue-400 bg-gradient-to-br from-blue-50 to-blue-100 p-6">
+          <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-700">Total Earned</h3>
-            <TrendingUp className="w-5 h-5 text-blue-600" />
+            <DollarSign className="h-5 w-5 text-blue-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">${earnings.total.toFixed(2)}</p>
-          <p className="text-xs text-gray-600 mt-1">Lifetime commissions</p>
+          <p className="text-3xl font-bold text-gray-900">{loading ? '...' : formatMoney(summary.total_earned)}</p>
+          <p className="mt-1 text-xs text-gray-600">Lifetime logged affiliate earnings</p>
         </div>
       </div>
 
-      {/* Request Payout Button */}
-      {earnings.pending > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium text-gray-900">Ready to withdraw?</h4>
-              <p className="text-sm text-gray-600">You have ${earnings.pending.toFixed(2)} available for payout</p>
-            </div>
-            <button className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 font-medium">
-              Request Payout
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Earnings History */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Earnings History</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid On</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {earningRecords.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                    No earnings yet. Start promoting your products!
-                  </td>
-                </tr>
-              ) : (
-                earningRecords.map(record => (
-                  <tr key={record.id}>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(record.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      ${Number(record.amount).toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        record.status === 'paid' 
-                          ? 'bg-green-100 text-green-800'
-                          : record.status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {record.paid_at ? new Date(record.paid_at).toLocaleDateString() : '-'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+        <h4 className="font-medium text-gray-900">Affiliate payout flow</h4>
+        <p className="mt-1 text-sm text-gray-600">
+          Affiliate commissions are logged after payment capture, held until the release window clears, then included in Beezio&apos;s PayPal payout runs.
+        </p>
+        {summary.next_release_at ? (
+          <p className="mt-2 text-xs text-gray-500">Next hold release: {new Date(summary.next_release_at).toLocaleString()}</p>
+        ) : null}
       </div>
+
+      <PayoutHistoryCard
+        role="PARTNER"
+        title="Affiliate Payout History"
+        description="Track pending hold rows, ready-to-pay affiliate commissions, and completed PayPal transfers."
+      />
     </div>
   );
 }

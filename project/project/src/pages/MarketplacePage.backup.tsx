@@ -228,7 +228,7 @@ export default function MarketplacePage() {
               Discover Amazing Products
             </h1>
             <p className="text-xl mb-8 text-purple-100">
-              Shop from local sellers, support your community, and earn rewards through our affiliate network
+              Shop from local sellers, support your community, and earn rewards through our partner network
             </p>
             
             {/* Marketplace Stats */}
@@ -259,7 +259,7 @@ export default function MarketplacePage() {
               <div className="mt-8 bg-green-600 bg-opacity-20 border border-green-300 text-green-100 px-6 py-4 rounded-lg inline-block">
                 <div className="flex items-center">
                   <Award className="w-5 h-5 mr-2" />
-                  <span className="font-medium">🎉 Shopping through affiliate link!</span>
+                  <span className="font-medium">🎉 Shopping through partner link!</span>
                 </div>
                 <p className="text-sm mt-1">Your purchases support your referrer while you shop.</p>
               </div>
@@ -267,7 +267,7 @@ export default function MarketplacePage() {
               <div className="mt-8 bg-blue-600 bg-opacity-20 border border-blue-300 text-blue-100 px-6 py-4 rounded-lg inline-block">
                 <div className="flex items-center">
                   <Users className="w-5 h-5 mr-2" />
-                  <span className="font-medium">Join our affiliate network and start earning!</span>
+                  <span className="font-medium">Join our partner network and start earning!</span>
                 </div>
                 <Link to="/start-earning" className="text-sm mt-1 underline hover:text-white">
                   Learn how to earn commissions →
@@ -507,7 +507,7 @@ export default function MarketplacePage() {
               to="/start-earning" 
               className="bg-white text-orange-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
             >
-              Become an Affiliate
+              Become a Partner
             </Link>
             {!user && (
               <Link 
@@ -624,7 +624,7 @@ export default function MarketplacePage() {
               <span className="font-medium">{filteredProducts.length}</span> products found
               {affiliateRef && (
                 <span className="ml-4 text-green-600 text-sm">
-                  🤝 Affiliate commissions active
+                  🤝 Partner commissions active
                 </span>
               )}
             </div>

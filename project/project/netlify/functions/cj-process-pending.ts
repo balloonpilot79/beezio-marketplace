@@ -18,7 +18,7 @@ const supabase = createClient(
 );
 
 export const config = {
-  // Process deferred CJ orders (e.g. waiting for Stripe funds to clear) every 15 minutes.
+  // Process deferred CJ orders (e.g. waiting for funds to clear) every 15 minutes.
   schedule: '*/15 * * * *',
 };
 

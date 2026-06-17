@@ -29,8 +29,7 @@ export default function ImageUploader({
     product: 'aspect-square'
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const uploadSelectedFile = async (file: File) => {
     if (!file) return;
 
     // Validate file type
@@ -126,6 +125,20 @@ export default function ImageUploader({
     }
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await uploadSelectedFile(file);
+  };
+
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const file = event.dataTransfer.files?.[0];
+    if (!file || uploading) return;
+    await uploadSelectedFile(file);
+  };
+
   const handleRemoveImage = () => {
     onImageUpload('');
     setSuccess(false);
@@ -180,7 +193,14 @@ export default function ImageUploader({
         </div>
       ) : (
         <div className="space-y-2">
-          <div className={`${aspectRatioClasses[aspectRatio]} w-full max-w-md border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors`}>
+          <div
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+            onDrop={handleDrop}
+            className={`${aspectRatioClasses[aspectRatio]} w-full max-w-md border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors`}
+          >
             <label className="cursor-pointer flex flex-col items-center gap-2 p-6">
               <Upload className="w-8 h-8 text-gray-400" />
               <span className="text-sm text-gray-600">

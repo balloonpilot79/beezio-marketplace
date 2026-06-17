@@ -176,7 +176,7 @@ serve(async (req) => {
 
     const msg = {
       to,
-      from: 'orders@beezio.co',
+      from: 'mail@beezio.co',
       subject: emailSubject,
       html: htmlContent
     }

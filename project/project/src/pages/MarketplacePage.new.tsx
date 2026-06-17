@@ -5,11 +5,14 @@ import { SAMPLE_PRODUCTS } from '../lib/sampleData';
 import StarRating from '../components/StarRating';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import AddToAffiliateStoreButton from '../components/AddToAffiliateStoreButton';
+import AddToSellerStoreButton from '../components/AddToSellerStoreButton';
 
 interface Product {
   id: string;
   title: string;
   price: number;
+  seller_id?: string;
   images: string[];
   description?: string;
   commission_rate: number;
@@ -167,7 +170,7 @@ export default function MarketplacePage() {
               Discover Amazing Products
             </h1>
             <p className="text-xl mb-8 text-purple-100">
-              Shop from local sellers, support your community, and earn rewards through our affiliate network
+              Shop from local sellers, support your community, and earn rewards through our partner network
             </p>
             
             {/* Marketplace Stats */}
@@ -198,7 +201,7 @@ export default function MarketplacePage() {
               <div className="mt-8 bg-green-600 bg-opacity-20 border border-green-300 text-green-100 px-6 py-4 rounded-lg inline-block">
                 <div className="flex items-center">
                   <Award className="w-5 h-5 mr-2" />
-                  <span className="font-medium">🎉 Shopping through affiliate link!</span>
+                  <span className="font-medium">🎉 Shopping through partner link!</span>
                 </div>
                 <p className="text-sm mt-1">Your purchases support your referrer while you shop.</p>
               </div>
@@ -206,7 +209,7 @@ export default function MarketplacePage() {
               <div className="mt-8 bg-blue-600 bg-opacity-20 border border-blue-300 text-blue-100 px-6 py-4 rounded-lg inline-block">
                 <div className="flex items-center">
                   <Users className="w-5 h-5 mr-2" />
-                  <span className="font-medium">Join our affiliate network and start earning!</span>
+                  <span className="font-medium">Join our partner network and start earning!</span>
                 </div>
                 <Link to="/start-earning" className="text-sm mt-1 underline hover:text-white">
                   Learn how to earn commissions →
@@ -320,7 +323,7 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Call to Action for Sellers/Affiliates */}
+        {/* Call to Action for Sellers/Partners */}
         <section className="mt-16 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-8 text-white text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to Start Selling or Earning?</h2>
           <p className="text-xl mb-6 text-orange-100">Join our marketplace and turn your products or influence into income</p>
@@ -329,7 +332,7 @@ export default function MarketplacePage() {
               to="/start-earning" 
               className="bg-white text-orange-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
             >
-              Become an Affiliate
+              Become a Partner
             </Link>
             {!user && (
               <Link 
@@ -354,6 +357,13 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode, affiliateRef }) => {
+  const { profile, currentRole } = useAuth();
+  const derivedRole = String((profile as any)?.primary_role || profile?.role || currentRole || '').toLowerCase();
+  const effectiveRole = derivedRole === 'partner' ? 'affiliate' : derivedRole;
+  const isSellerRole = effectiveRole === 'seller';
+  const isAffiliateRole = effectiveRole === 'affiliate';
+  const isSellingRole = isSellerRole || isAffiliateRole;
+
   if (viewMode === 'list') {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
@@ -391,13 +401,41 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode, affiliateR
                 <span className="text-xl font-bold text-gray-900">${product.price}</span>
                 <span className="text-sm text-green-600 font-medium">{product.commission_rate}% commission</span>
               </div>
-              <Link 
-                to={`/product/${product.id}${affiliateRef ? `?ref=${affiliateRef}` : ''}`}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
-              >
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                View Details
-              </Link>
+              {isSellingRole ? (
+                <div className="flex items-center gap-2">
+                  {isSellerRole ? (
+                    <AddToSellerStoreButton productId={product.id} size="sm" variant="button" />
+                  ) : (
+                    <AddToAffiliateStoreButton
+                      productId={product.id}
+                      sellerId={String((product as any)?.seller_id || '')}
+                      productTitle={product.title}
+                      productPrice={Number(product.price) || 0}
+                      defaultCommissionRate={Number(product.commission_rate) || 0}
+                      size="sm"
+                      variant="button"
+                      ctaText="Add to Store"
+                      addedText="In My Store"
+                      showRemove={false}
+                    />
+                  )}
+
+                  <Link
+                    to={`/product/${product.id}${affiliateRef ? `?ref=${affiliateRef}` : ''}`}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg transition-colors flex items-center"
+                  >
+                    View Product
+                  </Link>
+                </div>
+              ) : (
+                <Link 
+                  to={`/product/${product.id}${affiliateRef ? `?ref=${affiliateRef}` : ''}`}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  View Product
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -448,13 +486,40 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode, affiliateR
         
         <div className="text-xs text-gray-600 mb-3">by {product.profiles?.full_name}</div>
         
-        <Link 
-          to={`/product/${product.id}${affiliateRef ? `?ref=${affiliateRef}` : ''}`}
-          className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center"
-        >
-          <ShoppingCart className="w-4 h-4 mr-2" />
-          View Details
-        </Link>
+        {isSellingRole ? (
+          <div className="space-y-2">
+            {isSellerRole ? (
+              <AddToSellerStoreButton productId={product.id} size="sm" variant="button" />
+            ) : (
+              <AddToAffiliateStoreButton
+                productId={product.id}
+                sellerId={String((product as any)?.seller_id || '')}
+                productTitle={product.title}
+                productPrice={Number(product.price) || 0}
+                defaultCommissionRate={Number(product.commission_rate) || 0}
+                size="sm"
+                variant="button"
+                ctaText="Add to Store"
+                addedText="In My Store"
+                showRemove={false}
+              />
+            )}
+            <Link 
+              to={`/product/${product.id}${affiliateRef ? `?ref=${affiliateRef}` : ''}`}
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg transition-colors flex items-center justify-center"
+            >
+              View Product
+            </Link>
+          </div>
+        ) : (
+          <Link 
+            to={`/product/${product.id}${affiliateRef ? `?ref=${affiliateRef}` : ''}`}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center"
+          >
+            <ShoppingCart className="w-4 h-4 mr-2" />
+            View Product
+          </Link>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 // Sample Data Configuration
 // This file controls all sample data across the application
-// Set VITE_ENABLE_SAMPLE_DATA=false in your .env to disable sample products and fundraisers globally
+// Set VITE_ENABLE_SAMPLE_DATA=false in your .env to disable sample products globally
 
 const toBoolean = (value: string | boolean | undefined, defaultValue: boolean) => {
   if (typeof value === 'boolean') return value;
@@ -19,13 +19,11 @@ export const SAMPLE_DATA_CONFIG = {
   
   // Individual toggles (all depend on master switch)
   ENABLE_SAMPLE_PRODUCTS: ENABLE_SAMPLE_DATA,
-  ENABLE_SAMPLE_FUNDRAISERS: ENABLE_SAMPLE_DATA,
   ENABLE_SAMPLE_REVIEWS: ENABLE_SAMPLE_DATA,
   ENABLE_SAMPLE_STORES: ENABLE_SAMPLE_DATA,
   
   // Sample data counts
   PRODUCTS_PER_SLIDER: 12,
-  FUNDRAISERS_PER_SLIDER: 9,
   PRODUCTS_PER_CATEGORY: 5,
   
   // Debug mode - shows sample data indicators
@@ -38,8 +36,5 @@ export const isSampleDataEnabled = () => SAMPLE_DATA_CONFIG.ENABLE_SAMPLE_DATA;
 // Helper function to check specific sample data types
 export const isProductSampleDataEnabled = () => 
   SAMPLE_DATA_CONFIG.ENABLE_SAMPLE_DATA && SAMPLE_DATA_CONFIG.ENABLE_SAMPLE_PRODUCTS;
-
-export const isFundraiserSampleDataEnabled = () => 
-  SAMPLE_DATA_CONFIG.ENABLE_SAMPLE_DATA && SAMPLE_DATA_CONFIG.ENABLE_SAMPLE_FUNDRAISERS;
 
 export default SAMPLE_DATA_CONFIG;

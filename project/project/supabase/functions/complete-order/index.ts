@@ -7,6 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+const PLATFORM_FEE_PERCENT = 15
+
 interface CartItem {
   productId: string;
   title: string;
@@ -60,13 +62,12 @@ serve(async (req) => {
         .insert({
           order_id: orderId,
           product_id: item.productId,
-          seller_id: item.sellerId,
-          affiliate_id: item.affiliateId || null,
           quantity: item.quantity,
-          unit_price: item.price,
-          total_price: item.price * item.quantity,
-          commission_rate: item.commissionRate,
-          affiliate_commission_rate: item.affiliateCommissionRate || 0,
+          price: item.price,
+          final_sale_price_per_unit: item.price,
+          seller_ask_price_per_unit: item.price,
+          affiliate_commission_percent_at_purchase: item.affiliateCommissionRate || 0,
+          platform_percent_at_purchase: PLATFORM_FEE_PERCENT,
         })
 
       if (itemError) {

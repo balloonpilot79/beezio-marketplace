@@ -37,6 +37,28 @@ function buildSignupUrl(returnTo: string): string {
   return `${base}?role=affiliate&redirect=${redirect}`;
 }
 
+async function copyText(value: string) {
+  const text = String(value || '').trim();
+  if (!text) throw new Error('Nothing to copy');
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', 'true');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  textarea.style.pointerEvents = 'none';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  const ok = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  if (!ok) throw new Error('Copy failed');
+}
+
 async function postJson<T>(url: string, body: unknown, headers?: Record<string, string>): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
@@ -74,19 +96,17 @@ export default function AffiliateShareWidget(props: Props) {
       case 'product':
         return `${origin}/product/${props.targetId}`;
       case 'store':
-        return `${origin}/affiliate/${props.targetId}`;
+        return `${origin}/store/${props.targetId}`;
       case 'collection':
         return `${origin}/c/${props.targetId}`;
-      case 'fundraiser':
-        return `${origin}/fundraiser/${props.targetId}`;
       default:
         return origin;
     }
-  }, [props.targetId, props.type]);
+  }, [props.targetId, props.type, props.targetPath]);
 
   const getTrackedLink = async (channel: ShareChannel): Promise<LinkResponse> => {
     if (!user) throw new Error('Please sign in to share');
-    if (!isAffiliate) throw new Error('Become an affiliate to get tracked links');
+    if (!isAffiliate) throw new Error('Become a partner to get tracked links');
     const token = session?.access_token;
     if (!token) throw new Error('Missing auth session');
 
@@ -129,20 +149,30 @@ export default function AffiliateShareWidget(props: Props) {
   const doShare = async (channel: ShareChannel) => {
     setError(null);
     setBusyChannel(channel);
+    const popupChannels = new Set<ShareChannel>(['facebook', 'x', 'whatsapp']);
+    const popup = popupChannels.has(channel)
+      ? window.open('', '_blank', 'noopener,noreferrer,width=720,height=640')
+      : null;
     try {
       if (!isAffiliate) {
         window.location.assign(buildSignupUrl(canonicalTargetUrl));
         return;
       }
 
-      const { trackedUrl } = await getTrackedLink(channel);
+      let trackedUrl = canonicalTargetUrl;
+      try {
+        const response = await getTrackedLink(channel);
+        trackedUrl = response?.trackedUrl || canonicalTargetUrl;
+      } catch (linkError) {
+        console.warn('[AffiliateShareWidget] Falling back to canonical share URL:', linkError);
+      }
       const template = getDefaultTemplate(props.type, channel);
       const message = fillTemplate(template.text, trackedUrl);
 
       await trackShareClick(channel);
 
       if (channel === 'copy') {
-        await navigator.clipboard.writeText(trackedUrl);
+        await copyText(trackedUrl);
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1500);
         return;
@@ -164,22 +194,29 @@ export default function AffiliateShareWidget(props: Props) {
       if (channel === 'facebook') {
         const u = encodeURIComponent(trackedUrl);
         const quote = encodeURIComponent(message.replace(trackedUrl, '').trim());
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${u}&quote=${quote}`, '_blank', 'noopener,noreferrer');
+        const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${u}&quote=${quote}`;
+        if (popup) popup.location.href = shareUrl;
+        else window.location.assign(shareUrl);
         return;
       }
 
       if (channel === 'x') {
         const text = encodeURIComponent(message);
-        window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank', 'noopener,noreferrer');
+        const shareUrl = `https://twitter.com/intent/tweet?text=${text}`;
+        if (popup) popup.location.href = shareUrl;
+        else window.location.assign(shareUrl);
         return;
       }
 
       if (channel === 'whatsapp') {
         const text = encodeURIComponent(message);
-        window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+        const shareUrl = `https://wa.me/?text=${text}`;
+        if (popup) popup.location.href = shareUrl;
+        else window.location.assign(shareUrl);
         return;
       }
     } catch (e) {
+      if (popup && !popup.closed) popup.close();
       setError(e instanceof Error ? e.message : 'Failed to share');
     } finally {
       setBusyChannel(null);

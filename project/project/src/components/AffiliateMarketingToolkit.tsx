@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Share2, Copy, Download, ExternalLink, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import { resolveProductImageFromList } from '../utils/imageHelpers';
 
 interface Product {
   id: string;
@@ -38,7 +39,21 @@ export default function AffiliateMarketingToolkit() {
   useEffect(() => {
     if (profile) {
       loadAffiliateProducts();
+    } else {
+      setLoading(false);
+      setProducts([]);
+      setAffiliateLinks([]);
     }
+  }, [profile]);
+
+  useEffect(() => {
+    const handler = () => {
+      if (profile) {
+        void loadAffiliateProducts();
+      }
+    };
+    window.addEventListener('affiliate-products-changed', handler as any);
+    return () => window.removeEventListener('affiliate-products-changed', handler as any);
   }, [profile]);
 
   const loadAffiliateProducts = async () => {
@@ -64,7 +79,8 @@ export default function AffiliateMarketingToolkit() {
       const { data: productsData, error: pError} = await supabase
         .from('products')
         .select('*')
-        .in('id', productIds);
+        .in('id', productIds)
+        .eq('is_active', true);
 
       if (pError) throw pError;
 
@@ -106,7 +122,7 @@ export default function AffiliateMarketingToolkit() {
 
   const getStoreLink = (): string => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/affiliate-store/${profile?.id}`;
+    return `${baseUrl}/store/${profile?.id}`;
   };
 
   const copyToClipboard = async (text: string, code: string) => {
@@ -157,13 +173,23 @@ export default function AffiliateMarketingToolkit() {
     return <div className="text-center py-8">Loading your marketing tools...</div>;
   }
 
+  if (!profile) {
+    return (
+      <div className="text-center py-12">
+        <Share2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">Sign in to use Partner Tools</h3>
+        <p className="text-gray-600">Create an account or sign in to generate links and QR codes.</p>
+      </div>
+    );
+  }
+
   if (products.length === 0) {
     return (
       <div className="text-center py-12">
         <Share2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
         <h3 className="text-xl font-semibold text-gray-900 mb-2">No Products Yet</h3>
         <p className="text-gray-600">
-          Add products from the marketplace to start generating affiliate links!
+          Add products from the marketplace to start generating partner links!
         </p>
       </div>
     );
@@ -175,7 +201,7 @@ export default function AffiliateMarketingToolkit() {
       <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-2 border-yellow-400 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <ExternalLink className="w-5 h-5" />
-          Your Affiliate Store Link
+          Your Partner Store Link
         </h3>
         <div className="flex gap-3 items-center">
           <input
@@ -207,7 +233,7 @@ export default function AffiliateMarketingToolkit() {
               Download and use this QR code on business cards, flyers, or social media posts.
             </p>
             <button
-              onClick={() => downloadQRCode('store', 'affiliate-store')}
+              onClick={() => downloadQRCode('store', 'partner-store')}
               className="text-sm px-3 py-1.5 bg-gray-800 text-white rounded hover:bg-gray-900 flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
@@ -230,7 +256,7 @@ export default function AffiliateMarketingToolkit() {
                 <div className="flex gap-6">
                   {/* Product Image */}
                   <img
-                    src={product.images?.[0] || '/placeholder.png'}
+                    src={resolveProductImageFromList(product.images, product.id)}
                     alt={product.name}
                     className="w-24 h-24 object-cover rounded-lg"
                   />
@@ -244,10 +270,10 @@ export default function AffiliateMarketingToolkit() {
                       </p>
                     </div>
 
-                    {/* Affiliate Link */}
+                    {/* Partner Link */}
                     <div>
                       <label className="text-sm font-medium text-gray-700 block mb-2">
-                        Affiliate Link
+                        Partner Link
                       </label>
                       <div className="flex gap-2">
                         <input

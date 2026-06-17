@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserPlus, RefreshCw, CheckCircle, AlertCircle, Crown, ShoppingBag, Users, Heart } from 'lucide-react';
+import { UserPlus, RefreshCw, CheckCircle, AlertCircle, Crown, ShoppingBag, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 
 interface RoleManagementProps {
@@ -15,7 +15,7 @@ const RoleManagement: React.FC<RoleManagementProps> = ({ onRoleChange }) => {
     {
       id: 'buyer',
       name: 'Buyer',
-      description: 'Purchase products from sellers and affiliates',
+      description: 'Purchase products from sellers and partners',
       icon: ShoppingBag,
       color: 'bg-blue-500',
       benefits: ['Access to all products', 'Secure checkout', 'Order tracking']
@@ -30,19 +30,11 @@ const RoleManagement: React.FC<RoleManagementProps> = ({ onRoleChange }) => {
     },
     {
       id: 'affiliate',
-      name: 'Affiliate',
-      description: 'Earn commissions by promoting products',
+      name: 'Partner',
+      description: 'Earn commissions by promoting products as an independent partner',
       icon: Users,
       color: 'bg-purple-500',
       benefits: ['Commission earnings', 'Marketing tools', 'Performance analytics']
-    },
-    {
-      id: 'fundraiser',
-      name: 'Fundraiser',
-      description: 'Raise money for causes through affiliate commissions',
-      icon: Heart,
-      color: 'bg-red-500',
-      benefits: ['Cause-driven earnings', 'Community impact', 'Fundraising tools']
     }
   ];
 
@@ -102,7 +94,7 @@ const RoleManagement: React.FC<RoleManagementProps> = ({ onRoleChange }) => {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Role Management</h2>
         <p className="text-gray-600">
           Expand your participation in Beezio by taking on multiple roles.
-          Sellers can become affiliates, affiliates can start selling - the choice is yours!
+          Sellers can become partners, partners can start selling - the choice is yours!
         </p>
       </div>
 
@@ -246,7 +238,7 @@ const RoleManagement: React.FC<RoleManagementProps> = ({ onRoleChange }) => {
               {role.id === 'seller' && hasRole('affiliate') && (
                 <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
                   <p className="text-sm text-yellow-800">
-                    <strong>💡 Popular Combo:</strong> Many affiliates become sellers to promote their own products alongside others!
+                    <strong>💡 Popular Combo:</strong> Many partners become sellers to promote their own products alongside others!
                   </p>
                 </div>
               )}
@@ -254,7 +246,7 @@ const RoleManagement: React.FC<RoleManagementProps> = ({ onRoleChange }) => {
               {role.id === 'affiliate' && hasRole('seller') && (
                 <div className="mt-4 p-3 bg-purple-50 rounded-lg">
                   <p className="text-sm text-purple-800">
-                    <strong>💡 Popular Combo:</strong> Sellers often become affiliates to earn extra income promoting complementary products!
+                    <strong>💡 Popular Combo:</strong> Sellers often become partners to earn additional commissions promoting complementary products!
                   </p>
                 </div>
               )}
@@ -268,18 +260,18 @@ const RoleManagement: React.FC<RoleManagementProps> = ({ onRoleChange }) => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">How Role Switching Works</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">For Sellers Becoming Affiliates:</h4>
+            <h4 className="font-medium text-gray-900 mb-2">For Sellers Becoming Partners:</h4>
             <ul className="text-sm text-gray-600 space-y-1">
               <li>• Keep all your seller privileges</li>
               <li>• Earn commissions on other products</li>
-              <li>• Access affiliate marketing tools</li>
-              <li>• Build your own affiliate storefront</li>
+              <li>• Access partner marketing tools</li>
+              <li>• Build your own partner storefront</li>
             </ul>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">For Affiliates Becoming Sellers:</h4>
+            <h4 className="font-medium text-gray-900 mb-2">For Partners Becoming Sellers:</h4>
             <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Keep all your affiliate earnings</li>
+              <li>• Keep all your partner earnings</li>
               <li>• List and sell your own products</li>
               <li>• Access seller analytics</li>
               <li>• Direct customer relationships</li>

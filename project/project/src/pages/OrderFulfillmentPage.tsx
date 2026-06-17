@@ -98,12 +98,18 @@ const OrderFulfillmentPage: React.FC = () => {
   };
 
   const markAsShipped = async (orderId: string, trackingNumber?: string) => {
+    const normalizedTracking = String(trackingNumber || '').trim();
+    if (!normalizedTracking) {
+      window.alert('A tracking number is required before this order can be marked as shipped.');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('orders')
         .update({
           status: 'shipped',
-          tracking_number: trackingNumber || null,
+          tracking_number: normalizedTracking,
           shipped_at: new Date().toISOString()
         })
         .eq('id', orderId);
@@ -323,7 +329,7 @@ const OrderFulfillmentPage: React.FC = () => {
                     <div className="flex items-center space-x-4">
                       <input
                         type="text"
-                        placeholder="Tracking number (optional)"
+                        placeholder="Tracking number"
                         className="flex-1 px-4 py-2 border rounded-lg"
                         id={`tracking-${order.id}`}
                       />

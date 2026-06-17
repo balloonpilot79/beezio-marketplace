@@ -1,0 +1,500 @@
+import type { Handler } from '@netlify/functions';
+import { createSupabaseAdmin } from './_lib/supabase';
+import { json, assertPost, parseJson } from './_lib/http';
+import { requireAdmin } from './_lib/auth';
+import { getEnvNumber, getEnvBool, getPayoutHoldDays } from './_lib/env';
+import { round2, toAmountString } from './_lib/money';
+import { getTimeZoneDateString, resolveRequestedPayoutDate } from './_lib/payoutSchedule';
+
+type Body = {
+  dry_run?: boolean;
+  payout_date?: string;
+};
+
+type LedgerRow = {
+  id: string;
+  order_id: string | null;
+  insurance_lead_id: string | null;
+  seller_id: string | null;
+  partner_id: string | null;
+  influencer_id: string | null;
+  seller_earnings: number;
+  partner_earnings: number;
+  influencer_earnings: number;
+  status: string;
+};
+
+type PayeeRole = 'SELLER' | 'PARTNER' | 'INFLUENCER';
+
+type Entry = {
+  ledgerId: string | null;
+  orderMoneyLedgerId?: string | null;
+  orderId: string | null;
+  userId: string;
+  role: PayeeRole;
+  amount: number;
+};
+
+const roleToMoneyPayeeType = (role: PayeeRole) =>
+  role === 'SELLER' ? 'seller' : role === 'PARTNER' ? 'affiliate' : 'influencer';
+
+const hasShippingAddress = (value: unknown) =>
+  Boolean(value && typeof value === 'object' && Object.keys(value as Record<string, unknown>).length);
+
+const addDaysIso = (baseIso: string, days: number) => {
+  const base = new Date(baseIso);
+  if (Number.isNaN(base.getTime())) return null;
+  return new Date(base.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+};
+
+const getEligibleLedgerIds = async (supabaseAdmin: ReturnType<typeof createSupabaseAdmin>, rows: LedgerRow[]) => {
+  const candidateOrderIds = Array.from(new Set(rows.map((r) => String(r?.order_id || '')).filter(Boolean)));
+  const candidateLeadIds = Array.from(new Set(rows.map((r) => String(r?.insurance_lead_id || '')).filter(Boolean)));
+
+  const eligibleLedgerIds = new Set<string>();
+
+  if (candidateOrderIds.length) {
+    const holdDays = getPayoutHoldDays(14);
+    const { data: orders } = await supabaseAdmin
+      .from('orders')
+      .select('id, dispute_status, status, payment_status, shipping_address, tracking_number, paid_at')
+      .in('id', candidateOrderIds);
+
+    const orderMap = new Map<string, any>();
+    for (const order of (orders as any[]) || []) {
+      const orderId = String(order?.id || '').trim();
+      if (orderId) orderMap.set(orderId, order);
+    }
+
+    const eligibleOrderIds = new Set(
+      ((orders as any[]) || [])
+        .filter((o) => {
+          const dispute = String(o?.dispute_status || 'NONE').toUpperCase();
+          const status = String(o?.status || '').toLowerCase();
+          const payStatus = String(o?.payment_status || '').toLowerCase();
+          const trackingNumber = String(o?.tracking_number || '').trim();
+          if (dispute !== 'NONE') return false;
+          if (status.includes('refund')) return false;
+          if (status.includes('cancel')) return false;
+          if (payStatus.includes('refund')) return false;
+          if (hasShippingAddress(o?.shipping_address) && !trackingNumber) return false;
+          return true;
+        })
+        .map((o) => String(o.id))
+    );
+
+    for (const row of rows) {
+      const orderId = String(row?.order_id || '').trim();
+      if (!orderId || !eligibleOrderIds.has(orderId)) continue;
+      const order = orderMap.get(orderId);
+      const paidAt = String(order?.paid_at || '').trim();
+      const minimumReleaseAt = paidAt ? addDaysIso(paidAt, holdDays) : null;
+      const configuredReleaseAt = String((row as any)?.hold_release_at || '').trim() || null;
+      const effectiveReleaseAt = minimumReleaseAt && configuredReleaseAt
+        ? (new Date(minimumReleaseAt).getTime() > new Date(configuredReleaseAt).getTime() ? minimumReleaseAt : configuredReleaseAt)
+        : minimumReleaseAt || configuredReleaseAt;
+      if (effectiveReleaseAt && new Date(effectiveReleaseAt).getTime() > Date.now()) continue;
+      if (row?.order_id) {
+        eligibleLedgerIds.add(String(row.id));
+      }
+    }
+  }
+
+  if (candidateLeadIds.length) {
+    const [leadResult, disputeResult] = await Promise.all([
+      supabaseAdmin
+        .from('insurance_leads')
+        .select('id, status')
+        .in('id', candidateLeadIds),
+      supabaseAdmin
+        .from('insurance_lead_disputes')
+        .select('lead_id, status')
+        .in('lead_id', candidateLeadIds)
+        .eq('status', 'open'),
+    ]);
+
+    const openDisputeLeadIds = new Set(
+      ((disputeResult.data as any[]) || []).map((row) => String(row?.lead_id || '')).filter(Boolean)
+    );
+
+    const eligibleLeadIds = new Set(
+      ((leadResult.data as any[]) || [])
+        .filter((lead) => {
+          const status = String(lead?.status || '').toLowerCase();
+          if (openDisputeLeadIds.has(String(lead?.id || ''))) return false;
+          return status === 'delivered' || status === 'dispute_denied';
+        })
+        .map((lead) => String(lead.id))
+    );
+
+    for (const row of rows) {
+      if (row?.insurance_lead_id && eligibleLeadIds.has(String(row.insurance_lead_id))) {
+        eligibleLedgerIds.add(String(row.id));
+      }
+    }
+  }
+
+  return eligibleLedgerIds;
+};
+
+export const handler: Handler = async (event) => {
+  try {
+    assertPost(event.httpMethod);
+    await requireAdmin(event);
+
+    const body = parseJson<Body>(event.body);
+    const dryRun = Boolean(body?.dry_run);
+    const { payoutDate, cutoffIso } = resolveRequestedPayoutDate(body?.payout_date);
+    const todayDate = getTimeZoneDateString(new Date());
+
+    if (!dryRun && payoutDate > todayDate) {
+      return json(400, {
+        error: `Cannot run live payout batch before payout date ${payoutDate}. Today is ${todayDate}.`,
+        code: 'PAYOUT_DATE_IN_FUTURE',
+      });
+    }
+
+    if (!dryRun && getEnvBool('PAYOUTS_PAUSED', false)) {
+      return json(503, { error: 'Payouts are temporarily paused.', code: 'PAYOUTS_PAUSED' });
+    }
+
+    const supabaseAdmin = createSupabaseAdmin();
+
+    const nowIso = cutoffIso;
+
+    // Release matured holds: PENDING_HOLD -> READY_TO_PAY (best-effort, idempotent).
+    // Safety: do not release if the order is disputed/refunded/canceled.
+    try {
+      const { data: pendingLedgers } = await supabaseAdmin
+        .from('payout_ledger')
+        .select('id, order_id, insurance_lead_id, status, hold_release_at')
+        .eq('status', 'PENDING_HOLD')
+        .lte('hold_release_at', nowIso)
+        .limit(2000);
+
+      const candidates = (pendingLedgers as any as LedgerRow[]) || [];
+      const eligibleLedgerIds = Array.from(await getEligibleLedgerIds(supabaseAdmin, candidates));
+
+      if (eligibleLedgerIds.length) {
+        await supabaseAdmin
+          .from('payout_ledger')
+          .update({ status: 'READY_TO_PAY', updated_at: new Date().toISOString() } as any)
+          .in('id', eligibleLedgerIds)
+          .eq('status', 'PENDING_HOLD');
+
+        await supabaseAdmin
+          .from('payout_snapshots')
+          .update({ status: 'READY_TO_PAY', updated_at: new Date().toISOString() } as any)
+          .in('ledger_id', eligibleLedgerIds)
+          .eq('status', 'PENDING_HOLD');
+
+        const insuranceLeadIds = candidates
+          .filter((row) => eligibleLedgerIds.includes(String(row.id)))
+          .map((row) => String(row.insurance_lead_id || ''))
+          .filter(Boolean);
+
+        if (insuranceLeadIds.length) {
+          await Promise.all([
+            supabaseAdmin
+              .from('insurance_affiliate_earnings')
+              .update({ status: 'ready_to_pay', updated_at: new Date().toISOString() } as any)
+              .in('lead_id', insuranceLeadIds)
+              .not('status', 'in', '(paid,canceled,on_hold_dispute)'),
+            supabaseAdmin
+              .from('insurance_influencer_earnings')
+              .update({ status: 'ready_to_pay', updated_at: new Date().toISOString() } as any)
+              .in('lead_id', insuranceLeadIds)
+              .not('status', 'in', '(paid,canceled,on_hold_dispute)'),
+          ]);
+        }
+      }
+    } catch {
+      // non-fatal
+    }
+
+    try {
+      await supabaseAdmin.rpc('release_order_money_ledger_holds', { p_now: nowIso });
+    } catch {
+      // The itemized ledger migration may not be installed in older environments yet.
+    }
+
+    const { data: ledgerRows, error: ledgerError } = await supabaseAdmin
+      .from('payout_ledger')
+      .select('id, order_id, insurance_lead_id, seller_id, partner_id, influencer_id, seller_earnings, partner_earnings, influencer_earnings, status')
+      .eq('status', 'READY_TO_PAY')
+      .lte('hold_release_at', nowIso)
+      .limit(1000);
+
+    if (ledgerError) return json(500, { error: ledgerError.message });
+
+    const rows = (ledgerRows as any as LedgerRow[]) || [];
+    if (!rows.length) return json(200, { ok: true, message: 'No payouts eligible' });
+
+    const eligibleLedgerIds = await getEligibleLedgerIds(supabaseAdmin, rows);
+    const eligibleRows = rows.filter((row) => eligibleLedgerIds.has(String(row.id)));
+    if (!eligibleRows.length) return json(200, { ok: true, message: 'No payouts eligible after insurance/order checks' });
+
+    const minimumPayout = getEnvNumber('PAYOUTS_MINIMUM', getEnvNumber('PAYPAL_MIN_PAYOUT', 25));
+
+    const legacyLedgerIdByOrderId = new Map<string, string>();
+    for (const row of eligibleRows) {
+      if (row.order_id) legacyLedgerIdByOrderId.set(String(row.order_id), String(row.id));
+    }
+
+    const moneyLedgerEntries: Entry[] = [];
+    const moneyLedgerOrderIds = new Set<string>();
+    try {
+      const candidateOrderIds = Array.from(legacyLedgerIdByOrderId.keys());
+      if (candidateOrderIds.length) {
+        const { data: moneyRows } = await supabaseAdmin
+          .from('order_money_ledger')
+          .select('id, order_id, payee_type, payee_id, net_amount, status, payout_batch_id')
+          .in('order_id', candidateOrderIds)
+          .in('payee_type', ['seller', 'affiliate', 'influencer'])
+          .eq('status', 'ready')
+          .is('payout_batch_id', null);
+
+        for (const row of ((moneyRows as any[]) || [])) {
+          const orderId = String(row?.order_id || '').trim();
+          const payeeId = String(row?.payee_id || '').trim();
+          const amount = round2(Number(row?.net_amount || 0));
+          if (!orderId || !payeeId || amount <= 0) continue;
+          const payeeType = String(row?.payee_type || '').toLowerCase();
+          const role: PayeeRole | null =
+            payeeType === 'seller' ? 'SELLER' :
+            payeeType === 'affiliate' ? 'PARTNER' :
+            payeeType === 'influencer' ? 'INFLUENCER' :
+            null;
+          if (!role) continue;
+          moneyLedgerOrderIds.add(orderId);
+          moneyLedgerEntries.push({
+            ledgerId: legacyLedgerIdByOrderId.get(orderId) || null,
+            orderMoneyLedgerId: String(row.id),
+            orderId,
+            userId: payeeId,
+            role,
+            amount,
+          });
+        }
+      }
+    } catch {
+      // Keep the legacy payout path working if the itemized ledger is not deployed yet.
+    }
+
+    const entries: Entry[] = [...moneyLedgerEntries];
+    for (const row of eligibleRows) {
+      if (row.order_id && moneyLedgerOrderIds.has(String(row.order_id))) continue;
+      if (row.seller_id && row.seller_earnings > 0) entries.push({ ledgerId: row.id, orderId: row.order_id, userId: row.seller_id, role: 'SELLER', amount: round2(row.seller_earnings) });
+      if (row.partner_id && row.partner_earnings > 0) entries.push({ ledgerId: row.id, orderId: row.order_id, userId: row.partner_id, role: 'PARTNER', amount: round2(row.partner_earnings) });
+      if (row.influencer_id && row.influencer_earnings > 0) entries.push({ ledgerId: row.id, orderId: row.order_id, userId: row.influencer_id, role: 'INFLUENCER', amount: round2(row.influencer_earnings) });
+    }
+
+    if (!entries.length) return json(200, { ok: true, message: 'No positive payout entries found' });
+
+    const userIds = Array.from(new Set(entries.map((e) => e.userId)));
+    const { data: paypalAccounts, error: paypalError } = await supabaseAdmin
+      .from('paypal_accounts')
+      .select('user_id, role, paypal_email')
+      .in('user_id', userIds);
+
+    if (paypalError) return json(500, { error: paypalError.message });
+
+    const accountMap = new Map<string, { email: string }>();
+    for (const row of (paypalAccounts as any[]) || []) {
+      const key = `${row.user_id}::${row.role}`;
+      accountMap.set(key, { email: String(row.paypal_email || '') });
+    }
+
+    const missingPayPalAccounts = Array.from(
+      new Set(
+        entries
+          .filter((entry) => !String(accountMap.get(`${entry.userId}::${entry.role}`)?.email || '').trim())
+          .map((entry) => `${entry.role}:${entry.userId}`)
+      )
+    );
+
+    if (missingPayPalAccounts.length) {
+      return json(400, {
+        error: 'One or more payout recipients are missing a PayPal email.',
+        code: 'MISSING_PAYPAL_EMAILS',
+        details: missingPayPalAccounts,
+      });
+    }
+
+    // Totals per payee (enforce minimum payout)
+    const totals = new Map<string, number>();
+    for (const entry of entries) {
+      const key = `${entry.userId}::${entry.role}`;
+      const account = accountMap.get(key);
+      if (!account?.email) continue;
+      const t = totals.get(key) || 0;
+      totals.set(key, round2(t + entry.amount));
+    }
+
+    const eligiblePayeeKeys = new Set<string>();
+    for (const [key, total] of totals.entries()) {
+      if (total >= minimumPayout) eligiblePayeeKeys.add(key);
+    }
+
+    const payoutEntries = entries.filter((e) => eligiblePayeeKeys.has(`${e.userId}::${e.role}`));
+    if (!payoutEntries.length) {
+      return json(200, { ok: true, message: `No payees met minimum threshold ($${minimumPayout})` });
+    }
+
+    // Prevent duplicate payout items for the same ledger/payee/role.
+    // If an item already exists in PREPARED, CREATED, or SENT, skip it.
+    try {
+      const ledgerIds = Array.from(new Set(payoutEntries.map((e) => e.ledgerId).filter(Boolean))) as string[];
+      const moneyLedgerIds = Array.from(new Set(payoutEntries.map((e) => e.orderMoneyLedgerId).filter(Boolean))) as string[];
+      const existingItems: any[] = [];
+      if (ledgerIds.length) {
+        const { data } = await supabaseAdmin
+          .from('payout_items')
+          .select('ledger_id, payee_user_id, payee_role, status')
+          .in('ledger_id', ledgerIds)
+          .in('status', ['PREPARED', 'CREATED', 'SENT']);
+        existingItems.push(...((data as any[]) || []));
+      }
+      if (moneyLedgerIds.length) {
+        const { data } = await supabaseAdmin
+          .from('payout_items')
+          .select('order_money_ledger_id, payee_user_id, payee_role, status')
+          .in('order_money_ledger_id', moneyLedgerIds)
+          .in('status', ['PREPARED', 'CREATED', 'SENT']);
+        existingItems.push(...((data as any[]) || []));
+      }
+
+      const existingSet = new Set<string>();
+      for (const it of (existingItems as any[]) || []) {
+        const ledgerId = it?.ledger_id ? String(it.ledger_id) : '';
+        const moneyLedgerId = it?.order_money_ledger_id ? String(it.order_money_ledger_id) : '';
+        const payeeUserId = it?.payee_user_id ? String(it.payee_user_id) : '';
+        const payeeRole = it?.payee_role ? String(it.payee_role) : '';
+        if (ledgerId && payeeUserId && payeeRole) existingSet.add(`${ledgerId}::${payeeUserId}::${payeeRole}`);
+        if (moneyLedgerId && payeeUserId && payeeRole) existingSet.add(`money:${moneyLedgerId}::${payeeUserId}::${payeeRole}`);
+      }
+
+      const filtered = payoutEntries.filter((e) => {
+        if (e.orderMoneyLedgerId && existingSet.has(`money:${e.orderMoneyLedgerId}::${e.userId}::${e.role}`)) return false;
+        if (e.ledgerId && existingSet.has(`${e.ledgerId}::${e.userId}::${e.role}`)) return false;
+        return true;
+      });
+      payoutEntries.length = 0;
+      payoutEntries.push(...filtered);
+    } catch {
+      // non-fatal
+    }
+
+    if (!payoutEntries.length) {
+      return json(200, { ok: true, message: 'No payouts eligible (all already queued/sent).' });
+    }
+
+    // Preview PayPal items without writing DB rows (used for dry-run and totals).
+    const previewItems = payoutEntries
+      .map((entry) => {
+        const account = accountMap.get(`${entry.userId}::${entry.role}`);
+        if (!account?.email) return null;
+        return {
+          recipient_type: 'EMAIL',
+          receiver: account.email.toLowerCase(),
+          amount: { value: toAmountString(Number(entry.amount)), currency: 'USD' },
+          note: 'Beezio payout',
+        };
+      })
+      .filter(Boolean) as any[];
+
+    const previewTotal = round2(payoutEntries.reduce((acc, e) => acc + e.amount, 0));
+
+    if (dryRun) {
+      return json(200, {
+        ok: true,
+        dry_run: true,
+        paypal_api_used: false,
+        payout_date: payoutDate,
+        cutoff_iso: cutoffIso,
+        item_count: previewItems.length,
+        total_amount: previewTotal,
+      });
+    }
+
+    if (!usePaypalApi) {
+      return json(503, { error: 'Payouts are disabled (set PAYOUTS_ENABLED=true).', code: 'PAYOUTS_DISABLED' });
+    }
+
+    const batchId = crypto.randomUUID();
+
+    // Create payout batch + items in DB first (so we have IDs for sender_item_id)
+    const { error: batchError } = await supabaseAdmin
+      .from('payout_batches')
+      .insert({
+        id: batchId,
+        provider: 'paypal',
+        status: 'PREPARED',
+        total_amount: previewTotal,
+        item_count: previewItems.length,
+      } as any)
+
+    if (batchError) return json(500, { error: batchError.message });
+
+    const payoutItemRows: any[] = [];
+    for (const entry of payoutEntries) {
+      const account = accountMap.get(`${entry.userId}::${entry.role}`);
+      if (!account?.email) continue;
+      payoutItemRows.push({
+        payout_batch_id: batchId,
+        ledger_id: entry.ledgerId,
+        order_money_ledger_id: entry.orderMoneyLedgerId || null,
+        payee_user_id: entry.userId,
+        payee_role: entry.role,
+        recipient: account.email.toLowerCase(),
+        amount: entry.amount,
+        status: 'PREPARED',
+      });
+    }
+
+    const { data: preparedItems, error: itemsError } = await supabaseAdmin
+      .from('payout_items')
+      .insert(payoutItemRows as any)
+      .select('id, recipient, amount');
+
+    if (itemsError) {
+      await supabaseAdmin
+        .from('payout_batches')
+        .update({ status: 'FAILED', updated_at: new Date().toISOString() } as any)
+        .eq('id', batchId);
+      return json(500, { error: itemsError.message });
+    }
+
+    try {
+      for (const entry of payoutEntries) {
+        if (!entry.orderId) continue;
+        await supabaseAdmin
+          .from('order_money_ledger')
+          .update({ payout_batch_id: batchId, updated_at: new Date().toISOString() } as any)
+          .eq('order_id', entry.orderId)
+          .eq('payee_id', entry.userId)
+          .eq('payee_type', roleToMoneyPayeeType(entry.role))
+          .eq('status', 'ready')
+          .is('payout_batch_id', null);
+      }
+    } catch {
+      // Keep the legacy payout path working if the itemized ledger is not deployed yet.
+    }
+
+    return json(200, {
+      ok: true,
+      batch_id: batchId,
+      batch_status: 'PREPARED',
+      payout_date: payoutDate,
+      cutoff_iso: cutoffIso,
+      item_count: (preparedItems as any[]).length,
+      total_amount: previewTotal,
+      message: 'Payout batch prepared. Admin approval is required before PayPal submission.',
+    });
+  } catch (e: any) {
+    const statusCode = Number(e?.statusCode) || 500;
+    return json(statusCode, { error: e instanceof Error ? e.message : 'Unexpected error' });
+  }
+};
+
+export default handler;

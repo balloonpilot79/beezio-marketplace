@@ -1,22 +1,31 @@
 import {
   AffiliateCommissionType,
   REFERRAL_PERCENT,
-  STRIPE_FLAT,
-  STRIPE_PERCENT,
   calculateCustomerProductPrice,
-  deriveSellerAskFromSalePrice,
   formatCurrency as formatCurrencyUtil,
   getAffiliateAmount,
   getPlatformRate,
   roundToCurrency,
 } from '../utils/pricing';
+import { MIN_PLATFORM_FEE } from '../config/beezioConfig';
+import { DEFAULT_BEEZIO_PLATFORM_RATE, computeBeezioPlatformFee } from '../../shared/beezioFee';
+import { getInfluencerReserveTotal } from '../../shared/referralBonus';
+import {
+  TEST_ITEM_BEEZIO_FEE,
+  TEST_ITEM_INFLUENCER_FEE,
+  TEST_ITEM_PRICE,
+  TEST_ITEM_PROCESSING_FEE,
+} from '../../shared/testItemPricing';
+import { isLowPriceAmount } from '../../shared/lowPriceFeePolicy';
 
 export interface PricingBreakdown {
+  sellerBaseAmount: number;
+  shippingIncludedAmount: number;
   sellerAmount: number;
   affiliateAmount: number;
   referralAmount: number;
   platformFee: number;
-  stripeFee: number;
+  processingFee: number;
   listingPrice: number;
   taxAmount?: number;
   affiliateRate: number;
@@ -29,63 +38,85 @@ export interface PricingInput {
   sellerDesiredAmount: number;
   affiliateRate: number;
   affiliateType: 'percentage' | 'flat_rate';
+  shippingIncludedAmount?: number;
   referralRate?: number;
   platformFeeRate?: number;
+  testItem?: boolean;
 }
 
 // Constants (align with unified pricing helper)
-export const DEFAULT_PLATFORM_FEE_RATE = 0.15;
-export const MIN_PLATFORM_FEE_RATE = 0.10;
-export const MAX_PLATFORM_FEE_RATE = 0.15;
-export const STRIPE_FEE_RATE = STRIPE_PERCENT;
-export const STRIPE_FEE_FIXED = STRIPE_FLAT;
+export const DEFAULT_PLATFORM_FEE_RATE = DEFAULT_BEEZIO_PLATFORM_RATE;
+export const MIN_PLATFORM_FEE_RATE = DEFAULT_BEEZIO_PLATFORM_RATE;
+export const MAX_PLATFORM_FEE_RATE = DEFAULT_BEEZIO_PLATFORM_RATE;
+export const PROCESSING_FEE_RATE = 0.0399;
+export const PROCESSING_FEE_FIXED = 0.6;
 export const DEFAULT_REFERRAL_RATE = REFERRAL_PERCENT;
 export const MIN_REFERRAL_RATE = REFERRAL_PERCENT;
 export const MAX_REFERRAL_RATE = REFERRAL_PERCENT;
-// No baked-in tax in the new formula; keep 0 for compatibility
-export const TAX_RATE = 0;
+// Sales tax rate (decimal). Configure with VITE_TAX_RATE for live.
+export const TAX_RATE = (() => {
+  const raw = (import.meta as any)?.env?.VITE_TAX_RATE;
+  const parsed = Number(raw);
+  if (Number.isFinite(parsed)) return Math.max(0, parsed);
+  return 0.07;
+})();
 
 export const calculatePricing = (input: PricingInput): PricingBreakdown => {
   const {
     sellerDesiredAmount,
     affiliateRate,
     affiliateType,
-    referralRate = DEFAULT_REFERRAL_RATE,
+    shippingIncludedAmount = 0,
     platformFeeRate,
+    testItem = false,
   } = input;
 
-  const normalizedAffiliateType: AffiliateCommissionType =
-    affiliateType === 'flat_rate' ? 'flat' : 'percent';
-
-  const platformRate = platformFeeRate ?? getPlatformRate(sellerDesiredAmount);
+  const sellerBaseAmount = roundToCurrency(Math.max(0, Number(sellerDesiredAmount) || 0));
+  const includedShipping = roundToCurrency(Math.max(0, Number(shippingIncludedAmount) || 0));
+  const sellerAmount = roundToCurrency(sellerBaseAmount + includedShipping);
+  const normalizedAffiliateType: AffiliateCommissionType = affiliateType === 'flat_rate' ? 'flat' : 'percent';
+  const platformRate = platformFeeRate ?? getPlatformRate(sellerAmount);
   const affiliateAmount = roundToCurrency(
-    getAffiliateAmount(sellerDesiredAmount, normalizedAffiliateType, affiliateRate)
+    getAffiliateAmount(sellerAmount, normalizedAffiliateType, affiliateRate)
   );
-
-  // Keep platform fee consistent with the customer-price formula which includes
-  // a fixed $1 surcharge when ask <= $20.
-  const platformSurcharge =
-    Number.isFinite(sellerDesiredAmount) && sellerDesiredAmount > 0 && sellerDesiredAmount <= 20 ? 1 : 0;
-  const platformFee = roundToCurrency(sellerDesiredAmount * platformRate + platformSurcharge);
-  const listingPrice = calculateCustomerProductPrice(
-    sellerDesiredAmount,
-    normalizedAffiliateType,
-    affiliateRate
+  const platformFee = testItem
+    ? TEST_ITEM_BEEZIO_FEE
+    : roundToCurrency(
+        computeBeezioPlatformFee(sellerAmount, {
+          rate: platformRate,
+          minimum: MIN_PLATFORM_FEE,
+        })
+      );
+  const referralAmount = testItem
+    ? roundToCurrency(TEST_ITEM_INFLUENCER_FEE * 2)
+    : roundToCurrency(getInfluencerReserveTotal(sellerAmount));
+  const targetNetAfterProcessing = sellerAmount + affiliateAmount + platformFee + referralAmount;
+  const listingPrice = roundToCurrency(
+    testItem
+      ? TEST_ITEM_PRICE
+      : calculateCustomerProductPrice(sellerAmount, normalizedAffiliateType, affiliateRate)
   );
-  const stripeFee = roundToCurrency(listingPrice * STRIPE_PERCENT + STRIPE_FLAT);
-  const referralAmount = roundToCurrency(sellerDesiredAmount * referralRate);
+  const processingFee = roundToCurrency(
+    testItem
+      ? TEST_ITEM_PROCESSING_FEE
+      : isLowPriceAmount(sellerAmount)
+      ? (listingPrice - targetNetAfterProcessing)
+      : 0
+  );
 
   return {
-    sellerAmount: sellerDesiredAmount,
+    sellerBaseAmount,
+    shippingIncludedAmount: includedShipping,
+    sellerAmount,
     affiliateAmount,
     referralAmount,
     platformFee,
-    stripeFee,
+    processingFee,
     listingPrice,
     taxAmount: 0,
     affiliateRate,
     affiliateType,
-    referralRate,
+    referralRate: DEFAULT_REFERRAL_RATE,
     platformFeeRate: platformRate,
   };
 };
@@ -128,6 +159,7 @@ export const reverseCalculateFromListingPrice = (
     sellerDesiredAmount: roundToCurrency(sellerAsk),
     affiliateRate,
     affiliateType,
+    shippingIncludedAmount: 0,
     referralRate,
     platformFeeRate,
   });
@@ -141,7 +173,7 @@ export const formatPricingBreakdown = (
   affiliate: string;
   referral: string;
   platform: string;
-  stripe: string;
+  processing: string;
   tax: string;
   total: string;
 } => {
@@ -153,7 +185,7 @@ export const formatPricingBreakdown = (
     affiliate: formatter(breakdown.affiliateAmount),
     referral: formatter(breakdown.referralAmount),
     platform: formatter(breakdown.platformFee),
-    stripe: formatter(breakdown.stripeFee),
+    processing: formatter(breakdown.processingFee),
     tax: formatter(breakdown.taxAmount || 0),
     total: formatter(breakdown.listingPrice),
   };

@@ -6,6 +6,7 @@ import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
 import { ensureSellerProductInOrder } from '../utils/sellerProductOrder';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import { calculateCustomerProductPrice } from '../utils/pricing';
 
 type UploadMode = 'single' | 'bulk';
 
@@ -17,13 +18,22 @@ const AddProductPage: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadResults, setUploadResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+  const parseNonNegativeNumber = (value: unknown, fallback = 0): number => {
+    const parsed = Number.parseFloat(String(value ?? '').trim());
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
+  };
   const checklist = [
-    'Required: title, description, and the price you want to earn. Beezio adds platform + Stripe; tax/shipping are added at checkout.',
+    'Required: title, description, and the exact amount you want to keep. Taxes and shipping are added at checkout.',
     'Upload at least one image (use the uploader below).',
-    'Set affiliate commission (percentage or flat) for marketplace/affiliate use.',
-    'Pick a category and stock quantity.',
+    'Set affiliate commission (percentage or flat) knowing it does not come out of your seller payout.',
+    'Pick a category and stock quantity. Digital products use the Digital Products category.',
     'You can also add products from the marketplace via “Add to store”.',
   ];
+  const [remainingChecklist, setRemainingChecklist] = useState(checklist);
+
+  const handleChecklistItemDone = (item: string) => {
+    setRemainingChecklist((prev) => prev.filter((check) => check !== item));
+  };
 
   const handleBulkUpload = async () => {
   if (!bulkFile || !user) return;
@@ -58,18 +68,25 @@ const AddProductPage: React.FC = () => {
             // Prepare product data
             const affiliateEnabled = String(product.affiliate_enabled ?? 'true').trim().toLowerCase() === 'true' ||
               String(product.affiliate_enabled ?? 'true').trim() === '1';
+            const sellerAsk = parseFloat(product.price);
+            const affiliateRatePercent = parseNonNegativeNumber(product.commission_rate, 0);
+            const listingPrice = calculateCustomerProductPrice(sellerAsk, 'percent', affiliateRatePercent);
             const productData = {
               title: product.title,
               description: product.description || '',
-              price: parseFloat(product.price),
+              price: listingPrice,
+              calculated_customer_price: listingPrice,
               category_id: product.category_id || null,
-              category_name: product.category || 'Uncategorized',
+              category: product.category || 'Uncategorized',
               images: product.images ? product.images.split('|').filter(Boolean) : [],
               seller_id: sellerProfileId,
               affiliate_enabled: affiliateEnabled,
               is_promotable: affiliateEnabled,
-              commission_rate: parseFloat(product.commission_rate) || 20,
+              commission_rate: affiliateRatePercent,
               commission_type: product.commission_type || 'percentage',
+              seller_ask: sellerAsk,
+              seller_amount: sellerAsk,
+              seller_ask_price: sellerAsk,
               stock_quantity: parseInt(product.stock_quantity) || 0,
               sku: product.sku || null,
               weight: parseFloat(product.weight) || null,
@@ -121,7 +138,7 @@ const AddProductPage: React.FC = () => {
         price: '29.99',
         category: 'Electronics',
         affiliate_enabled: 'true',
-        commission_rate: '20',
+        commission_rate: '0.10',
         commission_type: 'percentage',
         stock_quantity: '100',
         sku: 'PROD-001',
@@ -159,7 +176,7 @@ const AddProductPage: React.FC = () => {
             Back to upload options
           </button>
           <ProductForm
-            onSuccess={() => navigate('/dashboard')}
+            onSuccess={() => navigate('/dashboard?section=seller&tab=products')}
             onCancel={() => setMode(null)}
           />
         </div>
@@ -264,7 +281,7 @@ const AddProductPage: React.FC = () => {
                   </div>
                 )}
                 <button
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/dashboard?section=seller&tab=products')}
                   className="w-full bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
                 >
                   Go to Dashboard
@@ -287,17 +304,32 @@ const AddProductPage: React.FC = () => {
           </div>
           <h1 className="text-5xl font-bold text-white mb-4">Add Products</h1>
           <p className="text-xl text-white/80">Choose how you want to buzz your products into the hive</p>
-          <div className="mt-4 max-w-3xl mx-auto text-left text-sm text-white/90 bg-white/10 border border-white/20 rounded-lg p-4">
-            <div className="font-semibold text-white">Checklist</div>
-            <div className="mt-1 space-y-1">
-              {checklist.map(item => (
-                <div key={item}>• {item}</div>
-              ))}
+          <div className="mt-4 max-w-4xl mx-auto rounded-2xl border border-amber-300/40 bg-white/10 p-4 text-left text-sm text-white/90">
+            <div className="font-semibold text-white">Physical products and digital downloads can both be sold here.</div>
+            <div className="mt-2">
+              Use this area for checkout-based physical products, storefront setup, images, pricing, fulfillment, and secure digital delivery. Digital files stay in private storage and are released to the buyer account after payment.
             </div>
           </div>
+          {remainingChecklist.length > 0 && (
+            <div className="mt-4 max-w-3xl mx-auto text-left text-sm text-white/90 bg-white/10 border border-white/20 rounded-lg p-4">
+              <div className="font-semibold text-white">Checklist</div>
+              <div className="mt-2 space-y-2">
+                {remainingChecklist.map((item) => (
+                  <label key={item} className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4"
+                      onChange={() => handleChecklistItemDone(item)}
+                    />
+                    <span>{item}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid gap-8 lg:grid-cols-2">
           {/* Single Product */}
           <div
             onClick={() => setMode('single')}
@@ -312,6 +344,9 @@ const AddProductPage: React.FC = () => {
             <p className="text-gray-600 text-center mb-6">
               Perfect for adding one product at a time with full control over all details, images, and pricing.
             </p>
+            <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
+              Type the amount you want to make on the sale. You keep that amount.
+            </div>
             <ul className="space-y-2 text-sm text-gray-700">
               <li className="flex items-center">
                 <span className="text-green-500 mr-2">✓</span>
@@ -375,7 +410,7 @@ const AddProductPage: React.FC = () => {
 
         <div className="mt-12 text-center">
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/dashboard?section=seller&tab=products')}
             className="text-gray-600 hover:text-gray-900 flex items-center justify-center mx-auto"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -388,3 +423,4 @@ const AddProductPage: React.FC = () => {
 };
 
 export default AddProductPage;
+

@@ -1,16 +1,18 @@
 import { supabase } from '../lib/supabase';
+import {
+  fetchProductReviews as fetchProductReviewsFromService,
+  submitProductReview as submitProductReviewFromService,
+} from '../services/reviewService';
 
 // Submit a product review
 export async function submitProductReview(productId: string, buyerId: string, rating: number, review: string) {
-  const { data, error } = await supabase.from('product_reviews').insert([
-    { product_id: productId, buyer_id: buyerId, rating, review },
-  ]);
-
-  if (error) {
-    throw new Error(`Failed to submit product review: ${error.message}`);
-  }
-
-  return data;
+  return submitProductReviewFromService({
+    productId,
+    userId: buyerId,
+    rating,
+    content: review,
+    requireVerifiedPurchase: true,
+  });
 }
 
 // Submit a seller review
@@ -28,16 +30,7 @@ export async function submitSellerReview(sellerId: string, buyerId: string, rati
 
 // Fetch reviews for a product
 export async function fetchProductReviews(productId: string) {
-  const { data, error } = await supabase
-    .from('product_reviews')
-    .select('*')
-    .eq('product_id', productId);
-
-  if (error) {
-    throw new Error(`Failed to fetch product reviews: ${error.message}`);
-  }
-
-  return data;
+  return fetchProductReviewsFromService(productId, 50);
 }
 
 // Fetch reviews for a seller

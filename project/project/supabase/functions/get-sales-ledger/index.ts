@@ -13,6 +13,9 @@ const json = (status: number, body: unknown) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 
+const round2 = (value: number) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100
+const asText = (value: unknown) => String(value || '').trim()
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed' })
@@ -34,80 +37,100 @@ serve(async (req) => {
     if (userError || !userData?.user) return json(401, { error: 'Unauthorized', details: userError?.message })
 
     const body = await req.json().catch(() => ({}))
-    const limit = Number.isFinite(Number(body?.limit)) ? Math.max(1, Math.min(50, Number(body.limit))) : 10
+    const limit = Number.isFinite(Number(body?.limit)) ? Math.max(1, Math.min(100, Number(body.limit))) : 10
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
-    const tableHasColumn = async (tableName: string, columnName: string): Promise<boolean> => {
-      try {
-        const { data, error } = await supabaseAdmin
-          .from('information_schema.columns')
-          .select('column_name')
-          .eq('table_name', tableName)
-          .eq('column_name', columnName)
-          .limit(1)
-          .maybeSingle()
-        if (error) return false
-        return Boolean(data)
-      } catch (_e) {
-        return false
-      }
-    }
+    const { data: profileRows, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, user_id')
+      .or(`id.eq.${userData.user.id},user_id.eq.${userData.user.id}`)
+      .limit(10)
 
-    const hasOrderId = await tableHasColumn('payment_distributions', 'order_id')
-    if (!hasOrderId) {
-      return json(200, {
-        ok: true,
-        sales: [],
-        warning: 'payment_distributions.order_id missing; run latest migrations for full sales ledger',
-      })
-    }
+    if (profileError) return json(500, { error: 'Failed to resolve profile', details: profileError.message })
 
-    const { data: distRows, error: distError } = await supabaseAdmin
-      .from('payment_distributions')
-      .select('order_id, amount, status, created_at')
-      .eq('recipient_type', 'seller')
-      .eq('recipient_id', userData.user.id)
-      .not('order_id', 'is', null)
+    const rows = Array.isArray(profileRows) ? profileRows : []
+    const profileId =
+      rows.find((row: any) => asText(row?.user_id) === asText(userData.user.id))?.id ||
+      rows.find((row: any) => asText(row?.id) === asText(userData.user.id))?.id ||
+      rows[0]?.id ||
+      userData.user.id
+
+    const { data: sellerSnapshots, error: snapshotError } = await supabaseAdmin
+      .from('payout_snapshots')
+      .select('order_id, amount, status, hold_release_at, paid_at, created_at')
+      .eq('payee_role', 'SELLER')
+      .eq('payee_user_id', profileId)
       .order('created_at', { ascending: false })
       .limit(500)
 
-    if (distError) return json(400, { error: distError.message })
+    if (snapshotError) return json(400, { error: snapshotError.message })
 
-    const rows = (distRows as any[]) || []
-    const byOrder = new Map<string, { seller_amount_total: number; statuses: Record<string, number> }>()
-    for (const r of rows) {
-      const orderId = String(r.order_id)
-      const amount = Number(r.amount || 0)
-      const status = String(r.status || 'pending')
-      const current = byOrder.get(orderId) || { seller_amount_total: 0, statuses: {} }
-      current.seller_amount_total += amount
-      current.statuses[status] = (current.statuses[status] || 0) + 1
-      byOrder.set(orderId, current)
+    const snapshotRows = (sellerSnapshots as any[]) || []
+    const orderIds = Array.from(new Set(snapshotRows.map((row) => asText(row?.order_id)).filter(Boolean))).slice(0, limit)
+
+    if (!orderIds.length) {
+      return json(200, { ok: true, sales: [] })
     }
 
-    const orderIds = Array.from(byOrder.keys()).slice(0, limit)
-    const { data: orders } = await supabaseAdmin
-      .from('orders')
-      .select('*')
-      .in('id', orderIds)
+    const [{ data: orders, error: ordersError }, { data: ledgers, error: ledgerError }] = await Promise.all([
+      supabaseAdmin
+        .from('orders')
+        .select('id, order_number, created_at, status, payment_status, fulfillment_status, dispute_status, billing_name, billing_email, customer_email, total_amount, total_charged')
+        .in('id', orderIds),
+      supabaseAdmin
+        .from('payout_ledger')
+        .select('order_id, seller_earnings, status, hold_release_at, paid_at')
+        .in('order_id', orderIds),
+    ])
+
+    if (ordersError) return json(400, { error: ordersError.message })
+    if (ledgerError) return json(400, { error: ledgerError.message })
 
     const ordersById = new Map<string, any>()
-    for (const o of (orders as any[]) || []) ordersById.set(String(o.id), o)
+    for (const order of (orders as any[]) || []) {
+      const orderId = asText(order?.id)
+      if (orderId) ordersById.set(orderId, order)
+    }
 
-    const sales = orderIds.map((id) => {
-      const order = ordersById.get(id) || {}
-      const agg = byOrder.get(id) || { seller_amount_total: 0, statuses: {} }
+    const ledgerByOrderId = new Map<string, any>()
+    for (const ledger of (ledgers as any[]) || []) {
+      const orderId = asText(ledger?.order_id)
+      if (orderId && !ledgerByOrderId.has(orderId)) ledgerByOrderId.set(orderId, ledger)
+    }
+
+    const snapshotTotalsByOrderId = new Map<string, { seller_amount_total: number; statuses: Record<string, number> }>()
+    for (const row of snapshotRows) {
+      const orderId = asText(row?.order_id)
+      if (!orderId || !orderIds.includes(orderId)) continue
+
+      const current = snapshotTotalsByOrderId.get(orderId) || { seller_amount_total: 0, statuses: {} as Record<string, number> }
+      current.seller_amount_total = round2(current.seller_amount_total + Number(row?.amount || 0))
+      const status = asText(row?.status) || 'UNKNOWN'
+      current.statuses[status] = (current.statuses[status] || 0) + 1
+      snapshotTotalsByOrderId.set(orderId, current)
+    }
+
+    const sales = orderIds.map((orderId) => {
+      const order = ordersById.get(orderId) || {}
+      const ledger = ledgerByOrderId.get(orderId) || {}
+      const snapshotAgg = snapshotTotalsByOrderId.get(orderId) || { seller_amount_total: 0, statuses: {} }
       return {
-        order_id: id,
-        created_at: order.created_at || null,
-        status: order.status || null,
-        fulfillment_status: order.fulfillment_status || null,
-        buyer_name: order.billing_name || null,
-        buyer_email: order.billing_email || null,
-        total_amount: order.total_amount || null,
-        seller_amount_total: Math.round((agg.seller_amount_total + Number.EPSILON) * 100) / 100,
-        seller_distribution_status_counts: agg.statuses,
+        order_id: orderId,
+        order_number: asText(order?.order_number) || null,
+        created_at: order?.created_at || null,
+        status: asText(order?.status) || null,
+        payment_status: asText(order?.payment_status) || null,
+        fulfillment_status: asText(order?.fulfillment_status) || null,
+        dispute_status: asText(order?.dispute_status) || null,
+        buyer_name: asText(order?.billing_name) || null,
+        buyer_email: asText(order?.billing_email) || asText(order?.customer_email) || null,
+        total_amount: order?.total_charged ?? order?.total_amount ?? null,
+        seller_amount_total: round2(Number(ledger?.seller_earnings || 0) || snapshotAgg.seller_amount_total),
+        seller_distribution_status_counts: snapshotAgg.statuses,
+        payout_status: asText(ledger?.status) || null,
+        hold_release_at: ledger?.hold_release_at || null,
+        paid_at: ledger?.paid_at || null,
       }
     })
 
@@ -116,4 +139,3 @@ serve(async (req) => {
     return json(500, { error: 'Unexpected error', details: e instanceof Error ? e.message : String(e) })
   }
 })
-

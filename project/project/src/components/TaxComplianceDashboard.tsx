@@ -77,7 +77,7 @@ export const TaxComplianceDashboard: React.FC = () => {
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h3 className="text-lg font-semibold mb-4">Tax Agreements</h3>
         {agreements.length === 0 ? (
-          <p className="text-gray-500">No tax agreements found. Complete Stripe onboarding to sign required agreements.</p>
+          <p className="text-gray-500">No tax agreements found. Complete onboarding to sign required agreements.</p>
         ) : (
           <div className="space-y-3">
             {agreements.map((agreement) => (

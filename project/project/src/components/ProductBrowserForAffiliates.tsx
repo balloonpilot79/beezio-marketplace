@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import { ensureProfileIdForUser, resolveProfileIdForUser } from '../utils/resolveProfileId';
 import { Package, Plus, Check, Search, Filter, Star } from 'lucide-react';
 import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
+import { resolveProductImageFromList } from '../utils/imageHelpers';
+import { addAffiliateProduct } from '../api/affiliateStore';
+import { getPayoutSettingsHref, hasStoredPayoutEmail } from '../utils/payoutSetup';
+import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
 
 interface Product {
   id: string;
@@ -15,7 +20,7 @@ interface Product {
   categories?: { name?: string } | null;
   seller_id: string;
   seller_name?: string;
-  stock_quantity: number;
+  stock_quantity: number | null;
 }
 
 interface AffiliateProduct {
@@ -29,18 +34,96 @@ const ProductBrowserForAffiliates: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [featuredProducts, setFeaturedProducts] = useState<Set<string>>(new Set());
+  const [bulkRemovalSelection, setBulkRemovalSelection] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [categories, setCategories] = useState<string[]>([]);
+  const [resolvedAffiliateId, setResolvedAffiliateId] = useState<string>('');
+  const [payoutReady, setPayoutReady] = useState<boolean>(false);
+  const [payoutChecked, setPayoutChecked] = useState<boolean>(false);
 
   useEffect(() => {
     if (user) {
       loadProducts();
-      loadSelectedProducts();
     }
   }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.id) {
+      setResolvedAffiliateId('');
+      return;
+    }
+    const profileId = (profile as any)?.id;
+    const profileIsFallback = Boolean((profile as any)?.__is_fallback);
+    if (profileId && !profileIsFallback) {
+      setResolvedAffiliateId(profileId);
+      return;
+    }
+    void (async () => {
+      const canonicalId = await resolveProfileIdForUser(user.id);
+      if (!cancelled) {
+        setResolvedAffiliateId(canonicalId || user.id);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, (profile as any)?.id, (profile as any)?.__is_fallback]);
+
+  useEffect(() => {
+    if (resolvedAffiliateId || user?.id) {
+      loadSelectedProducts();
+    }
+  }, [resolvedAffiliateId, user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.id) {
+      setPayoutReady(false);
+      setPayoutChecked(false);
+      return;
+    }
+    const ownerId = String(resolvedAffiliateId || profile?.id || user.id || '').trim();
+    if (!ownerId) {
+      setPayoutReady(false);
+      setPayoutChecked(true);
+      return;
+    }
+    (async () => {
+      try {
+        const hasPayoutEmail = await hasStoredPayoutEmail([ownerId]);
+        if (cancelled) return;
+        setPayoutReady(hasPayoutEmail);
+        setPayoutChecked(true);
+      } catch {
+        if (!cancelled) {
+          setPayoutReady(false);
+          setPayoutChecked(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, resolvedAffiliateId, profile?.id]);
+
+  useEffect(() => {
+    if (bulkRemovalSelection.size === 0) return;
+    setBulkRemovalSelection((prev) => {
+      const next = new Set(Array.from(prev).filter((id) => selectedProducts.has(id)));
+      return next;
+    });
+  }, [selectedProducts, bulkRemovalSelection.size]);
+
+  const getAffiliateIds = () => {
+    const ids = new Set<string>();
+    if (resolvedAffiliateId) ids.add(resolvedAffiliateId);
+    if (user?.id) ids.add(user.id);
+    return Array.from(ids);
+  };
 
   const loadProducts = async () => {
     try {
@@ -53,15 +136,16 @@ const ProductBrowserForAffiliates: React.FC = () => {
         `)
         .eq('is_active', true)
         .eq('is_promotable', true)
-        .gt('stock_quantity', 0)
+        .or('stock_quantity.is.null,stock_quantity.gt.0')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       const productsWithSeller = data?.map((p: any) => ({
         ...p,
+        price: getBuyerFacingProductPrice(p),
         seller_name: p.profiles?.full_name || 'Unknown Seller',
-        category: p.categories?.name || p.category || '',
+        category: p.categories?.name || p.category || 'Other',
       })) || [];
 
       setProducts(productsWithSeller);
@@ -78,14 +162,14 @@ const ProductBrowserForAffiliates: React.FC = () => {
   };
 
   const loadSelectedProducts = async () => {
-    if (!user) return;
+    const affiliateIds = getAffiliateIds();
+    if (affiliateIds.length === 0) return;
 
     try {
-      const affiliateId = (profile as any)?.id || user.id;
       const { data, error } = await supabase
         .from('affiliate_products')
         .select('product_id, is_featured, display_order')
-        .eq('affiliate_id', affiliateId);
+        .in('affiliate_id', affiliateIds);
 
       if (error) throw error;
 
@@ -102,46 +186,46 @@ const ProductBrowserForAffiliates: React.FC = () => {
   };
 
   const handleAddProduct = async (productId: string) => {
+    if (adding === productId) return;
     if (!user) return;
 
     setAdding(productId);
     try {
       const product = products.find(p => p.id === productId);
       if (!product) return;
-
-      const affiliateId = (profile as any)?.id || user.id;
-      const { error } = await supabase
-        .from('affiliate_products')
-        .upsert(
-          {
-            affiliate_id: affiliateId,
-            product_id: productId,
-            display_order: selectedProducts.size + 1,
-            is_featured: false,
-          },
-          { onConflict: 'affiliate_id,product_id' }
-        );
-
-      if (error) throw error;
+      const ensuredId = resolvedAffiliateId || (user ? await ensureProfileIdForUser(user) : '');
+      if (ensuredId && ensuredId !== resolvedAffiliateId) {
+        setResolvedAffiliateId(ensuredId);
+      }
+      await addAffiliateProduct(productId, { affiliateId: ensuredId || resolvedAffiliateId });
 
       setSelectedProducts(prev => new Set([...prev, productId]));
+      if (payoutChecked && !payoutReady) {
+        const shouldRedirect = window.confirm(
+          'Product added to your store. You can keep promoting, but payouts stay on hold until you connect PayPal. Go to payout settings now?'
+        );
+        if (shouldRedirect) {
+          window.location.assign(getPayoutSettingsHref('affiliate'));
+          return;
+        }
+      }
     } catch (error) {
       console.error('Error adding product:', error);
-      alert('Failed to add product to your store');
+      const message = error instanceof Error ? error.message : '';
+      alert(`Failed to add product to your store.${message ? ` ${message}` : ''}`);
     } finally {
       setAdding(null);
     }
   };
 
   const handleRemoveProduct = async (productId: string) => {
-    if (!user) return;
+    if (!user || !resolvedAffiliateId) return;
 
     try {
-      const affiliateId = (profile as any)?.id || user.id;
       const { error } = await supabase
         .from('affiliate_products')
         .delete()
-        .eq('affiliate_id', affiliateId)
+        .eq('affiliate_id', resolvedAffiliateId)
         .eq('product_id', productId);
 
       if (error) throw error;
@@ -162,17 +246,71 @@ const ProductBrowserForAffiliates: React.FC = () => {
     }
   };
 
+  const toggleBulkSelection = (productId: string) => {
+    setBulkRemovalSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllVisible = (productIds: string[]) => {
+    setBulkRemovalSelection((prev) => {
+      const next = new Set(prev);
+      const allSelected = productIds.every((id) => next.has(id));
+      if (allSelected) {
+        productIds.forEach((id) => next.delete(id));
+      } else {
+        productIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleBulkRemove = async (productIds: string[]) => {
+    if (!user || !resolvedAffiliateId || productIds.length === 0) return;
+    const confirmMessage = `Remove ${productIds.length} product${productIds.length === 1 ? '' : 's'} from your store?`;
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      const { error } = await supabase
+        .from('affiliate_products')
+        .delete()
+        .eq('affiliate_id', resolvedAffiliateId)
+        .in('product_id', productIds);
+      if (error) throw error;
+
+      setSelectedProducts((prev) => {
+        const next = new Set(prev);
+        productIds.forEach((id) => next.delete(id));
+        return next;
+      });
+      setFeaturedProducts((prev) => {
+        const next = new Set(prev);
+        productIds.forEach((id) => next.delete(id));
+        return next;
+      });
+      setBulkRemovalSelection(new Set());
+    } catch (error) {
+      console.error('Error removing products:', error);
+      alert('Failed to remove selected products from your store');
+    }
+  };
+
   const handleToggleFeatured = async (productId: string) => {
-    if (!user) return;
+    if (!user || !resolvedAffiliateId) return;
 
     const isFeatured = featuredProducts.has(productId);
 
     try {
-      const affiliateId = (profile as any)?.id || user.id;
       const { error } = await supabase
         .from('affiliate_products')
         .update({ is_featured: !isFeatured })
-        .eq('affiliate_id', affiliateId)
+        .eq('affiliate_id', resolvedAffiliateId)
         .eq('product_id', productId);
 
       if (error) throw error;
@@ -197,6 +335,12 @@ const ProductBrowserForAffiliates: React.FC = () => {
     const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
+
+  const visibleStoreProductIds = filteredProducts
+    .filter((product) => selectedProducts.has(product.id))
+    .map((product) => product.id);
+  const allVisibleSelected =
+    visibleStoreProductIds.length > 0 && visibleStoreProductIds.every((id) => bulkRemovalSelection.has(id));
 
   if (loading) {
     return (
@@ -254,6 +398,31 @@ const ProductBrowserForAffiliates: React.FC = () => {
         </div>
       </div>
 
+      {visibleStoreProductIds.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm">
+          <label className="flex items-center gap-2 text-purple-900">
+            <input
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={() => toggleSelectAllVisible(visibleStoreProductIds)}
+              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+            />
+            <span>
+              Select all in store
+              {bulkRemovalSelection.size > 0 ? ` (${bulkRemovalSelection.size} selected)` : ''}
+            </span>
+          </label>
+          <button
+            type="button"
+            onClick={() => handleBulkRemove(Array.from(bulkRemovalSelection))}
+            disabled={bulkRemovalSelection.size === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-1.5 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+          >
+            Remove selected
+          </button>
+        </div>
+      )}
+
       {/* Products Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProducts.map(product => {
@@ -264,15 +433,15 @@ const ProductBrowserForAffiliates: React.FC = () => {
           return (
             <div
               key={product.id}
-              className={`bg-white rounded-xl shadow-sm border-2 transition-all ${
+              className={`relative bg-white rounded-xl shadow-sm border-2 transition-all ${
                 isSelected ? 'border-purple-500 shadow-purple-100' : 'border-gray-100 hover:border-purple-200'
               }`}
             >
               {/* Product Image */}
               <div className="relative h-48 bg-gray-100 rounded-t-xl overflow-hidden">
-                {product.images && product.images[0] ? (
+                {product.images && product.images.length > 0 ? (
                   <img
-                    src={product.images[0]}
+                    src={resolveProductImageFromList(product.images, product.id)}
                     alt={product.title}
                     className="w-full h-full object-cover"
                   />
@@ -284,13 +453,24 @@ const ProductBrowserForAffiliates: React.FC = () => {
                 {isSelected && (
                   <div className="absolute top-2 right-2 bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
                     <Check className="w-3 h-3" />
-                    In Store
+                    Promoted
                   </div>
                 )}
               </div>
 
               {/* Product Info */}
               <div className="p-4">
+                {isSelected && (
+                  <label className="mb-2 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={bulkRemovalSelection.has(product.id)}
+                      onChange={() => toggleBulkSelection(product.id)}
+                      className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    Select
+                  </label>
+                )}
                 <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">{product.title}</h3>
                 <p className="text-sm text-gray-600 mb-2 line-clamp-2">{sanitizeDescriptionForDisplay(product.description, (product as any).lineage)}</p>
                 
@@ -314,7 +494,7 @@ const ProductBrowserForAffiliates: React.FC = () => {
                     ) : (
                       <>
                         <Plus className="w-4 h-4" />
-                        Add to My Store
+                        Promote This Product
                       </>
                     )}
                   </button>

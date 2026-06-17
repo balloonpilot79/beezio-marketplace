@@ -15,6 +15,10 @@ interface ImageUploadProps {
   preview?: boolean;
   multiple?: boolean;
   productId?: string; // Added productId field
+  title?: string;
+  description?: string;
+  helperText?: string;
+  previewMode?: 'image' | 'video' | 'auto';
 }
 
 interface UploadingFile {
@@ -37,6 +41,10 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   className = '',
   preview = true,
   multiple = true,
+  title = 'Upload Images',
+  description,
+  helperText,
+  previewMode = 'image',
 }) => {
   const { user, session, profile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -494,6 +502,34 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     }
   };
 
+  const renderPreview = (file: UploadingFile) => {
+    if (!file.url) return null;
+    const resolvedPreviewMode =
+      previewMode === 'auto'
+        ? (file.file.type.startsWith('video/') ? 'video' : 'image')
+        : previewMode;
+
+    if (resolvedPreviewMode === 'video') {
+      return (
+        <video
+          src={file.url}
+          className="w-32 h-20 object-cover rounded border bg-black"
+          controls
+          muted
+          playsInline
+        />
+      );
+    }
+
+    return (
+      <img
+        src={file.url}
+        alt="Uploaded"
+        className="w-20 h-20 object-cover rounded border"
+      />
+    );
+  };
+
   return (
     <div className={`w-full ${className}`}>
       {/* Upload Area */}
@@ -517,10 +553,10 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {isDragging ? 'Drop files here' : 'Upload Images'}
+              {isDragging ? 'Drop files here' : title}
             </h3>
             <p className="text-gray-600">
-              Drag & drop {multiple ? 'images' : 'an image'} here, or click to browse
+              {description || `Drag & drop ${multiple ? 'files' : 'a file'} here, or click to browse`}
             </p>
             <p className="text-sm text-gray-500 mt-2">
               Max {maxFiles} files, {maxFileSize}MB each • {allowedTypes.join(', ')}
@@ -552,6 +588,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
                   </span>
                 </div>
                 <button
+                  type="button"
                   onClick={() => removeFile(file.id)}
                   className="text-gray-400 hover:text-red-500 transition-colors"
                 >

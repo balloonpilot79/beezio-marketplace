@@ -113,9 +113,9 @@ export const TestingDashboard: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Stripe Fee:</span>
+                      <span className="text-gray-600">Processing Fee:</span>
                       <span className="font-medium text-orange-600">
-                        ${testScenarios[selectedScenario].expectedDistribution.stripe.toFixed(2)}
+                        ${testScenarios[selectedScenario].expectedDistribution.processing.toFixed(2)}
                       </span>
                     </div>
                     <div className="border-t pt-2 mt-2">
@@ -156,10 +156,10 @@ export const TestingDashboard: React.FC = () => {
               🧮 Test Pricing Math
             </button>
             <button
-              onClick={() => window.open('https://dashboard.stripe.com/test/payments', '_blank')}
+              onClick={() => window.open('about:blank', '_blank')}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-lg font-medium"
             >
-              💳 Stripe Dashboard
+              💳 Payment Dashboard
             </button>
           </div>
 
@@ -221,9 +221,9 @@ export const TestingDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Stripe Test Cards Reference */}
+          {/* Test Cards Reference */}
           <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h3 className="text-lg font-medium text-yellow-800 mb-2">💳 Stripe Test Cards</h3>
+            <h3 className="text-lg font-medium text-yellow-800 mb-2">💳 Test Cards (Example)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <div className="font-medium text-yellow-700">Success:</div>

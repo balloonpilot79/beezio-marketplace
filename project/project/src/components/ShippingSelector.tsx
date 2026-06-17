@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Clock, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { formatShippingDisplay, isFreeShippingValue } from '../utils/moneyDisplay';
 
 interface ShippingOption {
   id: string;
   name: string;
   cost: number;
   estimated_days: string;
+  origin_country?: string;
+  origin_label?: string;
+  processing_time?: string;
+  included_in_price?: boolean;
 }
 
 interface ShippingSelectorProps {
@@ -14,6 +19,44 @@ interface ShippingSelectorProps {
   onShippingChange: (option: ShippingOption | null) => void;
   selectedShipping?: ShippingOption | null;
 }
+
+const toFiniteNumber = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const parseRawShippingOptions = (value: unknown): any[] => {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const extractMissingColumnName = (message: string): string | null => {
+  const quoted = message.match(/column\s+"([^"]+)"\s+does\s+not\s+exist/i);
+  if (quoted?.[1]) return quoted[1].split('.').pop() || quoted[1];
+  const unquoted = message.match(/column\s+([a-z0-9_.]+)\s+does\s+not\s+exist/i);
+  if (unquoted?.[1]) return unquoted[1].split('.').pop() || unquoted[1];
+  const pgrst = message.match(/Could not find the '([^']+)' column/i);
+  if (pgrst?.[1]) return pgrst[1];
+  return null;
+};
+
+const normalizeShippingOption = (option: any, index: number): ShippingOption => ({
+  id: `shipping-${index}`,
+  name: String(option?.name ?? option?.title ?? 'Shipping').trim() || 'Shipping',
+  cost: toFiniteNumber(option?.cost ?? option?.price ?? option?.shipping_price ?? option?.shippingPrice),
+  estimated_days: String(option?.estimated_days ?? option?.days ?? option?.estimatedDays ?? '3-5 business days').trim() || '3-5 business days',
+  origin_country: typeof option?.origin_country === 'string' ? option.origin_country : undefined,
+  origin_label: typeof option?.origin_label === 'string' ? option.origin_label : undefined,
+  processing_time: typeof option?.processing_time === 'string' ? option.processing_time : undefined,
+  included_in_price: option?.included_in_price === true,
+});
 
 const ShippingSelector: React.FC<ShippingSelectorProps> = ({
   productId,
@@ -30,13 +73,71 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
   const fetchShippingOptions = async () => {
     try {
       setLoading(true);
-      
-      // Fetch shipping options from the product
-      const { data: product, error } = await supabase
-        .from('products')
-        .select('shipping_options, requires_shipping')
-        .eq('id', productId)
-        .single();
+
+      try {
+        const response = await fetch(`/api/public/product/get?id=${encodeURIComponent(productId)}`);
+        if (response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          const publicProduct = payload?.product;
+          if (publicProduct) {
+            if (!publicProduct?.requires_shipping) {
+              setShippingOptions([]);
+              onShippingChange(null);
+              return;
+            }
+
+            const rawOptions: ShippingOption[] = parseRawShippingOptions(publicProduct.shipping_options).map(normalizeShippingOption);
+            const normalizedShippingPrice = toFiniteNumber(publicProduct?.shipping_price ?? publicProduct?.shipping_cost ?? 0);
+            const includedOption = rawOptions.find((option) => option.included_in_price === true);
+            const effectiveCost = includedOption ? 0 : normalizedShippingPrice;
+            const options: ShippingOption[] = [{
+              id: includedOption?.id || rawOptions[0]?.id || 'default',
+              name: includedOption ? 'Free Shipping' : 'Seller Shipping',
+              cost: effectiveCost,
+              estimated_days: includedOption?.estimated_days || rawOptions[0]?.estimated_days || '3-5 business days',
+              origin_country: includedOption?.origin_country || rawOptions[0]?.origin_country,
+              origin_label: includedOption?.origin_label || rawOptions[0]?.origin_label,
+              processing_time: includedOption?.processing_time || rawOptions[0]?.processing_time,
+              included_in_price: Boolean(includedOption),
+            }];
+
+            setShippingOptions(options);
+            if (!selectedShipping && options.length > 0) {
+              onShippingChange(options[0]);
+            }
+            return;
+          }
+        }
+      } catch {
+        // fall back to direct query below
+      }
+
+      let selectedColumns = ['shipping_options', 'requires_shipping', 'shipping_price', 'shipping_cost'];
+      let product: any = null;
+      let error: any = null;
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const result = await supabase
+          .from('products')
+          .select(selectedColumns.join(','))
+          .eq('id', productId)
+          .single();
+
+        if (!result.error) {
+          product = result.data;
+          error = null;
+          break;
+        }
+
+        error = result.error;
+        const missingColumn = extractMissingColumnName(String(result.error?.message || ''));
+        if (missingColumn && selectedColumns.includes(missingColumn)) {
+          selectedColumns = selectedColumns.filter((column) => column !== missingColumn);
+          continue;
+        }
+
+        break;
+      }
 
       if (error) {
         console.error('Error fetching product shipping options:', error);
@@ -50,22 +151,21 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
         return;
       }
 
-      const options: ShippingOption[] = (product.shipping_options || []).map((option: any, index: number) => ({
-        id: `shipping-${index}`,
-        name: option.name || 'Standard Shipping',
-        cost: option.cost || 0,
-        estimated_days: option.estimated_days || '3-5 business days'
-      }));
+      const rawOptions: ShippingOption[] = parseRawShippingOptions(product.shipping_options).map(normalizeShippingOption);
 
-      // If no shipping options are configured, provide a default
-      if (options.length === 0) {
-        options.push({
-          id: 'default',
-          name: 'Standard Shipping',
-          cost: 5.99,
-          estimated_days: '5-7 business days'
-        });
-      }
+      const normalizedShippingPrice = toFiniteNumber(product?.shipping_price ?? product?.shipping_cost ?? 0);
+      const includedOption = rawOptions.find((option) => option.included_in_price === true);
+      const effectiveCost = includedOption ? 0 : normalizedShippingPrice;
+      const options: ShippingOption[] = [{
+        id: includedOption?.id || rawOptions[0]?.id || 'default',
+        name: includedOption ? 'Free Shipping' : 'Seller Shipping',
+        cost: effectiveCost,
+        estimated_days: includedOption?.estimated_days || rawOptions[0]?.estimated_days || '3-5 business days',
+        origin_country: includedOption?.origin_country || rawOptions[0]?.origin_country,
+        origin_label: includedOption?.origin_label || rawOptions[0]?.origin_label,
+        processing_time: includedOption?.processing_time || rawOptions[0]?.processing_time,
+        included_in_price: Boolean(includedOption),
+      }];
       
       setShippingOptions(options);
       
@@ -79,9 +179,9 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
       // Fallback to default shipping option
       const fallbackOption: ShippingOption = {
         id: 'fallback',
-        name: 'Standard Shipping',
-        cost: 5.99,
-        estimated_days: '5-7 business days'
+        name: 'Free Shipping',
+        cost: 0,
+        estimated_days: '3-5 business days'
       };
       
       setShippingOptions([fallbackOption]);
@@ -120,7 +220,7 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
     <div className="space-y-3">
       <h3 className="text-lg font-semibold text-gray-900 flex items-center">
         <Truck className="h-5 w-5 mr-2 text-gray-600" />
-        Choose Shipping Method
+        Shipping
       </h3>
       
       <div className="space-y-2">
@@ -148,7 +248,7 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
                 <div>
                   <div className="flex items-center space-x-2">
                     <h4 className="font-semibold text-gray-900">{option.name}</h4>
-                    {option.cost === 0 && (
+                    {isFreeShippingValue(option.cost) && (
                       <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
                         FREE
                       </span>
@@ -161,9 +261,23 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
                     </span>
                     <span className="flex items-center text-sm font-medium text-gray-900">
                       <DollarSign className="h-4 w-4 mr-1" />
-                      {option.cost === 0 ? 'Free' : `$${option.cost.toFixed(2)}`}
+                      {formatShippingDisplay(option.cost)}
                     </span>
                   </div>
+                  {(option.origin_label || option.origin_country || option.processing_time) && (
+                    <div className="mt-1 text-xs text-gray-600 space-y-0.5">
+                      {(option.origin_label || option.origin_country) && (
+                        <div>
+                          Ships from: {option.origin_label || option.origin_country}
+                        </div>
+                      )}
+                      {option.processing_time && (
+                        <div>
+                          Processing: {option.processing_time}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -186,9 +300,21 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <p className="text-sm text-blue-800">
             <strong>Selected:</strong> {selectedShipping.name} 
-            {selectedShipping.cost > 0 && ` (+$${selectedShipping.cost.toFixed(2)})`}
+            {` (${formatShippingDisplay(selectedShipping.cost)})`}
             <br />
             <strong>Estimated Delivery:</strong> {selectedShipping.estimated_days}
+            {(selectedShipping.origin_label || selectedShipping.origin_country) && (
+              <>
+                <br />
+                <strong>Ships From:</strong> {selectedShipping.origin_label || selectedShipping.origin_country}
+              </>
+            )}
+            {selectedShipping.processing_time && (
+              <>
+                <br />
+                <strong>Processing:</strong> {selectedShipping.processing_time}
+              </>
+            )}
           </p>
         </div>
       )}

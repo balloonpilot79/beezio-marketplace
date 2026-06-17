@@ -14,7 +14,7 @@ AS $$
     SELECT 1
     FROM public.profiles p
     WHERE p.user_id = auth.uid()
-      AND lower(coalesce(p.role, p.primary_role, '')) = 'admin'
+      AND lower(coalesce(p.role::text, p.primary_role::text, '')) = 'admin'
   );
 $$;
 
@@ -281,4 +281,3 @@ FOR UPDATE
 TO authenticated
 USING (user_id = auth.uid() OR public.is_beezio_admin())
 WITH CHECK (user_id = auth.uid() OR public.is_beezio_admin());
-

@@ -1,5 +1,7 @@
 // Fallback sample products for when database is not available
-export const SAMPLE_PRODUCTS = [
+import { normalizeAverageRating, normalizeReviewCount } from '../utils/socialProof';
+
+const RAW_SAMPLE_PRODUCTS = [
   {
     id: 'sample-1',
     title: 'Wireless Bluetooth Headphones',
@@ -177,3 +179,13 @@ export const SAMPLE_PRODUCTS = [
     review_count: 21
   }
 ];
+
+export const SAMPLE_PRODUCTS = RAW_SAMPLE_PRODUCTS.map((product: any) => {
+  const reviewCount = normalizeReviewCount(product.review_count);
+  const averageRating = normalizeAverageRating(product.average_rating, reviewCount);
+  return {
+    ...product,
+    review_count: reviewCount,
+    average_rating: averageRating,
+  };
+});

@@ -46,18 +46,21 @@ const TrendingProductsPreview: React.FC = () => {
   }, []);
 
   const products = useMemo(() => {
-    return rawProducts.slice(0, 4).map((product) => {
-      const affiliateRate = normalizeAffiliateRate(product.commission_rate ?? DEFAULT_AFFILIATE_RATE);
-      const sellerAsk = (product as any).seller_ask ?? deriveSellerAskFromSalePrice(product.price ?? 0, affiliateRate);
-      const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, affiliateRate);
+    return rawProducts
+      .filter((product) => product.id !== '1769134670239')
+      .slice(0, 4)
+      .map((product) => {
+        const affiliateRate = normalizeAffiliateRate(product.commission_rate ?? DEFAULT_AFFILIATE_RATE);
+        const sellerAsk = (product as any).seller_ask ?? deriveSellerAskFromSalePrice(product.price ?? 0, affiliateRate);
+        const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, affiliateRate);
 
-      return {
-        ...product,
-        sellerAsk,
-        salePrice,
-        currency: product.currency ?? 'USD',
-      };
-    });
+        return {
+          ...product,
+          sellerAsk,
+          salePrice,
+          currency: product.currency ?? 'USD',
+        };
+      });
   }, [rawProducts]);
 
   const header = (

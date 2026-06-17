@@ -14,13 +14,13 @@ describe('calculateBeezioSplit', () => {
     });
 
     expect(split.validation_ok).toBe(true);
-    expect(split.beezio_fee_amount).toBe(15);
+    expect(split.beezio_fee_amount).toBe(17);
     expect(split.referral_fee_amount).toBe(0);
     expect(split.affiliate_commission_amount).toBe(0);
-    expect(split.seller_net_items_amount).toBe(85);
-    expect(split.seller_total_transfer_amount).toBe(95);
+    expect(split.seller_net_items_amount).toBe(100);
+    expect(split.seller_total_transfer_amount).toBe(110);
     expect(split.referrer_amount).toBe(0);
-    expect(split.beezio_kept_amount).toBe(15);
+    expect(split.beezio_kept_amount).toBe(17);
   });
 
   it('affiliate only creates affiliate amount', () => {
@@ -36,11 +36,11 @@ describe('calculateBeezioSplit', () => {
 
     expect(split.validation_ok).toBe(true);
     expect(split.affiliate_amount).toBe(10);
-    expect(split.beezio_kept_amount).toBe(15);
-    expect(split.seller_net_items_amount).toBe(75);
+    expect(split.beezio_kept_amount).toBe(17);
+    expect(split.seller_net_items_amount).toBe(100);
   });
 
-  it('referrer only splits Beezio fee (10% Beezio, 5% referrer)', () => {
+  it('referrer only (no affiliate) still leaves the reserve with Beezio', () => {
     const split = calculateBeezioSplit({
       items_subtotal: 100,
       shipping_amount: 0,
@@ -52,28 +52,28 @@ describe('calculateBeezioSplit', () => {
     });
 
     expect(split.validation_ok).toBe(true);
-    expect(split.referrer_amount).toBe(5);
-    expect(split.beezio_kept_amount).toBe(10);
-    expect(split.seller_net_items_amount).toBe(85);
+    expect(split.referrer_amount).toBe(0);
+    expect(split.beezio_kept_amount).toBe(17);
+    expect(split.seller_net_items_amount).toBe(100);
   });
 
-  it('fundraiser path still allocates the 5% override amount', () => {
+  it('referrer path applies the flat referrer bonus when affiliate exists', () => {
     const split = calculateBeezioSplit({
       items_subtotal: 100,
       shipping_amount: 0,
       tax_amount: 0,
-      affiliate_id: null,
+      affiliate_id: 'a',
       referrer_id: 'r',
-      isFundraiser: true,
+      isFundraiser: false,
       affiliate_rate: 0.25,
     });
 
     expect(split.validation_ok).toBe(true);
-    expect(split.referrer_amount).toBe(5);
-    expect(split.beezio_kept_amount).toBe(10);
+    expect(split.referrer_amount).toBe(1);
+    expect(split.beezio_kept_amount).toBe(16);
   });
 
-  it('blocks if seller net would be negative', () => {
+  it('handles high affiliate rates without reducing seller ask', () => {
     const split = calculateBeezioSplit({
       items_subtotal: 10,
       shipping_amount: 0,
@@ -84,7 +84,7 @@ describe('calculateBeezioSplit', () => {
       affiliate_rate: 1, // 100% commission (treated as fraction)
     });
 
-    expect(split.validation_ok).toBe(false);
-    expect(split.validation_reason).toMatch(/negative/i);
+    expect(split.validation_ok).toBe(true);
+    expect(split.seller_net_items_amount).toBe(10);
   });
 });

@@ -102,9 +102,56 @@ export const themes = {
     cardStyle: 'rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 shadow-md hover:shadow-xl transition-all',
     buttonStyle: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all'
   }
+  ,
+  dark: {
+    name: 'Dark',
+    colors: {
+      primary: '#22c55e',
+      secondary: '#0ea5e9',
+      background: '#0b1220',
+      text: '#e5e7eb',
+      border: '#1f2937'
+    },
+    fonts: {
+      heading: "'Sora', sans-serif",
+      body: "'Inter', sans-serif"
+    },
+    layout: 'grid',
+    cardStyle: 'rounded-xl bg-slate-900/60 border border-slate-700 hover:border-slate-500 shadow-lg transition-all',
+    buttonStyle: 'bg-emerald-500 text-black font-semibold rounded-lg hover:bg-emerald-400 transition-colors'
+  },
+  classic: {
+    name: 'Classic',
+    colors: {
+      primary: '#0f766e',
+      secondary: '#1e293b',
+      background: '#f8fafc',
+      text: '#0f172a',
+      border: '#cbd5e1'
+    },
+    fonts: {
+      heading: "'Fraunces', serif",
+      body: "'Inter', sans-serif"
+    },
+    layout: 'grid',
+    cardStyle: 'rounded-lg bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow',
+    buttonStyle: 'bg-teal-700 text-white font-semibold rounded-lg hover:bg-teal-800 transition-colors'
+  }
 };
 
 export type ThemeName = keyof typeof themes;
+
+export const normalizeThemeName = (themeName?: string | null): ThemeName => {
+  const raw = String(themeName ?? '').trim().toLowerCase();
+  if (!raw) return 'modern';
+  if (raw === 'minimalist') return 'minimal';
+  if (raw === 'grid') return 'modern';
+  if (raw === 'catalog') return 'minimal';
+  if (raw === 'boutique') return 'elegant';
+  if (raw === 'launch') return 'vibrant';
+  if (raw in themes) return raw as ThemeName;
+  return 'modern';
+};
 
 export interface ThemeSettings {
   primary_color?: string;

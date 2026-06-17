@@ -80,7 +80,7 @@ const STORE_TEMPLATES: StoreTemplate[] = [
     name: 'Marketplace Hub',
     description: 'Multi-category storefront with promoted products and affiliate features',
     category: 'storefront',
-    features: ['Category cards', 'Promoted section', 'Affiliate links', 'Featured sellers', 'Search bar'],
+    features: ['Category cards', 'Promoted section', 'Partner links', 'Featured sellers', 'Search bar'],
     layout: {
       header_style: 'banner',
       product_grid: '3-col',
@@ -176,22 +176,47 @@ const STORE_TEMPLATES: StoreTemplate[] = [
       footer_style: 'minimal'
     },
     theme: 'vibrant'
-  },
-  {
-    id: 'landing-fundraiser',
-    name: 'Fundraiser Campaign',
-    description: 'Mission-driven page with progress bar and impact stories',
-    category: 'landing',
-    features: ['Progress bar', 'Impact stories', 'Team members', 'Donation tiers', 'Updates feed'],
-    layout: {
-      header_style: 'banner',
-      product_grid: '3-col',
-      sidebar: false,
-      footer_style: 'detailed'
-    },
-    theme: 'warm'
   }
 ];
+
+const PREVIEW_THEMES: Record<string, { header: string; hero: string; card: string; sidebar: string }> = {
+  modern: {
+    header: 'from-slate-200 to-slate-100',
+    hero: 'bg-white/90 border border-slate-200',
+    card: 'bg-slate-200/70',
+    sidebar: 'bg-slate-200/60'
+  },
+  elegant: {
+    header: 'from-amber-100 to-rose-100',
+    hero: 'bg-white/90 border border-amber-200',
+    card: 'bg-rose-100/80',
+    sidebar: 'bg-amber-100/80'
+  },
+  minimalist: {
+    header: 'from-slate-100 to-slate-200',
+    hero: 'bg-white/80 border border-slate-200',
+    card: 'bg-slate-200/60',
+    sidebar: 'bg-slate-200/60'
+  },
+  vibrant: {
+    header: 'from-pink-200 to-amber-200',
+    hero: 'bg-white/80 border border-amber-200',
+    card: 'bg-amber-200/70',
+    sidebar: 'bg-pink-200/70'
+  },
+  professional: {
+    header: 'from-blue-100 to-slate-100',
+    hero: 'bg-white/90 border border-blue-200',
+    card: 'bg-blue-100/70',
+    sidebar: 'bg-slate-200/70'
+  },
+  warm: {
+    header: 'from-amber-100 to-yellow-100',
+    hero: 'bg-white/90 border border-amber-200',
+    card: 'bg-amber-100/80',
+    sidebar: 'bg-yellow-100/70'
+  }
+};
 
 interface StoreTemplateSelectorProps {
   category?: 'storefront' | 'product' | 'landing' | 'all';
@@ -230,6 +255,48 @@ const StoreTemplateSelector: React.FC<StoreTemplateSelectorProps> = ({
     }
   };
 
+  const renderTemplatePreview = (template: StoreTemplate) => {
+    const palette = PREVIEW_THEMES[template.theme] || PREVIEW_THEMES.modern;
+    const gridLayout = template.layout.product_grid;
+    const gridCols = gridLayout === '4-col' ? 4 : gridLayout === '3-col' ? 3 : 2;
+    const gridClass = gridCols === 4 ? 'grid-cols-4' : gridCols === 3 ? 'grid-cols-3' : 'grid-cols-2';
+    const cardCount = gridCols * 2;
+    const showSidebar = template.layout.sidebar;
+    const isCarousel = gridLayout === 'carousel';
+    const isMasonry = gridLayout === 'masonry';
+
+    return (
+      <div className="absolute inset-0 p-3">
+        <div className={`h-5 rounded-md bg-gradient-to-r ${palette.header}`} />
+        <div className="mt-3 flex gap-3">
+          {showSidebar && (
+            <div className={`hidden sm:block w-1/4 rounded-md ${palette.sidebar}`} />
+          )}
+          <div className="flex-1 space-y-2">
+            <div className={`h-16 rounded-lg ${palette.hero}`} />
+            {isCarousel ? (
+              <div className="flex gap-2">
+                {Array.from({ length: 3 }).map((_, idx) => (
+                  <div key={idx} className={`h-10 flex-1 rounded-md ${palette.card}`} />
+                ))}
+              </div>
+            ) : (
+              <div className={`grid gap-2 ${gridClass}`}>
+                {Array.from({ length: cardCount }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={`rounded-md ${palette.card}`}
+                    style={{ height: isMasonry && idx % 2 === 0 ? '30px' : '40px' }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Category Filter */}
@@ -263,8 +330,8 @@ const StoreTemplateSelector: React.FC<StoreTemplateSelectorProps> = ({
               }`}
             >
               {/* Preview Image Placeholder */}
-              <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative">
-                {getCategoryIcon(template.category)}
+              <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative overflow-hidden">
+                {renderTemplatePreview(template)}
                 {isSelected && (
                   <div className="absolute top-2 right-2 bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                     <Heart className="h-3 w-3 fill-current" /> Current
@@ -370,6 +437,9 @@ const StoreTemplateSelector: React.FC<StoreTemplateSelectorProps> = ({
 
               {/* Layout Details */}
               <div className="mb-6">
+                <div className="h-48 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden mb-4">
+                  {renderTemplatePreview(previewTemplate)}
+                </div>
                 <h3 className="font-semibold text-gray-900 mb-2">Layout Configuration:</h3>
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
                   <div className="flex justify-between">

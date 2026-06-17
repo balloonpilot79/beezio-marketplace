@@ -12,18 +12,18 @@ const PricingPage: React.FC<{
             Stores are free. Fees live inside the sale price.
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            No subscriptions or setup costs. The buyer sees one clean price that quietly includes a small platform + Stripe fee while you keep what you ask for.
+            No subscriptions or setup costs. The buyer sees one clean price that includes platform and processing fees while you keep what you set.
           </p>
           <div className="bg-white p-8 rounded-2xl shadow-lg max-w-2xl mx-auto space-y-4 text-left">
             <h2 className="text-2xl font-bold text-purple-600">How it works</h2>
             <ul className="list-disc list-inside text-gray-700 space-y-2">
-              <li>You set the amount you want to keep. That is your guaranteed payout.</li>
-              <li>You pick an affiliate payout (percent of price or flat dollars). Shipping is separate and not used in fee math.</li>
-              <li>Beezio bakes a small platform share and Stripe processing into the buyer price so everyone is paid from that one charge.</li>
-              <li>Public copy stays simple while we iterate. Percentages are internal and can change without affecting your take-home.</li>
+              <li>You set the amount you want to keep per sale.</li>
+              <li>Shipping is separate and calculated at checkout based on your settings.</li>
+              <li>Beezio bakes platform and processing fees into the buyer price so checkout stays simple.</li>
+              <li>Pricing is transparent and shown before purchase.</li>
             </ul>
             <p className="text-sm text-gray-500">
-              Sellers and affiliates never pay for a store. Beezio only earns from the baked-in fee on each sale.
+              Sellers never pay for a store. Beezio only earns from the baked-in fee on each sale.
             </p>
           </div>
           <div className="mt-12">

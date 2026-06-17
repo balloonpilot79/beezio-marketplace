@@ -43,10 +43,41 @@ CREATE TABLE IF NOT EXISTS product_reviews (
   UNIQUE(product_id, reviewer_id) -- One review per user per product
 );
 
+ALTER TABLE product_reviews
+ADD COLUMN IF NOT EXISTS reviewer_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
+ADD COLUMN IF NOT EXISTS helpful_count integer DEFAULT 0,
+ADD COLUMN IF NOT EXISTS images text[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now(),
+ADD COLUMN IF NOT EXISTS verified_purchase boolean DEFAULT false;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'product_reviews' AND column_name = 'user_id'
+  ) THEN
+    EXECUTE 'UPDATE public.product_reviews SET reviewer_id = COALESCE(reviewer_id, user_id) WHERE reviewer_id IS NULL';
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'product_reviews' AND column_name = 'buyer_id'
+  ) THEN
+    EXECUTE 'UPDATE public.product_reviews SET reviewer_id = COALESCE(reviewer_id, buyer_id) WHERE reviewer_id IS NULL';
+   DROP POLICY IF EXISTS "Anyone can view product reviews" ON product_reviews;
+   DROP POLICY IF EXISTS "Users can create reviews for products" ON product_reviews;
+   DROP POLICY IF EXISTS "Users can update their own reviews" ON product_reviews;
+   DROP POLICY IF EXISTS "Users can delete their own reviews" ON product_reviews;
+   CREATE POLICY "Anyone can view product reviews" ON product_reviews FOR SELECT USING (true);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_product_reviews_product_reviewer_unique
+  ON product_reviews(product_id, reviewer_id)
+  WHERE reviewer_id IS NOT NULL;
+
 -- Create seller_ratings table
 CREATE TABLE IF NOT EXISTS seller_ratings (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  seller_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+   DROP POLICY IF EXISTS "Anyone can view seller ratings" ON seller_ratings;
+   DROP POLICY IF EXISTS "Users can create seller ratings" ON seller_ratings;
+   DROP POLICY IF EXISTS "Users can update their own ratings" ON seller_ratings;
+   DROP POLICY IF EXISTS "Users can delete their own ratings" ON seller_ratings;
+   CREATE POLICY "Anyone can view seller ratings" ON seller_ratings FOR SELECT USING (true);
   rater_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
   comment text,
@@ -54,7 +85,30 @@ CREATE TABLE IF NOT EXISTS seller_ratings (
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),
   UNIQUE(seller_id, rater_id) -- One rating per user per seller
-);
+   DROP POLICY IF EXISTS "Anyone can view helpful votes" ON review_helpful;
+   DROP POLICY IF EXISTS "Authenticated users can vote on reviews" ON review_helpful;
+   DROP POLICY IF EXISTS "Users can update their own votes" ON review_helpful;
+   DROP POLICY IF EXISTS "Users can delete their own votes" ON review_helpful;
+   CREATE POLICY "Anyone can view helpful votes" ON review_helpful FOR SELECT USING (true);
+ALTER TABLE seller_ratings
+ADD COLUMN IF NOT EXISTS rater_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
+ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now(),
+ADD COLUMN IF NOT EXISTS transaction_related boolean DEFAULT true;
+
+DO $$
+BEGIN
+   DROP TRIGGER IF EXISTS update_product_reviews_updated_at ON product_reviews;
+   CREATE TRIGGER update_product_reviews_updated_at
+     BEFORE UPDATE ON product_reviews
+     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    EXECUTE 'UPDATE public.seller_ratings SET rater_id = COALESCE(rater_id, user_id) WHERE rater_id IS NULL';
+   DROP TRIGGER IF EXISTS update_seller_ratings_updated_at ON seller_ratings;
+  END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_seller_ratings_seller_rater_unique
+  ON seller_ratings(seller_id, rater_id)
+  WHERE rater_id IS NOT NULL;
 
 -- Create review_helpful table for tracking helpful votes
 CREATE TABLE IF NOT EXISTS review_helpful (
@@ -66,30 +120,74 @@ CREATE TABLE IF NOT EXISTS review_helpful (
   UNIQUE(review_id, user_id) -- One vote per user per review
 );
 
+ALTER TABLE review_helpful
+ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
+ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_review_helpful_review_user_unique
+  ON review_helpful(review_id, user_id)
+  WHERE user_id IS NOT NULL;
+
 -- Enable RLS
 ALTER TABLE product_reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE seller_ratings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE review_helpful ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for product_reviews
+DROP POLICY IF EXISTS "Anyone can view product reviews" ON product_reviews;
+DROP POLICY IF EXISTS "Users can create reviews for products" ON product_reviews;
+DROP POLICY IF EXISTS "Users can update their own reviews" ON product_reviews;
+DROP POLICY IF EXISTS "Users can delete their own reviews" ON product_reviews;
 CREATE POLICY "Anyone can view product reviews" ON product_reviews FOR SELECT USING (true);
-CREATE POLICY "Users can create reviews for products" ON product_reviews FOR INSERT 
-  WITH CHECK (auth.uid() = reviewer_id);
-CREATE POLICY "Users can update their own reviews" ON product_reviews FOR UPDATE 
-  USING (auth.uid() = reviewer_id);
-CREATE POLICY "Users can delete their own reviews" ON product_reviews FOR DELETE 
-  USING (auth.uid() = reviewer_id);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'product_reviews' AND column_name = 'reviewer_id'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Users can create reviews for products" ON product_reviews FOR INSERT WITH CHECK (auth.uid() = reviewer_id)';
+    EXECUTE 'CREATE POLICY "Users can update their own reviews" ON product_reviews FOR UPDATE USING (auth.uid() = reviewer_id)';
+    EXECUTE 'CREATE POLICY "Users can delete their own reviews" ON product_reviews FOR DELETE USING (auth.uid() = reviewer_id)';
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'product_reviews' AND column_name = 'user_id'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Users can create reviews for products" ON product_reviews FOR INSERT WITH CHECK (auth.uid() = user_id)';
+    EXECUTE 'CREATE POLICY "Users can update their own reviews" ON product_reviews FOR UPDATE USING (auth.uid() = user_id)';
+    EXECUTE 'CREATE POLICY "Users can delete their own reviews" ON product_reviews FOR DELETE USING (auth.uid() = user_id)';
+  END IF;
+END $$;
 
 -- RLS Policies for seller_ratings
+DROP POLICY IF EXISTS "Anyone can view seller ratings" ON seller_ratings;
+DROP POLICY IF EXISTS "Users can create seller ratings" ON seller_ratings;
+DROP POLICY IF EXISTS "Users can update their own ratings" ON seller_ratings;
+DROP POLICY IF EXISTS "Users can delete their own ratings" ON seller_ratings;
 CREATE POLICY "Anyone can view seller ratings" ON seller_ratings FOR SELECT USING (true);
-CREATE POLICY "Users can create seller ratings" ON seller_ratings FOR INSERT 
-  WITH CHECK (auth.uid() = rater_id);
-CREATE POLICY "Users can update their own ratings" ON seller_ratings FOR UPDATE 
-  USING (auth.uid() = rater_id);
-CREATE POLICY "Users can delete their own ratings" ON seller_ratings FOR DELETE 
-  USING (auth.uid() = rater_id);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'seller_ratings' AND column_name = 'rater_id'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Users can create seller ratings" ON seller_ratings FOR INSERT WITH CHECK (auth.uid() = rater_id)';
+    EXECUTE 'CREATE POLICY "Users can update their own ratings" ON seller_ratings FOR UPDATE USING (auth.uid() = rater_id)';
+    EXECUTE 'CREATE POLICY "Users can delete their own ratings" ON seller_ratings FOR DELETE USING (auth.uid() = rater_id)';
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'seller_ratings' AND column_name = 'user_id'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Users can create seller ratings" ON seller_ratings FOR INSERT WITH CHECK (auth.uid() = user_id)';
+    EXECUTE 'CREATE POLICY "Users can update their own ratings" ON seller_ratings FOR UPDATE USING (auth.uid() = user_id)';
+    EXECUTE 'CREATE POLICY "Users can delete their own ratings" ON seller_ratings FOR DELETE USING (auth.uid() = user_id)';
+  END IF;
+END $$;
 
 -- RLS Policies for review_helpful
+DROP POLICY IF EXISTS "Anyone can view helpful votes" ON review_helpful;
+DROP POLICY IF EXISTS "Authenticated users can vote on reviews" ON review_helpful;
+DROP POLICY IF EXISTS "Users can update their own votes" ON review_helpful;
+DROP POLICY IF EXISTS "Users can delete their own votes" ON review_helpful;
 CREATE POLICY "Anyone can view helpful votes" ON review_helpful FOR SELECT USING (true);
 CREATE POLICY "Authenticated users can vote on reviews" ON review_helpful FOR INSERT 
   WITH CHECK (auth.uid() = user_id);
@@ -189,10 +287,12 @@ CREATE TRIGGER update_review_helpful_trigger
   FOR EACH ROW EXECUTE FUNCTION update_review_helpful_count();
 
 -- Add updated_at triggers
+DROP TRIGGER IF EXISTS update_product_reviews_updated_at ON product_reviews;
 CREATE TRIGGER update_product_reviews_updated_at
   BEFORE UPDATE ON product_reviews
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS update_seller_ratings_updated_at ON seller_ratings;
 CREATE TRIGGER update_seller_ratings_updated_at
   BEFORE UPDATE ON seller_ratings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

@@ -1,8 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
+import { Route, Routes, useParams } from 'react-router-dom';
 import { checkCustomDomain, DomainRouteResult } from '../utils/customDomainRouter';
-import SellerStorePage from '../pages/SellerStorePage';
-import AffiliateStorePage from '../pages/AffiliateStorePage';
-import FundraiserStorePage from '../pages/FundraiserStorePage';
+
+const SellerStorePage = React.lazy(() => import('../pages/SellerStorePage'));
+const AffiliateStorePage = React.lazy(() => import('../pages/AffiliateStorePage'));
+const SellerAboutPage = React.lazy(() => import('../pages/SellerAboutPage'));
+const AffiliateAboutPage = React.lazy(() => import('../pages/AffiliateAboutPage'));
+const CartPage = React.lazy(() => import('../pages/CartPage'));
+const CheckoutPage = React.lazy(() => import('../pages/CheckoutPage'));
+const CheckoutSuccessPage = React.lazy(() => import('../pages/CheckoutSuccessPage'));
+const CheckoutCancelPage = React.lazy(() => import('../pages/CheckoutCancelPage'));
+const ProductDetailPage = React.lazy(() => import('../pages/ProductDetailPage'));
+const StoreCustomPageView = React.lazy(() => import('../pages/StoreCustomPageView'));
 
 /**
  * Custom Domain Handler Component
@@ -11,6 +20,21 @@ import FundraiserStorePage from '../pages/FundraiserStorePage';
 const CustomDomainHandler: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [checking, setChecking] = useState(true);
   const [domainResult, setDomainResult] = useState<DomainRouteResult | null>(null);
+
+  const CustomDomainPageRoute: React.FC<{ ownerId: string; ownerType: 'seller' | 'affiliate' }> = ({ ownerId, ownerType }) => {
+    const { pageSlug } = useParams<{ pageSlug: string }>();
+    if (!pageSlug) return null;
+    return (
+      <Suspense fallback={<div className="min-h-screen" />}>
+        <StoreCustomPageView
+          ownerId={ownerId}
+          ownerType={ownerType}
+          pageSlug={pageSlug}
+          backPath="/"
+        />
+      </Suspense>
+    );
+  };
 
   useEffect(() => {
     const checkDomain = async () => {
@@ -21,6 +45,15 @@ const CustomDomainHandler: React.FC<{ children: React.ReactNode }> = ({ children
 
     checkDomain();
   }, []);
+
+  useEffect(() => {
+    if (domainResult?.isCustomDomain && domainResult.userId && domainResult.storeType) {
+      const scopeId = domainResult.storeSettings?.subdomain || domainResult.userId;
+      const scopeKey = `store:${domainResult.storeType}:${scopeId}`;
+      localStorage.setItem('beezio-store-scope', scopeKey);
+      window.dispatchEvent(new Event('beezio-store-scope-changed'));
+    }
+  }, [domainResult]);
 
   // Show loading while checking
   if (checking) {
@@ -37,28 +70,38 @@ const CustomDomainHandler: React.FC<{ children: React.ReactNode }> = ({ children
   // If custom domain detected, show the store directly (NO header/footer)
   if (domainResult?.isCustomDomain && domainResult.userId) {
     console.log('[CustomDomain] Rendering standalone store for custom domain');
-    
-    // Render ONLY the store page - no beezio header, no footer, no navigation
-    // This makes it look like their own independent website
-    if (domainResult.storeType === 'seller') {
-      return (
-        <div className="min-h-screen">
-          <SellerStorePage sellerId={domainResult.userId} isCustomDomain={true} />
-        </div>
-      );
-    } else if (domainResult.storeType === 'affiliate') {
-      return (
-        <div className="min-h-screen">
-          <AffiliateStorePage affiliateId={domainResult.userId} isCustomDomain={true} />
-        </div>
-      );
-    } else if (domainResult.storeType === 'fundraiser') {
-      return (
-        <div className="min-h-screen">
-          <FundraiserStorePage fundraiserId={domainResult.userId} isCustomDomain={true} />
-        </div>
-      );
-    }
+
+    const storeType = domainResult.storeType;
+    const storePage =
+      storeType === 'seller'
+        ? <SellerStorePage sellerId={domainResult.userId} isCustomDomain={true} />
+        : <AffiliateStorePage affiliateId={domainResult.userId} isCustomDomain={true} />;
+    const aboutPage =
+      storeType === 'seller'
+        ? <SellerAboutPage sellerId={domainResult.userId} isCustomDomain={true} />
+        : <AffiliateAboutPage affiliateId={domainResult.userId} isCustomDomain={true} />;
+
+    return (
+      <div className="min-h-screen">
+        <Suspense fallback={<div className="min-h-screen" />}>
+          <Routes>
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
+            <Route path="/checkout/cancel" element={<CheckoutCancelPage />} />
+            <Route path="/about" element={aboutPage} />
+            <Route path="/product/:productId" element={<ProductDetailPage />} />
+            {storeType && (
+              <Route
+                path="/:pageSlug"
+                element={<CustomDomainPageRoute ownerId={domainResult.userId} ownerType={storeType} />}
+              />
+            )}
+            <Route path="*" element={storePage} />
+          </Routes>
+        </Suspense>
+      </div>
+    );
   }
 
   // Normal routing for beezio.co and localhost

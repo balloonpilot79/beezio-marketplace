@@ -2,19 +2,31 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { PASSWORD_REQUIREMENT_MESSAGE, validatePasswordPolicy } from '../utils/passwordPolicy';
 
 const ResetPasswordPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [requestLoading, setRequestLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
   const [allowed, setAllowed] = useState(false);
+  const [isRecovery, setIsRecovery] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
+    const paramsFromHash = new URLSearchParams(window.location.hash.replace('#', ''));
+    const paramsFromSearch = new URLSearchParams(window.location.search);
+    const recoveryType = paramsFromHash.get('type') || paramsFromSearch.get('type');
+    const hasRecoveryContext = recoveryType === 'recovery';
+    if (hasRecoveryContext) {
+      setIsRecovery(true);
+    }
 
     const checkSession = async () => {
       try {
@@ -28,14 +40,17 @@ const ResetPasswordPage: React.FC = () => {
         });
 
         if (mounted) {
-          setAllowed(Boolean(session && session.user));
+          const hasSession = Boolean(session && session.user);
+          setAllowed(hasSession && hasRecoveryContext);
 
           // If we have a session, we're in password reset mode
           if (session?.user) {
             console.log('ResetPasswordPage: User is authenticated for password reset');
           } else {
             console.log('ResetPasswordPage: No session found - user may need to use reset link');
-            setError('Please use the password reset link from your email to access this page. If you clicked the link and are still seeing this message, make sure the redirect URLs are configured in your Supabase dashboard.');
+            if (hasRecoveryContext) {
+              setError('Please use the password reset link from your email to access this page. If you clicked the link and are still seeing this message, make sure the redirect URLs are configured in your Supabase dashboard.');
+            }
           }
         }
       } catch (err) {
@@ -59,11 +74,16 @@ const ResetPasswordPage: React.FC = () => {
       });
 
       if (mounted) {
-        setAllowed(Boolean(session && session.user));
-        if (session?.user) {
+        const hasSession = Boolean(session && session.user);
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsRecovery(true);
+        }
+        const recoveryEventActive = event === 'PASSWORD_RECOVERY' || hasRecoveryContext;
+        setAllowed(hasSession && recoveryEventActive);
+        if (session?.user && recoveryEventActive) {
           console.log('ResetPasswordPage: User authenticated via reset link');
           setError(null); // Clear any previous errors
-        } else {
+        } else if (recoveryEventActive) {
           console.log('ResetPasswordPage: User signed out or session invalid');
           setError('Your session has expired. Please use the reset link again.');
         }
@@ -76,17 +96,47 @@ const ResetPasswordPage: React.FC = () => {
     };
   }, []);
 
+  const handleResetRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setRequestSent(false);
+
+    if (!email || !email.includes('@')) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    setRequestLoading(true);
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const redirectTo = origin ? `${origin}/reset-password` : '/reset-password';
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+      if (resetError) throw resetError;
+      setRequestSent(true);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to send password reset email.');
+    } finally {
+      setRequestLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!allowed) return setError('You must be signed in to change your password');
-    if (password.length < 6) return setError('Password must be at least 6 characters');
+    if (!allowed) return setError('Please use the password reset link from your email to change your password.');
+    const passwordError = validatePasswordPolicy(password);
+    if (passwordError) return setError(passwordError);
     if (password !== confirmPassword) return setError('Passwords do not match');
 
     setLoading(true);
     try {
       const { error: upErr } = await supabase.auth.updateUser({ password });
       if (upErr) throw upErr;
+      try {
+        await supabase.auth.signOut({ scope: 'others' });
+      } catch {
+        // non-blocking
+      }
       setSuccess(true);
       console.log('ResetPasswordPage: Password updated successfully');
       // Redirect to dashboard after successful password reset
@@ -112,6 +162,47 @@ const ResetPasswordPage: React.FC = () => {
     );
   }
 
+  if (!allowed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div className="max-w-md w-full bg-white p-6 rounded shadow">
+          <h2 className="text-xl font-bold mb-2">Reset password</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Enter your email and we&apos;ll send you a password reset link.
+          </p>
+          <form onSubmit={handleResetRequest} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="mt-1 block w-full border px-3 py-2 rounded"
+              />
+            </div>
+
+            {requestSent && (
+              <div className="text-sm text-green-700">
+                Password reset email sent. Check your inbox for the reset link.
+              </div>
+            )}
+
+            {error && <div className="text-sm text-red-600">{error}</div>}
+
+            <button
+              type="submit"
+              disabled={requestLoading}
+              className="w-full py-2 px-4 bg-purple-600 text-white rounded disabled:opacity-60"
+            >
+              {requestLoading ? 'Sending…' : 'Send reset link'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <div className="max-w-md w-full bg-white p-6 rounded shadow">
@@ -126,6 +217,7 @@ const ResetPasswordPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={8}
                 className="w-full px-3 py-2 border rounded"
               />
               <button
@@ -137,6 +229,7 @@ const ResetPasswordPage: React.FC = () => {
                 {showPassword ? <EyeOff /> : <Eye />}
               </button>
             </div>
+            <p className="mt-1 text-xs text-gray-500">{PASSWORD_REQUIREMENT_MESSAGE}</p>
           </div>
 
           <div>

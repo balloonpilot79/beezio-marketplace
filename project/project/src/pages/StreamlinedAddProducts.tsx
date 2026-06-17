@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { ensureSellerProductInOrder } from '../utils/sellerProductOrder';
 import ImageUpload from '../components/ImageUpload';
-import { apiPost } from '../utils/netlifyApi';
+import { getAdminOnlyLowPriceMessage, isAdminUser } from '../utils/adminPricePolicy';
 
 interface ProductItem {
   id: string;
@@ -21,7 +21,7 @@ interface ProductItem {
 
 const StreamlinedAddProducts: React.FC = () => {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, userRoles } = useAuth();
   const [products, setProducts] = useState<ProductItem[]>([
     {
       id: '1',
@@ -119,34 +119,46 @@ const StreamlinedAddProducts: React.FC = () => {
         throw new Error('Please add at least one valid product with name and price');
       }
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const apiSession = sessionData?.session ?? null;
-
       for (const product of validProducts) {
-        const created = await apiPost<{ id: string }>(
-          '/.netlify/functions/product-create',
-          apiSession,
-          {
-            title: product.name,
-            description: product.description,
-            sku: product.sku || null,
-            price: product.price,
-            stock_quantity: product.inventory,
-            images: product.images,
-            category_id: product.category_id || null,
-            affiliate_enabled: Boolean(product.affiliate_enabled),
-          }
-        );
+        const adminOnlyPriceError = getAdminOnlyLowPriceMessage({
+          isAdmin: isAdminUser({ profile, user, userRoles }),
+          listingPrice: product.price,
+          sellerAmount: product.price * 0.70,
+        });
+        if (adminOnlyPriceError) {
+          throw new Error(adminOnlyPriceError);
+        }
 
-        if (!created?.id) throw new Error('Product create failed');
+        const { data: created, error } = await supabase.from('products').insert({
+          title: product.name,
+          description: product.description,
+          sku: product.sku || null,
+          price: product.price,
+          stock_quantity: product.inventory,
+          total_inventory: product.inventory,
+          images: product.images,
+          category_id: product.category_id || null,
+          seller_id: profile.id,
+          affiliate_enabled: product.affiliate_enabled,
+          status: product.affiliate_enabled ? 'active' : 'store_only',
+          is_promotable: product.affiliate_enabled,
+          is_active: true,
+          commission_rate: 0, // No minimum commission for seller-direct manual uploads
+          commission_type: 'percentage',
+          seller_amount: product.price * 0.70, // Rough calculation
+          platform_fee: product.price * 0.15,
+          requires_shipping: true
+        }).select('id').single();
+
+        if (error) throw error;
 
         // Ensure it shows in seller storefront + seller ordering dashboard.
-        await ensureSellerProductInOrder({ sellerId: profile.id, productId: String(created.id) });
+        await ensureSellerProductInOrder({ sellerId: profile.id, productId: (created as any)?.id });
       }
 
       alert(`Successfully added ${validProducts.length} products!`);
       if (redirectAfterSave) {
-        navigate('/dashboard');
+        navigate('/dashboard?section=seller&tab=products');
       } else {
         // Reset form for another entry
         setProducts([blankProduct()]);
@@ -327,7 +339,7 @@ const StreamlinedAddProducts: React.FC = () => {
             />
           </div>
 
-          {/* Affiliate Marketing Toggle */}
+          {/* Partner Marketing Toggle */}
           <div className="border-t border-gray-200 pt-6">
             <label className="flex items-start gap-3 cursor-pointer group">
               <input
@@ -338,10 +350,10 @@ const StreamlinedAddProducts: React.FC = () => {
               />
               <div>
                 <div className="font-bold text-gray-900 group-hover:text-[#ffcc00] transition-colors">
-                  Enable affiliate marketing for this product
+                  Enable partner marketing for this product
                 </div>
                 <div className="text-sm text-gray-600 mt-1">
-                  Allow affiliates to promote this product and earn commissions on sales
+                  Allow partners to promote this product and earn commissions on sales
                 </div>
               </div>
             </label>

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 
@@ -11,10 +12,22 @@ if (!SUPABASE_URL || !SUPABASE_ANON) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
+const resolveStorageKey = (supabaseUrl) => {
+  try {
+    const host = new URL(supabaseUrl).host;
+    const projectRef = host.split('.')[0] || '';
+    return projectRef ? `sb-${projectRef}-auth-token` : 'supabase.auth.token';
+  } catch {
+    return 'supabase.auth.token';
+  }
+};
+
 async function run() {
   const role = process.argv[2] || 'buyer';
   const email = process.argv[3] || `e2e-${role}@test.beezio.co`;
-  const pw = process.argv[4] || 'TestPass!234';
+  const pw = process.argv[4] || 'Testpass123!';
+  const origin = process.argv[5] || 'http://localhost:5173';
+  const storageKey = resolveStorageKey(SUPABASE_URL);
 
   console.log('Signing in', email);
   const { data, error } = await supabase.auth.signInWithPassword({ email, password: pw });
@@ -30,14 +43,14 @@ async function run() {
 
   const session = data.session;
   // Playwright storageState format: { cookies: [...], origins: [...] }
-  // We'll persist the supabase.auth.token in localStorage under 'supabase.auth.token'
+  // Supabase v2 persists sessions under sb-<project-ref>-auth-token.
   const storage = {
     cookies: [],
     origins: [
       {
-        origin: 'http://localhost:5173',
+        origin,
         localStorage: [
-          { name: 'supabase.auth.token', value: JSON.stringify(session) }
+          { name: storageKey, value: JSON.stringify(session) }
         ]
       }
     ]

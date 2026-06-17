@@ -73,7 +73,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
               to="/affiliates" 
               className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200"
             >
-              For Affiliates
+              For Partners
             </Link>
           </nav>
 
@@ -200,7 +200,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                For Affiliates
+                For Partners
               </Link>
             </div>
           </div>

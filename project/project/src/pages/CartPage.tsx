@@ -5,9 +5,8 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import RecommendationEngine from '../components/RecommendationEngine';
 import { TAX_RATE } from '../lib/pricing';
-import { calculateFinalPrice } from '../utils/pricingEngine';
-import { DEFAULT_PAYOUT_SETTINGS, PLATFORM_FEE_PERCENT } from '../config/beezioConfig';
 import { useBehaviorTracker } from '../hooks/useBehaviorTracker';
+import { formatMoneyDisplay, formatShippingDisplay } from '../utils/moneyDisplay';
 
 const CartPage: React.FC = () => {
   const { 
@@ -26,22 +25,13 @@ const CartPage: React.FC = () => {
   // Behavior tracking
   const { trackView, trackClick } = useBehaviorTracker();
 
-  const computeFinalUnitPrice = (item: typeof items[number]) => {
-    const affiliatePercent = item.affiliateCommissionRate ?? item.commission_rate ?? DEFAULT_PAYOUT_SETTINGS.affiliatePercent;
-    const payout = {
-      affiliatePercent,
-      platformPercent: PLATFORM_FEE_PERCENT,
-      fundraiserPercent: DEFAULT_PAYOUT_SETTINGS.fundraiserPercent,
-    };
-    try {
-      return calculateFinalPrice(item.price, payout);
-    } catch (e) {
-      console.warn('BEEZIO_PRICING_ENGINE cart display fallback', e);
-      return item.price;
-    }
+  const getCartUnitPrice = (item: typeof items[number]) => {
+    const storedPrice = Number(item.price);
+    if (Number.isFinite(storedPrice) && storedPrice >= 0) return storedPrice;
+    return 0;
   };
 
-  const displaySubtotal = items.reduce((total, item) => total + computeFinalUnitPrice(item) * item.quantity, 0);
+  const displaySubtotal = items.reduce((total, item) => total + getCartUnitPrice(item) * item.quantity, 0);
   const shipping = getShippingTotal();
   const tax = Math.round((displaySubtotal * TAX_RATE + Number.EPSILON) * 100) / 100;
   const total = displaySubtotal + shipping + tax;
@@ -72,13 +62,7 @@ const CartPage: React.FC = () => {
   const handleCheckout = () => {
     // Track checkout initiation
     trackClick(undefined, 'checkout_initiated');
-
-    if (!user) {
-      // Redirect to login/signup with return URL
-      navigate('/signup?redirect=/checkout');
-    } else {
-      navigate('/checkout');
-    }
+    navigate('/checkout');
   };
 
   if (items.length === 0) {
@@ -130,7 +114,7 @@ const CartPage: React.FC = () => {
         {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
           {items.map((item) => {
-            const finalUnitPrice = computeFinalUnitPrice(item);
+            const finalUnitPrice = getCartUnitPrice(item);
             return (
             <div key={item.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center space-x-4">
@@ -151,6 +135,11 @@ const CartPage: React.FC = () => {
                   >
                     {item.title}
                   </Link>
+                  {item.isSample && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 mt-1">
+                      Sample • Final sale
+                    </span>
+                  )}
                   {item.variantName && (
                     <p className="text-sm text-gray-600 mt-1">
                       Option: {item.variantName}
@@ -161,12 +150,11 @@ const CartPage: React.FC = () => {
                   </p>
                   <div className="flex items-center space-x-4 mt-2">
                     <span className="text-lg font-bold text-gray-900">
-                      ${finalUnitPrice.toFixed(2)}
+                      {formatMoneyDisplay(finalUnitPrice)}
                     </span>
-                    <span className="text-xs text-gray-500">Includes platform & commission fees</span>
-                    {item.shippingCost && item.shippingCost > 0 && (
+                    {(item.shippingCost ?? 0) >= 0 && item.isDigital !== true && (
                       <span className="text-sm text-gray-600">
-                        + ${item.shippingCost.toFixed(2)} shipping
+                        {formatShippingDisplay(item.shippingCost || 0)}
                       </span>
                     )}
                   </div>
@@ -210,10 +198,10 @@ const CartPage: React.FC = () => {
               {/* Item Total */}
               <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
                 <span className="text-sm text-gray-600">
-                  {item.quantity} × ${finalUnitPrice.toFixed(2)}
+                  {item.quantity} × {formatMoneyDisplay(finalUnitPrice)}
                 </span>
                 <span className="text-lg font-bold text-gray-900">
-                  ${(finalUnitPrice * item.quantity).toFixed(2)}
+                  {formatMoneyDisplay(finalUnitPrice * item.quantity)}
                 </span>
               </div>
             </div>
@@ -225,27 +213,28 @@ const CartPage: React.FC = () => {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Order Summary</h2>
-            
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal</span>
-                <span className="font-semibold">${displaySubtotal.toFixed(2)}</span>
+                <span className="font-semibold">{formatMoneyDisplay(displaySubtotal)}</span>
               </div>
               
               <div className="flex justify-between">
                 <span className="text-gray-600">Shipping</span>
-                <span className="font-semibold">${shipping.toFixed(2)}</span>
+                <span className="font-semibold">{formatShippingDisplay(shipping)}</span>
               </div>
               
               <div className="flex justify-between">
                 <span className="text-gray-600">Tax</span>
-                <span className="font-semibold">${tax.toFixed(2)}</span>
+                <span className="font-semibold">{formatMoneyDisplay(tax)}</span>
               </div>
+
+              
               
               <div className="border-t pt-3">
                 <div className="flex justify-between">
                   <span className="text-lg font-semibold text-gray-900">Total</span>
-                  <span className="text-lg font-bold text-gray-900">${total.toFixed(2)}</span>
+                  <span className="text-lg font-bold text-gray-900">{formatMoneyDisplay(total)}</span>
                 </div>
               </div>
             </div>
@@ -255,11 +244,11 @@ const CartPage: React.FC = () => {
                 <p>
                   Selected shipping: <span className="font-semibold text-gray-900">{shippingOption.name}</span>
                   {shippingOption.destinationCountry ? ` · ${shippingOption.destinationCountry}` : ''}
-                  {shippingOption.cost !== undefined ? ` · $${shippingOption.cost.toFixed(2)}` : ''}
+                  {shippingOption.cost !== undefined ? ` · ${formatShippingDisplay(shippingOption.cost)}` : ''}
                 </p>
               ) : (
                 <p className="text-gray-500">
-                  Shipping option is chosen during the checkout step.
+                  Shipping is finalized during checkout.
                 </p>
               )}
             </div>
@@ -268,7 +257,7 @@ const CartPage: React.FC = () => {
               onClick={handleCheckout}
               className="w-full bg-amber-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-amber-700 transition-colors mt-6"
             >
-              {user ? 'Proceed to Checkout' : 'Sign In to Checkout'}
+              Checkout with PayPal
             </button>
 
             {/* Trust Badges */}
@@ -277,7 +266,7 @@ const CartPage: React.FC = () => {
                 <p className="text-sm text-gray-600 mb-3">Safe & Secure Checkout</p>
                 <div className="flex justify-center space-x-4 text-xs text-gray-500">
                   <span>🔒 SSL Encrypted</span>
-                  <span>💳 Stripe Secured</span>
+                  <span>💳 Secure Payments</span>
                   <span>↩️ Easy Returns</span>
                 </div>
               </div>

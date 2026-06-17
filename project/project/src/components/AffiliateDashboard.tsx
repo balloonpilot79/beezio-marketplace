@@ -5,8 +5,8 @@ import { Link } from 'react-router-dom';
 import QRCode from 'qrcode.react';
 import AffiliateMarketingToolkit from './AffiliateMarketingToolkit';
 import AffiliateEarningsDashboard from './AffiliateEarningsDashboard';
-import RecruiterDashboard from './RecruiterDashboard';
 import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
+import { apiPost } from '../utils/netlifyApi';
 
 interface Payout {
   id: string;
@@ -21,6 +21,8 @@ interface Earnings {
   current_balance: number;
   pending_payout: number;
   paid_out: number;
+  held_balance?: number;
+  next_release_at?: string | null;
 }
 
 interface PromotedProduct {
@@ -37,9 +39,10 @@ interface PromotedProduct {
 
 const generateAffiliateLink = (affiliateId: string, productId?: string) => {
   const baseUrl = window.location.origin;
+  const uid = encodeURIComponent(affiliateId);
   return productId
-    ? `${baseUrl}/product/${productId}?ref=${affiliateId}`
-    : `${baseUrl}?ref=${affiliateId}`;
+    ? `${baseUrl}/product/${productId}?ref=${affiliateId}&uid=${uid}`
+    : `${baseUrl}?ref=${affiliateId}&uid=${uid}`;
 };
 
 const AffiliateLinks: React.FC<{ affiliateId: string; products: PromotedProduct[] }> = ({ affiliateId, products }) => (
@@ -99,7 +102,7 @@ const AffiliateLinks: React.FC<{ affiliateId: string; products: PromotedProduct[
 );
 
 const AffiliateDashboard: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const [products, setProducts] = useState<PromotedProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -143,32 +146,43 @@ const AffiliateDashboard: React.FC = () => {
     setPayoutLoading(true);
     setPayoutError(null);
     if (!profile) return;
-    // Fetch earnings
-    const { data: earningsData, error: earningsError } = await supabase
-      .from('user_earnings')
-      .select('*')
-      .eq('user_id', profile.id)
-      .eq('role', 'affiliate')
-      .single();
-    if (earningsError) {
-      setPayoutError('Could not fetch earnings.');
+    try {
+      const earningsPayload = await apiPost<any>('/api/user-earnings', session ?? null, { role: 'affiliate' });
+      const earningsData = (earningsPayload as any)?.earnings || {};
+      setEarnings({
+        current_balance: Number(earningsData.current_balance || 0),
+        pending_payout: Number(earningsData.pending_payout || 0),
+        paid_out: Number(earningsData.paid_out || 0),
+        held_balance: Number(earningsData.held_balance || 0),
+        next_release_at: String(earningsData.next_release_at || '').trim() || null,
+      });
+
+      const { data: payoutsData, error: payoutsError } = await supabase
+        .from('payout_items')
+        .select('id, amount, status, created_at, updated_at, error_message')
+        .eq('payee_user_id', profile.id)
+        .eq('payee_role', 'PARTNER')
+        .order('created_at', { ascending: false });
+      if (payoutsError) {
+        throw payoutsError;
+      }
+
+      setPayouts(
+        ((payoutsData as any[]) || []).map((row: any) => ({
+          id: String(row?.id || ''),
+          amount: Number(row?.amount || 0),
+          status: String(row?.status || '').trim().toLowerCase(),
+          created_at: String(row?.created_at || ''),
+          processed_at: String(row?.updated_at || '').trim() || undefined,
+          failure_reason: String(row?.error_message || '').trim() || undefined,
+        }))
+      );
+    } catch (error) {
+      console.error('Could not fetch affiliate payout data.', error);
+      setPayoutError('Could not fetch affiliate payout data.');
+    } finally {
       setPayoutLoading(false);
-      return;
     }
-    setEarnings(earningsData);
-    // Fetch payout history
-    const { data: payoutsData, error: payoutsError } = await supabase
-      .from('payouts')
-      .select('*')
-      .eq('user_id', profile.id)
-      .order('created_at', { ascending: false });
-    if (payoutsError) {
-      setPayoutError('Could not fetch payout history.');
-      setPayoutLoading(false);
-      return;
-    }
-    setPayouts(payoutsData || []);
-    setPayoutLoading(false);
   };
 
   const handleCustomLinkChange = (productId: string, value: string) => {
@@ -211,7 +225,7 @@ const AffiliateDashboard: React.FC = () => {
   if (loading || payoutLoading) return <div>Loading...</div>;
   if (error || payoutError) return <div className="text-red-500">{error || payoutError}</div>;
 
-  const tabs = ['overview', 'products', 'marketing', 'earnings', 'recruitment'];
+  const tabs = ['overview', 'products', 'marketing', 'earnings'];
 
   return (
     <div className="max-w-6xl mx-auto p-6">
@@ -248,8 +262,8 @@ const AffiliateDashboard: React.FC = () => {
               <div className="text-gray-600 text-sm">Available Balance</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-amber-600">${earnings.pending_payout.toFixed(2)}</div>
-              <div className="text-gray-600 text-sm">Pending Payout</div>
+              <div className="text-2xl font-bold text-amber-600">${(earnings.held_balance || earnings.pending_payout).toFixed(2)}</div>
+              <div className="text-gray-600 text-sm">Held / Pending</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-blue-700">${earnings.paid_out.toFixed(2)}</div>
@@ -267,6 +281,9 @@ const AffiliateDashboard: React.FC = () => {
           {requestingPayout ? 'Requesting...' : 'Add payout request'}
         </button>
         <div className="text-xs text-gray-500 mt-2">Payouts run bi-monthly (1st & 15th UTC).</div>
+        {earnings?.next_release_at ? (
+          <div className="text-xs text-gray-500 mt-1">Next hold release: {new Date(earnings.next_release_at).toLocaleString()}</div>
+        ) : null}
         {payoutSuccess && <div className="text-green-600 mt-2">{payoutSuccess}</div>}
         {payoutError && <div className="text-red-600 mt-2">{payoutError}</div>}
       </div>
@@ -293,9 +310,9 @@ const AffiliateDashboard: React.FC = () => {
                   <td className="py-2">${payout.amount.toFixed(2)}</td>
                   <td className="py-2">
                     <span className={
-                      payout.status === 'completed'
+                      payout.status === 'sent' || payout.status === 'paid'
                         ? 'text-green-600'
-                        : payout.status === 'failed'
+                      : payout.status === 'failed'
                         ? 'text-red-600'
                         : 'text-amber-600'
                     }>
@@ -305,7 +322,7 @@ const AffiliateDashboard: React.FC = () => {
                   <td className="py-2">
                     {payout.status === 'failed' && payout.failure_reason ? (
                       <span className="text-red-600">{payout.failure_reason}</span>
-                    ) : payout.status === 'completed' && payout.processed_at ? (
+                    ) : (payout.status === 'sent' || payout.status === 'paid') && payout.processed_at ? (
                       <span className="text-gray-600">Paid {new Date(payout.processed_at).toLocaleDateString()}</span>
                     ) : (
                       <span className="text-gray-500">-</span>
@@ -333,7 +350,7 @@ const AffiliateDashboard: React.FC = () => {
                   <p className="text-gray-600">${product.price}</p>
                   <p className="text-xs text-amber-600">Commission: {product.commission_rate}%</p>
                   <div className="mt-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Custom Affiliate Link</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Custom Partner Link</label>
                     <input
                       type="text"
                       value={customLinks[product.id] || product.custom_link || ''}
@@ -394,8 +411,6 @@ const AffiliateDashboard: React.FC = () => {
       {/* Earnings Tab */}
       {activeTab === 'earnings' && <AffiliateEarningsDashboard />}
 
-      {/* Recruitment Tab */}
-      {activeTab === 'recruitment' && <RecruiterDashboard />}
     </div>
   );
 };

@@ -26,9 +26,9 @@ const RecurringIncomeMarketing: React.FC = () => {
       description: 'Professional post highlighting the income difference',
       estimatedReach: 2500,
       conversionRate: 3.2,
-      content: `🚀 AFFILIATE MARKETERS: Stop leaving money on the table!
+      content: `🚀 Partner MARKETERS: Stop leaving money on the table!
 
-Traditional affiliate programs pay you ONCE per sale.
+Traditional Partner programs pay you ONCE per sale.
 Beezio pays you EVERY MONTH for the same customer.
 
 Real example:
@@ -42,7 +42,7 @@ Real example:
 Ready to build real wealth? 
 Link in comments 👇
 
-#AffiliateMarketing #RecurringIncome #PassiveIncome`
+#PartnerMarketing #RecurringCommissions`
     },
     {
       id: 'twitter-thread-1',
@@ -52,9 +52,9 @@ Link in comments 👇
       description: 'Viral thread format explaining the advantage',
       estimatedReach: 5000,
       conversionRate: 2.8,
-      content: `🧵 Thread: Why I switched to recurring commission affiliate programs
+      content: `🧵 Thread: Why I switched to recurring commission Partner programs
 
-1/ Traditional affiliate marketing pays you once per sale
+1/ Traditional Partner marketing pays you once per sale
 You make $100, customer pays monthly, you never see another penny
 
 2/ Recurring commission programs pay you EVERY month
@@ -66,14 +66,14 @@ Same $100 commission becomes $1,800 over 18 months
 • 100 subscribers = $10,000/month recurring
 
 4/ This isn't just income - it's wealth building
-Each new referral adds to your monthly total
+Each new influencer adds to your monthly total
 Your income compounds and grows predictably
 
 5/ Best part? Transparent pricing means customers trust you more
 They see exactly where their money goes
 Higher conversion rates = more subscribers for you
 
-6/ Ready to build recurring income? Check out @BeezioHQ
+6/ Ready to build recurring commissions? Check out @BeezioHQ
 Link in bio 👇`
     },
     {
@@ -89,11 +89,11 @@ Hey [Name],
 
 Quick question: Would you rather earn $100 once, or $100 every month for 18 months straight?
 
-Obvious answer, right? Yet 95% of affiliates are stuck earning one-time commissions while leaving thousands on the table.
+Obvious answer, right? Yet 95% of Partners are stuck earning one-time commissions while leaving thousands on the table.
 
 Here's what I mean:
 
-**Traditional Affiliate Program:**
+**Traditional Partner Program:**
 • Customer buys $150/month software
 • You earn $50 commission... once
 • Customer pays $2,700 over 18 months
@@ -107,7 +107,7 @@ Here's what I mean:
 
 That's 1,800% more income from the SAME customer.
 
-Tomorrow I'll show you exactly how top affiliates are building $50K+ monthly recurring income streams.
+Tomorrow I'll show you how top partners are building recurring commissions with subscription products.
 
 Talk soon,
 [Your Name]`
@@ -122,13 +122,13 @@ Talk soon,
       conversionRate: 4.1,
       content: `Story 1: "💰 Would you rather earn $100 once or $100 every month?"
 
-Story 2: "🤔 Most affiliates choose the wrong answer..."
+Story 2: "🤔 Most Partners choose the wrong answer..."
 
 Story 3: "📈 Recurring commissions mean:
 • $100 once = $100 total
 • $100/month = $1,800 over 18 months"
 
-Story 4: "🚀 I built $15K/month recurring income with subscription products"
+Story 4: "🚀 I built $15K/month in recurring commissions with subscription products"
 
 Story 5: "💡 The secret? Promoting products people pay for monthly"
 
@@ -143,18 +143,18 @@ Story 6: "🔗 Link in bio to see how you can do the same"`
       conversionRate: 5.2,
       content: `[Screen: Split comparison graphic]
 
-**Narrator:** "Two affiliates promote the same $150/month software..."
+**Narrator:** "Two Partners promote the same $150/month software..."
 
-[Left side: Traditional Affiliate]
-"Traditional affiliate earns $50... once."
+[Left side: Traditional Partner]
+"Traditional Partner earns $50... once."
 
-[Right side: Beezio Affiliate]  
-"Beezio affiliate earns $50... every month."
+[Right side: Beezio Partner]  
+"Beezio Partner earns $50... every month."
 
 [Animation: Money counting up]
 "After 18 months:
-• Traditional affiliate: $50 total
-• Beezio affiliate: $900 total"
+• Traditional Partner: $50 total
+• Beezio Partner: $900 total"
 
 [Screen: Calculator showing scaling]
 "With 100 subscribers:
@@ -169,12 +169,12 @@ Story 6: "🔗 Link in bio to see how you can do the same"`
     {
       id: 'landing-page-1',
       type: 'landing',
-      title: 'Affiliate Landing Page Copy',
+      title: 'Partner Landing Page Copy',
       description: 'High-converting landing page template',
       estimatedReach: 10000,
       conversionRate: 12.3,
       content: `**Headline:** 
-"Build $50,000+ Monthly Recurring Income as a Beezio Affiliate"
+"Build $50,000+ Monthly Recurring Income as a Beezio Partner"
 
 **Subheadline:**
 "Stop earning commissions once. Start earning them every month with subscription products that pay recurring commissions for years."
@@ -184,13 +184,13 @@ Story 6: "🔗 Link in bio to see how you can do the same"`
 • ✅ Average customer lifetime: 18+ months  
 • ✅ Transparent pricing builds trust = higher conversions
 • ✅ Portfolio of $99-299/month subscription products
-• ✅ Real affiliates earning $25K-50K+ monthly recurring
+• ✅ Real Partners earning $25K-50K+ monthly recurring
 • ✅ Free to join, no monthly fees, weekly payouts
 
 **Social Proof:**
-"Over 1,200 affiliates building recurring income streams"
+"Over 1,200 partners building recurring commissions"
 "$2.3M+ in monthly recurring commissions paid"
-"Average affiliate earns $4,847/month recurring"
+"Average Partner earns $4,847/month recurring"
 
 **CTA Button:** "Start Building Recurring Income Today"`
     }
@@ -261,9 +261,9 @@ Story 6: "🔗 Link in bio to see how you can do the same"`
             <div>
               <h3 className="text-lg font-semibold text-amber-900 mb-2">Core Marketing Message</h3>
               <p className="text-amber-800 text-lg leading-relaxed">
-                <strong>"Build Real Wealth with Monthly Recurring Commissions"</strong> - Unlike traditional affiliate programs that pay once, 
-                Beezio pays you <strong>EVERY MONTH</strong> for as long as customers stay subscribed. This isn't just affiliate marketing - 
-                it's wealth building through recurring income.
+                <strong>"Build Real Wealth with Monthly Recurring Commissions"</strong> - Unlike traditional Partner programs that pay once, 
+                Beezio pays you <strong>EVERY MONTH</strong> for as long as customers stay subscribed. This isn't just Partner marketing - 
+                it's long-term earnings through recurring commissions.
               </p>
             </div>
           </div>
@@ -303,7 +303,7 @@ Story 6: "🔗 Link in bio to see how you can do the same"`
           <div className="flex items-center gap-3">
             <Users className="w-8 h-8 text-orange-600" />
             <div>
-              <p className="text-sm text-orange-700">Top Affiliate Earns</p>
+              <p className="text-sm text-orange-700">Top Partner Earns</p>
               <p className="text-2xl font-bold text-orange-900">$50K+/mo</p>
             </div>
           </div>
@@ -430,7 +430,7 @@ Story 6: "🔗 Link in bio to see how you can do the same"`
           </div>
           <div>
             <h4 className="font-medium mb-2">🚀 Use Social Proof</h4>
-            <p>Include real affiliate success stories and specific income numbers to make the opportunity tangible and believable.</p>
+            <p>Include real Partner success stories and specific income numbers to make the opportunity tangible and believable.</p>
           </div>
         </div>
       </div>
@@ -439,3 +439,5 @@ Story 6: "🔗 Link in bio to see how you can do the same"`
 };
 
 export default RecurringIncomeMarketing;
+
+

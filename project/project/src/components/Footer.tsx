@@ -1,12 +1,30 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Heart, ExternalLink } from 'lucide-react';
+import { Mail, Heart } from 'lucide-react';
+import { getPartnerLabel } from '../utils/processorSafeCopy';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
 
   return (
     <footer className="bg-white text-gray-700 border-t border-black/10">
+      <div className="sm:hidden px-4 py-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-bold text-black">Beezio</div>
+            <div className="mt-1 text-xs text-gray-500">Simple marketplace checkout and clear pricing.</div>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-semibold">
+            <Link to="/marketplace" className="rounded-full border border-black/10 px-3 py-1.5 text-black">
+              Shop
+            </Link>
+            <Link to="/dashboard" className="rounded-full border border-black/10 px-3 py-1.5 text-black">
+              Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+      <div className="hidden sm:block">
       <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12 sm:px-6 lg:px-8">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
@@ -15,8 +33,7 @@ const Footer: React.FC = () => {
           <div>
             <h3 className="text-black text-lg font-bold mb-4">Beezio</h3>
             <p className="text-sm text-gray-600 mb-4">
-              The transparent marketplace where sellers, affiliates, and buyers all win. 
-              Everyone knows exactly what they're getting.
+              A transparent retail marketplace where sellers and buyers meet with clear pricing and secure checkout.
             </p>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <span>Made with</span>
@@ -46,12 +63,7 @@ const Footer: React.FC = () => {
               </li>
               <li>
                 <Link to="/start-earning" className="hover:text-[#ffcb05] transition-colors">
-                  For Affiliates
-                </Link>
-              </li>
-              <li>
-                <Link to="/fundraisers" className="hover:text-[#ffcb05] transition-colors">
-                  For Fundraisers
+                  {getPartnerLabel()}
                 </Link>
               </li>
             </ul>
@@ -77,6 +89,16 @@ const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
+                <Link to="/returns" className="hover:text-[#ffcb05] transition-colors">
+                  Returns & Refunds
+                </Link>
+              </li>
+              <li>
+                <Link to="/shipping" className="hover:text-[#ffcb05] transition-colors">
+                  Shipping Policy
+                </Link>
+              </li>
+              <li>
                 <a href="mailto:support@beezio.co" className="hover:text-[#ffcb05] transition-colors inline-flex items-center">
                   support@beezio.co
                   <Mail className="w-3 h-3 ml-1" aria-hidden="true" />
@@ -90,12 +112,42 @@ const Footer: React.FC = () => {
             <h3 className="text-black text-base font-semibold mb-4">Legal</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/terms" className="hover:text-[#ffcb05] transition-colors">
+                <Link to="/legal/terms" className="hover:text-[#ffcb05] transition-colors">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link to="/privacy" className="hover:text-[#ffcb05] transition-colors">
+                <Link to="/legal/seller-terms" className="hover:text-[#ffcb05] transition-colors">
+                  Seller Terms
+                </Link>
+              </li>
+              <li>
+                <Link to="/legal/partner-terms" className="hover:text-[#ffcb05] transition-colors">
+                  Partner Terms
+                </Link>
+              </li>
+              <li>
+                <Link to="/legal/influencer-terms" className="hover:text-[#ffcb05] transition-colors">
+                  Influencer Terms
+                </Link>
+              </li>
+              <li>
+                <Link to="/legal/refund-policy" className="hover:text-[#ffcb05] transition-colors">
+                  Refund & Returns
+                </Link>
+              </li>
+              <li>
+                <Link to="/legal/dispute-policy" className="hover:text-[#ffcb05] transition-colors">
+                  Dispute Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/legal/payout-policy" className="hover:text-[#ffcb05] transition-colors">
+                  Payout Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/legal/privacy" className="hover:text-[#ffcb05] transition-colors">
                   Privacy Policy
                 </Link>
               </li>
@@ -131,8 +183,8 @@ const Footer: React.FC = () => {
               <a href="mailto:sales@beezio.co" className="hover:text-[#ffcb05] transition-colors">
                 sales@beezio.co
               </a>
-              <a href="mailto:affiliates@beezio.co" className="hover:text-[#ffcb05] transition-colors">
-                affiliates@beezio.co
+              <a href="mailto:partners@beezio.co" className="hover:text-[#ffcb05] transition-colors">
+                partners@beezio.co
               </a>
             </div>
           </div>
@@ -140,22 +192,14 @@ const Footer: React.FC = () => {
           {/* Platform Info */}
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-500">
-              Transparent pricing - Fair commissions - Everyone wins
+              Transparent pricing and straightforward checkout.
             </p>
             <p className="text-xs text-gray-500 mt-2">
-              Payments processed securely by{' '}
-              <a 
-                href="https://stripe.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-black hover:text-[#ffcb05] inline-flex items-center"
-              >
-                Stripe
-                <ExternalLink className="w-3 h-3 ml-1" aria-hidden="true" />
-              </a>
+              Payments processed securely through Beezio checkout.
             </p>
           </div>
         </div>
+      </div>
       </div>
     </footer>
   );

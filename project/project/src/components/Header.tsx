@@ -91,7 +91,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 to="/affiliate/products" 
                 className="text-gray-700 hover:text-green-600 font-medium text-sm transition-colors duration-200 relative group px-2 py-1"
               >
-                Affiliate Products
+                Partner Products
                 <span className="absolute bottom-0 left-2 w-0 h-0.5 bg-green-600 transition-all duration-300 group-hover:w-[calc(100%-16px)]"></span>
               </Link>
               <Link 
@@ -195,7 +195,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors duration-200"
                       onClick={() => setIsUserDropdownOpen(false)}
                     >
-                      💰 Affiliate Products
+                      💰 Partner Products
                     </Link>
                     <Link
                       to="/seller/products"
@@ -221,7 +221,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                       💵 Earnings
                     </Link>
                     <Link
-                      to="/dashboard/store-settings"
+                      to="/dashboard/store"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                       onClick={() => setIsUserDropdownOpen(false)}
                     >
@@ -267,7 +267,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 className="text-gray-700 hover:text-green-600 font-medium transition-colors duration-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Affiliate Products
+                Partner Products
               </Link>
               <Link 
                 to="/marketplace" 
@@ -325,7 +325,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                     className="block text-gray-700 hover:text-green-600 font-medium transition-colors duration-200"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    💰 Affiliate Products
+                    💰 Partner Products
                   </Link>
                   <Link
                     to="/seller/products"
@@ -351,7 +351,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                     💵 Earnings
                   </Link>
                   <Link
-                    to="/dashboard/store-settings"
+                    to="/dashboard/store"
                     className="block text-gray-700 hover:text-yellow-600 font-medium transition-colors duration-200"
                     onClick={() => setIsMenuOpen(false)}
                   >

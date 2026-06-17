@@ -70,6 +70,9 @@ export const trackAffiliateClick = async (linkCodeOrReferralCode: string) => {
     // Store in session/cookie for checkout
     sessionStorage.setItem('affiliate_ref', linkCodeOrReferralCode);
     sessionStorage.setItem('affiliate_id', (linkData as any).affiliate_id);
+    localStorage.setItem('affiliate_referral', String((linkData as any).affiliate_id || ''));
+    localStorage.setItem('affiliate_ref', String((linkData as any).affiliate_id || ''));
+    localStorage.setItem('affiliate_referral_code', linkCodeOrReferralCode);
 
     return (linkData as any).affiliate_id;
   } catch (error) {

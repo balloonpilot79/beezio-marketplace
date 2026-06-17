@@ -26,6 +26,8 @@ export interface CartItem {
   shippingOptionId?: string;
   shippingOptionName?: string;
   shippingOptionCost?: number;
+  isSample?: boolean;
+  isDigital?: boolean;
 }
 
 export interface ShippingOptionSelection {
@@ -78,13 +80,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [items, setItems] = useState<CartItem[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [shippingOption, setShippingOption] = useState<ShippingOptionSelection | null>(null);
+  const [isCartHydrated, setIsCartHydrated] = useState(false);
 
-  const GUEST_CART_KEY = 'beezio-cart-guest';
-  const resolveShippingKey = (userId: string | null) =>
-    userId ? `beezio-shipping-${userId}` : 'beezio-shipping-guest';
+  const STORE_SCOPE_KEY = 'beezio-store-scope';
+  const LEGACY_CART_KEY = 'beezio-cart';
+  const LAST_CART_SCOPE_KEY = 'beezio-last-cart-scope';
+  const [storeScope, setStoreScope] = useState<string>(() => localStorage.getItem(STORE_SCOPE_KEY) || 'global');
 
-  const loadStoredShippingOption = (userId: string | null) => {
-    const storageKey = resolveShippingKey(userId);
+  const resolveCartKey = (userId: string | null, scope: string) =>
+    userId ? `beezio-cart-${scope}-${userId}` : `beezio-cart-${scope}-guest`;
+  const resolveShippingKey = (userId: string | null, scope: string) =>
+    userId ? `beezio-shipping-${scope}-${userId}` : `beezio-shipping-${scope}-guest`;
+
+  const loadStoredShippingOption = (userId: string | null, scope: string) => {
+    const storageKey = resolveShippingKey(userId, scope);
     const stored = localStorage.getItem(storageKey);
     if (stored) {
       try {
@@ -97,82 +106,134 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Load cart from localStorage on component mount AND track user
-  useEffect(() => {
-    // Get current user from Supabase session
-    const checkUserAndLoadCart = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id || null;
-      
-      // If user changed, clear cart
-      if (userId !== currentUserId) {
-        setCurrentUserId(userId);
-        
-        if (userId) {
-          // New user logged in - load their cart, and migrate any guest cart if present
-          const userCartKey = `beezio-cart-${userId}`;
-          const savedUserCart = localStorage.getItem(userCartKey);
+  const tryParseCart = (raw: string | null): CartItem[] | null => {
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as CartItem[]) : null;
+    } catch {
+      return null;
+    }
+  };
 
-          // If the user cart is empty/missing but a guest cart exists, migrate it.
-          if (!savedUserCart) {
-            const guestCart = localStorage.getItem(GUEST_CART_KEY);
-            if (guestCart) {
-              localStorage.setItem(userCartKey, guestCart);
-              localStorage.removeItem(GUEST_CART_KEY);
-            }
-          }
+  const loadCartFromKeys = (keys: string[], preferNonEmpty = false) => {
+    let firstParsed: { found: true; items: CartItem[]; sourceKey: string } | null = null;
 
-          const resolvedCart = localStorage.getItem(userCartKey);
-          if (resolvedCart) {
-            try {
-              setItems(JSON.parse(resolvedCart));
-            } catch (error) {
-              console.error('Error loading cart from localStorage:', error);
-              setItems([]);
-            }
-          } else {
-            setItems([]);
-          }
-        } else {
-          // User logged out - load guest cart (if any)
-          const guestCart = localStorage.getItem(GUEST_CART_KEY);
-          if (guestCart) {
-            try {
-              setItems(JSON.parse(guestCart));
-            } catch (error) {
-              console.error('Error loading guest cart from localStorage:', error);
-              setItems([]);
-            }
-          } else {
-            setItems([]);
-          }
+    for (const key of keys) {
+      const raw = localStorage.getItem(key);
+      if (raw === null) continue;
+      const parsed = tryParseCart(raw);
+      if (parsed !== null) {
+        if (!firstParsed) {
+          firstParsed = { found: true as const, items: parsed, sourceKey: key };
+        }
+
+        if (!preferNonEmpty || parsed.length > 0) {
+          return { found: true as const, items: parsed, sourceKey: key };
         }
       }
-      loadStoredShippingOption(userId);
+    }
+
+    if (firstParsed) {
+      return firstParsed;
+    }
+
+    return { found: false as const, items: [] as CartItem[], sourceKey: null as string | null };
+  };
+
+  useEffect(() => {
+    const handleScopeChange = () => {
+      const nextScope = localStorage.getItem(STORE_SCOPE_KEY) || 'global';
+      setStoreScope(prev => (prev === nextScope ? prev : nextScope));
     };
-    
-    checkUserAndLoadCart();
+
+    window.addEventListener('beezio-store-scope-changed', handleScopeChange);
+    window.addEventListener('storage', handleScopeChange);
+
+    return () => {
+      window.removeEventListener('beezio-store-scope-changed', handleScopeChange);
+      window.removeEventListener('storage', handleScopeChange);
+    };
+  }, []);
+
+  // Track signed-in user
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || null;
+      if (userId !== currentUserId) {
+        setCurrentUserId(userId);
+      }
+    };
+
+    checkUser();
   }, [currentUserId]);
 
-  // Save cart to localStorage whenever items change - PER USER
+  // Load cart whenever user or store scope changes
   useEffect(() => {
-    if (currentUserId) {
-      localStorage.setItem(`beezio-cart-${currentUserId}`, JSON.stringify(items));
+    setIsCartHydrated(false);
+
+    const userId = currentUserId;
+    const userCartKey = resolveCartKey(userId, storeScope);
+    const guestCartKey = resolveCartKey(null, storeScope);
+    const lastScope = localStorage.getItem(LAST_CART_SCOPE_KEY);
+
+    if (userId) {
+      const candidateKeys = [
+        userCartKey,
+        guestCartKey,
+        ...(lastScope && lastScope !== storeScope ? [resolveCartKey(userId, lastScope), resolveCartKey(null, lastScope)] : []),
+        LEGACY_CART_KEY,
+      ];
+      const loaded = loadCartFromKeys(candidateKeys, true);
+      setItems(loaded.items);
+
+      // Migrate guest/legacy/previous-scope carts into the current signed-in scope key.
+      if (loaded.found && loaded.sourceKey && loaded.sourceKey !== userCartKey) {
+        localStorage.setItem(userCartKey, JSON.stringify(loaded.items));
+        if (loaded.sourceKey !== LEGACY_CART_KEY) {
+          localStorage.removeItem(loaded.sourceKey);
+        }
+      }
     } else {
-      localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items));
+      const candidateKeys = [
+        guestCartKey,
+        ...(lastScope && lastScope !== storeScope ? [resolveCartKey(null, lastScope)] : []),
+        LEGACY_CART_KEY,
+      ];
+      const loaded = loadCartFromKeys(candidateKeys, true);
+      setItems(loaded.items);
+
+      // Keep guest cart aligned to current scope for stable refresh behavior.
+      if (loaded.found && loaded.sourceKey && loaded.sourceKey !== guestCartKey) {
+        localStorage.setItem(guestCartKey, JSON.stringify(loaded.items));
+      }
     }
-    // Also clear old global cart key if it exists
-    localStorage.removeItem('beezio-cart');
-  }, [items, currentUserId]);
+
+    loadStoredShippingOption(userId, storeScope);
+    setIsCartHydrated(true);
+  }, [currentUserId, storeScope]);
+
+  // Save cart to localStorage whenever items change - PER USER + STORE
+  useEffect(() => {
+    if (!isCartHydrated) return;
+
+    const key = resolveCartKey(currentUserId, storeScope);
+    localStorage.setItem(key, JSON.stringify(items));
+    localStorage.setItem(LEGACY_CART_KEY, JSON.stringify(items));
+    localStorage.setItem(LAST_CART_SCOPE_KEY, storeScope);
+  }, [items, currentUserId, storeScope, isCartHydrated]);
 
   useEffect(() => {
-    const key = resolveShippingKey(currentUserId);
+    if (!isCartHydrated) return;
+
+    const key = resolveShippingKey(currentUserId, storeScope);
     if (shippingOption) {
       localStorage.setItem(key, JSON.stringify(shippingOption));
     } else {
       localStorage.removeItem(key);
     }
-  }, [shippingOption, currentUserId]);
+  }, [shippingOption, currentUserId, storeScope, isCartHydrated]);
 
   const addToCart = (newItem: Omit<CartItem, 'id'>) => {
     setItems(prevItems => {
@@ -250,13 +311,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems([]);
     setShippingOption(null);
     // Also clear from localStorage
-    if (currentUserId) {
-      localStorage.removeItem(`beezio-cart-${currentUserId}`);
-      localStorage.removeItem(resolveShippingKey(currentUserId));
-    } else {
-      localStorage.removeItem(GUEST_CART_KEY);
-      localStorage.removeItem(resolveShippingKey(null));
-    }
+    localStorage.removeItem(resolveCartKey(currentUserId, storeScope));
+    localStorage.removeItem(resolveShippingKey(currentUserId, storeScope));
+    localStorage.removeItem(LEGACY_CART_KEY);
   };
 
   const getTotalItems = () => {
@@ -269,7 +326,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getShippingTotal = () => {
     const perItem = items.reduce((total, item) => total + (item.shippingCost || 0) * (item.quantity || 0), 0);
-    return perItem + (shippingOption?.cost || 0);
+    if (shippingOption) {
+      return shippingOption.cost || 0;
+    }
+    return perItem;
   };
 
   const isInCart = (productId: string) => {

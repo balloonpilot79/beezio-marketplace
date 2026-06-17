@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
+import { buildDeterministicReferralCode } from '../utils/referralCode';
 
 export interface AffiliateProduct {
   productId: string;
@@ -53,6 +54,8 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
   const { user, profile } = useAuth();
   const [selectedProducts, setSelectedProducts] = useState<AffiliateProduct[]>([]);
   const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [affiliateShareBase, setAffiliateShareBase] = useState<{ origin: string; pathPrefix: string } | null>(null);
+  const [affiliatePublicToken, setAffiliatePublicToken] = useState<string | null>(null);
   const [affiliateStats, setAffiliateStats] = useState<AffiliateStats>({
     totalProducts: 0,
     totalClicks: 0,
@@ -65,14 +68,9 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
   useEffect(() => {
     const fetchReferralCode = async () => {
       if (user && profile) {
-        const deterministicFromProfileId = (profileId: string): string => {
-          const compact = profileId.replace(/-/g, '').toUpperCase();
-          return `BZO${compact.slice(0, 12)}`;
-        };
-
         const ensureStableReferralCode = async (profileId: string) => {
           // Deterministic + stable: derived from profile UUID (never changes).
-          const deterministic = deterministicFromProfileId(profileId);
+          const deterministic = buildDeterministicReferralCode(profileId);
           try {
             const { error } = await supabase
               .from('profiles')
@@ -118,7 +116,7 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
         // If profile has an id, we can safely expose the deterministic code immediately,
         // even if the DB update hasn't completed yet.
         if (profile.id) {
-          setReferralCode(deterministicFromProfileId(profile.id));
+          setReferralCode(buildDeterministicReferralCode(profile.id));
         }
 
         // Otherwise fetch from database
@@ -138,6 +136,41 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
     };
 
     fetchReferralCode();
+  }, [user, profile]);
+
+  useEffect(() => {
+    if (!user || !profile) {
+      setAffiliateShareBase(null);
+      setAffiliatePublicToken(null);
+      return;
+    }
+    let cancelled = false;
+    const affiliateId = profile?.id || user.id;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('affiliate_store_settings')
+          .select('subdomain, custom_domain')
+          .eq('affiliate_id', affiliateId)
+          .maybeSingle();
+        if (cancelled) return;
+        const customDomain = String(data?.custom_domain || '').trim();
+        const subdomain = String(data?.subdomain || '').trim().toLowerCase();
+        const origin = customDomain ? `https://${customDomain}` : window.location.origin;
+        const pathPrefix = customDomain ? '' : subdomain ? `/store/${subdomain}` : '';
+        setAffiliateShareBase({ origin, pathPrefix });
+        setAffiliatePublicToken(subdomain || profile?.referral_code || profile?.id || user.id);
+      } catch {
+        if (!cancelled) {
+          setAffiliateShareBase(null);
+          setAffiliatePublicToken(profile?.referral_code || profile?.id || user.id);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user, profile]);
 
   // Load affiliate data from localStorage
@@ -202,12 +235,15 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
   const generateAffiliateLink = (productId: string): string => {
     if (!user) return '';
     
-    const baseUrl = window.location.origin;
+    const baseUrl = affiliateShareBase?.origin || window.location.origin;
+    const pathPrefix = affiliateShareBase?.pathPrefix || '';
     const affiliateId = profile?.id || user.id;
+    const publicToken = String(affiliatePublicToken || affiliateId).trim();
+    const promoterUserId = user.id || affiliateId;
     const timestamp = Date.now();
     
     // Create a trackable affiliate link with UTM parameters
-    return `${baseUrl}/product/${productId}?ref=${affiliateId}&utm_source=affiliate&utm_medium=link&utm_campaign=product_promotion&t=${timestamp}`;
+    return `${baseUrl}${pathPrefix}/product/${productId}?ref=${encodeURIComponent(publicToken)}&uid=${encodeURIComponent(promoterUserId)}&utm_source=affiliate&utm_medium=link&utm_campaign=product_promotion&t=${timestamp}`;
   };
 
   const generateSiteWideLink = (): string => {
@@ -218,14 +254,13 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
     // Always prefer stable referral code for recruiter/signup links.
     // If it is temporarily unavailable, fall back to deterministic code from profile id.
     if (referralCode) {
-      return `${baseUrl}/affiliate-signup?role=affiliate&recruit=${encodeURIComponent(referralCode)}`;
+      return `${baseUrl}/signup?recruit=${encodeURIComponent(referralCode)}`;
     }
     if (profile?.id) {
-      const compact = profile.id.replace(/-/g, '').toUpperCase();
-      const deterministic = `BZO${compact.slice(0, 12)}`;
-      return `${baseUrl}/affiliate-signup?role=affiliate&recruit=${encodeURIComponent(deterministic)}`;
+      const deterministic = buildDeterministicReferralCode(profile.id);
+      return `${baseUrl}/signup?recruit=${encodeURIComponent(deterministic)}`;
     }
-    return `${baseUrl}/affiliate-signup?role=affiliate`;
+    return `${baseUrl}/signup`;
   };
 
   const trackClick = (productId: string, affiliateId: string) => {

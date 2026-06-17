@@ -1,9 +1,6 @@
-export const CJ_IMPORT_ALLOWED_EMAILS = new Set(
-  ['jason@beezio.co', 'jasonlovingsr@gmail.com'].map((email) => email.toLowerCase())
-);
+import { ADMIN_EMAIL_ALLOWLIST } from '../../shared/adminAccess';
 
 export const canAccessCJImport = (email?: string | null): boolean => {
   if (!email) return false;
-  return CJ_IMPORT_ALLOWED_EMAILS.has(email.toLowerCase());
+  return ADMIN_EMAIL_ALLOWLIST.has(email.toLowerCase());
 };
-

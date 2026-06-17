@@ -1,96 +1,151 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { Megaphone, ShoppingBag, Store } from 'lucide-react';
 import PublicLayout from '../components/layout/PublicLayout';
+import { getPartnerLabel, getPartnerProgramLabel } from '../utils/processorSafeCopy';
 
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <section className="space-y-3">
-    <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
-    <div className="space-y-2 text-gray-700 leading-relaxed">{children}</div>
-  </section>
-);
+const steps = [
+  {
+    title: '1. Sellers publish products',
+    detail: 'Sellers create product pages, set pricing, and manage availability from one dashboard.',
+  },
+  {
+    title: '2. Partners and influencers share',
+    detail: 'Partners and influencers share storefront links, product picks, and campaigns to their audiences.',
+  },
+  {
+    title: '3. Buyers checkout on Beezio',
+    detail: 'Customers purchase in one checkout flow while orders route to sellers for fulfillment and updates.',
+  },
+];
 
 const HowItWorksPage: React.FC = () => {
   return (
-    <PublicLayout>
-      <div className="space-y-8">
-        <header className="space-y-3">
-          <p className="text-sm font-semibold text-amber-700 uppercase tracking-[0.2em]">How it works</p>
-          <h1 className="text-3xl md:text-4xl font-semibold text-gray-900">What is Beezio?</h1>
-          <p className="text-gray-700 leading-relaxed max-w-3xl">
-            Beezio is not a supplier or a dropshipping company. It's a marketplace and earning platform that sits on top of suppliers like CJ,
-            print-on-demand partners, and regular sellers.
-          </p>
-        </header>
+    <PublicLayout className="bzo-marketing-shell">
+      <div className="space-y-10">
+        <section className="relative overflow-hidden rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-emerald-50 px-6 py-10 md:px-10 md:py-14">
+          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-amber-200/30 blur-3xl" />
+          <div className="absolute -left-16 bottom-0 h-56 w-56 rounded-full bg-emerald-200/30 blur-3xl" />
 
-        <Section title="Think of it this way:">
-          <ul className="list-disc list-inside space-y-2">
-            <li>A supplier (like CJ) provides products and shipping.</li>
-            <li>A seller chooses what to sell and sets their ask price.</li>
-            <li>Beezio runs the marketplace, checkout, and payouts.</li>
-            <li>Affiliates and referrers help bring buyers and new sellers to the platform.</li>
-            <li>Beezio connects all of that in one place.</li>
+          <div className="relative grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="space-y-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-700">How it works</p>
+              <h1 className="text-3xl font-semibold text-gray-900 md:text-5xl" style={{ fontFamily: 'Fraunces, serif' }}>
+                One visual flow for sellers, {getPartnerLabel().toLowerCase()}, and influencers.
+              </h1>
+              <p className="max-w-3xl text-base text-gray-700 md:text-lg">
+                Beezio is designed so all three groups can win together. Sellers list products, {getPartnerLabel().toLowerCase()} and influencers share, and buyers checkout in a clean experience.
+              </p>
+            </div>
+
+            <div className="w-full max-w-sm rounded-3xl border border-white/70 bg-white/80 p-5 shadow-xl backdrop-blur lg:justify-self-end">
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-600">At a glance</p>
+              <div className="mt-4 space-y-3 text-sm text-gray-700">
+                <div className="rounded-xl border border-amber-100 bg-white px-4 py-3">Store setup and product publishing</div>
+                <div className="rounded-xl border border-amber-100 bg-white px-4 py-3">Influencer and {getPartnerLabel().toLowerCase()} sharing</div>
+                <div className="rounded-xl border border-amber-100 bg-white px-4 py-3">Checkout, routing, and support</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-emerald-200 bg-emerald-50/85 p-6 md:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-700">Free to join</p>
+          <h2 className="mt-2 text-2xl font-semibold text-gray-900 md:text-3xl">Sellers, affiliates, and influencers are free — buyers pay one clear price.</h2>
+          <p className="mt-3 text-sm text-gray-700 md:text-base">
+            Beezio is free for sellers, affiliates, and influencers. Instead of monthly fees, Beezio’s platform fees and commissions are built into product pricing. Buyers see one all-in price, and earnings are distributed automatically after purchase.
+          </p>
+          <ul className="mt-4 grid gap-2 text-sm text-gray-800 md:grid-cols-2">
+            <li>✅ Free seller accounts</li>
+            <li>✅ Free affiliate + influencer accounts</li>
+            <li>✅ No monthly fees / no listing fees</li>
+            <li>✅ One clear buyer price (fees + commissions included)</li>
+            <li>✅ Automated payout splits after checkout</li>
           </ul>
-        </Section>
+        </section>
 
-        <Section title="How pricing works">
-          <p className="text-gray-700">
-            Sellers always enter the price they want to take home. We call this the ask price.
-          </p>
-          <p className="text-gray-700">Beezio then adds everything else on top:</p>
-          <ul className="list-disc list-inside space-y-2">
-            <li>Platform fee (Beezio's share)</li>
-            <li>Affiliate commission (for people who promote the product)</li>
-            <li>Referral rewards (for people who brought those affiliates to Beezio)</li>
-            <li>Stripe payment processing fees</li>
-          </ul>
-          <p className="text-gray-700">
-            The buyer sees one final price that already includes all of that. The result: the seller still receives their full ask price, affiliates
-            and referrers get what they were promised, Beezio earns its platform fee, and buyers see a simple, honest price.
-          </p>
-        </Section>
+        <section className="bzo-marketing-band rounded-3xl p-6 md:p-8">
+          <h2 className="text-2xl font-semibold text-gray-900 md:text-3xl">The simple flow</h2>
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            {steps.map((step) => (
+              <article key={step.title} className="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900">{step.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-gray-700">{step.detail}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
-        <Section title="For Sellers">
-          <ul className="list-disc list-inside space-y-2">
-            <li>Create a free store on Beezio.</li>
-            <li>Add products (physical or digital) and set your ask price.</li>
-            <li>Connect to a supplier like CJ Dropshipping or use your own inventory.</li>
-            <li>Beezio automatically layers in its fees and affiliate rewards on top.</li>
-            <li>You get paid your full ask when orders are completed.</li>
-            <li>You don't have to build your own affiliate system, checkout, or marketplace. Beezio does that for you.</li>
-          </ul>
-        </Section>
+        <section className="bzo-marketing-band rounded-3xl p-6 md:p-8">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-700">Three roles</p>
+            <h2 className="text-2xl font-semibold text-gray-900 md:text-3xl">Pick the path that fits you</h2>
+          </div>
 
-        <Section title="For Affiliates">
-          <p className="text-gray-700">Affiliates can:</p>
-          <ul className="list-disc list-inside space-y-2">
-            <li>Grab links for products, collections, and stores.</li>
-            <li>Share them on social media, email, websites, and more.</li>
-            <li>Earn commission every time someone buys through their link.</li>
-            <li>Earn a lifetime 5% share of Beezio's platform earnings from any affiliate they refer.</li>
-          </ul>
-          <p className="text-gray-700">
-            That means: you get paid for your direct sales and you also earn when the affiliates you brought in succeed.
-          </p>
-        </Section>
+          <div className="mt-6 grid gap-5 lg:grid-cols-3">
+            <article className="rounded-2xl border border-emerald-200 bg-emerald-50/85 p-5 shadow-sm">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm">
+                <Store size={18} />
+              </div>
+              <h3 className="mt-3 text-xl font-semibold text-gray-900">Sellers</h3>
+              <p className="mt-2 text-sm text-gray-700">Launch your catalog, manage inventory, and fulfill orders from one place.</p>
+              <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                <li>Publish products and set pricing.</li>
+                <li>Control shipping and fulfillment details.</li>
+                <li>Track order updates and customer support.</li>
+              </ul>
+            </article>
 
-        <Section title="For Fundraisers and Causes">
-          <p className="text-gray-700">Fundraisers can:</p>
-          <ul className="list-disc list-inside space-y-2">
-            <li>Launch campaigns with products instead of just asking for donations.</li>
-            <li>Invite affiliates and supporters to promote those campaigns.</li>
-            <li>Benefit from Beezio’s referral structure so more people have an incentive to help.</li>
-          </ul>
-          <p className="text-gray-700">
-            Every sale helps your cause, and everyone involved can see how the money is split.
-          </p>
-        </Section>
+            <article className="rounded-2xl border border-amber-200 bg-amber-50/85 p-5 shadow-sm">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white text-amber-700 shadow-sm">
+                <Megaphone size={18} />
+              </div>
+              <h3 className="mt-3 text-xl font-semibold text-gray-900">{getPartnerLabel()}</h3>
+              <p className="mt-2 text-sm text-gray-700">Join {getPartnerProgramLabel()} to pick products and share store links with your audience.</p>
+              <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                <li>Pick products for your storefront.</li>
+                <li>Share links and campaign assets.</li>
+                <li>Track performance in your dashboard.</li>
+              </ul>
+            </article>
 
-        <Section title="How Beezio is different from suppliers">
-          <p className="text-gray-700">
-            Beezio is not a warehouse or shipping company. Suppliers store and ship products. Beezio is the place where sellers showcase what they
-            want to sell, buyers come to shop, and affiliates and referrers earn from moving traffic and sales. Beezio is the hub that ties all of this
-            together with transparent pricing and built-in earning.
-          </p>
-        </Section>
+            <article className="rounded-2xl border border-slate-200 bg-slate-50/95 p-5 shadow-sm">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-700 shadow-sm">
+                <ShoppingBag size={18} />
+              </div>
+              <h3 className="mt-3 text-xl font-semibold text-gray-900">Influencers</h3>
+              <p className="mt-2 text-sm text-gray-700">Influencers are a core part of the model, sharing product drops and storefront picks across social channels.</p>
+              <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                <li>Share product links in social posts and livestreams.</li>
+                <li>Use campaign assets and QR links.</li>
+                <li>Collaborate with sellers and {getPartnerLabel().toLowerCase()} on launches.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section className="bzo-marketing-band rounded-3xl p-6 md:p-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">Ready to explore Beezio?</h2>
+              <p className="text-sm text-gray-700">Apply early to join the first wave of sellers, {getPartnerLabel().toLowerCase()}, and influencers.</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                to="/auth/signup?role=seller"
+                className="inline-flex items-center justify-center rounded-full bg-amber-500 px-6 py-3 text-sm font-semibold text-black shadow-sm transition-colors hover:bg-amber-600"
+              >
+                Join as a seller
+              </Link>
+              <Link
+                to="/affiliate/signup"
+                className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-900 transition-colors hover:border-amber-400 hover:text-amber-700"
+              >
+                Join as a {getPartnerLabel().toLowerCase()}
+              </Link>
+            </div>
+          </div>
+        </section>
       </div>
     </PublicLayout>
   );

@@ -10,8 +10,7 @@ const envFileCandidates = [
 const envFile = envFileCandidates.find(f => fs.existsSync(f));
 const required = [
   'VITE_SUPABASE_URL',
-  'VITE_SUPABASE_ANON_KEY',
-  'VITE_STRIPE_PUBLISHABLE_KEY'
+  'VITE_SUPABASE_ANON_KEY'
 ];
 
 if (!envFile) {
@@ -33,4 +32,11 @@ if (missing.length) {
   process.exit(1);
 }
 
-console.log('Env guard: required keys present.');
+const paymentKeys = ['VITE_PAYPAL_CLIENT_ID', 'VITE_STRIPE_PUBLISHABLE_KEY'];
+const hasPaymentKey = paymentKeys.some((key) => Boolean(map[key]));
+if (!hasPaymentKey) {
+  console.warn('Env guard: no payment client key found (PayPal/Stripe).');
+  console.warn('If you only use PayPal, set VITE_PAYPAL_CLIENT_ID for client checkout.');
+} else {
+  console.log('Env guard: required keys present.');
+}

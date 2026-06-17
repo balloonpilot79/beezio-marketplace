@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase';
 
 export interface DomainRouteResult {
   isCustomDomain: boolean;
-  storeType?: 'seller' | 'affiliate' | 'fundraiser';
+  storeType?: 'seller' | 'affiliate';
   userId?: string;
   storeSettings?: any;
 }
@@ -75,27 +75,6 @@ export async function checkCustomDomain(): Promise<DomainRouteResult> {
       };
     }
 
-    // Check fundraiser stores
-    const { data: fundraiserStore, error: fundraiserError } = await supabase
-      .from('fundraiser_store_settings')
-      .select('user_id, *')
-      .eq('custom_domain', currentDomain)
-      .maybeSingle();
-
-    if (fundraiserError && fundraiserError.code !== 'PGRST116') {
-      console.error('[CustomDomain] Error checking fundraiser stores:', fundraiserError);
-    }
-
-    if (fundraiserStore) {
-      console.log('[CustomDomain] Found fundraiser store:', fundraiserStore.user_id);
-      return {
-        isCustomDomain: true,
-        storeType: 'fundraiser',
-        userId: fundraiserStore.user_id,
-        storeSettings: fundraiserStore
-      };
-    }
-
     // Also check subdomain (in case they pointed subdomain.beezio.co to their own domain)
     const subdomain = currentDomain.split('.')[0];
     
@@ -131,22 +110,6 @@ export async function checkCustomDomain(): Promise<DomainRouteResult> {
       };
     }
 
-    const { data: subdomainFundraiser } = await supabase
-      .from('fundraiser_store_settings')
-      .select('user_id, *')
-      .eq('subdomain', subdomain)
-      .maybeSingle();
-
-    if (subdomainFundraiser) {
-      console.log('[CustomDomain] Found fundraiser by subdomain:', subdomainFundraiser.user_id);
-      return {
-        isCustomDomain: true,
-        storeType: 'fundraiser',
-        userId: subdomainFundraiser.user_id,
-        storeSettings: subdomainFundraiser
-      };
-    }
-
     console.log('[CustomDomain] No custom domain mapping found');
     return { isCustomDomain: false };
 
@@ -161,7 +124,7 @@ export async function checkCustomDomain(): Promise<DomainRouteResult> {
  */
 export function getStoreUrl(
   userId: string,
-  storeType: 'seller' | 'affiliate' | 'fundraiser',
+  storeType: 'seller' | 'affiliate',
   customDomain?: string,
   subdomain?: string
 ): string {
@@ -169,17 +132,16 @@ export function getStoreUrl(
   if (customDomain) {
     return `https://${customDomain}`;
   }
-  
-  // Priority 2: Subdomain
+
+  // Priority 2: Path-based slug
   if (subdomain) {
-    return `https://${subdomain}.beezio.co`;
+    return `https://beezio.co/store/${subdomain}`;
   }
-  
+
   // Priority 3: Path-based URL
   const pathMap = {
     seller: 'store',
-    affiliate: 'affiliate',
-    fundraiser: 'fundraiser'
+    affiliate: 'partner',
   };
   const path = pathMap[storeType];
   return `${window.location.origin}/${path}/${userId}`;

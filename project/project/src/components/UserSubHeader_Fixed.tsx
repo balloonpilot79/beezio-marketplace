@@ -10,8 +10,6 @@ import {
   TrendingUp,
   Package,
   Heart,
-  Star,
-  Settings,
   ChevronDown,
   Bell,
   DollarSign,
@@ -45,7 +43,7 @@ const UserSubHeader: React.FC = () => {
         { path: '/seller/products', label: 'My Products', icon: Package },
         { path: '/seller/orders', label: 'Orders', icon: ShoppingCart },
         { path: '/seller/analytics', label: 'Analytics', icon: TrendingUp },
-        { path: '/seller/affiliates', label: 'Affiliates', icon: Users }
+        { path: '/seller/affiliates', label: 'Partners', icon: Users }
       ];
     } else if (profile.role === 'affiliate') {
       return [
@@ -60,7 +58,6 @@ const UserSubHeader: React.FC = () => {
         ...baseItems,
         { path: '/buyer/orders', label: 'My Orders', icon: ShoppingCart },
         { path: '/buyer/watching', label: 'Watching', icon: Eye },
-        { path: '/buyer/reviews', label: 'Reviews', icon: Star },
         { path: '/buyer/wishlist', label: 'Wishlist', icon: Heart }
       ];
     }
@@ -74,7 +71,7 @@ const UserSubHeader: React.FC = () => {
     seller: [
       { label: 'Add Product', path: '/seller/products/new', color: 'bg-green-600' },
       { label: 'View Orders', path: '/seller/orders', color: 'bg-blue-600' },
-      { label: 'Recruit Affiliates', path: '/seller/affiliates/recruit', color: 'bg-purple-600' }
+      { label: 'Invite Partners', path: '/seller/affiliates/recruit', color: 'bg-purple-600' }
     ],
     affiliate: [
       { label: 'Get Link', path: '/affiliate/links/generate', color: 'bg-orange-600' },
@@ -84,12 +81,12 @@ const UserSubHeader: React.FC = () => {
     buyer: [
       { label: 'Browse Products', path: '/marketplace', color: 'bg-orange-600' },
       { label: 'Track Orders', path: '/buyer/orders', color: 'bg-blue-600' },
-      { label: 'Leave Review', path: '/buyer/reviews/new', color: 'bg-purple-600' }
+      { label: 'View Wishlist', path: '/buyer/wishlist', color: 'bg-purple-600' }
     ]
   };
 
   return (
-    <div className="bg-white border-b border-gray-200 shadow-sm">
+    <div className="relative z-[60] bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Navigation Items */}
@@ -152,7 +149,7 @@ const UserSubHeader: React.FC = () => {
 
               {/* Dropdown Menu */}
               {isUserMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50">
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-[80]">
                   <div className="px-4 py-3 border-b border-gray-200">
                     <p className="text-sm font-medium text-gray-900">{profile.full_name}</p>
                     <p className="text-sm text-gray-500">{user.email}</p>

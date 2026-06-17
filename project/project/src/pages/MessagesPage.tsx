@@ -1,7 +1,6 @@
 import React from 'react';
-import UniversalInbox from '../components/UniversalInbox';
+import { Navigate } from 'react-router-dom';
 
-const MessagesPage: React.FC = () => <UniversalInbox />;
+const MessagesPage: React.FC = () => <Navigate to="/inbox" replace />;
 
 export default MessagesPage;
-

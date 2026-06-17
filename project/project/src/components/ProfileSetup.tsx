@@ -9,7 +9,7 @@ const ProfileSetup: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
-    role: 'seller', // Default to seller since that's what we're focusing on
+    role: 'seller',
     phone: '',
     city: '',
     state: '',
@@ -80,37 +80,18 @@ const ProfileSetup: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                I want to be a *
+              <label htmlFor="businessName" className="block text-sm font-medium text-gray-700">
+                Business Name
               </label>
-              <select
-                id="role"
-                value={formData.role}
-                onChange={(e) => setFormData({...formData, role: e.target.value})}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
-              >
-                <option value="seller">Seller - I want to sell products</option>
-                <option value="affiliate">Affiliate - I want to promote products</option>
-                <option value="buyer">Buyer - I want to buy products</option>
-                <option value="fundraiser">Fundraiser - I want to raise money</option>
-              </select>
+              <input
+                id="businessName"
+                type="text"
+                value={formData.businessName}
+                onChange={(e) => setFormData({...formData, businessName: e.target.value})}
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                placeholder="Your business name"
+              />
             </div>
-
-            {formData.role === 'seller' && (
-              <div>
-                <label htmlFor="businessName" className="block text-sm font-medium text-gray-700">
-                  Business Name
-                </label>
-                <input
-                  id="businessName"
-                  type="text"
-                  value={formData.businessName}
-                  onChange={(e) => setFormData({...formData, businessName: e.target.value})}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                  placeholder="Your business name"
-                />
-              </div>
-            )}
 
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700">

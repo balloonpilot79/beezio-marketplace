@@ -11,7 +11,7 @@ const ProfileCompletion: React.FC = () => {
 
   const [formData, setFormData] = useState({
     full_name: '',
-    role: 'buyer' as 'buyer' | 'seller' | 'affiliate',
+    role: 'seller' as const,
     phone: '',
     city: '',
     state: '',
@@ -22,7 +22,8 @@ const ProfileCompletion: React.FC = () => {
   // Redirect if already has complete profile
   React.useEffect(() => {
     if (profile?.role) {
-      navigate(`/dashboard/${profile.role}`);
+      const role = String(profile.role || '').toLowerCase();
+      navigate(role === 'buyer' ? '/account' : '/dashboard');
     }
   }, [profile, navigate]);
 
@@ -45,8 +46,7 @@ const ProfileCompletion: React.FC = () => {
 
       if (updateError) throw updateError;
 
-      // Redirect to appropriate dashboard
-      navigate(`/dashboard/${formData.role}`);
+      navigate('/dashboard');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -91,23 +91,6 @@ const ProfileCompletion: React.FC = () => {
                 onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
               />
-            </div>
-
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                Account Type *
-              </label>
-              <select
-                id="role"
-                required
-                value={formData.role}
-                onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as any }))}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
-              >
-                <option value="buyer">Buyer - I want to purchase products</option>
-                <option value="seller">Seller - I want to sell products</option>
-                <option value="affiliate">Affiliate - I want to promote products</option>
-              </select>
             </div>
 
             <div>

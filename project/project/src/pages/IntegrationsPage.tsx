@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Settings, Plus, ExternalLink, Check, AlertCircle } from 'lucide-react';
+import INTEGRATIONS_CONFIG from '../config/integrationsConfig';
 
 interface Integration {
   id: string;
@@ -12,11 +13,12 @@ interface Integration {
 
 const IntegrationsPage: React.FC = () => {
   const [integrations, setIntegrations] = useState<Integration[]>([
+
     {
       id: 'printify',
       name: 'Printify',
       description: 'Connect your Printify store to import products automatically',
-      logo: '🖨️',
+      logo: 'PFY',
       isConnected: false,
       status: 'inactive'
     },
@@ -24,43 +26,16 @@ const IntegrationsPage: React.FC = () => {
       id: 'printful',
       name: 'Printful',
       description: 'Sync your Printful products and orders seamlessly',
-      logo: '📦',
-      isConnected: false,
-      status: 'inactive'
-    },
-    {
-      id: 'shopify',
-      name: 'Shopify',
-      description: 'Import your existing Shopify store and products',
-      logo: '🛍️',
-      isConnected: false,
-      status: 'inactive'
-    },
-    {
-      id: 'etsy',
-      name: 'Etsy',
-      description: 'Connect your Etsy shop to expand your reach',
-      logo: '🎨',
-      isConnected: false,
-      status: 'inactive'
-    },
-    {
-      id: 'amazon',
-      name: 'Amazon',
-      description: 'Sync products and inventory with Amazon Seller Central',
-      logo: '📋',
-      isConnected: false,
-      status: 'inactive'
-    },
-    {
-      id: 'ebay',
-      name: 'eBay',
-      description: 'Import and sync your eBay listings automatically',
-      logo: '🏪',
+      logo: 'PFL',
       isConnected: false,
       status: 'inactive'
     }
   ]);
+
+  // Keep Printful in code but hide it unless explicitly enabled.
+  const displayedIntegrations = integrations.filter((integration) =>
+    integration.id !== 'printful' || INTEGRATIONS_CONFIG.ENABLE_PRINTFUL
+  );
 
   const [showApiForm, setShowApiForm] = useState<string | null>(null);
   const [apiCredentials, setApiCredentials] = useState({
@@ -107,8 +82,15 @@ const IntegrationsPage: React.FC = () => {
 
       {/* Integration Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {integrations.map((integration) => (
-          <div key={integration.id} className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+        {displayedIntegrations.map((integration) => (
+          <div
+            key={integration.id}
+            className={
+              integration.id === 'printify'
+                ? 'bg-gradient-to-br from-amber-50 to-white rounded-lg shadow-md border border-amber-200 p-6'
+                : 'bg-white rounded-lg shadow-md border border-gray-200 p-6'
+            }
+          >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center space-x-3">
                 <div className="text-3xl">{integration.logo}</div>

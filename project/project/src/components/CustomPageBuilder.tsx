@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import { Save, Plus, Trash2, Eye, EyeOff, AlertCircle, CheckCircle, GripVertical } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContextMultiRole';
+import { Save, Plus, Trash2, Eye, EyeOff, AlertCircle, CheckCircle, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
+import {
+  blocksToHtml,
+  defaultPageTemplate,
+  makeId,
+  pageTemplates,
+  type PageBlock,
+  type PageTemplate,
+} from '../utils/storePageTemplates';
+import { ensureProfileIdForUser } from '../utils/resolveProfileId';
 
 interface CustomPage {
   id: string;
@@ -15,60 +24,10 @@ interface CustomPage {
 }
 
 interface CustomPageBuilderProps {
-  ownerType: 'seller' | 'affiliate' | 'fundraiser';
+  ownerType: 'seller' | 'affiliate';
 }
 
 type PageEditorMode = 'builder' | 'html';
-type PageBlockType = 'heading' | 'text' | 'image' | 'button' | 'divider';
-
-type PageBlock =
-  | { id: string; type: 'heading'; level: 1 | 2 | 3; text: string }
-  | { id: string; type: 'text'; text: string }
-  | { id: string; type: 'image'; src: string; alt: string }
-  | { id: string; type: 'button'; label: string; href: string }
-  | { id: string; type: 'divider' };
-
-const makeId = () => {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return `bzo_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-  }
-};
-
-const escapeHtml = (value: string) =>
-  String(value || '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-
-const blocksToHtml = (blocks: PageBlock[]) => {
-  const body = blocks
-    .map((block) => {
-      switch (block.type) {
-        case 'heading': {
-          const tag = block.level === 1 ? 'h1' : block.level === 2 ? 'h2' : 'h3';
-          return `<section class="bzo-block bzo-block-heading"><${tag} style="margin: 0 0 12px 0; font-weight: 800;">${escapeHtml(block.text)}</${tag}></section>`;
-        }
-        case 'text':
-          return `<section class="bzo-block bzo-block-text"><p style="margin: 0 0 16px 0; line-height: 1.6;">${escapeHtml(block.text).replaceAll('\n', '<br />')}</p></section>`;
-        case 'image':
-          return `<section class="bzo-block bzo-block-image"><img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt)}" style="width: 100%; border-radius: 12px; display: block; margin: 0 0 16px 0;" /></section>`;
-        case 'button':
-          return `<section class="bzo-block bzo-block-button" style="text-align: center; margin: 12px 0 20px 0;"><a href="${escapeHtml(block.href)}" style="display: inline-block; background: #ffcb05; color: #101820; padding: 12px 18px; border-radius: 10px; font-weight: 800; text-decoration: none;">${escapeHtml(block.label)}</a></section>`;
-        case 'divider':
-          return `<section class="bzo-block bzo-block-divider"><hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 18px 0;" /></section>`;
-        default:
-          return '';
-      }
-    })
-    .join('\n');
-
-  return `<div class="bzo-page" style="max-width: 1200px; margin: 0 auto; padding: 24px 16px;">\n${body}\n</div>`;
-};
-
 const tryParseBlocksFromHtml = (html: string): PageBlock[] | null => {
   if (typeof window === 'undefined') return null;
   const raw = String(html || '').trim();
@@ -118,17 +77,33 @@ const tryParseBlocksFromHtml = (html: string): PageBlock[] | null => {
   }
 };
 
-const getDefaultBlocks = (): PageBlock[] => [
-  { id: makeId(), type: 'heading', level: 1, text: 'Welcome to my page' },
-  { id: makeId(), type: 'text', text: 'Use this page to promote your business and highlight key offers.' },
-  { id: makeId(), type: 'divider' },
-  { id: makeId(), type: 'heading', level: 2, text: 'Featured products' },
-  { id: makeId(), type: 'text', text: 'Browse the marketplace and shop securely through Beezio checkout.' },
-  { id: makeId(), type: 'button', label: 'Browse products', href: '/marketplace' },
+const getDefaultBlocks = (): PageBlock[] => defaultPageTemplate.createBlocks();
+const ALLOWED_PLATFORM_PATH_PREFIXES = [
+  '/marketplace',
+  '/products',
+  '/product/',
+  '/store/',
+  '/partner/',
+  '/checkout',
+  '/cart',
+  '/about',
+  '/contact',
+  '/faq',
+  '/shipping',
+  '/returns',
+  '/privacy',
+  '/terms',
 ];
+
+const isAllowedPlatformPath = (pathname: string): boolean => {
+  const path = String(pathname || '/').toLowerCase();
+  if (path === '/') return true;
+  return ALLOWED_PLATFORM_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix));
+};
 
 export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps) {
   const { user, profile } = useAuth();
+  const [ownerId, setOwnerId] = useState<string>('');
   const [pages, setPages] = useState<CustomPage[]>([]);
   const [editingPage, setEditingPage] = useState<CustomPage | null>(null);
   const [isNewPage, setIsNewPage] = useState(false);
@@ -139,10 +114,26 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
   const [previewMode, setPreviewMode] = useState(false);
   const [editorMode, setEditorMode] = useState<PageEditorMode>('builder');
   const [blocks, setBlocks] = useState<PageBlock[]>([]);
+  const [editingSnapshot, setEditingSnapshot] = useState('');
 
   useEffect(() => {
-    loadPages();
-  }, [profile?.id]);
+    let cancelled = false;
+    void (async () => {
+      if (!user?.id) {
+        if (!cancelled) setOwnerId('');
+        return;
+      }
+      const resolved = await ensureProfileIdForUser(user);
+      if (!cancelled) setOwnerId(resolved || '');
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    void loadPages();
+  }, [ownerId, ownerType]);
 
   useEffect(() => {
     if (!editingPage) return;
@@ -160,14 +151,14 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
   }, [editingPage?.id]);
 
   const loadPages = async () => {
-    if (!profile?.id) return;
+    if (!ownerId) return;
     
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('custom_pages')
         .select('*')
-        .eq('owner_id', profile.id)
+        .eq('owner_id', ownerId)
         .eq('owner_type', ownerType)
         .order('display_order', { ascending: true });
 
@@ -181,26 +172,43 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
     }
   };
 
-  const handleNewPage = () => {
-    const initialBlocks = getDefaultBlocks();
-    setEditingPage({
+  const startEditingWithBlocks = (template: PageTemplate, overrides?: { slug?: string; title?: string }) => {
+    const initialBlocks = template.createBlocks();
+    const nextPage = {
       id: '',
-      page_slug: '',
-      page_title: '',
+      page_slug: overrides?.slug ?? template.slug ?? '',
+      page_title: overrides?.title ?? template.title ?? '',
       page_content: blocksToHtml(initialBlocks),
       is_active: true,
       display_order: pages.length
-    });
+    };
+    setEditingPage(nextPage);
     setIsNewPage(true);
     setPreviewMode(false);
     setEditorMode('builder');
     setBlocks(initialBlocks);
+    setEditingSnapshot(JSON.stringify({
+      page_slug: nextPage.page_slug,
+      page_title: nextPage.page_title,
+      page_content: nextPage.page_content,
+      is_active: nextPage.is_active,
+    }));
+  };
+
+  const handleNewPage = () => {
+    startEditingWithBlocks(defaultPageTemplate, { slug: '', title: '' });
   };
 
   const handleEditPage = (page: CustomPage) => {
     setEditingPage(page);
     setIsNewPage(false);
     setPreviewMode(false);
+    setEditingSnapshot(JSON.stringify({
+      page_slug: page.page_slug,
+      page_title: page.page_title,
+      page_content: page.page_content,
+      is_active: page.is_active,
+    }));
   };
 
   const handleDeletePage = async (pageId: string) => {
@@ -249,19 +257,24 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
       KEEP_CONTENT: true
     };
 
+    DOMPurify.removeAllHooks();
     DOMPurify.addHook('afterSanitizeAttributes', function (node) {
       if (node.tagName === 'A' && node.hasAttribute('href')) {
         const href = node.getAttribute('href') || '';
         const isMailTel = href.startsWith('mailto:') || href.startsWith('tel:');
-        const isRelative = href.startsWith('/') || href.startsWith('#');
+        const isHashOnly = href.startsWith('#');
+        const isRelative = href.startsWith('/');
         let isAllowedHost = false;
+        let isAllowedPath = false;
         try {
           const url = new URL(href, window.location.origin);
           isAllowedHost = allowedHosts.some(h => url.host.endsWith(h));
+          isAllowedPath = isAllowedPlatformPath(url.pathname);
         } catch (e) {
           // ignore parse errors
         }
-        if (!(isMailTel || isRelative || isAllowedHost)) {
+        const allow = isMailTel || isHashOnly || (isRelative && isAllowedPath) || (isAllowedHost && isAllowedPath);
+        if (!allow) {
           node.removeAttribute('href');
           node.setAttribute('data-blocked', 'external-checkout-blocked');
           node.textContent = node.textContent || 'Link blocked';
@@ -272,8 +285,29 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
     return DOMPurify.sanitize(html, config);
   };
 
+  const getCurrentEditorContent = (): string => {
+    if (!editingPage) return '';
+    return editorMode === 'builder' ? blocksToHtml(blocks) : editingPage.page_content;
+  };
+
+  const hasUnsavedChanges = Boolean(
+    editingPage && editingSnapshot !== JSON.stringify({
+      page_slug: editingPage.page_slug,
+      page_title: editingPage.page_title,
+      page_content: getCurrentEditorContent(),
+      is_active: editingPage.is_active,
+    })
+  );
+
+  const switchToPage = (pageId: string) => {
+    const target = pages.find((page) => page.id === pageId);
+    if (!target || (editingPage && target.id === editingPage.id)) return;
+    if (hasUnsavedChanges && !confirm('You have unsaved changes. Switch pages anyway?')) return;
+    handleEditPage(target);
+  };
+
   const handleSavePage = async () => {
-    if (!profile?.id || !editingPage) return;
+    if (!ownerId || !editingPage) return;
 
     // Validate
     if (!editingPage.page_title.trim()) {
@@ -301,7 +335,7 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
       const sanitizedContent = sanitizeHTML(contentForSave);
       
       const pageData = {
-        owner_id: profile.id,
+        owner_id: ownerId,
         owner_type: ownerType,
         page_slug: editingPage.page_slug,
         page_title: editingPage.page_title,
@@ -328,6 +362,12 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
 
       setSuccess('Page saved successfully');
       loadPages();
+      setEditingSnapshot(JSON.stringify({
+        page_slug: editingPage.page_slug,
+        page_title: editingPage.page_title,
+        page_content: sanitizedContent,
+        is_active: editingPage.is_active,
+      }));
       setEditingPage(null);
       setIsNewPage(false);
     } catch (err: any) {
@@ -407,6 +447,38 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
 
       {!editingPage ? (
         <div>
+          <div className="mb-6 bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Template library</h3>
+                <p className="text-sm text-gray-600">Launch fast with prebuilt layouts you can edit and reorder.</p>
+              </div>
+              <button
+                onClick={handleNewPage}
+                className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 font-semibold"
+              >
+                <Plus className="w-5 h-5" />
+                Blank page
+              </button>
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              {pageTemplates.map((template) => (
+                <div key={template.id} className="border border-gray-200 rounded-lg p-4 flex flex-col gap-2">
+                  <div className="text-sm uppercase tracking-wide text-gray-500">Template</div>
+                  <div className="text-lg font-semibold text-gray-900">{template.title}</div>
+                  <div className="text-sm text-gray-600">{template.description}</div>
+                  <button
+                    type="button"
+                    onClick={() => startEditingWithBlocks(template)}
+                    className="mt-2 inline-flex items-center gap-2 px-3 py-2 bg-yellow-400 text-black rounded-lg hover:bg-yellow-500 font-semibold"
+                  >
+                    Use template
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">My Custom Pages</h2>
             <button
@@ -467,7 +539,44 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
         <div>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">{isNewPage ? 'Create New Page' : 'Edit Page'}</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {pages.length > 1 && !isNewPage && editingPage ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentIndex = pages.findIndex((page) => page.id === editingPage.id);
+                      if (currentIndex > 0) switchToPage(pages[currentIndex - 1].id);
+                    }}
+                    className="inline-flex items-center gap-2 rounded border px-3 py-2 hover:bg-gray-50"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Prev page
+                  </button>
+                  <select
+                    value={editingPage.id}
+                    onChange={(e) => switchToPage(e.target.value)}
+                    className="rounded border bg-white px-3 py-2 text-sm"
+                  >
+                    {pages.map((page) => (
+                      <option key={page.id} value={page.id}>
+                        {page.page_title}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentIndex = pages.findIndex((page) => page.id === editingPage.id);
+                      if (currentIndex >= 0 && currentIndex < pages.length - 1) switchToPage(pages[currentIndex + 1].id);
+                    }}
+                    className="inline-flex items-center gap-2 rounded border px-3 py-2 hover:bg-gray-50"
+                  >
+                    Next page
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </>
+              ) : null}
               <button
                 onClick={() => setPreviewMode(!previewMode)}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
@@ -477,6 +586,7 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
               </button>
               <button
                 onClick={() => {
+                  if (hasUnsavedChanges && !confirm('You have unsaved changes. Close the editor anyway?')) return;
                   setEditingPage(null);
                   setIsNewPage(false);
                   setError('');
@@ -521,6 +631,9 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
                     className="flex-1 p-3 border rounded-lg"
                   />
                 </div>
+                {pages.length > 1 && !isNewPage ? (
+                  <p className="mt-2 text-xs text-gray-500">Use the page switcher in the header to jump between saved pages while editing.</p>
+                ) : null}
               </div>
 
               <div>
@@ -721,7 +834,7 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
                                             setBlocks((prev) => prev.map((b) => (b.id === block.id ? { ...b, href } : b)));
                                           }}
                                           className="p-2 border rounded bg-white"
-                                          placeholder="Link (e.g. /marketplace)"
+                                          placeholder="Link (e.g. /marketplace, /product/123, /checkout)"
                                         />
                                       </div>
                                     )}

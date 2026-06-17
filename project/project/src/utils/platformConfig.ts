@@ -1,13 +1,15 @@
+import { computeBeezioPlatformFee } from '../../shared/beezioFee';
+
 // Platform fee configuration
 // This file contains the fee structure for Beezio platform
 
 export const PLATFORM_CONFIG = {
   // Platform fees (Beezio's revenue)
-  PLATFORM_FEE_PERCENTAGE: 15, // 15% platform fee on all sales (UPDATED Oct 2025)
+  PLATFORM_FEE_PERCENTAGE: 15,
   
   // Payment processing
-  STRIPE_FEE_PERCENTAGE: 2.9, // 2.9% + $0.60 per transaction (CORRECTED)
-  STRIPE_FEE_FIXED: 0.60, // $0.60 fixed fee
+  PROCESSING_FEE_PERCENTAGE: 3.99, // 3.99% + $0.60 per transaction/item
+  PROCESSING_FEE_FIXED: 0.60, // $0.60 fixed fee
   
   // Affiliate commissions (default rates)
   DEFAULT_AFFILIATE_COMMISSION: 20, // 20% default commission rate
@@ -25,26 +27,26 @@ export const PLATFORM_CONFIG = {
 };
 
 // Helper functions for fee calculations
-// UPDATED FORMULA: Seller + Affiliate + Stripe (2.9% + $0.60) + Beezio 15% fee
+// UPDATED FORMULA: Platform fee is based on seller ask only.
+// Processing is paid by the buyer and does not affect platform fee.
 export const calculateFees = (sellerDesiredAmount: number, affiliateCommissionRate: number = 0) => {
   // Affiliate commission based on seller's desired amount
   const affiliateFee = sellerDesiredAmount * affiliateCommissionRate / 100;
 
-  // Stripe fee: 2.9% of (seller + affiliate) + $0.60
-  const stripeBase = sellerDesiredAmount + affiliateFee;
-  const stripeFee = stripeBase * (PLATFORM_CONFIG.STRIPE_FEE_PERCENTAGE / 100) + PLATFORM_CONFIG.STRIPE_FEE_FIXED;
+  const base = sellerDesiredAmount + affiliateFee;
+  const platformFee = computeBeezioPlatformFee(sellerDesiredAmount);
 
-  // Platform fee: 15% of (seller + affiliate + stripe)
-  const platformFee = (sellerDesiredAmount + affiliateFee + stripeFee) * (PLATFORM_CONFIG.PLATFORM_FEE_PERCENTAGE / 100);
-
-  // Final price customer pays
-  const customerPays = sellerDesiredAmount + affiliateFee + stripeFee + platformFee;
+  // Processing fee: calculated on the final price (buyer pays it)
+  const targetNet = base + platformFee;
+  const processingRate = PLATFORM_CONFIG.PROCESSING_FEE_PERCENTAGE / 100;
+  const customerPays = (targetNet + PLATFORM_CONFIG.PROCESSING_FEE_FIXED) / (1 - processingRate);
+  const processingFee = customerPays - targetNet;
 
   return {
     sellerAmount: Number(sellerDesiredAmount.toFixed(2)), // Seller gets exactly what they want
     affiliateFee: Number(affiliateFee.toFixed(2)),
-    platformFee: Number(platformFee.toFixed(2)), // This goes to Beezio (15%)
-    stripeFee: Number(stripeFee.toFixed(2)), // 2.9% + $0.60
+    platformFee: Number(platformFee.toFixed(2)),
+    processingFee: Number(processingFee.toFixed(2)), // 3.99% + $0.60
     customerPays: Number(customerPays.toFixed(2))
   };
 };

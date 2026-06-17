@@ -3,24 +3,27 @@ import { useParams, Link } from 'react-router-dom';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import ProductGrid from '../components/ProductGrid';
-import StoreCustomization from '../components/StoreCustomization';
 import StoreContactModal from '../components/StoreContactModal';
 import AffiliateShareWidget from '../components/AffiliateShareWidget';
 import TrustBadges from '../components/TrustBadges';
-import { Star, MapPin, Clock, Package, Award, ExternalLink, Share2, Settings, MessageSquare, Facebook, Instagram, Twitter, Linkedin, Globe, Target, Sparkles, Shield, Download, Zap, Lock, Store, Eye, BarChart, Users, FileText } from 'lucide-react';
-import { applyThemeToDocument, getThemeStyles, type ThemeName } from '../utils/themes';
+import { Star, MapPin, Clock, Package, Award, Facebook, Instagram, Twitter, Linkedin, Globe, ShoppingBag, Search, User } from 'lucide-react';
+import { applyThemeToDocument, getThemeStyles, normalizeThemeName, type ThemeName } from '../utils/themes';
+import { buildSellerStorefrontProducts } from '../utils/storefrontProducts';
+import { normalizeStorageImagePath } from '../utils/imageHelpers';
 
 interface SellerStorePageProps {
   sellerId?: string;
   isCustomDomain?: boolean;
+  storeSlug?: string;
 }
 
-const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerId, isCustomDomain = false }) => {
+const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerId, isCustomDomain = false, storeSlug }) => {
   const { sellerId: paramSellerId } = useParams<{ sellerId: string }>();
   const sellerId = propSellerId || paramSellerId;
   const { user, profile } = useAuth();
   const [seller, setSeller] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
+  const [insuranceListings, setInsuranceListings] = useState<any[]>([]);
   const [canonicalSellerId, setCanonicalSellerId] = useState<string | null>(null);
   const [storeStats, setStoreStats] = useState({
     totalProducts: 0,
@@ -30,8 +33,10 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
     memberSince: new Date().getFullYear() - 2
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [activeCategory, setActiveCategory] = useState('all');
-  const [isCustomizing, setIsCustomizing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [customPages, setCustomPages] = useState<any[]>([]);
   const [contactModal, setContactModal] = useState(false);
   
@@ -42,6 +47,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
       console.error('[SellerStorePage] No sellerId provided');
       setLoading(false);
       setSeller(null);
+      setInsuranceListings([]);
       return;
     }
     
@@ -49,6 +55,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
       try {
         console.log('[SellerStorePage] Starting data fetch for sellerId:', sellerId);
         setLoading(true);
+        setLoadError(null);
         
         // Sample store fallback data (check FIRST to avoid database queries)
         // Each store is a UNIQUE mini-website with custom domains, internal messaging, and distinct designs
@@ -56,7 +63,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           'beezio-store': {
             id: 'beezio-store',
             full_name: 'Beezio Marketplace',
-            bio: '🚀 FULL FEATURE DEMO: This store showcases everything Beezio offers - custom pages, white-label branding, affiliate links, analytics, and more. Your store can look just like this (or completely different with our templates)!',
+            bio: 'Welcome to the Beezio Marketplace demo store.',
             store_theme: 'modern',
             store_banner: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1600&q=80',
             store_logo: '/bzobee.png',
@@ -130,7 +137,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             id: 'luma-labs',
             full_name: 'Luma Labs',
             bio: '💻 DIGITAL STORE DEMO: Instant delivery, custom pages, and digital downloads. Perfect template for selling courses, templates, ebooks, and software. Browse our catalog to see digital commerce in action!',
-            store_theme: 'minimalist',
+            store_theme: 'minimal',
             store_banner: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?auto=format&fit=crop&w=1600&q=80',
             store_logo: null,
             subdomain: 'luma-labs',
@@ -168,7 +175,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           'cause-collective': {
             id: 'cause-collective',
             full_name: 'Cause Collective',
-            bio: '🎯 FUNDRAISER DEMO: See the progress bar below! Every purchase supports local causes. This store shows how fundraisers can track their goals and engage supporters in real-time.',
+            bio: 'Community-first brand with a focus on quality apparel, events, and seasonal drops. Built to look and feel like a full retail store.',
             store_theme: 'vibrant',
             store_banner: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1600&q=80',
             store_logo: null,
@@ -190,16 +197,6 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               footer_style: 'detailed',
               show_featured: true,
               show_impact_badge: true,
-              show_fundraiser_goal: true
-            },
-            demo_features: {
-              fundraiser: true,
-              goal_amount: 10000,
-              current_raised: 7350,
-              supporters_count: 89,
-              days_remaining: 12,
-              fundraiser_title: 'Community Youth Sports Program',
-              fundraiser_description: 'Help us raise $10,000 to provide sports equipment and coaching for local youth programs'
             },
             custom_css: '.store-header { background: linear-gradient(135deg, #ec4899 0%, #f59e0b 100%); color: white; } .product-card { border: 2px solid #fbbf24; } .impact-badge { background: #10b981; }',
             has_contact_page: true
@@ -215,6 +212,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           setCanonicalSellerId(sampleStore.id);
           setSeller(sampleStore);
           setProducts([]);
+          setInsuranceListings([]);
           setStoreStats(prev => ({
             ...prev,
             totalProducts: 0,
@@ -230,13 +228,48 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           return;
         }
 
+        // Prefer the public API (Netlify Function w/ service role) for storefront loading.
+        // This avoids RLS misconfigurations preventing products from appearing on public store pages.
+        // But: don't allow it to hang the entire page on cold starts / missing env.
+        try {
+          const controller = new AbortController();
+          const timeout = window.setTimeout(() => controller.abort(), 4500);
+          try {
+            const resp = await fetch(`/api/public/store/get?store=${encodeURIComponent(String(sellerId))}`, {
+              signal: controller.signal,
+            });
+            if (resp.ok) {
+              const payload: any = await resp.json().catch(() => ({}));
+              if (payload?.ok && payload?.seller_id) {
+                setCanonicalSellerId(String(payload.seller_id));
+                setSeller(payload.seller || null);
+                setProducts(Array.isArray(payload.products) ? payload.products : []);
+                setInsuranceListings(Array.isArray(payload.insurance_listings) ? payload.insurance_listings : []);
+                setCustomPages(Array.isArray(payload.custom_pages) ? payload.custom_pages : []);
+                setStoreStats(prev => ({
+                  ...prev,
+                  totalProducts: Array.isArray(payload.products) ? payload.products.length : 0,
+                }));
+                setLoading(false);
+                return;
+              }
+            }
+          } finally {
+            window.clearTimeout(timeout);
+          }
+        } catch (e) {
+          // Non-fatal: fall back to direct Supabase client calls.
+          console.warn('[SellerStorePage] Public store API unavailable, falling back to Supabase client:', e);
+        }
+
         // Allow friendly slug from store_settings.subdomain
         // Special case: beezio-store should prefer real DB-backed data when configured.
         let lookupId = sellerId;
+        let storeSettingsData: any | null = null;
         if (lookupId) {
           const { data: slugMatch, error: slugError } = await supabase
             .from('store_settings')
-            .select('seller_id')
+            .select('*')
             .eq('subdomain', lookupId)
             .maybeSingle();
           if (slugError && slugError.code !== 'PGRST116') {
@@ -244,6 +277,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           }
           if (slugMatch?.seller_id) {
             lookupId = slugMatch.seller_id;
+            storeSettingsData = slugMatch;
           }
 
           // For the beezio demo store: if there's no DB slug match, allow the page to fall back to local sample content.
@@ -266,6 +300,20 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           throw sellerError;
         }
 
+        if (!storeSettingsData && lookupId) {
+          const { data: storeSettingsBySeller, error: storeError } = await supabase
+            .from('store_settings')
+            .select('*')
+            .eq('seller_id', lookupId)
+            .maybeSingle();
+          if (storeError && storeError.code !== 'PGRST116') {
+            console.warn('[SellerStorePage] Error fetching store settings (non-fatal):', storeError);
+          }
+          if (storeSettingsBySeller) {
+            storeSettingsData = storeSettingsBySeller;
+          }
+        }
+
         // If no seller found in database
         if (!sellerData) {
           console.log('[SellerStorePage] No seller found in database for ID:', sellerId);
@@ -273,27 +321,62 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             loadSampleStore();
             return;
           }
+          if (!storeSettingsData) {
+            setSeller(null);
+            setInsuranceListings([]);
+            setLoading(false);
+            return;
+          }
+        }
+
+        const canonicalId = sellerData?.id || storeSettingsData?.seller_id || lookupId;
+        if (!canonicalId) {
+          console.warn('[SellerStorePage] Missing canonical seller id');
           setSeller(null);
+          setInsuranceListings([]);
           setLoading(false);
           return;
         }
 
-        console.log('[SellerStorePage] Profile found:', sellerData.full_name, 'ID:', sellerData.id);
-        setCanonicalSellerId(sellerData.id);
-        setSeller(sellerData);
+        const sellerIds = Array.from(
+          new Set([canonicalId, sellerData?.user_id].filter(Boolean).map((id) => String(id)))
+        );
 
-        // Fetch store settings
-        const canonicalId = sellerData.id;
-        console.log('[SellerStorePage] Fetching store settings for:', canonicalId);
+        if (!storeSettingsData) {
+          const { data: storeSettingsByCanonical, error: storeError } = await supabase
+            .from('store_settings')
+            .select('*')
+            .eq('seller_id', canonicalId)
+            .maybeSingle();
+          if (storeError && storeError.code !== 'PGRST116') {
+            console.warn('[SellerStorePage] Error fetching store settings (non-fatal):', storeError);
+          }
+          if (storeSettingsByCanonical) {
+            storeSettingsData = storeSettingsByCanonical;
+          }
+        }
 
-        const { data: storeSettingsData, error: storeError } = await supabase
-          .from('store_settings')
-          .select('*')
-          .eq('seller_id', canonicalId)
-          .maybeSingle();
-
-        if (storeError) {
-          console.warn('[SellerStorePage] Error fetching store settings (non-fatal):', storeError);
+        if (sellerData) {
+          console.log('[SellerStorePage] Profile found:', sellerData.full_name, 'ID:', sellerData.id);
+          setCanonicalSellerId(sellerData.id);
+          setSeller(sellerData);
+        } else if (storeSettingsData && canonicalId) {
+          console.log('[SellerStorePage] Using store settings fallback for seller:', canonicalId);
+          setCanonicalSellerId(canonicalId);
+          setSeller({
+            id: canonicalId,
+            full_name: storeSettingsData.store_name || 'Store',
+            bio: storeSettingsData.store_description || '',
+            store_banner: storeSettingsData.store_banner,
+            store_logo: storeSettingsData.store_logo,
+            store_theme: storeSettingsData.store_theme || 'modern',
+            subdomain: storeSettingsData.subdomain,
+            custom_domain: storeSettingsData.custom_domain,
+            social_links: storeSettingsData.social_links || {},
+            business_hours: storeSettingsData.business_hours,
+            shipping_policy: storeSettingsData.shipping_policy,
+            return_policy: storeSettingsData.return_policy
+          });
         }
 
         if (storeSettingsData) {
@@ -319,7 +402,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         const { data: orderData, error: orderError } = await supabase
           .from('seller_product_order')
           .select('product_id, display_order, is_featured')
-          .eq('seller_id', canonicalId);
+          .in('seller_id', sellerIds);
 
         if (orderError) {
           console.warn('[SellerStorePage] Error fetching product order (non-fatal):', orderError);
@@ -328,6 +411,20 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         let productsData: any[] = [];
         const orderIds = orderData?.map(entry => entry.product_id).filter(Boolean) || [];
 
+        // Always load seller-owned active products.
+        // Important: if a seller curates marketplace products, we must not accidentally hide their own catalog.
+        const { data: sellerOwnedProducts, error: sellerOwnedError } = await supabase
+          .from('products')
+          .select('*')
+          .in('seller_id', sellerIds)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+
+        if (sellerOwnedError) {
+          console.error('[SellerStorePage] Error fetching seller-owned products:', sellerOwnedError);
+        }
+
+        let curatedProductsData: any[] = [];
         if (orderIds.length > 0) {
           console.log('[SellerStorePage] Loading curated product list:', orderIds.length, 'items');
           const { data: curatedProducts, error: curatedError } = await supabase
@@ -339,89 +436,172 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           if (curatedError) {
             console.error('[SellerStorePage] Error fetching curated products:', curatedError);
           } else {
-            productsData = curatedProducts || [];
+            curatedProductsData = curatedProducts || [];
           }
         }
 
-        if (productsData.length === 0) {
-          console.log('[SellerStorePage] Falling back to seller-owned products list');
-          const { data: fallbackProducts, error: productsError } = await supabase
-            .from('products')
-            .select('*')
-            .eq('seller_id', canonicalId)
-            .eq('is_active', true)
-            .order('created_at', { ascending: false });
+        const sharedSlug = String(storeSettingsData?.subdomain || storeSlug || '').trim().toLowerCase();
+        if (sharedSlug) {
+          try {
+            const { data: affiliateSettingsRow } = await supabase
+              .from('affiliate_store_settings')
+              .select('affiliate_id')
+              .eq('subdomain', sharedSlug)
+              .maybeSingle();
 
-          if (productsError) {
-            console.error('[SellerStorePage] Error fetching products:', productsError);
+            const sharedAffiliateId = String((affiliateSettingsRow as any)?.affiliate_id || '').trim();
+            if (sharedAffiliateId) {
+              const [{ data: affiliateRows }, { data: affiliateProducts }] = await Promise.all([
+                supabase
+                  .from('affiliate_products')
+                  .select('product_id, display_order, is_featured')
+                  .eq('affiliate_id', sharedAffiliateId),
+                supabase
+                  .from('affiliate_products')
+                  .select('product_id')
+                  .eq('affiliate_id', sharedAffiliateId),
+              ]);
+
+              const affiliateProductIds = Array.from(
+                new Set(
+                  (affiliateProducts || [])
+                    .map((row: any) => String(row?.product_id || '').trim())
+                    .filter(Boolean)
+                )
+              );
+
+              if (affiliateProductIds.length) {
+                const { data: promotedProducts, error: promotedError } = await supabase
+                  .from('products')
+                  .select('*')
+                  .in('id', affiliateProductIds);
+
+                if (promotedError) {
+                  console.warn('[SellerStorePage] Error fetching shared-slug promoted products (non-fatal):', promotedError);
+                } else {
+                  const promotedOrderById = new Map<string, any>();
+                  (affiliateRows || []).forEach((row: any) => {
+                    const productId = String(row?.product_id || '').trim();
+                    if (productId) promotedOrderById.set(productId, row);
+                  });
+
+                  const combinedById = new Map<string, any>();
+                  [...(sellerOwnedProducts || []), ...curatedProductsData].forEach((product: any) => {
+                    const productId = String(product?.id || '').trim();
+                    if (productId) combinedById.set(productId, product);
+                  });
+
+                  (promotedProducts || []).forEach((product: any) => {
+                    const productId = String(product?.id || '').trim();
+                    if (!productId || combinedById.has(productId)) return;
+                    const order = promotedOrderById.get(productId);
+                    combinedById.set(productId, {
+                      ...product,
+                      affiliate_id: sharedAffiliateId,
+                      display_order: Number.isFinite(Number(order?.display_order)) ? Number(order.display_order) : 999,
+                      is_featured: Boolean(order?.is_featured),
+                    });
+                  });
+
+                  curatedProductsData = Array.from(combinedById.values());
+                }
+              }
+            }
+          } catch (sharedSlugError) {
+            console.warn('[SellerStorePage] Shared slug affiliate storefront lookup failed (non-fatal):', sharedSlugError);
           }
-
-          productsData = fallbackProducts || [];
         }
 
+        const orderedProducts = buildSellerStorefrontProducts({
+          sellerOwnedProducts: sellerOwnedProducts || [],
+          curatedProducts: curatedProductsData,
+          orderEntries: orderData || [],
+        });
+
+        productsData = orderedProducts;
         console.log('[SellerStorePage] Found', productsData.length, 'products for storefront');
-
-        // Merge products with order settings and sort
-        const orderedProducts = productsData.map(product => {
-          const orderSetting = orderData?.find(o => o.product_id === product.id);
-          return {
-            ...product,
-            display_order: orderSetting?.display_order ?? 999,
-            is_featured: orderSetting?.is_featured ?? false
-          };
-        });
-
-        // Sort: featured first, then by display_order, then by created_at
-        orderedProducts.sort((a, b) => {
-          if (a.is_featured && !b.is_featured) return -1;
-          if (!a.is_featured && b.is_featured) return 1;
-          if (a.display_order !== b.display_order) return a.display_order - b.display_order;
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        });
-
         setProducts(orderedProducts);
 
         // Update stats
         setStoreStats(prev => ({
           ...prev,
-          totalProducts: productsData?.length || 0
+          totalProducts: orderedProducts.length
         }));
 
         // Fetch custom pages
-        const { data: pagesData, error: pagesError } = await supabase
-          .from('custom_pages')
-          .select('page_slug,page_title,is_active,display_order')
-          .eq('owner_id', sellerData.id)
-          .eq('owner_type', 'seller')
-          .eq('is_active', true)
-          .order('display_order', { ascending: true });
-        if (pagesError) {
-          console.warn('[SellerStorePage] Error fetching custom pages (non-fatal):', pagesError);
+        const customPagesOwnerId = sellerData?.id || canonicalId;
+        if (customPagesOwnerId) {
+          const { data: pagesData, error: pagesError } = await supabase
+            .from('custom_pages')
+            .select('page_slug,page_title,is_active,display_order')
+            .eq('owner_id', customPagesOwnerId)
+            .eq('owner_type', 'seller')
+            .eq('is_active', true)
+            .order('display_order', { ascending: true });
+          if (pagesError) {
+            console.warn('[SellerStorePage] Error fetching custom pages (non-fatal):', pagesError);
+          }
+          setCustomPages(pagesData || []);
+        } else {
+          setCustomPages([]);
         }
-        setCustomPages(pagesData || []);
 
         console.log('[SellerStorePage] Data fetch complete, setting loading to false');
+        setLoadError(null);
         setLoading(false);
       } catch (error) {
         console.error('[SellerStorePage] CRITICAL ERROR in fetchSellerData:', error);
+        setLoadError('We could not load this store yet. Please try again.');
         setSeller(null);
+        setInsuranceListings([]);
         setLoading(false);
       }
     };
 
     fetchSellerData();
-  }, [sellerId]);
+  }, [sellerId, loadAttempt]);
+
+  useEffect(() => {
+    if (!loading) return;
+    const timeout = setTimeout(() => {
+      if (loadAttempt < 1) {
+        setLoadAttempt((prev) => prev + 1);
+        return;
+      }
+      const matchesProfile = Boolean(
+        (profile?.id && profile.id === sellerId) ||
+        (profile?.user_id && profile.user_id === sellerId) ||
+        (user?.id && user.id === sellerId)
+      );
+      if (matchesProfile) {
+        setSeller({
+          id: profile?.id || sellerId,
+          full_name: profile?.full_name || 'Store',
+          bio: profile?.bio || '',
+          store_theme: 'modern',
+        });
+        setProducts([]);
+        setStoreStats(prev => ({ ...prev, totalProducts: 0 }));
+        setLoadError(null);
+        setLoading(false);
+        return;
+      }
+      setLoadError('This store is taking too long to load. Please refresh or try again.');
+      setLoading(false);
+    }, 12000);
+    return () => clearTimeout(timeout);
+  }, [loadAttempt, loading, profile?.id, profile?.user_id, sellerId, user?.id]);
 
   // Apply theme when seller data loads
   useEffect(() => {
     if (seller?.store_theme) {
-      const themeName = (seller.store_theme as ThemeName) || 'modern';
+      const themeName = normalizeThemeName(seller.store_theme) as ThemeName;
       applyThemeToDocument(themeName, seller.theme_settings);
     }
   }, [seller]);
 
   const resolvedSellerId = canonicalSellerId || sellerId || '';
-  const theme = seller ? getThemeStyles(seller.store_theme as ThemeName || 'modern', seller.theme_settings) : null;
+  const theme = seller ? getThemeStyles(normalizeThemeName(seller.store_theme) as ThemeName, seller.theme_settings) : null;
   const isOwner = Boolean(
     (profile?.id && resolvedSellerId && profile.id === resolvedSellerId) ||
     (profile?.user_id && sellerId && profile.user_id === sellerId) ||
@@ -429,15 +609,212 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   );
 
   const categories = ['all', ...new Set(products.map(p => p.category).filter(Boolean))];
-  const filteredProducts = activeCategory === 'all' 
-    ? products 
-    : products.filter(p => p.category === activeCategory);
+  const showCategoryFilters = (seller?.layout_config as any)?.show_categories !== false && categories.length > 1;
+  const showSearchBar = (seller?.layout_config as any)?.show_search !== false;
+  const filteredProducts = products.filter((product) => {
+    const matchesCategory = activeCategory === 'all' || product.category === activeCategory;
+    if (!matchesCategory) return false;
+    if (!searchQuery.trim()) return true;
+    const needle = searchQuery.trim().toLowerCase();
+    return (
+      String(product?.title || product?.name || '').toLowerCase().includes(needle) ||
+      String(product?.description || '').toLowerCase().includes(needle) ||
+      String(product?.category || '').toLowerCase().includes(needle)
+    );
+  });
+  const visibleCustomPages = customPages.filter((page) => page.page_slug !== 'contact');
+  const resolvedGridLayout = (() => {
+    const layout = seller?.layout_config as any;
+    if (layout?.grid_layout) return layout.grid_layout;
+    switch (layout?.product_grid) {
+      case '2-col':
+        return 'large';
+      case '3-col':
+        return 'comfortable';
+      case '4-col':
+        return 'standard';
+      case 'masonry':
+        return 'comfortable';
+      case 'carousel':
+        return 'large';
+      default:
+        return 'standard';
+    }
+  })();
+  const normalizedSlug = storeSlug?.trim() ? storeSlug.trim() : '';
+  const storeRouteId = normalizedSlug || seller?.subdomain || resolvedSellerId || sellerId || '';
+  const headerStyle = String((seller?.layout_config as any)?.header_style || '').trim().toLowerCase();
+  const storeLogoUrl = normalizeStorageImagePath(seller?.store_logo, ['profile-avatars', 'avatars', 'user-avatars']);
+  const storeBannerUrl = normalizeStorageImagePath(seller?.store_banner, ['store-banners', 'store-branding']);
+  const storeBackgroundUrl = normalizeStorageImagePath(seller?.layout_config?.background_image_url, ['store-banners', 'store-branding']);
+  const showStoreIntroSection = Boolean(storeBannerUrl) || (headerStyle ? headerStyle !== 'minimal' : false);
+  const storeHeroImage = storeBannerUrl || storeBackgroundUrl || '';
+  const storeTagline = String(seller?.bio || '').trim();
+  const featuredProducts = products.filter((product) => Boolean(product?.is_featured)).slice(0, 4);
+  const storeColors = seller?.color_scheme || {};
+  const primaryColor = String(storeColors?.primary || '#0f172a');
+  const secondaryColor = String(storeColors?.secondary || '#e2e8f0');
+  const accentColor = String(storeColors?.accent || '#f59e0b');
+  const backgroundColor = String(storeColors?.background || theme?.colors.background || '#f8fafc');
+  const textColor = String(storeColors?.text || '#0f172a');
+  const storeHomePath = isCustomDomain
+    ? '/'
+    : normalizedSlug
+      ? `/store/${normalizedSlug}`
+      : `/store/${encodeURIComponent(String(storeRouteId))}`;
+  const productBasePath = isCustomDomain
+    ? '/product'
+    : normalizedSlug
+      ? `/store/${normalizedSlug}/product`
+      : `/store/${encodeURIComponent(String(storeRouteId))}/product`;
+  const aboutPath = isCustomDomain
+    ? '/about'
+    : normalizedSlug
+      ? `/store/${normalizedSlug}/about`
+      : `/store/${encodeURIComponent(String(storeRouteId))}/about`;
+  const aboutCustomPage = visibleCustomPages.find((page) => page.page_slug === 'about');
+  const hasPolicies = Boolean(seller?.shipping_policy || seller?.return_policy);
+  const showFeaturedSection = (seller?.layout_config as any)?.show_featured !== false && featuredProducts.length > 0;
+  const showAboutSection = (seller?.layout_config as any)?.show_about !== false && Boolean(storeTagline || aboutCustomPage);
+  const showPoliciesSection = (seller?.layout_config as any)?.show_policies !== false && hasPolicies;
+  const showContactButton = (seller?.layout_config as any)?.show_contact !== false;
+  const storefrontSectionOrder = Array.isArray((seller?.layout_config as any)?.storefront_sections)
+    ? ((seller?.layout_config as any)?.storefront_sections as string[])
+    : ['hero', 'search', 'categories', 'featured', 'about', 'policies', 'contact'];
+  const orderedStorefrontSections = storefrontSectionOrder.filter((sectionId, index, items) => {
+    if ((sectionId === 'search' || sectionId === 'categories') && items.slice(0, index).some((value) => value === 'search' || value === 'categories')) {
+      return false;
+    }
+    return ['search', 'categories', 'featured', 'about', 'policies'].includes(sectionId);
+  });
 
   const storeUrl = seller?.custom_domain
     ? `https://${seller.custom_domain}`
+    : normalizedSlug
+    ? `https://beezio.co/store/${normalizedSlug}`
     : seller?.subdomain
-    ? `https://${seller.subdomain}.beezio.co`
+    ? `https://beezio.co/store/${seller.subdomain}`
     : `${window.location.origin}/store/${resolvedSellerId}`;
+  const navPages = visibleCustomPages.filter((page) => page.page_slug !== 'about').slice(0, 3);
+  const aboutSummary = String(storeTagline || '').trim();
+  const showAboutCard = showAboutSection && Boolean(aboutCustomPage) && Boolean(aboutSummary);
+  const heroProductCount = filteredProducts.length || products.length;
+
+  useEffect(() => {
+    if (!storeRouteId) return;
+    const scopeKey = `store:seller:${storeRouteId}`;
+    localStorage.setItem('beezio-store-scope', scopeKey);
+    window.dispatchEvent(new Event('beezio-store-scope-changed'));
+  }, [storeRouteId]);
+
+  const renderStorefrontSection = (sectionId: string) => {
+    if (sectionId === 'search' || sectionId === 'categories') {
+      if (!showSearchBar && !showCategoryFilters) return null;
+      return (
+        <div key="browse-controls" className="mb-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-sm font-semibold" style={{ color: textColor }}>Browse the collection</div>
+              <div className="text-xs" style={{ color: textColor, opacity: 0.68 }}>Find products faster with search and quick filters.</div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3">
+            {showSearchBar && (
+              <label className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search this store"
+                  className="w-full rounded-xl border px-10 py-3 text-sm outline-none transition"
+                  style={{ borderColor: secondaryColor, color: textColor }}
+                />
+              </label>
+            )}
+            {showCategoryFilters && (
+              <div className="flex flex-wrap gap-2">
+                {categories.map(category => (
+                  <button
+                    key={category}
+                    onClick={() => setActiveCategory(category)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium transition-colors border"
+                    style={
+                      activeCategory === category
+                        ? { backgroundColor: primaryColor, color: '#ffffff', borderColor: primaryColor }
+                        : { backgroundColor: '#ffffff', color: textColor, borderColor: secondaryColor }
+                    }
+                  >
+                    {category === 'all' ? 'All Products' : category}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (sectionId === 'featured' && showFeaturedSection) {
+      return (
+        <div key="featured" className="mb-4 rounded-[24px] border bg-white p-5 shadow-sm" style={{ borderColor: secondaryColor }}>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: accentColor }}>Featured Picks</div>
+              <h3 className="text-lg font-bold" style={{ color: textColor }}>Top products from this store</h3>
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {featuredProducts.map((product) => (
+              <Link
+                key={product.id}
+                to={`${productBasePath}/${encodeURIComponent(String(product.id))}`}
+                className="rounded-xl border p-3 transition hover:shadow-md"
+                style={{ borderColor: secondaryColor, backgroundColor: '#ffffff' }}
+              >
+                <div className="text-sm font-semibold" style={{ color: textColor }}>{product.title || product.name}</div>
+                <div className="mt-1 text-xs" style={{ color: textColor, opacity: 0.65 }}>{product.category || 'Product'}</div>
+                <div className="mt-3 text-sm font-bold" style={{ color: primaryColor }}>${Number(product.price || 0).toFixed(2)}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (sectionId === 'about' && showAboutCard) {
+      return (
+        <div key="about" className="mb-4 rounded-[24px] border bg-white p-5 shadow-sm" style={{ borderColor: secondaryColor }}>
+          <div className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: accentColor }}>Brand story</div>
+          <p className="mt-2 text-sm leading-6" style={{ color: textColor }}>
+            {aboutSummary}
+          </p>
+          {aboutCustomPage ? (
+            <Link to={`${storeHomePath}/${aboutCustomPage.page_slug}`} className="mt-3 inline-flex text-sm font-semibold" style={{ color: primaryColor }}>
+              Read the full story
+            </Link>
+          ) : null}
+        </div>
+      );
+    }
+
+    if (sectionId === 'policies' && showPoliciesSection) {
+      return (
+        <div key="policies" className="mb-4 grid gap-3 md:grid-cols-2">
+          <div className="rounded-[24px] border bg-white p-5 shadow-sm" style={{ borderColor: secondaryColor }}>
+            <div className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: accentColor }}>Shipping</div>
+            <p className="mt-2 text-sm leading-6" style={{ color: textColor }}>{seller?.shipping_policy || 'Shown at checkout.'}</p>
+          </div>
+          <div className="rounded-[24px] border bg-white p-5 shadow-sm" style={{ borderColor: secondaryColor }}>
+            <div className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: accentColor }}>Returns & Support</div>
+            <p className="mt-2 text-sm leading-6" style={{ color: textColor }}>{seller?.return_policy || 'See refunds and terms.'}</p>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -454,728 +831,449 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
+      <div className="min-h-screen bg-slate-50">
+        <div className="border-b border-slate-200 bg-white/95">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-slate-900 font-semibold">
+              Storefront
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <div className="border-b border-slate-200 bg-white/95">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-slate-900 font-semibold">
+              Storefront
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center max-w-md">
+            <Package className="w-14 h-14 text-slate-300 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Store unavailable</h2>
+            <p className="text-gray-600 mb-6">{loadError}</p>
+            <button
+              onClick={() => {
+                setLoadAttempt((prev) => prev + 1);
+                setLoading(true);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!seller) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Store Not Found</h1>
-          <p className="text-gray-600 mb-4">The store you're looking for doesn't exist.</p>
-          {!isCustomDomain && (
-            <Link to="/" className="text-amber-600 hover:text-amber-700 font-medium">
-              Return to Homepage
-            </Link>
-          )}
+      <div className="min-h-screen bg-slate-50">
+        <div className="border-b border-slate-200 bg-white/95">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-slate-900 font-semibold">
+              Storefront
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Store Not Found</h1>
+            <p className="text-gray-600 mb-4">The store you're looking for doesn't exist.</p>
+            {!isCustomDomain && (
+              <Link to="/" className="text-amber-600 hover:text-amber-700 font-medium">
+                Return to Homepage
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     );
   }
 
+  const storeBackgroundImage = storeBackgroundUrl;
+
   return (
-    <div className="min-h-screen" style={{ backgroundColor: theme?.colors.background || '#fef3c7' }}>
+    <div
+      className="min-h-screen"
+      style={{
+        backgroundColor,
+        backgroundImage: storeBackgroundImage
+          ? `linear-gradient(180deg, rgba(248,250,252,0.84), rgba(255,255,255,0.92)), url(${storeBackgroundImage})`
+          : 'radial-gradient(circle at 10% 0%, rgba(245,158,11,0.12), transparent 35%), radial-gradient(circle at 90% 8%, rgba(14,165,233,0.14), transparent 28%)',
+        backgroundSize: storeBackgroundImage ? 'cover' : undefined,
+        backgroundPosition: storeBackgroundImage ? 'center' : undefined,
+      }}
+    >
       {/* Apply custom CSS for unique store styling */}
       {seller.custom_css && (
         <style>{seller.custom_css}</style>
       )}
       
-      {/* Admin Toolbar - Only visible to store owner when logged in */}
-      {isOwner && !isCustomDomain && (
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-3 shadow-lg sticky top-0 z-50">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              <span className="font-semibold">Store Owner View</span>
-              {seller.custom_domain && (
-                <span className="text-amber-100 text-sm">| Your store is live at: {seller.custom_domain}</span>
-              )}
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="flex flex-wrap items-center gap-4 justify-between">
+            <Link to={storeHomePath} className="flex items-center gap-3">
+            {storeLogoUrl ? (
+              <img
+                src={storeLogoUrl}
+                alt={`${seller.full_name || 'Store'} logo`}
+                className="w-10 h-10 rounded-xl object-cover border border-slate-200 bg-white"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-semibold">
+                {seller.full_name?.charAt(0) || 'S'}
+              </div>
+            )}
+            <div className="leading-tight">
+              <div className="text-[0.6rem] font-semibold uppercase tracking-[0.28em]" style={{ color: accentColor }}>Independent shop</div>
+              <div className="text-lg font-semibold" style={{ color: textColor }}>{seller.full_name || 'Store'}</div>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsCustomizing(true)}
-                className="px-4 py-1.5 bg-white text-amber-600 rounded-lg hover:bg-amber-50 transition-colors text-sm font-medium"
-              >
-                Customize Store
-              </button>
-              {!isCustomDomain && (
+            </Link>
+
+            <div className="hidden lg:flex flex-1 items-center justify-center px-4">
+              <nav className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-semibold text-slate-600">
+                <a href="#products" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">Shop</a>
+              {aboutCustomPage ? (
                 <Link
-                  to="/dashboard"
-                  className="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium"
+                  to={`${storeHomePath === '/' ? '' : storeHomePath}/${aboutCustomPage.page_slug}`.replace('//', '/')}
+                  className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900"
                 >
-                  Dashboard
+                  About
+                </Link>
+              ) : (
+                <Link to={aboutPath} className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">
+                  About
                 </Link>
               )}
-              <a
-                href="https://beezio.co/dashboard"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium flex items-center gap-1"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Beezio Dashboard
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Custom Domain Banner - Shows customers the professional custom domain */}
-      {seller.custom_domain && (
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2">
-          <div className="max-w-6xl mx-auto px-4 flex items-center justify-center gap-2 text-sm">
-            <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold">PROFESSIONAL STORE</span>
-            <span className="font-semibold">{seller.custom_domain}</span>
-            <span className="opacity-75">|</span>
-            <span className="opacity-90">Secure checkout & payments</span>
-          </div>
-        </div>
-      )}
-      
-      {/* Store Banner */}
-      {seller.store_banner && (
-        <div className="h-64 bg-cover bg-center relative rounded-b-3xl shadow-lg overflow-hidden" style={{ backgroundImage: `url(${seller.store_banner})` }}>
-          <div className="absolute inset-0 bg-black bg-opacity-30" />
-        </div>
-      )}
-
-      {/* Store Header */}
-      <div className="bg-white/90 shadow-lg border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 py-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
-            <div className="flex items-start gap-8 mb-6 lg:mb-0">
-              {/* Store Avatar/Logo */}
-              <div className="flex-shrink-0">
-                {seller.store_logo ? (
-                  <img 
-                    src={seller.store_logo} 
-                    alt={`${seller.full_name} logo`}
-                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-xl bg-white"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center text-white text-3xl font-extrabold shadow-xl">
-                    {seller.full_name?.charAt(0) || 'S'}
-                  </div>
-                )}
-              </div>
-              {/* Store Info */}
-              <div>
-                <h1 className="text-4xl font-extrabold text-gray-900 mb-2 tracking-tight">
-                  {seller.full_name}'s Store
-                </h1>
-                <div className="flex flex-wrap items-center gap-5 text-base text-gray-600 mb-3">
-                  {seller.location && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-5 h-5" />
-                      <span>{seller.location}</span>
-                    </div>
-                  )}
-                  {seller.business_hours && (
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-5 h-5" />
-                      <span>{seller.business_hours}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1">
-                    <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                    <span>{storeStats.rating} ({storeStats.reviewCount} reviews)</span>
-                  </div>
-                </div>
-                {seller.bio && (
-                  <p className="text-gray-700 max-w-2xl mb-3">{seller.bio}</p>
-                )}
-                
-                {/* Social Links */}
-                {seller.social_links && Object.keys(seller.social_links).length > 0 && (
-                  <div className="flex items-center gap-2">
-                    {seller.social_links.facebook && (
-                      <a 
-                        href={seller.social_links.facebook} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
-                        title="Follow us on Facebook"
-                      >
-                        <Facebook className="w-4 h-4" />
-                        <span className="font-medium">Facebook</span>
-                      </a>
-                    )}
-                    {seller.social_links.instagram && (
-                      <a 
-                        href={seller.social_links.instagram} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
-                        title="Follow us on Instagram"
-                      >
-                        <Instagram className="w-4 h-4" />
-                        <span className="font-medium">Instagram</span>
-                      </a>
-                    )}
-                    {seller.social_links.twitter && (
-                      <a 
-                        href={seller.social_links.twitter} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
-                        title="Follow us on Twitter"
-                      >
-                        <Twitter className="w-4 h-4" />
-                        <span className="font-medium">Twitter</span>
-                      </a>
-                    )}
-                    {seller.social_links.linkedin && (
-                      <a 
-                        href={seller.social_links.linkedin} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
-                        title="Follow us on LinkedIn"
-                      >
-                        <Linkedin className="w-4 h-4" />
-                        <span className="font-medium">LinkedIn</span>
-                      </a>
-                    )}
-                    {seller.social_links.website && (
-                      <a 
-                        href={seller.social_links.website} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
-                        title="Visit our website"
-                      >
-                        <Globe className="w-4 h-4" />
-                        <span className="font-medium">Website</span>
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Store Actions */}
-            <div className="flex items-center space-x-3">
-              {isOwner && (
-                <button
-                  onClick={() => setIsCustomizing(!isCustomizing)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                    isCustomizing 
-                      ? 'bg-yellow-500 text-white hover:bg-yellow-600' 
-                      : 'border border-yellow-500 text-yellow-600 hover:bg-yellow-50'
-                  }`}
+              {navPages.slice(0, 2).map((page) => (
+                <Link
+                  key={page.page_slug}
+                  to={`${storeHomePath === '/' ? '' : storeHomePath}/${page.page_slug}`.replace('//', '/')}
+                  className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900"
                 >
-                  <Settings className="w-4 h-4" />
-                  <span>{isCustomizing ? 'Exit Customize' : 'Customize Store'}</span>
-                </button>
-              )}
-              <button
-                onClick={handleShare}
-                className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <Share2 className="w-4 h-4" />
-                <span>Share Store</span>
-              </button>
-              <a
-                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(storeUrl)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 hover:bg-blue-100 text-sm font-semibold"
-              >
-                Share on Facebook
-              </a>
-              <a
-                href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(storeUrl)}&text=${encodeURIComponent(`${seller.full_name}'s store on Beezio`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-2 bg-slate-50 text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-100 text-sm font-semibold"
-              >
-                Share on X
-              </a>
-              <button
-                onClick={() => setContactModal(true)}
-                className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg font-semibold"
-              >
-                <MessageSquare className="w-5 h-5" />
-                <span>Message</span>
-              </button>
-              {customPages.filter(p => p.page_slug !== 'contact').map((p) => {
-                const username = String((seller as any)?.username || '').trim();
-                const pageUrl = username ? `/seller/${username}/${p.page_slug}` : `/store/${resolvedSellerId}`;
-                return (
-                  <Link
-                    key={p.page_slug}
-                    to={pageUrl}
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:border-amber-500 hover:text-amber-600 text-sm font-semibold"
-                  >
-                    {p.page_title}
-                  </Link>
-                );
-              })}
-            </div>
-
-            {/* Affiliate Share Tools */}
-            <div className="mt-4 bg-white/70 border border-gray-200 rounded-xl p-4">
-              <AffiliateShareWidget
-                type="store"
-                targetId={String(resolvedSellerId || sellerId || '')}
-                targetPath={`/store/${encodeURIComponent(String(resolvedSellerId || sellerId || ''))}`}
-                title={`${seller.full_name || 'Store'} on Beezio`}
-              />
-              <div className="mt-3">
-                <TrustBadges compact />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Store Stats */}
-      <div className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mx-auto mb-2">
-                <Package className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">{storeStats.totalProducts}</div>
-              <div className="text-sm text-gray-600">Products</div>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg mx-auto mb-2">
-                <Award className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">{storeStats.totalSales}+</div>
-              <div className="text-sm text-gray-600">Sales</div>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-lg mx-auto mb-2">
-                <Star className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">{storeStats.rating}</div>
-              <div className="text-sm text-gray-600">Rating</div>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg mx-auto mb-2">
-                <Clock className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">{storeStats.memberSince}+</div>
-              <div className="text-sm text-gray-600">Years</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Interactive Demo Features */}
-      {seller.demo_features?.fundraiser && (
-        <div className="bg-gradient-to-br from-pink-50 to-orange-50 border-y border-pink-200">
-          <div className="max-w-6xl mx-auto px-4 py-8">
-            <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-pink-300">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-gradient-to-br from-pink-500 to-orange-500 p-3 rounded-xl">
-                  <Target className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-pink-600 uppercase tracking-wider">Active Fundraiser</div>
-                  <h3 className="text-2xl font-bold text-gray-900">{seller.demo_features.fundraiser_title}</h3>
-                </div>
-              </div>
-              <p className="text-gray-700 mb-6">{seller.demo_features.fundraiser_description}</p>
-              
-              {/* Progress Bar */}
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-semibold text-gray-600">Progress</span>
-                  <span className="text-2xl font-bold text-pink-600">
-                    ${seller.demo_features.current_raised.toLocaleString()} / ${seller.demo_features.goal_amount.toLocaleString()}
-                  </span>
-                </div>
-                <div className="h-6 bg-gray-200 rounded-full overflow-hidden border-2 border-gray-300">
-                  <div 
-                    className="h-full bg-gradient-to-r from-pink-500 to-orange-500 rounded-full transition-all duration-1000 flex items-center justify-end pr-2"
-                    style={{ width: `${(seller.demo_features.current_raised / seller.demo_features.goal_amount) * 100}%` }}
-                  >
-                    <span className="text-white text-xs font-bold drop-shadow">
-                      {Math.round((seller.demo_features.current_raised / seller.demo_features.goal_amount) * 100)}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 mt-6">
-                <div className="text-center p-4 bg-pink-50 rounded-xl border border-pink-200">
-                  <div className="text-3xl font-bold text-pink-600">{seller.demo_features.supporters_count}</div>
-                  <div className="text-sm text-gray-600 font-medium">Supporters</div>
-                </div>
-                <div className="text-center p-4 bg-orange-50 rounded-xl border border-orange-200">
-                  <div className="text-3xl font-bold text-orange-600">{seller.demo_features.days_remaining}</div>
-                  <div className="text-sm text-gray-600 font-medium">Days Left</div>
-                </div>
-                <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
-                  <div className="text-3xl font-bold text-green-600">
-                    {Math.round((seller.demo_features.current_raised / seller.demo_features.goal_amount) * 100)}%
-                  </div>
-                  <div className="text-sm text-gray-600 font-medium">Complete</div>
-                </div>
-              </div>
-
-              <div className="mt-6 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
-                <div className="flex items-start gap-3">
-                  <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-900">
-                    <strong>FUNDRAISER DEMO:</strong> This progress bar updates in real-time as purchases are made. 
-                    Every product sold contributes to the goal. Perfect for schools, charities, sports teams, and community causes!
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {seller.demo_features?.messaging && (
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-y border-green-200">
-          <div className="max-w-6xl mx-auto px-4 py-8">
-            <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-green-300">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-gradient-to-br from-green-500 to-emerald-500 p-3 rounded-xl relative">
-                  <MessageSquare className="w-8 h-8 text-white" />
-                  {seller.demo_features.hasUnreadMessages > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">
-                      {seller.demo_features.hasUnreadMessages}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-green-600 uppercase tracking-wider">Messaging</div>
-                  <h3 className="text-2xl font-bold text-gray-900">Direct Customer Communication</h3>
-                </div>
-              </div>
-
-              <div className="mb-6 p-6 bg-gray-50 rounded-xl border-2 border-gray-200">
-                <div className="flex items-start gap-4">
-                  <div className="bg-blue-500 rounded-full w-12 h-12 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                    JD
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-gray-900">John Doe</span>
-                      <span className="text-xs text-gray-500">2 hours ago</span>
-                      <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">NEW</span>
-                    </div>
-                    <p className="text-gray-700 leading-relaxed">
-                      {seller.demo_features.messagePreview}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setContactModal(true)}
-                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold text-lg hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg flex items-center justify-center gap-3"
-              >
-                <MessageSquare className="w-6 h-6" />
-                Send Message (Goes to Seller Dashboard)
-              </button>
-
-              <div className="mt-6 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
-                <div className="flex items-start gap-3">
-                  <Shield className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-900">
-                    <strong>MESSAGING DEMO:</strong> Click "Contact Store" or "Message" to see the internal messaging system. 
-                    No email exposed, spam-free, and all conversations appear in your dashboard at /dashboard/messages!
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {seller.demo_features?.digital_products && (
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-y border-blue-200">
-          <div className="max-w-6xl mx-auto px-4 py-8">
-            <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-blue-300">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="bg-gradient-to-br from-blue-500 to-indigo-500 p-3 rounded-xl">
-                  <Download className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-blue-600 uppercase tracking-wider">Digital Commerce</div>
-                  <h3 className="text-2xl font-bold text-gray-900">Instant Delivery & Downloads</h3>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-blue-300">
-                  <div className="text-4xl font-bold text-blue-600 mb-2">
-                    {seller.demo_features.download_stats.total_downloads.toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-700 font-semibold">Total Downloads</div>
-                </div>
-                <div className="text-center p-6 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border-2 border-indigo-300">
-                  <div className="text-4xl font-bold text-indigo-600 mb-2">
-                    {seller.demo_features.download_stats.monthly_customers}
-                  </div>
-                  <div className="text-sm text-gray-700 font-semibold">Monthly Customers</div>
-                </div>
-                <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border-2 border-purple-300">
-                  <div className="text-4xl font-bold text-purple-600 mb-2">
-                    {seller.demo_features.download_stats.avg_rating} ⭐
-                  </div>
-                  <div className="text-sm text-gray-700 font-semibold">Average Rating</div>
-                </div>
-              </div>
-
-              <div className="mt-6 grid grid-cols-2 gap-4">
-                <div className="p-4 bg-green-50 rounded-xl border border-green-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Zap className="w-5 h-5 text-green-600" />
-                    <span className="font-bold text-green-900">Instant Delivery</span>
-                  </div>
-                  <p className="text-sm text-gray-700">Download links sent immediately after purchase</p>
-                </div>
-                <div className="p-4 bg-purple-50 rounded-xl border border-purple-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Lock className="w-5 h-5 text-purple-600" />
-                    <span className="font-bold text-purple-900">Secure Files</span>
-                  </div>
-                  <p className="text-sm text-gray-700">Protected links with expiration & access control</p>
-                </div>
-              </div>
-
-              <div className="mt-6 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
-                <div className="flex items-start gap-3">
-                  <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-900">
-                    <strong>DIGITAL STORE DEMO:</strong> Perfect for selling courses, ebooks, templates, software, and more. 
-                    Automated delivery, no shipping hassles, global reach 24/7!
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {seller.demo_features?.showcase_all && (
-        <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border-y border-amber-200">
-          <div className="max-w-6xl mx-auto px-4 py-8">
-            <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-amber-300">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="bg-gradient-to-br from-amber-500 to-yellow-500 p-3 rounded-xl">
-                  <Store className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-amber-600 uppercase tracking-wider">Full Platform Demo</div>
-                  <h3 className="text-2xl font-bold text-gray-900">Complete Marketplace Features</h3>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl text-center border-2 border-blue-200">
-                  <div className="text-3xl font-bold text-blue-600">{seller.demo_features.active_affiliates}</div>
-                  <div className="text-sm text-gray-700 font-semibold mt-1">Active Affiliates</div>
-                </div>
-                <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl text-center border-2 border-green-200">
-                  <div className="text-3xl font-bold text-green-600">{seller.demo_features.total_sales.toLocaleString()}</div>
-                  <div className="text-sm text-gray-700 font-semibold mt-1">Total Sales</div>
-                </div>
-                <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl text-center border-2 border-purple-200">
-                  <div className="text-3xl font-bold text-purple-600">{seller.demo_features.avg_conversion}</div>
-                  <div className="text-sm text-gray-700 font-semibold mt-1">Conversion Rate</div>
-                </div>
-                <div className="p-4 bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl text-center border-2 border-pink-200">
-                  <div className="text-3xl font-bold text-pink-600">{seller.demo_features.custom_pages.length}</div>
-                  <div className="text-sm text-gray-700 font-semibold mt-1">Custom Pages</div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Eye className="w-5 h-5 text-amber-600" />
-                    <span className="font-bold text-amber-900">White-Label Branding</span>
-                  </div>
-                  <p className="text-sm text-gray-700">Your domain, your logo, zero platform branding</p>
-                </div>
-                <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <BarChart className="w-5 h-5 text-blue-600" />
-                    <span className="font-bold text-blue-900">Analytics Dashboard</span>
-                  </div>
-                  <p className="text-sm text-gray-700">Track sales, conversions, and affiliate performance</p>
-                </div>
-                <div className="p-4 bg-green-50 rounded-xl border border-green-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Users className="w-5 h-5 text-green-600" />
-                    <span className="font-bold text-green-900">Affiliate Network</span>
-                  </div>
-                  <p className="text-sm text-gray-700">Built-in affiliate system with commission tracking</p>
-                </div>
-                <div className="p-4 bg-purple-50 rounded-xl border border-purple-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="w-5 h-5 text-purple-600" />
-                    <span className="font-bold text-purple-900">Custom Pages</span>
-                  </div>
-                  <p className="text-sm text-gray-700">Add About, FAQ, Terms, and any custom content</p>
-                </div>
-              </div>
-
-              <div className="mt-6 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
-                <div className="flex items-start gap-3">
-                  <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-900">
-                    <strong>MARKETPLACE DEMO:</strong> This store showcases all platform capabilities. 
-                    Browse different sample stores to see how each template and feature set works differently!
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Template Showcase Banner (only for sample stores) */}
-      {['beezio-store', 'harbor-coffee', 'luma-labs', 'cause-collective'].includes(sellerId || '') && (
-        <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 text-white">
-          <div className="max-w-6xl mx-auto px-4 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                    Demo Mini-Website
-                  </span>
-                  <span className="text-sm opacity-90 flex items-center gap-2">
-                    <span className="bg-green-500 px-2 py-0.5 rounded text-xs font-bold">MESSAGING</span>
-                    <span className="bg-blue-500 px-2 py-0.5 rounded text-xs font-bold">CUSTOM DOMAIN: {seller.custom_domain}</span>
-                  </span>
-                </div>
-                <h3 className="text-xl font-bold mb-1">🚀 Your Customers See a Complete Website - Not Just a Store</h3>
-                <p className="text-white/90 text-sm max-w-3xl">
-                  This is <strong>{seller.full_name}</strong> using the <strong>{seller.template_id ? seller.template_id.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Modern Grid'}</strong> template
-                  on their custom domain <strong className="bg-white/20 px-2 py-0.5 rounded">{seller.custom_domain}</strong>.
-                  {' '}Messages go through secure internal platform. Checkout uses verified payment system.
-                  {' '}<strong>Each store looks completely different - no platform branding required!</strong>
-                </p>
-              </div>
-              <div className="hidden md:flex flex-col gap-2 text-right">
-                <div className="text-xs opacity-75 font-semibold">Compare Different Designs:</div>
-                <div className="flex gap-2">
-                  {['beezio-store', 'harbor-coffee', 'luma-labs', 'cause-collective']
-                    .filter(id => id !== sellerId)
-                    .map(id => (
-                      <a
-                        key={id}
-                        href={`/store/${id}`}
-                        className="px-3 py-1.5 bg-white/20 backdrop-blur-sm hover:bg-white/30 rounded-lg text-xs font-semibold transition-all border border-white/30"
-                      >
-                        {id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                      </a>
-                    ))
-                  }
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Products Section */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Category Filter */}
-        {categories.length > 1 && (
-          <div className="mb-8">
-            <div className="flex flex-wrap gap-2">
-              {categories.map(category => (
-                <button
-                  key={category}
-                  onClick={() => setActiveCategory(category)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeCategory === category
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {category === 'all' ? 'All Products' : category}
-                </button>
+                  {page.page_title}
+                </Link>
               ))}
+              {hasPolicies && (
+                <a href="#policies" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">
+                  Policies
+                </a>
+              )}
+              </nav>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <a
+                href="#products"
+                className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                Start shopping
+              </a>
+              {user ? (
+                <Link
+                  to="/account"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 transition-colors"
+                  aria-label="Open account"
+                >
+                  <User className="h-4 w-4" />
+                </Link>
+              ) : (
+                <Link
+                  to="/account/login"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:text-slate-900 transition-colors"
+                >
+                  Sign In
+                </Link>
+              )}
+              {!isCustomDomain && (
+                <Link
+                  to="/cart"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 transition-colors"
+                  aria-label="Open cart"
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                </Link>
+              )}
             </div>
           </div>
-        )}
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+            <a href="#products" className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">Products</a>
+            {aboutCustomPage ? (
+              <Link
+                to={`${storeHomePath === '/' ? '' : storeHomePath}/${aboutCustomPage.page_slug}`.replace('//', '/')}
+                className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700"
+              >
+                About
+              </Link>
+            ) : (
+              <Link to={aboutPath} className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
+                About
+              </Link>
+            )}
+            {navPages.slice(0, 2).map((page) => (
+              <Link
+                key={page.page_slug}
+                to={`${storeHomePath === '/' ? '' : storeHomePath}/${page.page_slug}`.replace('//', '/')}
+                className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700"
+              >
+                {page.page_title}
+              </Link>
+            ))}
+            {hasPolicies && (
+              <a href="#policies" className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
+                Policies
+              </a>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {showStoreIntroSection && (
+        <div className="max-w-6xl mx-auto px-4 pt-4">
+          <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
+            <div
+              className="relative min-h-[280px]"
+              style={{
+                background: storeHeroImage
+                  ? `linear-gradient(135deg, rgba(15,23,42,0.38), rgba(15,23,42,0.12)), url(${storeHeroImage}) center/cover`
+                  : `linear-gradient(135deg, ${primaryColor}, ${accentColor} 55%, ${secondaryColor})`,
+              }}
+            >
+              <div className="grid gap-8 px-6 py-10 md:px-10 md:py-14 lg:grid-cols-[minmax(0,1.5fr)_320px] lg:items-end">
+                <div className="max-w-3xl">
+                  <div className="flex items-center gap-4">
+                    {storeLogoUrl ? (
+                      <img
+                        src={storeLogoUrl}
+                        alt={`${seller.full_name || 'Store'} logo`}
+                        className="h-16 w-16 rounded-2xl border border-white/30 bg-white/90 object-cover shadow-lg"
+                      />
+                    ) : (
+                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-2xl font-bold text-white shadow-lg">
+                        {seller.full_name?.charAt(0) || 'S'}
+                      </div>
+                    )}
+                    <div>
+                      <h1 className="text-3xl font-black tracking-tight text-white md:text-5xl">
+                        {seller.full_name || 'Store'}
+                      </h1>
+                      {storeTagline ? (
+                        <p className="mt-2 max-w-2xl text-sm text-white/85 md:text-base">{storeTagline}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <a
+                      href="#products"
+                      className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      Shop collection
+                    </a>
+                    {showContactButton ? (
+                      <button
+                        onClick={() => setContactModal(true)}
+                        className="inline-flex items-center rounded-full border px-5 py-2.5 text-sm font-semibold text-white transition"
+                        style={{ borderColor: 'rgba(255,255,255,0.35)', backgroundColor: 'rgba(255,255,255,0.1)' }}
+                      >
+                        Contact
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="max-w-sm rounded-[28px] border border-white/20 bg-white/12 p-5 text-white backdrop-blur-sm">
+                  <div className="text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-white/75">Shop details</div>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+                    <div>
+                      <div className="text-2xl font-black">{heroProductCount}</div>
+                      <div className="text-sm text-white/78">products live</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-black">{storeStats.rating.toFixed(1)}</div>
+                      <div className="text-sm text-white/78">customer rating</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-black">{storeStats.reviewCount}</div>
+                      <div className="text-sm text-white/78">reviews</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+      
+      {/* Products Section */}
+      <div id="products" className="max-w-6xl mx-auto scroll-mt-28 px-4 py-3 md:scroll-mt-32 md:py-4">
+        {orderedStorefrontSections.map((sectionId) => renderStorefrontSection(sectionId))}
 
         {/* Products Grid */}
         {filteredProducts.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl shadow-lg border border-gray-100 p-12">
             <Package className="w-20 h-20 text-amber-400 mx-auto mb-6" />
             <h3 className="text-2xl font-bold text-gray-900 mb-3">
-              {isOwner ? "Welcome to Your Store!" : "No Products Yet"}
+              {isOwner ? "Your store is empty" : "No Products Yet"}
             </h3>
-            <p className="text-gray-600 mb-8 max-w-md mx-auto">
-              {isOwner ? (
-                activeCategory === 'all'
-                  ? "Your store is ready! Start adding products to showcase your offerings to customers."
-                  : `No products in the "${activeCategory}" category yet. Add some products to get started!`
-              ) : (
-                "This store is being set up. Check back soon for amazing products!"
-              )}
+            <p className="text-gray-600 mb-2 max-w-md mx-auto">
+              {isOwner
+                ? "Add products to display them here."
+                : "This store is being set up. Check back soon for products."}
             </p>
-            
             {isOwner && (
-              <div className="space-y-4">
-                <Link
-                  to="/dashboard/products"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium shadow-lg"
-                >
-                  <Package className="w-5 h-5" />
-                  Add Your First Product
-                </Link>
-                
-                <div className="mt-8 pt-8 border-t border-gray-200">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Quick Start Guide</h4>
-                  <div className="grid md:grid-cols-3 gap-4 text-left">
-                    <div className="p-4 bg-amber-50 rounded-lg">
-                      <div className="text-2xl font-bold text-amber-600 mb-2">1</div>
-                      <h5 className="font-semibold text-gray-900 mb-1">Add Products</h5>
-                      <p className="text-sm text-gray-600">Upload your products with images and descriptions</p>
-                    </div>
-                    <div className="p-4 bg-amber-50 rounded-lg">
-                      <div className="text-2xl font-bold text-amber-600 mb-2">2</div>
-                      <h5 className="font-semibold text-gray-900 mb-1">Customize Store</h5>
-                      <p className="text-sm text-gray-600">Set up your branding, theme, and custom domain</p>
-                    </div>
-                    <div className="p-4 bg-amber-50 rounded-lg">
-                      <div className="text-2xl font-bold text-amber-600 mb-2">3</div>
-                      <h5 className="font-semibold text-gray-900 mb-1">Start Selling</h5>
-                      <p className="text-sm text-gray-600">Share your store link and start earning</p>
-                    </div>
+              <>
+                <div className="max-w-2xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-3 mt-6 mb-8 text-left">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-xs uppercase tracking-wide text-slate-500">Step 1</div>
+                    <div className="text-sm font-semibold text-slate-900 mt-1">Add products</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-xs uppercase tracking-wide text-slate-500">Step 2</div>
+                    <div className="text-sm font-semibold text-slate-900 mt-1">Customize layout</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-xs uppercase tracking-wide text-slate-500">Step 3</div>
+                    <div className="text-sm font-semibold text-slate-900 mt-1">Share store link</div>
                   </div>
                 </div>
-              </div>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <Link
+                    to="/marketplace"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium"
+                  >
+                    Browse Marketplace
+                  </Link>
+                  <Link
+                    to="/dashboard"
+                    className="inline-flex items-center gap-2 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium"
+                  >
+                    Open Dashboard
+                  </Link>
+                </div>
+              </>
             )}
           </div>
         ) : (
-          <ProductGrid 
-            products={filteredProducts} 
-            hideAffiliateUI 
-            gridLayout={seller?.layout_config?.grid_layout || 'standard'}
-            colorScheme={seller?.color_scheme}
-          />
-        )}
-
-        {/* Store Customization Panel */}
-        {isOwner && isCustomizing && (
-          <div className="mt-8 border-t pt-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">Customize Your Store</h3>
-            <StoreCustomization userId={resolvedSellerId || sellerId || ''} role="seller" />
+          <div className="rounded-[32px] border bg-white p-4 shadow-[0_28px_80px_rgba(15,23,42,0.08)] md:p-6" style={{ borderColor: secondaryColor }}>
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <div className="text-[0.72rem] font-semibold uppercase tracking-[0.24em]" style={{ color: accentColor }}>Collection</div>
+                <h3 className="mt-2 text-3xl font-black tracking-tight" style={{ color: textColor }}>Shop the catalog</h3>
+                <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: textColor, opacity: 0.72 }}>
+                  A cleaner storefront that puts the product selection first and keeps the buying path direct.
+                </p>
+              </div>
+              <div className="text-sm" style={{ color: textColor, opacity: 0.7 }}>
+                Showing {filteredProducts.length} of {products.length}
+              </div>
+            </div>
+            <ProductGrid
+              products={filteredProducts}
+              hideAffiliateUI
+              hideFilters
+              hideShareUI
+              hideSellerInfo
+              ctaMode="storefront"
+              forcePurchaseCtas
+              storefrontBrand={{
+                name: seller?.full_name || 'Store',
+                logoUrl: storeLogoUrl || null,
+              }}
+              gridLayout={resolvedGridLayout}
+              productBasePath={productBasePath}
+              platformLabel="Service fee"
+              colorScheme={storeColors}
+            />
           </div>
         )}
+        {/* Store Customization Panel intentionally hidden on storefront */}
       </div>
+
+      <footer id="policies" className="border-t border-slate-200 bg-white/95">
+        <div className="max-w-6xl mx-auto px-4 py-10">
+          <div className="grid gap-6 lg:grid-cols-[1.15fr_1fr_1fr]">
+            <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-6">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Store highlights</div>
+              <div className="mt-4 space-y-4 text-sm text-slate-600">
+                <div className="flex items-start gap-3">
+                  <Package className="w-4 h-4 text-slate-700 mt-0.5" />
+                  <div>
+                    <div className="font-semibold text-slate-900">{storeStats.totalProducts} active products</div>
+                    <div>Fresh inventory curated by the seller.</div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Star className="w-4 h-4 fill-amber-400 text-amber-400 mt-0.5" />
+                  <div>
+                    <div className="font-semibold text-slate-900">{storeStats.rating} rating</div>
+                    <div>{storeStats.reviewCount} customer reviews</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-slate-200 bg-white p-6">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Policies</div>
+              <div className="mt-4 space-y-4 text-sm text-slate-600">
+                {seller.shipping_policy ? (
+                  <div>
+                    <div className="font-semibold text-slate-900">Shipping</div>
+                    <div className="whitespace-pre-line">{seller.shipping_policy}</div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="font-semibold text-slate-900">Shipping</div>
+                    <div>Shown at checkout.</div>
+                  </div>
+                )}
+                {seller.return_policy ? (
+                  <div>
+                    <div className="font-semibold text-slate-900">Returns & support</div>
+                    <div className="whitespace-pre-line">{seller.return_policy}</div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="font-semibold text-slate-900">Returns & support</div>
+                    <div>See refunds & terms.</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-slate-200 bg-white p-6">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Checkout</div>
+              <div className="mt-4">
+                <TrustBadges />
+              </div>
+              {isOwner && (
+                <div className="mt-6 border-t border-slate-100 pt-6">
+                  <AffiliateShareWidget
+                    type="store"
+                    targetId={String(resolvedSellerId || sellerId || '')}
+                    targetPath={storeHomePath}
+                    title={`${seller.full_name || 'Store'} store link`}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </footer>
 
       {/* Contact Modal */}
       <StoreContactModal

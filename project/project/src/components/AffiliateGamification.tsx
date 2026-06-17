@@ -234,7 +234,7 @@ export const AffiliateGamification: React.FC = () => {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
         <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Affiliate gamification coming soon</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Partner gamification coming soon</h3>
         <p className="text-gray-600">
           We couldn&apos;t load the badges tables from Supabase. Run the latest migrations to unlock levels, leaderboards, and badges.
         </p>
@@ -246,7 +246,7 @@ export const AffiliateGamification: React.FC = () => {
     return (
       <div className="bg-white rounded-lg shadow-md p-6 text-center">
         <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Start Your Affiliate Journey!</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Start Your Partner Journey!</h3>
         <p className="text-gray-600">Make your first sale to begin earning badges and climbing the leaderboard.</p>
       </div>
     );
@@ -258,7 +258,7 @@ export const AffiliateGamification: React.FC = () => {
       <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-lg p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold mb-2">Level {stats.level} Affiliate</h2>
+            <h2 className="text-2xl font-bold mb-2">Level {stats.level} Partner</h2>
             <p className="text-amber-100">{stats.total_points.toLocaleString()} Total Points</p>
           </div>
           <div className="text-right">
@@ -468,7 +468,7 @@ export const AffiliateGamification: React.FC = () => {
           </div>
           <div className="text-center py-12">
             <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h4 className="text-lg font-medium text-gray-900 mb-2">Top Affiliates This Month</h4>
+            <h4 className="text-lg font-medium text-gray-900 mb-2">Top Partners This Month</h4>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border">
                 <div className="flex items-center">

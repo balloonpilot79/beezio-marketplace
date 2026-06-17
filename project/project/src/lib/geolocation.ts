@@ -1,4 +1,4 @@
-import { SupportedCurrency, COUNTRY_CURRENCY_MAP, VAT_RATES } from './stripe';
+import { SupportedCurrency, COUNTRY_CURRENCY_MAP, VAT_RATES } from './currency';
 
 export interface LocationData {
   country: string;

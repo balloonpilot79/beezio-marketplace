@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { computePayoutBreakdown } from '../utils/pricingEngine';
 import { PLATFORM_FEE_PERCENT } from '../config/beezioConfig';
+import { createBeezioOrderNumber } from '../../shared/orderNumber';
 
 interface OrderLineInput {
   productId: string;
@@ -20,7 +21,6 @@ interface OrderPersistenceParams {
   storefrontId?: string | null;
   affiliateId?: string | null;
   referralAffiliateId?: string | null;
-  fundraiserId?: string | null;
   summary: {
     subtotal: number;
     shipping: number;
@@ -38,7 +38,6 @@ export async function recordOrderWithPayouts(params: OrderPersistenceParams) {
     storefrontId = null,
     affiliateId = null,
     referralAffiliateId = null,
-    fundraiserId = null,
     summary,
     lines,
   } = params;
@@ -47,6 +46,7 @@ export async function recordOrderWithPayouts(params: OrderPersistenceParams) {
   const { data: order, error: orderError } = await supabase
     .from('orders')
     .insert({
+      order_number: createBeezioOrderNumber(),
       buyer_id: userId,
       storefront_id: storefrontId,
       affiliate_id: affiliateId,
@@ -55,7 +55,6 @@ export async function recordOrderWithPayouts(params: OrderPersistenceParams) {
       tax_amount: summary.tax,
       total_amount: summary.total,
       platform_percent_at_purchase: PLATFORM_FEE_PERCENT,
-      fundraiser_percent_at_purchase: lines[0]?.payout?.fundraiserAmount ? (lines[0].payout.fundraiserAmount / lines[0].salePrice) * 100 : 0,
       affiliate_commission_percent_at_purchase: lines[0]?.affiliateRate ?? null,
       status: 'paid',
     })
@@ -75,7 +74,6 @@ export async function recordOrderWithPayouts(params: OrderPersistenceParams) {
     seller_ask_price_per_unit: line.sellerAsk,
     affiliate_commission_percent_at_purchase: line.affiliateRate,
     platform_percent_at_purchase: PLATFORM_FEE_PERCENT,
-    fundraiser_percent_at_purchase: line.payout.fundraiserAmount ? (line.payout.fundraiserAmount / line.salePrice) * 100 : 0,
   }));
 
   const { error: itemsError } = await supabase.from('order_items').insert(orderItems);

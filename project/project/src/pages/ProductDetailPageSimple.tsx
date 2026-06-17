@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Check, Star, ShoppingCart } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
@@ -14,9 +15,16 @@ import {
 import type { MarketplaceProduct } from '../services/productService';
 import { DEFAULT_AFFILIATE_RATE, normalizeAffiliateRate } from '../utils/pricing';
 import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
+import { normalizeProductImagePath } from '../utils/imageHelpers';
+import { formatMoneyDisplay, formatShippingDisplay } from '../utils/moneyDisplay';
+import { getReferralAttribution } from '../utils/referralTracking';
 
 const ProductDetailPageSimple: React.FC = () => {
-  const { productId } = useParams<{ productId: string }>();
+  const { productId: rawProductId } = useParams<{ productId: string }>();
+  const productId = useMemo(() => {
+    const decoded = decodeURIComponent(String(rawProductId || ''));
+    return decoded.replace(/\s+/g, '').trim();
+  }, [rawProductId]);
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -34,6 +42,10 @@ const ProductDetailPageSimple: React.FC = () => {
   const [variantSelectionError, setVariantSelectionError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
 
+  const PRODUCT_FETCH_TIMEOUT_MS = 12000;
+  const VARIANT_FETCH_TIMEOUT_MS = 12000;
+  const MAX_FETCH_RETRIES = 1;
+
   const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
     let timeoutHandle: number | undefined;
     const timeoutPromise = new Promise<T>((_, reject) => {
@@ -49,17 +61,39 @@ const ProductDetailPageSimple: React.FC = () => {
     }
   };
 
+  const retryWithBackoff = async <T,>(fn: () => Promise<T>, label: string): Promise<T> => {
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt <= MAX_FETCH_RETRIES; attempt += 1) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastError = err;
+        const delayMs = 600 + attempt * 700;
+        await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+        console.warn(`ProductDetailPageSimple: retrying ${label} (attempt ${attempt + 1})`);
+      }
+    }
+    throw lastError;
+  };
+
   // --- Affiliate tools state ---
   const [showAffiliateTools, setShowAffiliateTools] = useState(false);
   const [affiliateProductLink, setAffiliateProductLink] = useState<string>("");
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+  const referralAttribution = getReferralAttribution();
+  const cartAffiliateId = useMemo(
+    () => String(searchParams.get('ref') || referralAttribution.id || '').trim() || undefined,
+    [referralAttribution.id, searchParams]
+  );
 
   // Generate affiliate product link and QR code
   React.useEffect(() => {
     if (product && product.id) {
       const baseUrl = window.location.origin;
       const affiliateCode = searchParams.get('ref') || localStorage.getItem('affiliate_ref') || '';
-      const link = `${baseUrl}/product/${product.id}${affiliateCode ? `?ref=${affiliateCode}` : ''}`;
+      const link = `${baseUrl}/product/${product.id}${
+        affiliateCode ? `?ref=${affiliateCode}&uid=${encodeURIComponent(affiliateCode)}` : ''
+      }`;
       setAffiliateProductLink(link);
       setQrCodeUrl(`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(link)}`);
     }
@@ -124,7 +158,7 @@ const ProductDetailPageSimple: React.FC = () => {
   const formatVariantLabel = (variant: ProductVariant): string => {
     const attrs = (variant.attributes ?? null) as Record<string, string> | null;
     if (attrs && Object.keys(attrs).length > 0) {
-      const joined = Object.values(attrs).filter(Boolean).join(' / ');
+      const joined = Array.from(new Set(Object.values(attrs).map((value) => String(value).trim()).filter(Boolean))).join(' / ');
       if (joined) return joined;
     }
     return (variant as any)?.variantNameEn || variant.sku || variant.cj_variant_id || String(variant.id);
@@ -170,13 +204,11 @@ const ProductDetailPageSimple: React.FC = () => {
     const images: string[] = [];
     const seen = new Set<string>();
 
-    const isLikelyUrl = (value: string) =>
-      value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/') || value.startsWith('data:');
-
     const addImage = (candidate: unknown, options?: { front?: boolean }) => {
-      const normalized = String(candidate ?? '').trim();
+      const raw = String(candidate ?? '').trim();
+      if (!raw) return;
+      const normalized = normalizeProductImagePath(raw);
       if (!normalized) return;
-      if (!isLikelyUrl(normalized)) return;
       if (seen.has(normalized)) return;
       seen.add(normalized);
       if (options?.front) images.unshift(normalized);
@@ -207,15 +239,7 @@ const ProductDetailPageSimple: React.FC = () => {
     return images.slice(0, 10);
   }, [product, selectedVariant?.image_url]);
 
-  const currencyFormatter = useMemo(
-    () =>
-      new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: (product as any)?.currency || 'USD',
-      }),
-    [product]
-  );
-  const formatMoney = (value: number) => currencyFormatter.format(value);
+  const formatMoney = (value: number) => formatMoneyDisplay(value, (product as any)?.currency || 'USD');
 
   const backTarget = useMemo(() => {
     const from = (location.state as any)?.from;
@@ -256,20 +280,47 @@ const ProductDetailPageSimple: React.FC = () => {
       }
 
       try {
-        const realProduct = await withTimeout(fetchProductById(productId), 12000, 'fetchProductById');
+        let realProduct: any = null;
+
+        // Fast path: public server endpoint (cached + bypasses client RLS).
+        try {
+          const publicResp = await withTimeout(
+            fetch(`/api/public/product/get?id=${encodeURIComponent(String(productId))}`),
+            PRODUCT_FETCH_TIMEOUT_MS,
+            'publicProductGet'
+          );
+          if (publicResp.ok) {
+            const payload: any = await publicResp.json().catch(() => ({}));
+            realProduct = payload?.product || null;
+          }
+        } catch {
+          // fallback below
+        }
+
+        if (!realProduct) {
+          realProduct = await retryWithBackoff(
+            () => withTimeout(fetchProductById(productId), PRODUCT_FETCH_TIMEOUT_MS, 'fetchProductById'),
+            'fetchProductById'
+          );
+        }
+
         if (realProduct) {
           setProduct(realProduct);
 
           // Add-only CJ image enrichment: best-effort and non-blocking.
           // Never blocks checkout/cart/etc and only runs when there are <2 images.
           void (async () => {
-            const updatedImages = await withTimeout(
-              enrichCjProductImagesIfNeeded({
-                productId: realProduct.id,
-                existingImages: (realProduct as any)?.images,
-                fallbackSingleImage: (realProduct as any)?.image,
-              }),
-              12000,
+            const updatedImages = await retryWithBackoff(
+              () =>
+                withTimeout(
+                  enrichCjProductImagesIfNeeded({
+                    productId: realProduct.id,
+                    existingImages: (realProduct as any)?.images,
+                    fallbackSingleImage: (realProduct as any)?.image,
+                  }),
+                  VARIANT_FETCH_TIMEOUT_MS,
+                  'enrichCjProductImagesIfNeeded'
+                ),
               'enrichCjProductImagesIfNeeded'
             );
 
@@ -313,7 +364,10 @@ const ProductDetailPageSimple: React.FC = () => {
 
     const loadVariants = async () => {
       try {
-        const variants = await withTimeout(getVariantOptions(product.id), 12000, 'getVariantOptions');
+        const variants = await retryWithBackoff(
+          () => withTimeout(getVariantOptions(product.id), VARIANT_FETCH_TIMEOUT_MS, 'getVariantOptions'),
+          'getVariantOptions'
+        );
         if (!aborted) {
           setVariantOptions(variants);
         }
@@ -410,39 +464,50 @@ const ProductDetailPageSimple: React.FC = () => {
       }
 
       const computedMaxQuantity = (() => {
+        const lineage = String((product as any)?.lineage || '').toUpperCase();
+        const provider = String((product as any)?.dropship_provider || '').toLowerCase();
+        const isCJ = lineage === 'CJ' || provider === 'cj';
+        const tracksInventory = (product as any)?.track_inventory !== false;
+
+        if (isCJ && !tracksInventory) return null;
         const variantStock = (currentVariant as any)?.inventory;
         if (Number.isFinite(variantStock)) return Math.max(0, Math.floor(variantStock as number));
         const productStock = (product as any)?.stock_quantity;
         if (Number.isFinite(productStock)) return Math.max(0, Math.floor(productStock));
+        if (isCJ) return null;
         return 99;
       })();
 
-      if (computedMaxQuantity <= 0) {
+      if (typeof computedMaxQuantity === 'number' && computedMaxQuantity <= 0) {
         setVariantSelectionError(currentVariant ? 'This variant is out of stock.' : 'This product is out of stock.');
         return;
       }
 
       const variantImage = currentVariant?.image_url || product.image;
-      addToCart({
-        productId: product.id,
-        title: product.name,
-        price: finalDisplayPrice,
-        sellerAsk,
-        currency: (product as any)?.currency || 'USD',
-        affiliateRate: affiliateRateDecimal,
-        quantity: quantity,
-        image: variantImage,
-        sellerId: product.sellerId || product.seller || 'unknown-seller',
-        sellerName: product.seller,
-        commission_rate: product.commission_rate || 25,
+      flushSync(() => {
+        addToCart({
+          productId: product.id,
+          title: product.name,
+          price: finalDisplayPrice,
+          sellerAsk,
+          currency: (product as any)?.currency || 'USD',
+          affiliateRate: affiliateRateDecimal,
+          quantity: quantity,
+          image: variantImage,
+          sellerId: product.sellerId || product.seller || 'unknown-seller',
+          sellerName: product.seller,
+          commission_rate: product.commission_rate || 25,
         commission_type: product.commission_type,
         flat_commission_amount: product.flat_commission_amount,
+        affiliateId: cartAffiliateId,
         shippingCost: shippingPrice,
-        maxQuantity: computedMaxQuantity,
+        maxQuantity: typeof computedMaxQuantity === 'number' ? computedMaxQuantity : undefined,
         variantId,
-        variantName: variantLabel,
-        variantAttributes: variantAttributes ?? undefined,
+          variantName: variantLabel,
+          variantAttributes: variantAttributes ?? undefined,
+        });
       });
+      navigate('/checkout');
     }
   };
 
@@ -699,7 +764,7 @@ const ProductDetailPageSimple: React.FC = () => {
                 </div>
               )}
 
-              {/* Start Selling Button for Affiliates */}
+              {/* Start Selling Button for Partners */}
               <button
                 onClick={handleStartSelling}
                 className="w-full inline-flex items-center justify-center bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold shadow-lg mt-4"
@@ -707,11 +772,11 @@ const ProductDetailPageSimple: React.FC = () => {
                 Start Selling (Import to My Store)
               </button>
 
-              {/* Affiliate Tools: QR code, custom link, social share */}
+              {/* Partner Tools: QR code, custom link, social share */}
               {showAffiliateTools && (
                 <div className="mt-6 border-t pt-4 space-y-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Your Affiliate Product Link:</p>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Your Partner Product Link:</p>
                     <input type="text" value={affiliateProductLink} readOnly className="w-full px-3 py-2 border rounded" />
                   </div>
                   <div>
@@ -740,7 +805,7 @@ const ProductDetailPageSimple: React.FC = () => {
 
               <div className="text-sm text-gray-500 space-y-1">
                 <p>
-                  Shipping: {shippingPrice ? formatMoney(shippingPrice) : '$0.00 (seller-defined)'}
+                  Shipping: {formatShippingDisplay(shippingPrice, (product as any)?.currency || 'USD')}
                 </p>
                 <p>Shipping & tax added at checkout. Free returns within 30 days.</p>
               </div>
@@ -748,10 +813,10 @@ const ProductDetailPageSimple: React.FC = () => {
           </div>
         </div>
 
-        {/* Affiliate Tools Section */}
+        {/* Partner Tools Section */}
         {showAffiliateTools && (
           <div className="mt-10 p-6 bg-white rounded-2xl shadow-md border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Affiliate Tools</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Partner Tools</h2>
             <p className="text-sm text-gray-500 mb-4">
               Use these tools to promote this product and earn commissions on sales.
             </p>
@@ -762,7 +827,7 @@ const ProductDetailPageSimple: React.FC = () => {
                 rel="noopener noreferrer"
                 className="flex-1 inline-flex items-center justify-center bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors font-semibold text-center"
               >
-                <span>👉 Get Your Affiliate Link</span>
+                <span>👉 Get Your Partner Link</span>
               </Link>
               <a
                 href={qrCodeUrl}
@@ -774,7 +839,7 @@ const ProductDetailPageSimple: React.FC = () => {
               </a>
             </div>
             <p className="text-xs text-gray-500 mt-4">
-              Share your affiliate link or QR code with potential buyers. Commission details are handled automatically.
+              Share your partner link or QR code with potential buyers. Commission details are handled automatically.
             </p>
           </div>
         )}

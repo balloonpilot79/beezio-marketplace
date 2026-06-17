@@ -1,25 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+﻿import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
-import { Package, Heart, Star, Calendar, Truck, Gift, MessageSquare, Download, RefreshCw, Shield, Award, Bell, Users, Zap, BookOpen, TrendingUp, HelpCircle, Clock, Filter, Search, TrendingDown, DollarSign, UserMinus, Plus, X, ThumbsUp, CheckCircle, Mail, ShoppingBag } from 'lucide-react';
+import IssueCenterPage from '../pages/IssueCenterPage';
+import { Package, Heart, Star, Calendar, Truck, Gift, MessageSquare, Download, Shield, Bell, Users, Zap, BookOpen, TrendingUp, HelpCircle, Clock, Filter, Search, TrendingDown, DollarSign, UserMinus, Plus, X, ThumbsUp, CheckCircle } from 'lucide-react';
 
 interface Order {
   id: string;
+  order_number?: string | null;
   product_title: string;
+  items?: Array<{
+    id: string;
+    title: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+    sku?: string | null;
+  }>;
+  seller_id?: string | null;
+  seller_name?: string | null;
+  buyer_name?: string | null;
+  buyer_email?: string | null;
   amount: number;
-  status: 'pending' | 'shipped' | 'delivered' | 'cancelled';
+  shipping_amount?: number;
+  status: string;
+  payment_status?: string | null;
+  fulfillment_status?: string | null;
+  dispute_status?: string | null;
   order_date: string;
+  ordered_at?: string | null;
+  paid_at?: string | null;
+  shipped_at?: string | null;
+  expected_ship_date?: string | null;
+  expected_arrival_date?: string | null;
+  seller_notes?: string | null;
   tracking_number?: string;
-}
-
-interface Subscription {
-  id: string;
-  product_title: string;
-  amount: number;
-  status: 'active' | 'cancelled' | 'paused';
-  next_billing_date: string;
-  billing_cycle: 'monthly' | 'yearly';
+  tracking_url?: string;
+  shipping_carrier?: string;
+  cj_status?: string;
 }
 
 interface WishlistItem {
@@ -53,18 +71,6 @@ interface Purchase {
   support_until?: string;
 }
 
-interface Reward {
-  id: string;
-  title: string;
-  description: string;
-  points_required: number;
-  type: 'discount' | 'product' | 'exclusive';
-  value: string;
-  available: boolean;
-  discount_percent?: number;
-  expires_at?: string;
-}
-
 interface Affiliate {
   id: string;
   name: string;
@@ -91,149 +97,334 @@ interface WatchlistItem {
   added_date: string;
 }
 
-const EnhancedBuyerDashboard: React.FC = () => {
+export type BuyerDashboardTab =
+  | 'overview'
+  | 'orders'
+  | 'purchases'
+  | 'wishlist'
+  | 'recommendations'
+  | 'affiliates'
+  | 'watchlist'
+  | 'community'
+  | 'support';
+
+interface EnhancedBuyerDashboardProps {
+  initialTab?: BuyerDashboardTab;
+  activeTabOverride?: BuyerDashboardTab;
+  onTabChange?: (tab: BuyerDashboardTab) => void;
+  hideInternalTabs?: boolean;
+  title?: string;
+  subtitle?: string;
+}
+
+const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
+  initialTab = 'overview',
+  activeTabOverride,
+  onTabChange,
+  hideInternalTabs = false,
+  title = 'Buyer Dashboard',
+  subtitle = 'Manage your orders and preferences',
+}) => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [rewards, setRewards] = useState<Reward[]>([]);
   const [followedAffiliates, setFollowedAffiliates] = useState<Affiliate[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'purchases' | 'subscriptions' | 'wishlist' | 'recommendations' | 'affiliates' | 'rewards' | 'watchlist' | 'community' | 'support' | 'reviews'>('overview');
-  const [loading, setLoading] = useState(false); // Changed to false to prevent loading screen
-  const [loyaltyPoints, setLoyaltyPoints] = useState(150); // Default points
+  const [activeTab, setActiveTab] = useState<BuyerDashboardTab>(activeTabOverride || initialTab);
+  const [loading, setLoading] = useState(true);
+  const [disputePrefill, setDisputePrefill] = useState<{ sellerId: string; orderId: string; summary: string } | null>(null);
+  const [showComplianceBanner, setShowComplianceBanner] = useState(true);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load sample data immediately to prevent white screen
-    loadSampleData();
-    
-    // If user/profile available, try to load real data
+    try {
+      const dismissed = localStorage.getItem('beezio_buyer_compliance_banner');
+      setShowComplianceBanner(dismissed !== 'dismissed');
+    } catch {
+      setShowComplianceBanner(true);
+    }
+  }, []);
+
+  const dismissComplianceBanner = () => {
+    setShowComplianceBanner(false);
+    try {
+      localStorage.setItem('beezio_buyer_compliance_banner', 'dismissed');
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
     if (user) {
       fetchBuyerData();
+    } else {
+      setLoading(false);
     }
   }, [user, profile]);
 
-  const loadSampleData = () => {
-    // Set sample orders
-    setOrders([
-      {
-        id: 'sample-1',
-        product_title: 'Wireless Headphones',
-        amount: 89.99,
-        status: 'delivered',
-        order_date: '2025-08-10',
-        tracking_number: 'TRK123456'
-      },
-      {
-        id: 'sample-2', 
-        product_title: 'Coffee Mug',
-        amount: 34.50,
-        status: 'shipped',
-        order_date: '2025-08-05',
-        tracking_number: 'TRK789012'
-      }
-    ]);
-    
-    // Set sample subscriptions
-    setSubscriptions([
-      {
-        id: 'sub-1',
-        product_title: 'Premium Coffee Subscription',
-        amount: 19.99,
-        status: 'active',
-        next_billing_date: '2025-09-15',
-        billing_cycle: 'monthly'
-      }
-    ]);
-    
-    setLoading(false);
+  useEffect(() => {
+    if (!activeTabOverride || activeTabOverride === activeTab) return;
+    setActiveTab(activeTabOverride);
+  }, [activeTab, activeTabOverride]);
+
+  const handleTabChange = (tab: BuyerDashboardTab) => {
+    setActiveTab(tab);
+    onTabChange?.(tab);
+  };
+
+  const isMissingColumnError = (error: unknown, columnName: string) => {
+    const message = String((error as any)?.message || '').toLowerCase();
+    return message.includes('column') && message.includes(columnName.toLowerCase()) && message.includes('does not exist');
+  };
+
+  const formatMoney = (value: unknown) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(value) || 0);
+
+  const formatDateTime = (value: unknown) => {
+    const date = new Date(String(value || ''));
+    if (!Number.isFinite(date.getTime())) return 'Not available';
+    return date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  };
+
+  const formatDate = (value: unknown) => {
+    const date = new Date(String(value || ''));
+    if (!Number.isFinite(date.getTime())) return 'Not provided yet';
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const fetchBuyerOrdersFromFunction = async (): Promise<Order[] | null> => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) return null;
+
+    const response = await fetch('/.netlify/functions/buyer-orders', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(String(body?.error || 'Failed to load buyer orders'));
+    }
+
+    const body = await response.json();
+    const rows = Array.isArray(body?.orders) ? body.orders : [];
+    return rows.map((order: any) => {
+      const items = Array.isArray(order?.items) ? order.items : [];
+      return {
+        id: String(order.id),
+        order_number: order.order_number || null,
+        product_title:
+          items.length > 1
+            ? `${items[0]?.title || 'Product'} + ${items.length - 1} more`
+            : items[0]?.title || 'Product',
+        items,
+        seller_id: order.seller_id || null,
+        seller_name: order.seller_name || null,
+        buyer_name: order.buyer_name || null,
+        buyer_email: order.buyer_email || null,
+        amount: Number(order.total_amount || 0),
+        shipping_amount: Number(order.shipping_amount || 0),
+        status: String(order.status || 'Pending'),
+        payment_status: order.payment_status || null,
+        fulfillment_status: order.fulfillment_status || null,
+        dispute_status: order.dispute_status || null,
+        order_date: String(order.ordered_at || '').split('T')[0],
+        ordered_at: order.ordered_at || null,
+        paid_at: order.paid_at || null,
+        shipped_at: order.shipped_at || null,
+        expected_ship_date: order.expected_ship_date || null,
+        expected_arrival_date: order.expected_arrival_date || null,
+        seller_notes: order.seller_notes || null,
+        tracking_number: order.tracking_number || undefined,
+        tracking_url: order.tracking_url || undefined,
+        shipping_carrier: order.shipping_carrier || undefined,
+        cj_status: order.cj_status || undefined,
+      };
+    });
   };
 
   const fetchBuyerData = async () => {
     try {
+      const functionOrders = await fetchBuyerOrdersFromFunction().catch((error) => {
+        console.warn('Failed to fetch buyer orders from function:', error.message);
+        return null;
+      });
+      if (functionOrders) {
+        setOrders(functionOrders);
+        setPurchases(functionOrders.flatMap((order) => (order.items || []).map((item) => ({
+          id: item.id,
+          product_title: item.title || order.product_title,
+          seller_name: order.seller_name || 'Seller',
+          affiliate_name: 'Direct Purchase',
+          amount: item.line_total || order.amount,
+          purchase_date: String(order.ordered_at || order.order_date || '').split('T')[0] || 'Unknown',
+        }))));
+        setWishlist([]);
+        setRecommendations([]);
+        setFollowedAffiliates([]);
+        setWatchlist([]);
+        return;
+      }
+
       // Fetch real orders from Supabase
-      const { data: ordersData } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items(
+      const userId = String(user?.id || '').trim();
+      const profileId = String((profile as any)?.id || '').trim();
+      const buyerIds = Array.from(new Set([profileId, userId].filter(Boolean)));
+      const buyerEmail = String(profile?.email || (user as any)?.email || '').trim();
+
+      const baseOrdersQuery = () =>
+        supabase
+          .from('orders')
+          .select(`
             *,
-            products(title)
-          )
-        `)
-        .eq('customer_email', profile?.email)
-        .order('created_at', { ascending: false });
+            order_items(
+              *,
+              products(title, seller_id)
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+      const runOrdersQuery = async (emailColumn: 'billing_email' | 'customer_email' | null) => {
+        let query = baseOrdersQuery();
+        const filters: string[] = [];
+        if (buyerIds.length === 1) {
+          filters.push(`buyer_id.eq.${buyerIds[0]}`);
+        } else if (buyerIds.length > 1) {
+          filters.push(`buyer_id.in.(${buyerIds.join(',')})`);
+        }
+        if (buyerEmail && emailColumn) {
+          filters.push(`${emailColumn}.eq.${buyerEmail}`);
+        }
+
+        if (filters.length > 1) {
+          query = query.or(filters.join(','));
+        } else if (filters.length === 1) {
+          const [filter] = filters;
+          const [column, operator, value] = filter.split('.');
+          if (operator === 'eq') {
+            query = query.eq(column, value);
+          } else {
+            query = query.or(filter);
+          }
+        } else if (buyerEmail && emailColumn) {
+          query = query.eq(emailColumn, buyerEmail);
+        }
+        return await query;
+      };
+
+      let { data: ordersData, error: ordersError } = await runOrdersQuery('billing_email');
+      if (ordersError && isMissingColumnError(ordersError, 'billing_email')) {
+        const fallbackByIds = await runOrdersQuery(null);
+        ordersData = fallbackByIds.data;
+        ordersError = fallbackByIds.error;
+
+        if ((!ordersData || ordersData.length === 0) && buyerEmail) {
+          const fallbackByCustomerEmail = await runOrdersQuery('customer_email');
+          if (!fallbackByCustomerEmail.error || !ordersData?.length) {
+            ordersData = fallbackByCustomerEmail.data;
+            ordersError = fallbackByCustomerEmail.error;
+          }
+        }
+      } else if (ordersError && buyerEmail) {
+        const fallback = await runOrdersQuery('customer_email');
+        ordersData = fallback.data;
+        ordersError = fallback.error;
+      }
+      if (ordersError && isMissingColumnError(ordersError, 'customer_email')) {
+        const fallbackByIds = await runOrdersQuery(null);
+        ordersData = fallbackByIds.data;
+        ordersError = fallbackByIds.error;
+      }
+      if (ordersError) {
+        console.warn('Failed to fetch buyer orders:', ordersError.message);
+      }
 
       if (ordersData) {
-        const formattedOrders = ordersData.map(order => ({
-          id: order.id,
-          product_title: order.order_items?.[0]?.products?.title || 'Product',
-          amount: order.total_amount,
-          status: order.status as 'pending' | 'shipped' | 'delivered' | 'cancelled',
-          order_date: order.created_at.split('T')[0],
-          tracking_number: order.tracking_number
-        }));
-        setOrders(formattedOrders);
+        const orderIds = ordersData.map((order) => String(order.id)).filter(Boolean);
+        const cjByOrderId: Record<string, { status?: string; trackingNumber?: string; trackingUrl?: string; carrier?: string }> = {};
+        if (orderIds.length > 0) {
+          const { data: cjRows } = await supabase
+            .from('cj_orders')
+            .select('beezio_order_id,cj_status,cj_tracking_number,cj_tracking_url,cj_logistic_name')
+            .in('beezio_order_id', orderIds);
+          (cjRows || []).forEach((row: any) => {
+            const key = String(row?.beezio_order_id || '').trim();
+            if (!key) return;
+            cjByOrderId[key] = {
+              status: String(row?.cj_status || '').trim() || undefined,
+              trackingNumber: String(row?.cj_tracking_number || '').trim() || undefined,
+              trackingUrl: String(row?.cj_tracking_url || '').trim() || undefined,
+              carrier: String(row?.cj_logistic_name || '').trim() || undefined,
+            };
+          });
+        }
+
+        const formattedOrders = ordersData.map(order => {
+          const fulfillmentStatus = String(order.fulfillment_status || '').trim().toLowerCase();
+          const paymentStatus = String(order.payment_status || order.status || '').trim().toLowerCase();
+          const buyerStatus = (() => {
+            if (fulfillmentStatus === 'delivered') return 'Delivered';
+            if (fulfillmentStatus === 'shipped') return 'Shipped';
+            if (fulfillmentStatus === 'processing') return 'Preparing for shipment';
+            if (fulfillmentStatus === 'waiting_funds') return 'Payment clearing';
+            if (fulfillmentStatus === 'manual_review') return 'Order review';
+            if (paymentStatus === 'paid' || paymentStatus === 'completed' || paymentStatus === 'processing') return 'Order received';
+            return String(order.status || 'Pending').trim() || 'Pending';
+          })();
+
+          return {
+            id: order.id,
+            order_number: order.order_number || null,
+            product_title: order.order_items?.[0]?.products?.title || 'Product',
+            seller_id: order.order_items?.[0]?.products?.seller_id || null,
+            amount: order.total_amount,
+            status: buyerStatus,
+            payment_status: order.payment_status || null,
+            fulfillment_status: order.fulfillment_status || null,
+            order_date: order.created_at.split('T')[0],
+            tracking_number: order.tracking_number || cjByOrderId[String(order.id)]?.trackingNumber,
+            tracking_url: order.tracking_url || cjByOrderId[String(order.id)]?.trackingUrl,
+            shipping_carrier: cjByOrderId[String(order.id)]?.carrier,
+            cj_status: cjByOrderId[String(order.id)]?.status,
+          };
+        });
+        const sellerIds = Array.from(
+          new Set(formattedOrders.map((order) => order.seller_id).filter(Boolean))
+        ) as string[];
+        if (formattedOrders.length === 0) {
+          setOrders([]);
+        } else if (sellerIds.length > 0) {
+          const { data: sellersData } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', sellerIds);
+          const nameById: Record<string, string> = {};
+          (sellersData || []).forEach((row: any) => {
+            if (row?.id) nameById[String(row.id)] = String(row.full_name || 'Seller');
+          });
+          setOrders(
+            formattedOrders.map((order) => ({
+              ...order,
+              seller_name: order.seller_id ? nameById[String(order.seller_id)] || 'Seller' : null,
+            }))
+          );
+        } else {
+          setOrders(formattedOrders);
+        }
       }
 
-      // Fetch real subscriptions from Supabase
-      const { data: subscriptionsData } = await supabase
-        .from('subscriptions')
-        .select(`
-          *,
-          products(title, subscription_price, subscription_interval)
-        `)
-        .eq('customer_id', profile?.id)
-        .eq('status', 'active');
+      const ordersPurchasesData = ordersData?.length ? ordersData.slice(0, 10) : [];
 
-      if (subscriptionsData) {
-        const formattedSubscriptions = subscriptionsData.map(sub => ({
-          id: sub.id,
-          product_title: sub.products?.title || 'Subscription',
-          amount: sub.products?.subscription_price || 0,
-          status: sub.status as 'active' | 'cancelled' | 'paused',
-          next_billing_date: sub.next_billing_date,
-          billing_cycle: sub.products?.subscription_interval || 'monthly'
-        }));
-        setSubscriptions(formattedSubscriptions);
-      }
-
-      // Fetch buyer's purchases with affiliate information
-      // Simplified query to avoid complex foreign key relationships
-      const { data: purchasesData } = await supabase
-        .from('order_items')
-        .select(`
-          *,
-          products(title, images, price)
-        `)
-        .limit(10); // Limit for performance
-
-      // Alternative: Query through orders first for better compatibility
-      const { data: ordersPurchasesData } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items(
-            *,
-            products(title, images, price)
-          )
-        `)
-        .eq('customer_email', profile?.email)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      // Use the orders-based data if available, fallback to direct order_items
-      const finalPurchasesData = ordersPurchasesData?.length ? 
+      const finalPurchasesData = ordersPurchasesData?.length ?
         ordersPurchasesData.flatMap(order => 
           order.order_items?.map(item => ({
             ...item,
             order_date: order.created_at,
             order_amount: order.total_amount
           })) || []
-        ) : purchasesData;
+        ) : [];
 
       if (finalPurchasesData && finalPurchasesData.length > 0) {
         const formattedPurchases = finalPurchasesData.map(item => ({
@@ -244,184 +435,19 @@ const EnhancedBuyerDashboard: React.FC = () => {
           amount: item.total_price || item.order_amount || 0,
           purchase_date: item.order_date?.split('T')[0] || item.created_at?.split('T')[0] || 'Unknown',
           download_links: item.products?.images || [],
-          access_expires: '2026-01-25', // Could be calculated from subscription
+          access_expires: '2026-01-25', // Could be calculated from purchase terms
           support_until: '2025-07-25'
         }));
         setPurchases(formattedPurchases);
+      } else {
+        setPurchases([]);
       }
 
-      setWishlist([
-        {
-          id: '1',
-          product_title: 'Advanced Analytics Dashboard',
-          price: 79.99,
-          seller_name: 'TechCorp',
-          image: ''
-        },
-        {
-          id: '2',
-          product_title: 'Social Media Automation',
-          price: 39.99,
-          seller_name: 'MarketingPro',
-          image: ''
-        }
-      ]);
+      setWishlist([]);
+      setRecommendations([]);
+      setFollowedAffiliates([]);
+      setWatchlist([]);
 
-      // Enhanced mock data
-      setRecommendations([
-        {
-          id: '1',
-          product_title: 'Advanced Email Marketing Course',
-          price: 127.99,
-          seller_name: 'EmailPro Academy',
-          affiliate_name: 'Sarah M.',
-          match_score: 95,
-          reason: 'Based on your digital marketing purchases',
-          discount: 20
-        },
-        {
-          id: '2',
-          product_title: 'Social Media Analytics Tool',
-          price: 67.99,
-          seller_name: 'SocialTech',
-          affiliate_name: 'Mike R.',
-          match_score: 88,
-          reason: 'Customers who bought SEO tools also love this'
-        }
-      ]);
-
-      setPurchases([
-        {
-          id: '1',
-          product_title: 'Premium Course Bundle',
-          seller_name: 'Marketing Academy',
-          affiliate_name: 'Lisa K.',
-          amount: 99.99,
-          purchase_date: '2025-01-25',
-          download_links: ['https://example.com/course1', 'https://example.com/course2'],
-          access_expires: '2026-01-25',
-          support_until: '2025-07-25'
-        }
-      ]);
-
-      setRewards([
-        {
-          id: '1',
-          title: '10% Off Next Purchase',
-          description: 'Get 10% discount on any product',
-          points_required: 100,
-          type: 'discount',
-          value: '10% OFF',
-          available: true,
-          discount_percent: 10,
-          expires_at: '2024-12-31'
-        },
-        {
-          id: '2',
-          title: 'Free Bonus Course',
-          description: 'Unlock exclusive bonus course content',
-          points_required: 500,
-          type: 'product',
-          value: 'Bonus Course',
-          available: false,
-          expires_at: '2025-03-31'
-        },
-        {
-          id: '3',
-          title: '25% Off Premium Products',
-          description: 'Exclusive discount on premium course collection',
-          points_required: 200,
-          type: 'discount',
-          value: '25% OFF',
-          available: true,
-          discount_percent: 25,
-          expires_at: '2024-11-30'
-        },
-        {
-          id: '4',
-          title: 'VIP Access Pass',
-          description: 'Early access to new releases and exclusive content',
-          points_required: 750,
-          type: 'exclusive',
-          value: 'VIP Access',
-          available: false
-        }
-      ]);
-
-      setFollowedAffiliates([
-        {
-          id: '1',
-          name: 'Sarah M.',
-          specialty: 'Digital Marketing',
-          rating: 4.9,
-          total_sales: 1200,
-          is_following: true,
-          followers: 2500,
-          purchases: 8,
-          total_spent: 1247,
-          following_since: 'Jan 2024',
-          last_purchase: '3 days ago'
-        },
-        {
-          id: '2',
-          name: 'Mike R.',
-          specialty: 'SEO & Analytics',
-          rating: 4.8,
-          total_sales: 950,
-          is_following: true,
-          followers: 1800,
-          purchases: 5,
-          total_spent: 895,
-          following_since: 'Mar 2024',
-          last_purchase: '1 week ago'
-        },
-        {
-          id: '3',
-          name: 'Lisa K.',
-          specialty: 'Lead Generation',
-          rating: 4.7,
-          total_sales: 1100,
-          is_following: true,
-          followers: 3200,
-          purchases: 12,
-          total_spent: 2100,
-          following_since: 'Feb 2024',
-          last_purchase: '2 days ago'
-        }
-      ]);
-
-      setWatchlist([
-        {
-          id: '1',
-          product_title: 'Advanced Email Marketing Masterclass',
-          seller_name: 'Sarah M.',
-          affiliate_name: 'Marketing Mike',
-          current_price: 197,
-          original_price: 297,
-          price_drop: 50,
-          added_date: '1 week ago'
-        },
-        {
-          id: '2',
-          product_title: 'Social Media Growth Secrets',
-          seller_name: 'Digital Dan',
-          affiliate_name: 'Lisa K.',
-          current_price: 147,
-          added_date: '3 days ago'
-        },
-        {
-          id: '3',
-          product_title: 'Lead Generation Blueprint',
-          seller_name: 'Mike R.',
-          affiliate_name: 'Sarah M.',
-          current_price: 297,
-          original_price: 497,
-          price_drop: 77,
-          added_date: '5 days ago'
-        }
-      ]);
-
-      setLoyaltyPoints(250);
     } catch (error) {
       console.error('Error fetching buyer data:', error);
     } finally {
@@ -430,7 +456,11 @@ const EnhancedBuyerDashboard: React.FC = () => {
   };
 
   const getOrderStatusColor = (status: string) => {
-    switch (status) {
+    switch (String(status || '').trim().toLowerCase()) {
+      case 'order received': return 'bg-emerald-100 text-emerald-800';
+      case 'preparing for shipment': return 'bg-amber-100 text-amber-800';
+      case 'payment clearing': return 'bg-amber-100 text-amber-800';
+      case 'order review': return 'bg-orange-100 text-orange-800';
       case 'delivered': return 'bg-green-100 text-green-800';
       case 'shipped': return 'bg-blue-100 text-blue-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -439,14 +469,9 @@ const EnhancedBuyerDashboard: React.FC = () => {
     }
   };
 
-  const getSubscriptionStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'paused': return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const totalPurchases = orders.length;
+  const totalSavings = watchlist.reduce((sum, item) => sum + Number(item.price_drop || 0), 0);
+  const watchlistSavings = watchlist.reduce((sum, item) => sum + Math.max(0, Number(item.original_price || 0) - Number(item.current_price || 0)), 0);
 
   if (loading) {
     return <div className="p-8">Loading...</div>;
@@ -454,43 +479,49 @@ const EnhancedBuyerDashboard: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-6">
+      {showComplianceBanner && (
+        <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-900">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="font-semibold mb-2">Buyer basics</p>
+              <ul className="space-y-1">
+                <li>- Refunds are available within 14 days of delivery.</li>
+                <li>- Exchanges are available within 30 days of delivery.</li>
+                <li>- File order issues and refund requests from this customer dashboard.</li>
+                <li>- Beezio receives disputes, reviews the order, and handles refund decisions.</li>
+                <li>- Open disputes place related payouts on hold while Beezio reviews the case.</li>
+              </ul>
+              <div className="mt-2">
+                <Link to="/terms" className="text-blue-700 underline hover:text-blue-800">
+                  View full terms
+                </Link>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={dismissComplianceBanner}
+              className="shrink-0 rounded-full border border-blue-300 bg-white px-3 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-100"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Buyer Dashboard</h1>
-        <p className="text-gray-600">Manage your orders, subscriptions, and preferences</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">{title}</h1>
+        <p className="text-gray-600">{subtitle}</p>
       </div>
 
       {/* Enhanced Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Purchases</p>
-              <p className="text-2xl font-bold text-gray-900">{orders.length + purchases.length}</p>
-              <p className="text-sm text-green-600 mt-1">+2 this month</p>
+              <p className="text-2xl font-bold text-gray-900">{totalPurchases}</p>
+              <p className="text-sm text-gray-600 mt-1">From completed checkout orders</p>
             </div>
             <Package className="w-8 h-8 text-blue-600" />
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Loyalty Points</p>
-              <p className="text-2xl font-bold text-gray-900">{loyaltyPoints}</p>
-              <p className="text-sm text-yellow-600 mt-1">50 to next reward</p>
-            </div>
-            <Award className="w-8 h-8 text-yellow-600" />
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Active Subscriptions</p>
-              <p className="text-2xl font-bold text-gray-900">{subscriptions.filter(s => s.status === 'active').length}</p>
-              <p className="text-sm text-green-600 mt-1">All up to date</p>
-            </div>
-            <RefreshCw className="w-8 h-8 text-green-600" />
           </div>
         </div>
 
@@ -498,8 +529,8 @@ const EnhancedBuyerDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Savings</p>
-              <p className="text-2xl font-bold text-gray-900">$47.50</p>
-              <p className="text-sm text-orange-600 mt-1">Through affiliates</p>
+              <p className="text-2xl font-bold text-gray-900">${totalSavings.toFixed(2)}</p>
+              <p className="text-sm text-orange-600 mt-1">From tracked watchlist price drops</p>
             </div>
             <Gift className="w-8 h-8 text-orange-600" />
           </div>
@@ -507,25 +538,23 @@ const EnhancedBuyerDashboard: React.FC = () => {
       </div>
 
       {/* Enhanced Navigation Tabs */}
+      {!hideInternalTabs && (
       <div className="border-b border-gray-200 mb-8">
         <nav className="flex space-x-6 overflow-x-auto">
           {[
-            { id: 'overview', label: 'Overview', icon: TrendingUp },
-            { id: 'orders', label: 'Orders', icon: Package },
-            { id: 'purchases', label: 'My Purchases', icon: Download },
-            { id: 'subscriptions', label: 'Subscriptions', icon: RefreshCw },
-            { id: 'wishlist', label: 'Wishlist', icon: Heart },
-            { id: 'recommendations', label: 'For You', icon: Zap },
-            { id: 'affiliates', label: 'My Affiliates', icon: Users },
-            { id: 'rewards', label: 'Rewards', icon: Award },
-            { id: 'support', label: 'Support', icon: HelpCircle },
-            { id: 'reviews', label: 'Reviews', icon: Star }
-          ].map((tab) => {
+          { id: 'overview', label: 'Overview', icon: TrendingUp },
+          { id: 'orders', label: 'Orders', icon: Package },
+          { id: 'purchases', label: 'My Purchases', icon: Download },
+          { id: 'wishlist', label: 'Wishlist', icon: Heart },
+          { id: 'recommendations', label: 'For You', icon: Zap },
+          { id: 'affiliates', label: 'My Affiliates', icon: Users },
+          { id: 'support', label: 'Support', icon: HelpCircle }
+        ].map((tab) => {
             const IconComponent = tab.icon;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => handleTabChange(tab.id as BuyerDashboardTab)}
                 className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'border-orange-500 text-orange-600'
@@ -539,10 +568,29 @@ const EnhancedBuyerDashboard: React.FC = () => {
           })}
         </nav>
       </div>
+      )}
 
       {/* Enhanced Tab Content */}
       {activeTab === 'overview' && (
         <div className="space-y-8">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+            <h3 className="text-lg font-semibold text-gray-900">What happens after you order</h3>
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
+              <div className="rounded-lg border border-white/80 bg-white p-4 text-sm text-gray-700">
+                Your order appears in <strong>Orders</strong> as soon as payment is captured.
+              </div>
+              <div className="rounded-lg border border-white/80 bg-white p-4 text-sm text-gray-700">
+                The seller updates fulfillment and adds tracking from their shipping dashboard.
+              </div>
+              <div className="rounded-lg border border-white/80 bg-white p-4 text-sm text-gray-700">
+                You see shipment status, carrier, and tracking updates here as the order moves.
+              </div>
+              <div className="rounded-lg border border-white/80 bg-white p-4 text-sm text-gray-700">
+                If there is a problem, contact the seller first. If it is not resolved, Beezio can review the dispute.
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
@@ -551,30 +599,27 @@ const EnhancedBuyerDashboard: React.FC = () => {
                   <Bell className="w-5 h-5 text-gray-400" />
                 </div>
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-4 p-3 bg-blue-50 rounded-lg">
-                    <Package className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="font-medium">Order Delivered</p>
-                      <p className="text-sm text-gray-600">Premium Course Bundle arrived safely</p>
+                  {orders.length > 0 ? orders.slice(0, 3).map((order) => (
+                    <button
+                      key={order.id}
+                      onClick={() => {
+                        setExpandedOrderId(order.id);
+                        handleTabChange('orders');
+                      }}
+                      className="w-full flex items-center justify-between gap-4 p-3 bg-blue-50 rounded-lg text-left hover:bg-blue-100"
+                    >
+                      <Package className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">Order #{order.order_number || order.id}</p>
+                        <p className="text-sm text-gray-600 truncate">{order.product_title}</p>
+                      </div>
+                      <span className="text-xs text-blue-700 whitespace-nowrap">{formatDate(order.ordered_at || order.order_date)}</span>
+                    </button>
+                  )) : (
+                    <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
+                      No recent orders yet.
                     </div>
-                    <span className="text-xs text-blue-600">2 days ago</span>
-                  </div>
-                  <div className="flex items-center space-x-4 p-3 bg-green-50 rounded-lg">
-                    <Award className="w-5 h-5 text-green-600" />
-                    <div>
-                      <p className="font-medium">Points Earned</p>
-                      <p className="text-sm text-gray-600">+50 loyalty points from Sarah M.</p>
-                    </div>
-                    <span className="text-xs text-green-600">3 days ago</span>
-                  </div>
-                  <div className="flex items-center space-x-4 p-3 bg-yellow-50 rounded-lg">
-                    <Zap className="w-5 h-5 text-yellow-600" />
-                    <div>
-                      <p className="font-medium">New Recommendation</p>
-                      <p className="text-sm text-gray-600">Advanced Email Marketing Course suggested</p>
-                    </div>
-                    <span className="text-xs text-yellow-600">5 days ago</span>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -588,14 +633,6 @@ const EnhancedBuyerDashboard: React.FC = () => {
                     <Zap className="w-6 h-6 text-yellow-600 mb-2" />
                     <h4 className="font-medium">View Recommendations</h4>
                     <p className="text-sm text-gray-600">Personalized for you</p>
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('rewards')}
-                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-                  >
-                    <Gift className="w-6 h-6 text-orange-600 mb-2" />
-                    <h4 className="font-medium">Redeem Rewards</h4>
-                    <p className="text-sm text-gray-600">{loyaltyPoints} points available</p>
                   </button>
                   <button 
                     onClick={() => setActiveTab('affiliates')}
@@ -618,27 +655,6 @@ const EnhancedBuyerDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-gradient-to-r from-yellow-50 to-pink-50 p-6 rounded-xl border border-yellow-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-yellow-900">Loyalty Status</h3>
-                  <Award className="w-6 h-6 text-yellow-600" />
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-yellow-800">Current Points:</span>
-                    <span className="font-bold text-yellow-900">{loyaltyPoints}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-yellow-800">Status:</span>
-                    <span className="font-bold text-yellow-900">Silver Member</span>
-                  </div>
-                  <div className="w-full bg-yellow-200 rounded-full h-2">
-                    <div className="bg-yellow-600 h-2 rounded-full" style={{width: '60%'}}></div>
-                  </div>
-                  <p className="text-sm text-yellow-800">100 more points to Gold level!</p>
-                </div>
-              </div>
-
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <h3 className="text-lg font-semibold mb-4">Your Affiliate Network</h3>
                 <div className="space-y-3">
@@ -695,9 +711,9 @@ const EnhancedBuyerDashboard: React.FC = () => {
                       <h4 className="font-medium text-lg mb-1">{purchase.product_title}</h4>
                       <div className="flex items-center space-x-4 text-sm text-gray-600">
                         <span>by {purchase.seller_name}</span>
-                        <span>•</span>
+                        <span>â€¢</span>
                         <span>Referred by {purchase.affiliate_name}</span>
-                        <span>•</span>
+                        <span>â€¢</span>
                         <span>Purchased {purchase.purchase_date}</span>
                       </div>
                     </div>
@@ -752,7 +768,7 @@ const EnhancedBuyerDashboard: React.FC = () => {
       {activeTab === 'recommendations' && (
         <div className="space-y-6">
           <div className="bg-gradient-to-r from-yellow-50 to-pink-50 p-6 rounded-xl border border-yellow-200">
-            <h3 className="text-lg font-semibold mb-2 text-yellow-900">🎯 Personalized For You</h3>
+            <h3 className="text-lg font-semibold mb-2 text-yellow-900">ðŸŽ¯ Personalized For You</h3>
             <p className="text-yellow-800">Based on your purchase history and interests, here are products we think you'll love!</p>
           </div>
 
@@ -827,38 +843,157 @@ const EnhancedBuyerDashboard: React.FC = () => {
             <h3 className="text-lg font-semibold">Order History</h3>
           </div>
           <div className="divide-y divide-gray-200">
+            {orders.length === 0 && (
+              <div className="p-6 text-sm text-gray-600">
+                No orders found for this buyer account yet.
+              </div>
+            )}
             {orders.map((order) => (
               <div key={order.id} className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h4 className="font-medium text-gray-900">{order.product_title}</h4>
-                    <p className="text-sm text-gray-600">Order #{order.id} • {order.order_date}</p>
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div className="min-w-0">
+                    <h4 className="font-medium text-gray-900 truncate">{order.product_title}</h4>
+                    <p className="text-sm text-gray-600">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                        className="font-medium text-orange-700 underline-offset-2 hover:text-orange-800 hover:underline"
+                      >
+                        Order #{order.order_number || order.id}
+                      </button>
+                      {' - '}
+                      {formatDate(order.ordered_at || order.order_date)}
+                    </p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-lg">${order.amount}</p>
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-medium text-lg">{formatMoney(order.amount)}</p>
                     <span className={`text-xs px-2 py-1 rounded-full ${getOrderStatusColor(order.status)}`}>
                       {order.status}
                     </span>
+                    {String(order.dispute_status || '').toUpperCase() === 'OPEN' && (
+                      <div className="mt-1 text-xs px-2 py-1 rounded-full bg-red-100 text-red-800">
+                        Beezio review open
+                      </div>
+                    )}
                   </div>
                 </div>
-                
+
                 {order.tracking_number && (
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
                     <Truck className="w-4 h-4" />
                     <span>Tracking: {order.tracking_number}</span>
+                    {order.shipping_carrier ? <span className="text-gray-400">({order.shipping_carrier})</span> : null}
+                    {order.tracking_url ? (
+                      <a
+                        className="text-blue-600 hover:text-blue-700 underline"
+                        href={order.tracking_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Track Package
+                      </a>
+                    ) : null}
                   </div>
                 )}
-                
-                <div className="mt-4 flex space-x-3">
-                  <button className="text-orange-600 hover:text-orange-700 text-sm font-medium">
-                    View Details
+
+                {expandedOrderId === order.id && (
+                  <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-900 mb-2">Order Details</h5>
+                        <dl className="space-y-1 text-sm">
+                          <div className="flex justify-between gap-4">
+                            <dt className="text-gray-600">Ordered</dt>
+                            <dd className="text-right text-gray-900">{formatDateTime(order.ordered_at || order.order_date)}</dd>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <dt className="text-gray-600">Buyer</dt>
+                            <dd className="text-right text-gray-900">{order.buyer_name || order.buyer_email || 'Buyer'}</dd>
+                          </div>
+                          {order.buyer_email && (
+                            <div className="flex justify-between gap-4">
+                              <dt className="text-gray-600">Email</dt>
+                              <dd className="text-right text-gray-900 break-all">{order.buyer_email}</dd>
+                            </div>
+                          )}
+                          <div className="flex justify-between gap-4">
+                            <dt className="text-gray-600">Seller</dt>
+                            <dd className="text-right text-gray-900">{order.seller_name || 'Seller'}</dd>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <dt className="text-gray-600">Expected ship</dt>
+                            <dd className="text-right text-gray-900">{formatDate(order.expected_ship_date)}</dd>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <dt className="text-gray-600">Expected arrival</dt>
+                            <dd className="text-right text-gray-900">{formatDate(order.expected_arrival_date)}</dd>
+                          </div>
+                        </dl>
+                      </div>
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-900 mb-2">Items</h5>
+                        <div className="space-y-2">
+                          {(order.items || []).length > 0 ? (order.items || []).map((item) => (
+                            <div key={item.id} className="flex justify-between gap-4 text-sm">
+                              <div className="min-w-0">
+                                <p className="font-medium text-gray-900 truncate">{item.title}</p>
+                                <p className="text-gray-600">Qty {item.quantity}{item.sku ? ` - SKU ${item.sku}` : ''}</p>
+                              </div>
+                              <div className="text-right text-gray-900 whitespace-nowrap">{formatMoney(item.line_total)}</div>
+                            </div>
+                          )) : (
+                            <p className="text-sm text-gray-600">No item details were saved for this order.</p>
+                          )}
+                        </div>
+                        <div className="mt-3 border-t border-gray-200 pt-3 space-y-1 text-sm">
+                          {Number(order.shipping_amount || 0) > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Shipping</span>
+                              <span className="text-gray-900">{formatMoney(order.shipping_amount)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between font-semibold">
+                            <span>Total</span>
+                            <span>{formatMoney(order.amount)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <h5 className="text-sm font-semibold text-gray-900 mb-1">Seller Notes</h5>
+                      <p className="text-sm text-gray-700">{order.seller_notes || 'No seller notes yet.'}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Link
+                    to={`/order-confirmation?order=${encodeURIComponent(String(order.id))}`}
+                    className="text-orange-600 hover:text-orange-700 text-sm font-medium"
+                  >
+                    View Receipt
+                  </Link>
+                  <button
+                    className={`text-sm font-medium ${order.seller_id ? 'text-red-600 hover:text-red-700' : 'text-gray-400 cursor-not-allowed'}`}
+                    disabled={!order.seller_id}
+                    onClick={() => {
+                      if (!order.seller_id) return;
+                      setDisputePrefill({
+                        sellerId: String(order.seller_id),
+                        orderId: String(order.id),
+                        summary: `Refund or order issue: ${order.product_title}`,
+                      });
+                      setActiveTab('support');
+                    }}
+                  >
+                    Request Refund / Report Issue
                   </button>
-                  {order.status === 'delivered' && (
+                  {String(order.status || '').trim().toLowerCase() === 'delivered' && (
                     <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
                       Write Review
                     </button>
                   )}
-                  {order.status === 'pending' && (
+                  {String(order.status || '').trim().toLowerCase() === 'pending' && (
                     <button className="text-red-600 hover:text-red-700 text-sm font-medium">
                       Cancel Order
                     </button>
@@ -869,51 +1004,6 @@ const EnhancedBuyerDashboard: React.FC = () => {
           </div>
         </div>
       )}
-
-      {activeTab === 'subscriptions' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold">Your Subscriptions</h3>
-          </div>
-          <div className="divide-y divide-gray-200">
-            {subscriptions.map((subscription) => (
-              <div key={subscription.id} className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h4 className="font-medium text-gray-900">{subscription.product_title}</h4>
-                    <p className="text-sm text-gray-600">
-                      Next billing: {subscription.next_billing_date} • {subscription.billing_cycle}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-lg">${subscription.amount}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full ${getSubscriptionStatusColor(subscription.status)}`}>
-                      {subscription.status}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex space-x-3">
-                  <button className="text-orange-600 hover:text-orange-700 text-sm font-medium">
-                    Manage Subscription
-                  </button>
-                  {subscription.status === 'active' && (
-                    <>
-                      <button className="text-yellow-600 hover:text-yellow-700 text-sm font-medium">
-                        Pause
-                      </button>
-                      <button className="text-red-600 hover:text-red-700 text-sm font-medium">
-                        Cancel
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {activeTab === 'wishlist' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {wishlist.map((item) => (
@@ -964,7 +1054,7 @@ const EnhancedBuyerDashboard: React.FC = () => {
                         <div className="flex items-center space-x-1 mt-1">
                           <Star className="w-4 h-4 text-yellow-400 fill-current" />
                           <span className="text-sm">{affiliate.rating}</span>
-                          <span className="text-gray-400">•</span>
+                          <span className="text-gray-400">â€¢</span>
                           <span className="text-sm text-gray-600">{affiliate.followers} followers</span>
                         </div>
                       </div>
@@ -1003,7 +1093,11 @@ const EnhancedBuyerDashboard: React.FC = () => {
                     </div>
 
                     <div className="flex justify-between items-center">
-                      <button className="text-blue-600 hover:text-blue-700 font-medium">
+                      <button
+                        type="button"
+                        onClick={() => navigate('/marketplace')}
+                        className="text-blue-600 hover:text-blue-700 font-medium"
+                      >
                         View All Products
                       </button>
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -1069,87 +1163,6 @@ const EnhancedBuyerDashboard: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'rewards' && (
-        <div className="space-y-6">
-          <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-6 rounded-xl border border-orange-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-orange-900 mb-2">🎁 Your Rewards</h3>
-                <p className="text-orange-800">You have <span className="font-bold">{loyaltyPoints} points</span> ready to redeem!</p>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-orange-600">{loyaltyPoints}</div>
-                <div className="text-sm text-orange-700">Points Available</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {rewards.map((reward) => (
-              <div key={reward.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-lg mb-2">{reward.title}</h4>
-                    <p className="text-gray-600 text-sm mb-3">{reward.description}</p>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-1">
-                        <Award className="w-4 h-4 text-orange-600" />
-                        <span className="text-sm font-medium">{reward.points_required} points</span>
-                      </div>
-                      {reward.discount_percent && (
-                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                          {reward.discount_percent}% OFF
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-600">
-                    {reward.expires_at && `Expires: ${reward.expires_at}`}
-                  </div>
-                  <button 
-                    disabled={loyaltyPoints < reward.points_required}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                      loyaltyPoints >= reward.points_required
-                        ? 'bg-orange-600 text-white hover:bg-orange-700'
-                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    {loyaltyPoints >= reward.points_required ? 'Redeem' : 'Need More Points'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">How to Earn More Points</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <ShoppingBag className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                <h4 className="font-medium mb-2">Make Purchases</h4>
-                <p className="text-sm text-gray-600 mb-2">Earn 1 point per $1 spent</p>
-                <div className="text-lg font-bold text-blue-600">+1 pt/$1</div>
-              </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <Star className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                <h4 className="font-medium mb-2">Write Reviews</h4>
-                <p className="text-sm text-gray-600 mb-2">Share your experience</p>
-                <div className="text-lg font-bold text-green-600">+25 pts</div>
-              </div>
-              <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                <Users className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
-                <h4 className="font-medium mb-2">Refer Friends</h4>
-                <p className="text-sm text-gray-600 mb-2">When they make first purchase</p>
-                <div className="text-lg font-bold text-yellow-600">+100 pts</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {activeTab === 'watchlist' && (
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
@@ -1160,9 +1173,13 @@ const EnhancedBuyerDashboard: React.FC = () => {
                   <Filter className="w-4 h-4" />
                   <span>Filter</span>
                 </button>
-                <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => navigate('/marketplace')}
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
                   <Plus className="w-4 h-4" />
-                  <span>Add Product</span>
+                  <span>Open Marketplace</span>
                 </button>
               </div>
             </div>
@@ -1237,7 +1254,7 @@ const EnhancedBuyerDashboard: React.FC = () => {
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <DollarSign className="w-6 h-6 text-green-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-green-600">$127</div>
+                <div className="text-2xl font-bold text-green-600">${watchlistSavings.toFixed(0)}</div>
                 <div className="text-sm text-gray-600">Total Savings Available</div>
               </div>
               <div className="text-center p-4 bg-yellow-50 rounded-lg">
@@ -1253,7 +1270,7 @@ const EnhancedBuyerDashboard: React.FC = () => {
       {activeTab === 'community' && (
         <div className="space-y-6">
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
-            <h3 className="text-xl font-bold text-blue-900 mb-2">🌟 Join the Community</h3>
+            <h3 className="text-xl font-bold text-blue-900 mb-2">ðŸŒŸ Join the Community</h3>
             <p className="text-blue-800">Connect with other buyers, share experiences, and discover new products together!</p>
           </div>
 
@@ -1353,146 +1370,20 @@ const EnhancedBuyerDashboard: React.FC = () => {
                 <div className="text-2xl font-bold text-yellow-600">89</div>
                 <div className="text-sm text-gray-600">Community Friends</div>
               </div>
-              <div className="text-center p-4 bg-orange-50 rounded-lg">
-                <Award className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-orange-600">Silver</div>
-                <div className="text-sm text-gray-600">Community Level</div>
-              </div>
             </div>
           </div>
         </div>
       )}
 
       {activeTab === 'support' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Get Help</h3>
-              <div className="space-y-3">
-                <button className="w-full text-left p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <MessageSquare className="w-6 h-6 text-blue-600" />
-                    <div>
-                      <h4 className="font-medium">Live Chat Support</h4>
-                      <p className="text-sm text-gray-600">Available 24/7 for instant help</p>
-                    </div>
-                  </div>
-                </button>
-
-                <button className="w-full text-left p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <Mail className="w-6 h-6 text-green-600" />
-                    <div>
-                      <h4 className="font-medium">Email Support</h4>
-                      <p className="text-sm text-gray-600">Detailed responses within 2 hours</p>
-                    </div>
-                  </div>
-                </button>
-
-                <button className="w-full text-left p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <BookOpen className="w-6 h-6 text-orange-600" />
-                    <div>
-                      <h4 className="font-medium">Help Center</h4>
-                      <p className="text-sm text-gray-600">Self-service guides and tutorials</p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Common Questions</h3>
-              <div className="space-y-3">
-                <details className="border border-gray-200 rounded-lg">
-                  <summary className="p-3 cursor-pointer hover:bg-gray-50 font-medium">
-                    How do I download my purchases?
-                  </summary>
-                  <div className="p-3 border-t border-gray-200 text-sm text-gray-600">
-                    You can find download links in your Purchases tab or in the email receipt sent after purchase. Digital products are available immediately after payment.
-                  </div>
-                </details>
-                
-                <details className="border border-gray-200 rounded-lg">
-                  <summary className="p-3 cursor-pointer hover:bg-gray-50 font-medium">
-                    How do I track my affiliate purchases?
-                  </summary>
-                  <div className="p-3 border-t border-gray-200 text-sm text-gray-600">
-                    All purchases made through affiliate links are automatically tracked in your Affiliates tab, showing which expert referred you to each product.
-                  </div>
-                </details>
-                
-                <details className="border border-gray-200 rounded-lg">
-                  <summary className="p-3 cursor-pointer hover:bg-gray-50 font-medium">
-                    How do loyalty points work?
-                  </summary>
-                  <div className="p-3 border-t border-gray-200 text-sm text-gray-600">
-                    Earn 1 point per $1 spent, plus bonus points for reviews and referrals. Redeem points for discounts and exclusive rewards in the Rewards tab.
-                  </div>
-                </details>
-                
-                <details className="border border-gray-200 rounded-lg">
-                  <summary className="p-3 cursor-pointer hover:bg-gray-50 font-medium">
-                    What is your refund policy?
-                  </summary>
-                  <div className="p-3 border-t border-gray-200 text-sm text-gray-600">
-                    We offer a 30-day money-back guarantee on all digital products. Contact the seller directly or our support team for refund requests.
-                  </div>
-                </details>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Recent Support Tickets</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-green-800">Download Issue Resolved</h4>
-                  <p className="text-sm text-green-700">Course materials are now accessible</p>
-                  <p className="text-xs text-green-600">Ticket #12345 • Resolved 2 days ago</p>
-                </div>
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-blue-800">Refund Request Processing</h4>
-                  <p className="text-sm text-blue-700">Expected completion in 3-5 business days</p>
-                  <p className="text-xs text-blue-600">Ticket #12346 • In Progress</p>
-                </div>
-                <Clock className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-
-            <button className="w-full mt-4 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">
-              Create New Ticket
-            </button>
-          </div>
-        </div>
+        <IssueCenterPage
+          embedded
+          initialSellerId={disputePrefill?.sellerId || null}
+          initialOrderId={disputePrefill?.orderId || null}
+          initialSummary={disputePrefill?.summary || null}
+        />
       )}
 
-      {activeTab === 'reviews' && (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold mb-4">Your Reviews</h3>
-          <div className="space-y-6">
-            <div className="border-b border-gray-200 pb-4">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium">Premium Course Bundle</h4>
-                <div className="flex items-center space-x-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star key={star} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-              </div>
-              <p className="text-gray-600 text-sm mb-2">
-                "Excellent course with great practical examples. Highly recommend!"
-              </p>
-              <p className="text-xs text-gray-500">Reviewed on January 20, 2025</p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -41,6 +41,10 @@ interface RecommendationEngineProps {
   variant?: 'horizontal' | 'grid';
 }
 
+let behaviorTrackingDisabled = false;
+const personalizedRecommendationsEnabled =
+  String(import.meta.env.VITE_ENABLE_RECOMMENDATIONS || '').trim().toLowerCase() === 'true';
+
 const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
   type,
   contextProductId,
@@ -67,11 +71,31 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
     }
   }, [recommendations]);
 
+  const shouldSilentlyFallback = (err: unknown) => {
+    const message = String((err as any)?.message || '').toLowerCase();
+    const code = String((err as any)?.code || '').toLowerCase();
+    const status = Number((err as any)?.status || 0);
+    return (
+      status === 404 ||
+      code === '42p01' ||
+      message.includes('get_personalized_recommendations') ||
+      message.includes('user_behaviors') ||
+      message.includes('schema cache') ||
+      message.includes('does not exist') ||
+      message.includes('could not find the')
+    );
+  };
+
   const loadRecommendations = async () => {
     setLoading(true);
     setError(null);
 
     try {
+      if (!personalizedRecommendationsEnabled) {
+        await loadFallbackRecommendations();
+        return;
+      }
+
       // Track the recommendation request
       await trackBehavior('recommendation_request', contextProductId);
 
@@ -85,7 +109,13 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           limit_count: maxItems
         });
 
-      if (recError) throw recError;
+      if (recError) {
+        if (shouldSilentlyFallback(recError)) {
+          await loadFallbackRecommendations();
+          return;
+        }
+        throw recError;
+      }
 
       if (data && data.length > 0) {
         // Get full product details
@@ -124,8 +154,10 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
         await loadFallbackRecommendations();
       }
     } catch (error) {
-      console.error('Failed to load recommendations:', error);
-      setError('Failed to load recommendations');
+      if (!shouldSilentlyFallback(error)) {
+        console.error('Failed to load recommendations:', error);
+        setError('Failed to load recommendations');
+      }
       await loadFallbackRecommendations();
     } finally {
       setLoading(false);
@@ -166,6 +198,11 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
   };
 
   const loadProductImages = async () => {
+    if (!personalizedRecommendationsEnabled) {
+      setProductImages({});
+      return;
+    }
+
     const imagePromises = recommendations.map(async (product) => {
       try {
         const { data, error } = await supabase
@@ -191,7 +228,9 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
 
   const trackBehavior = async (behaviorType: string, productId?: string) => {
     try {
-      await supabase
+      if (!personalizedRecommendationsEnabled) return;
+      if (behaviorTrackingDisabled) return;
+      const { error } = await supabase
         .from('user_behaviors')
         .insert([{
           user_id: user?.id || null,
@@ -202,7 +241,20 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           referrer_url: document.referrer,
           device_type: getDeviceType()
         }]);
+
+      if (!error) return;
+      if (shouldSilentlyFallback(error)) {
+        behaviorTrackingDisabled = true;
+        console.warn('Recommendation behavior tracking disabled (user_behaviors table or RPC unavailable).');
+        return;
+      }
+      throw error;
     } catch (error) {
+      if (shouldSilentlyFallback(error)) {
+        behaviorTrackingDisabled = true;
+        console.warn('Recommendation behavior tracking disabled (user_behaviors table or RPC unavailable).');
+        return;
+      }
       console.error('Failed to track behavior:', error);
     }
   };

@@ -213,18 +213,22 @@ $$ LANGUAGE plpgsql;
 -- =====================================================
 -- TRIGGERS
 -- =====================================================
+DROP TRIGGER IF EXISTS update_reported_content_timestamp ON reported_content;
 CREATE TRIGGER update_reported_content_timestamp
   BEFORE UPDATE ON reported_content
   FOR EACH ROW EXECUTE FUNCTION update_moderation_updated_at();
 
+DROP TRIGGER IF EXISTS update_disputes_timestamp ON disputes;
 CREATE TRIGGER update_disputes_timestamp
   BEFORE UPDATE ON disputes
   FOR EACH ROW EXECUTE FUNCTION update_moderation_updated_at();
 
+DROP TRIGGER IF EXISTS update_user_moderation_timestamp ON user_moderation;
 CREATE TRIGGER update_user_moderation_timestamp
   BEFORE UPDATE ON user_moderation
   FOR EACH ROW EXECUTE FUNCTION update_moderation_updated_at();
 
+DROP TRIGGER IF EXISTS update_seller_verification_timestamp ON seller_verification;
 CREATE TRIGGER update_seller_verification_timestamp
   BEFORE UPDATE ON seller_verification
   FOR EACH ROW EXECUTE FUNCTION update_moderation_updated_at();
@@ -240,40 +244,69 @@ ALTER TABLE seller_verification ENABLE ROW LEVEL SECURITY;
 ALTER TABLE moderation_log ENABLE ROW LEVEL SECURITY;
 
 -- Reported Content Policies
+DROP POLICY IF EXISTS "Users can report content" ON reported_content;
 CREATE POLICY "Users can report content" ON reported_content
   FOR INSERT WITH CHECK (auth.uid() = reporter_id);
 
+DROP POLICY IF EXISTS "Users can view their own reports" ON reported_content;
 CREATE POLICY "Users can view their own reports" ON reported_content
   FOR SELECT USING (auth.uid() = reporter_id);
 
+DROP POLICY IF EXISTS "Admins can view all reports" ON reported_content;
 CREATE POLICY "Admins can view all reports" ON reported_content
   FOR SELECT USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+    EXISTS (
+      SELECT 1
+      FROM profiles
+      WHERE user_id = auth.uid()
+        AND lower(coalesce(primary_role::text, role::text, '')) = 'admin'
+    )
   );
 
+DROP POLICY IF EXISTS "Admins can update reports" ON reported_content;
 CREATE POLICY "Admins can update reports" ON reported_content
   FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+    EXISTS (
+      SELECT 1
+      FROM profiles
+      WHERE user_id = auth.uid()
+        AND lower(coalesce(primary_role::text, role::text, '')) = 'admin'
+    )
   );
 
 -- Dispute Policies
+DROP POLICY IF EXISTS "Users can create disputes" ON disputes;
 CREATE POLICY "Users can create disputes" ON disputes
   FOR INSERT WITH CHECK (auth.uid() = filed_by);
 
+DROP POLICY IF EXISTS "Users can view their disputes" ON disputes;
 CREATE POLICY "Users can view their disputes" ON disputes
   FOR SELECT USING (auth.uid() IN (filed_by, filed_against));
 
+DROP POLICY IF EXISTS "Admins can view all disputes" ON disputes;
 CREATE POLICY "Admins can view all disputes" ON disputes
   FOR SELECT USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+    EXISTS (
+      SELECT 1
+      FROM profiles
+      WHERE user_id = auth.uid()
+        AND lower(coalesce(primary_role::text, role::text, '')) = 'admin'
+    )
   );
 
+DROP POLICY IF EXISTS "Admins can update disputes" ON disputes;
 CREATE POLICY "Admins can update disputes" ON disputes
   FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+    EXISTS (
+      SELECT 1
+      FROM profiles
+      WHERE user_id = auth.uid()
+        AND lower(coalesce(primary_role::text, role::text, '')) = 'admin'
+    )
   );
 
 -- Dispute Messages Policies
+DROP POLICY IF EXISTS "Users can view dispute messages" ON dispute_messages;
 CREATE POLICY "Users can view dispute messages" ON dispute_messages
   FOR SELECT USING (
     EXISTS (
@@ -284,36 +317,44 @@ CREATE POLICY "Users can view dispute messages" ON dispute_messages
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
+DROP POLICY IF EXISTS "Users can send dispute messages" ON dispute_messages;
 CREATE POLICY "Users can send dispute messages" ON dispute_messages
   FOR INSERT WITH CHECK (auth.uid() = sender_id);
 
 -- User Moderation Policies
+DROP POLICY IF EXISTS "Users can view their own moderation records" ON user_moderation;
 CREATE POLICY "Users can view their own moderation records" ON user_moderation
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins can manage moderation" ON user_moderation;
 CREATE POLICY "Admins can manage moderation" ON user_moderation
   FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
 -- Seller Verification Policies
+DROP POLICY IF EXISTS "Sellers can view their verification" ON seller_verification;
 CREATE POLICY "Sellers can view their verification" ON seller_verification
   FOR SELECT USING (auth.uid() = seller_id);
 
+DROP POLICY IF EXISTS "Sellers can update their verification" ON seller_verification;
 CREATE POLICY "Sellers can update their verification" ON seller_verification
   FOR UPDATE USING (auth.uid() = seller_id);
 
+DROP POLICY IF EXISTS "Admins can manage verification" ON seller_verification;
 CREATE POLICY "Admins can manage verification" ON seller_verification
   FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
 -- Moderation Log Policies
+DROP POLICY IF EXISTS "Admins can view moderation log" ON moderation_log;
 CREATE POLICY "Admins can view moderation log" ON moderation_log
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
+DROP POLICY IF EXISTS "Admins can create log entries" ON moderation_log;
 CREATE POLICY "Admins can create log entries" ON moderation_log
   FOR INSERT WITH CHECK (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')

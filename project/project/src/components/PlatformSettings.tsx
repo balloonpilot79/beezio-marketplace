@@ -56,7 +56,7 @@ const PlatformSettings: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Default Affiliate Commission
+                Default Partner Commission
               </label>
               <div className="relative">
                 <input
@@ -127,7 +127,7 @@ const PlatformSettings: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Affiliate Commission %
+                Partner Commission %
               </label>
               <div className="relative">
                 <input
@@ -157,8 +157,8 @@ const PlatformSettings: React.FC = () => {
                 </div>
                 
                 <div className="flex justify-between text-red-600">
-                  <span>Stripe Fee:</span>
-                  <span>-${testCalculation.stripeFee}</span>
+                  <span>Processing Fee:</span>
+                  <span>-${testCalculation.processingFee}</span>
                 </div>
                 
                 <div className="flex justify-between text-blue-600 font-medium">
@@ -168,7 +168,7 @@ const PlatformSettings: React.FC = () => {
                 
                 {testCommission > 0 && (
                   <div className="flex justify-between text-purple-600">
-                    <span>Affiliate Commission:</span>
+                    <span>Partner Commission:</span>
                     <span>-${testCalculation.affiliateFee}</span>
                   </div>
                 )}

@@ -108,6 +108,27 @@ const sharePlatforms: SharePlatform[] = [
   }
 ];
 
+const copyText = async (value: string) => {
+  const text = String(value || '').trim();
+  if (!text) throw new Error('Nothing to copy');
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', 'true');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  const ok = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  if (!ok) throw new Error('Copy failed');
+};
+
 export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
   product,
   affiliateCode,
@@ -155,7 +176,7 @@ export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
   const handleCopyLink = async () => {
     try {
       const { url } = getShareText();
-      await navigator.clipboard.writeText(url);
+      await copyText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
 
@@ -381,7 +402,7 @@ export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <QRCodeShare
             url={getProductUrl()}
-            title={`Affiliate link for ${product.title}`}
+            title={`Partner link for ${product.title}`}
             onClose={() => setShowQRCode(false)}
           />
         </div>

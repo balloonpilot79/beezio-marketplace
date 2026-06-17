@@ -19,6 +19,7 @@ import StarRating from './StarRating';
 import SocialShareButton from './SocialShareButton';
 import AffiliateLink from './AffiliateLink';
 import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
+import { getProductIdentifierLines } from '../utils/productIdentifiers';
 
 interface SearchResult {
   id: string;
@@ -36,6 +37,10 @@ interface SearchResult {
   category_name: string;
   tag_names: string[];
   relevance_score: number;
+  matched_variant_id?: string | null;
+  matched_variant_sku?: string | null;
+  matched_code?: string | null;
+  match_type?: string | null;
 }
 
 interface SearchResultsProps {
@@ -131,6 +136,14 @@ const SearchResults: React.FC<SearchResultsProps> = ({
     return product.flat_commission_amount;
   };
 
+  const buildProductLink = (product: SearchResult) => {
+    const params = new URLSearchParams();
+    if (product.matched_variant_id) params.set('variant', product.matched_variant_id);
+    if (product.matched_code) params.set('match', product.matched_code);
+    const queryString = params.toString();
+    return `/product/${product.id}${queryString ? `?${queryString}` : ''}`;
+  };
+
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   const renderPagination = () => {
@@ -201,7 +214,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
         return (
           <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 group border border-gray-200">
             <Link
-              to={`/product/${product.id}`}
+              to={buildProductLink(product)}
               onClick={() => trackProductView(product.id)}
               className="block"
             >
@@ -256,7 +269,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
 
             <div className="p-4">
               <Link
-                to={`/product/${product.id}`}
+                to={buildProductLink(product)}
                 onClick={() => trackProductView(product.id)}
                 className="block hover:text-primary-600 transition-colors"
               >
@@ -264,6 +277,16 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                   {product.title}
                 </h3>
               </Link>
+
+              {getProductIdentifierLines(product).length > 0 && (
+                <div className="mb-2 space-y-1">
+                  {getProductIdentifierLines(product).map((line) => (
+                    <div key={line} className="text-xs text-amber-700 font-medium">
+                      {line}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="flex items-center justify-between mb-2">
                 <span className="text-2xl font-bold text-primary-600">
@@ -293,6 +316,13 @@ const SearchResults: React.FC<SearchResultsProps> = ({
               {product.category_name && (
                 <div className="text-xs text-primary-600 mb-2">
                   {product.category_name}
+                </div>
+              )}
+
+              {product.matched_code && (
+                <div className="mb-2 text-xs text-emerald-700">
+                  Matched {product.match_type === 'text' ? 'text' : 'code'}: {product.matched_code}
+                  {product.matched_variant_sku ? ` -> ${product.matched_variant_sku}` : ''}
                 </div>
               )}
 
@@ -332,7 +362,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
           <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow border border-gray-200">
             <div className="flex">
               <Link
-                to={`/product/${product.id}`}
+                to={buildProductLink(product)}
                 onClick={() => trackProductView(product.id)}
                 className="block w-48 h-48 flex-shrink-0"
               >
@@ -354,7 +384,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
               <div className="flex-1 p-6">
                 <div className="flex justify-between items-start mb-2">
                   <Link
-                    to={`/product/${product.id}`}
+                    to={buildProductLink(product)}
                     onClick={() => trackProductView(product.id)}
                     className="hover:text-primary-600 transition-colors"
                   >
@@ -386,6 +416,23 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                 <p className="text-gray-600 mb-3 line-clamp-2">
                   {sanitizeDescriptionForDisplay(product.description, (product as any).lineage)}
                 </p>
+
+                {getProductIdentifierLines(product).length > 0 && (
+                  <div className="mb-3 space-y-1">
+                    {getProductIdentifierLines(product).map((line) => (
+                      <div key={line} className="text-xs text-amber-700 font-medium">
+                        {line}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {product.matched_code && (
+                  <div className="mb-3 text-xs text-emerald-700">
+                    Matched {product.match_type === 'text' ? 'text' : 'code'}: {product.matched_code}
+                    {product.matched_variant_sku ? ` -> ${product.matched_variant_sku}` : ''}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-3xl font-bold text-primary-600">

@@ -65,11 +65,11 @@ export const globalConfig = {
 
   // Payment methods by region
   paymentMethods: {
-    'US': ['stripe', 'paypal', 'apple_pay', 'google_pay'],
-    'EU': ['stripe', 'paypal', 'sepa', 'klarna'],
+    'US': ['card', 'paypal', 'apple_pay', 'google_pay'],
+    'EU': ['card', 'paypal', 'sepa', 'klarna'],
     'CN': ['alipay', 'wechat_pay', 'unionpay'],
-    'JP': ['stripe', 'paypal', 'konbini', 'bank_transfer'],
-    'BR': ['stripe', 'paypal', 'pix', 'boleto'],
+    'JP': ['card', 'paypal', 'konbini', 'bank_transfer'],
+    'BR': ['card', 'paypal', 'pix', 'boleto'],
     'IN': ['razorpay', 'paytm', 'upi', 'net_banking']
   },
 
@@ -95,11 +95,8 @@ export const globalConfig = {
   // Feature availability by market
   features: {
     fundraising: {
-      available: ['US', 'CA', 'AU', 'UK', 'DE', 'FR'],
-      regulations: {
-        'US': { requiresRegistration: true, taxDeductible: true },
-        'EU': { requiresRegistration: false, taxDeductible: false }
-      }
+      available: [],
+      regulations: {}
     },
     cryptoPayments: {
       available: ['US', 'CA', 'DE', 'NL', 'SG'],

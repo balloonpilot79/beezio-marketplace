@@ -1,268 +1,146 @@
 import React from 'react';
+import { getPartnerLabel, getPartnerProgramLabel } from '../utils/processorSafeCopy';
+import PayoutTimingNotice from '../components/PayoutTimingNotice';
 
-const faqs = [
-  // General Platform Questions
+const faqSections = [
   {
-    question: 'What is Beezio?',
-    answer:
-      'Beezio is a transparent marketplace connecting sellers, affiliates, and buyers. We make it easy to sell, promote, and buy products with clear commissions and no hidden fees. We also support fundraising through commerce for causes and nonprofits.'
+    title: 'General',
+    faqs: [
+      {
+        question: 'What is Beezio?',
+        answer:
+          'Beezio is a marketplace where sellers list products and buyers shop. Approved partners can share listings using Beezio tools.'
+      },
+      {
+        question: 'How do I create an account?',
+        answer:
+          'Click Sign Up, choose your role (seller, partner, or buyer), and complete the profile prompts. You can switch roles later.'
+      },
+      {
+        question: 'Is Beezio secure?',
+        answer:
+          'We use encrypted connections and trusted payment processors. Your data and payments are handled with standard industry safeguards.'
+      },
+      {
+        question: 'How do I contact support?',
+        answer:
+          'Email support@beezio.co and we will get back to you as quickly as possible.'
+      },
+      {
+        question: 'How do I reset my password?',
+        answer:
+          'Use the Forgot Password link on the login screen to reset via email.'
+      }
+    ]
   },
   {
-    question: 'How do I sign up as a seller, affiliate, or buyer?',
-    answer:
-      'Simply click Sign Up in the top right corner and select your account type. You can start selling, promoting, or shopping right away. Organizations can also register as causes to do fundraising through commerce.'
+    title: 'For Sellers',
+    faqs: [
+      {
+        question: 'How do I list products?',
+        answer:
+          'Use the seller dashboard to add products, upload images, and set pricing. You can manage inventory and listings from the same place.'
+      },
+      {
+        question: 'How does pricing work?',
+        answer:
+          'You set the amount you want to receive per sale. The customer price includes processing and platform fees.'
+      },
+      {
+        question: 'What fees do I pay?',
+        answer:
+          'Platform and processing fees are built into the customer price so your seller payout stays protected.'
+      },
+      {
+        question: 'Does tax or shipping come out of my payout?',
+        answer:
+          'No. Taxes and shipping are calculated at checkout and do not reduce your seller payout.'
+      }
+    ]
   },
   {
-    question: 'Is Beezio secure?',
-    answer:
-      'Yes! We use bank-level security and Stripe for payment processing. Your data and transactions are protected with industry-standard encryption.'
+    title: 'For Partners',
+    faqs: [
+      {
+        question: `What is the ${getPartnerProgramLabel()}?`,
+        answer:
+          `The ${getPartnerProgramLabel()} lets approved ${getPartnerLabel().toLowerCase()} share curated storefronts and product links using Beezio tools.`
+      },
+      {
+        question: 'How do I share products?',
+        answer:
+          'Use the partner tools area to generate shareable links or QR codes for products and stores.'
+      },
+      {
+        question: `Is the ${getPartnerProgramLabel()} active?`,
+        answer:
+          'Yes. Access is approved based on account status and program availability.'
+      }
+    ]
   },
   {
-    question: 'How do I contact support?',
-    answer:
-      'You can reach our support team at support@beezio.co for any questions or issues. We typically respond within 24 hours.'
+    title: 'For Buyers',
+    faqs: [
+      {
+        question: 'How do I find products?',
+        answer:
+          'Use the marketplace search and filters, or browse curated sections on the homepage.'
+      },
+      {
+        question: 'Do I need an account to shop?',
+        answer:
+          'You can browse without an account. Creating an account lets you track orders, save favorites, and contact support faster.'
+      }
+    ]
   },
   {
-    question: 'How do I reset my password?',
-    answer:
-      'Click Login, then use the "Forgot Password" link to reset your password via email.'
-  },
-
-  // Seller Questions
-  {
-    question: 'How do I add products to the marketplace?',
-    answer:
-      'Sellers can add products from their dashboard. Fill out the product form, select a category, upload images, set your price and commission rate. You can also import products from 10+ platforms like Shopify, Etsy, Amazon, and more.'
-  },
-  {
-    question: 'How does the transparent pricing work?',
-    answer:
-      'You set your desired profit amount (e.g., $100). Choose an affiliate commission rate (e.g., 30%). We automatically calculate the final customer price including platform fees and processing. You always get your full desired profit!'
-  },
-  {
-    question: 'Can I connect my existing store?',
-    answer:
-      'Yes! We support integrations with Shopify, Etsy, Amazon Seller, eBay, WooCommerce, Printify, Printful, Square, BigCommerce, and CSV imports. You can bulk import your entire catalog.'
-  },
-  {
-    question: 'Can I sell locally?',
-    answer:
-      'Yes, Beezio supports local businesses. You can filter for local products and add your business location when listing products. Create a custom storefront with your branding.'
+    title: 'Payments',
+    faqs: [
+      {
+        question: 'How do sellers get paid?',
+        answer:
+          'Payouts are handled through the payment processor connected in the seller dashboard.'
+      },
+      {
+        question: 'How long do payouts take?',
+        answer:
+          'Most payouts land within a few business days once an order is confirmed.'
+      },
+      {
+        question: 'Do sellers or affiliates pay monthly fees?',
+        answer:
+          'No. Joining is free. Beezio earns from fees included in the product price when a sale happens.'
+      },
+      {
+        question: 'Are there any signup fees?',
+        answer:
+          'No. Creating an account is free.'
+      }
+    ]
   },
   {
-    question: 'How do I customize my store?',
-    answer:
-      'Access Store Customization in your dashboard to add banners, logos, themes, business hours, social links, and more. You get a professional storefront at your own URL.'
-  },
-  {
-    question: 'For sellers: how much do I actually earn per sale?',
-    answer:
-      'You earn exactly what you set as your Seller Ask for each product. If you set your ask to $40, we bake in Stripe fees, affiliate commissions, and Beezio’s platform fee so you still receive that full $40 per item sold (before tax and shipping).'
-  },
-  {
-    question: 'For sellers: why does the customer price look higher than my ask?',
-    answer:
-      'Your ask is what you want to receive. Beezio automatically adds a margin on top to cover payment processing, affiliate commissions, and Beezio’s 15% platform fee. All of those are built into the product price the customer sees. Only tax and shipping are added later at checkout.'
-  },
-  {
-    question: 'For sellers: what fees do I pay?',
-    answer:
-      'You do not pay anything out of your payout. Your seller ask is protected. Beezio and affiliates are paid from the margin we calculate on top of your ask.'
-  },
-  {
-    question: 'For sellers: does tax or shipping come out of my payout?',
-    answer:
-      'No. Tax and shipping are separate and do not reduce your seller payout. Your payout is based only on your seller ask.'
-  },
-
-  // Affiliate Questions
-  {
-    question: 'How do affiliates earn commissions?',
-    answer:
-      'Affiliates can promote products with their unique tracking links. When someone buys through your link, you earn a commission automatically. Commissions range from 15% to 50% depending on the product.'
-  },
-  {
-    question: 'How do I generate affiliate links?',
-    answer:
-      'Browse products in your affiliate dashboard, click on any product to generate a unique tracking link. You can create product-specific links or site-wide links. QR codes are also available for offline marketing.'
-  },
-  {
-    question: 'Can I import products to promote?',
-    answer:
-      'Yes! Affiliates can import products from Printify, Printful, Etsy, and other platforms to promote. Set your commission expectations and generate tracking links for imported products.'
-  },
-  {
-    question: 'How do affiliate QR codes work?',
-    answer:
-      'Generate QR codes for any product or your entire affiliate store. Perfect for flyers, business cards, or offline marketing. When someone scans the code and makes a purchase, you earn the commission.'
-  },
-  {
-    question: 'For affiliates: how is my commission calculated?',
-    answer:
-      'Your commission is a fixed percentage of the product’s sale price (before tax and shipping). For example, if your rate is 20% and the product sells for $100, your commission is $20.'
-  },
-  {
-    question: 'For affiliates: does my commission reduce what the seller earns?',
-    answer:
-      'No. The seller’s payout is based on their seller ask, which we protect. Your commission, Beezio’s platform fee, and payment processing costs are all built into the price the customer pays.'
-  },
-  {
-    question: 'For affiliates: what is the 5% referral bonus?',
-    answer:
-      'If you refer another affiliate to Beezio, you can earn 5% of Beezio’s 15% platform fee on that affiliate’s sales. This bonus is paid out of Beezio’s share, not from the seller or the main affiliate’s commission.'
-  },
-  {
-    question: 'For affiliates: is my commission calculated before or after tax and shipping?',
-    answer:
-      'Your commission is calculated on the product price only (before tax and shipping). Tax and shipping are separate and do not change your commission amount.'
-  },
-
-  // Buyer Questions
-  {
-    question: 'How do I find the hottest or newest products?',
-    answer:
-      'The homepage features the newest and hottest selling items. You can also search and filter products in the marketplace by category, price, commission rate, and local availability.'
-  },
-  {
-    question: 'Why do I see commission amounts on product pages?',
-    answer:
-      'Beezio is built around affiliate marketing. When you see commission amounts, it means you could earn that much by becoming an affiliate and promoting the product to others.'
-  },
-  {
-    question: 'Can I track purchases made through affiliate links?',
-    answer:
-      'Yes! If you purchase through an affiliate link, you can see which affiliate you supported in your order history. This helps you support friends, causes, or influencers you follow.'
-  },
-
-  // Payment Questions
-  {
-    question: 'How do I get paid as a seller or affiliate?',
-    answer:
-      'Sellers and affiliates must connect their Stripe account in their dashboard to receive payments. Stripe securely handles all payouts and commissions with bank-level security.'
-  },
-  {
-    question: 'How often are payments made?',
-    answer:
-      'Standard payouts are made within 2-7 business days after a sale. Express same-day payouts are available through Stripe for faster access to your earnings.'
-  },
-  {
-    question: 'Are there any fees to join?',
-    answer:
-      'No! There are no signup fees, monthly fees, or hidden costs to join as a seller, affiliate, or buyer. We only take a small percentage when you make sales.'
-  },
-
-  // Fundraising Questions
-  {
-    question: 'How does fundraising through commerce work?',
-    answer:
-      'Organizations register as causes and recruit supporters to become affiliates. When supporters sell products, a percentage of their commissions goes to the cause while they keep the rest. This creates sustainable funding while providing value to supporters.'
-  },
-  {
-    question: 'What types of organizations can do fundraising through commerce?',
-    answer:
-      'Nonprofits, schools, sports teams, community organizations, religious institutions, medical fundraising campaigns, environmental causes, and other mission-driven groups can participate.'
-  },
-  {
-    question: 'How much can causes earn through commerce fundraising?',
-    answer:
-      'Causes typically receive 30-50% of affiliate commissions earned by their supporters. With 100 active supporters making an average of 10 sales per month, causes can generate $10,000-30,000+ monthly.'
-  },
-  {
-    question: 'What products work best for fundraising?',
-    answer:
-      'Products that align with your cause (eco-friendly for environmental causes, health products for medical causes) or everyday essentials that appeal to your supporter base work best. High-commission products in health, beauty, and home categories perform well.'
-  },
-  {
-    question: 'How do we train our supporters to be effective fundraisers?',
-    answer:
-      'We provide complete onboarding materials, training webinars, marketing resources, and ongoing support. Supporters get personalized affiliate links, QR codes, and social sharing tools to make fundraising easy.'
-  },
-  {
-    question: 'Do you need 501(c)(3) status to fundraise?',
-    answer:
-      'While nonprofit status is preferred, we also work with schools, sports teams, community causes, and other mission-driven organizations. Each application is reviewed individually based on your mission and community impact.'
-  },
-
-  // Technical Questions
-  {
-    question: 'Can I use my own domain for my store?',
-    answer:
-      'Yes! Custom domain support is available for sellers who want to use their own branded domain for their Beezio storefront.'
-  },
-  {
-    question: 'Is there a mobile app?',
-    answer:
-      'Currently, Beezio is a responsive web application that works great on all devices. A dedicated mobile app is in development and will be available soon.'
-  },
-  {
-    question: 'Do you support international sellers and affiliates?',
-    answer:
-      'Yes! Through Stripe, we support sellers and affiliates in 40+ countries. International sellers can sell globally and receive payments in their local currency.'
-  },
-  {
-    question: 'How do I track my performance?',
-    answer:
-      'Both sellers and affiliates get comprehensive analytics dashboards showing real-time sales, commissions, click-through rates, conversion rates, top-performing products, and more.'
-  }
-];
-
-const sellerPricingFaq = [
-  {
-    question: 'How much do I actually earn per sale?',
-    answer:
-      'You earn exactly what you set as your Seller Ask for each product. If you set your ask to $40, we make sure that after Stripe fees, affiliate commissions, and Beezio’s platform fee, you still receive that full $40 per item sold (before tax and shipping).'
-  },
-  {
-    question: 'Why does the customer price look higher than my ask?',
-    answer:
-      'Your ask is what you want to receive. Beezio automatically adds a margin on top to cover payment processing (Stripe), affiliate commissions, and Beezio’s 15% platform fee. All of those are built into the product price the customer sees. Only tax and shipping are added later at checkout.'
-  },
-  {
-    question: 'What fees do I pay as a seller?',
-    answer:
-      'You don’t pay anything directly out of your payout. Your seller ask is protected. Beezio and affiliates are paid from the margin we calculate on top of your ask.'
-  },
-  {
-    question: 'Does tax or shipping come out of my payout?',
-    answer:
-      'No. Tax and shipping are separate and do not reduce your seller payout. Your payout is based on your seller ask only.'
-  }
-];
-
-const affiliatePricingFaq = [
-  {
-    question: 'How is my affiliate commission calculated?',
-    answer:
-      'Your commission is a fixed percentage of the product’s sale price (before tax and shipping). For example, if your rate is 20% and the product sells for $100, your commission is $20.'
-  },
-  {
-    question: 'Does my commission reduce what the seller earns?',
-    answer:
-      "No. The seller’s payout is based on their seller ask, which we protect. Your commission, Beezio’s platform fee, and payment processing costs are all built into the price the customer pays."
-  },
-  {
-    question: 'What is the 5% referral bonus?',
-    answer:
-      "If you refer another affiliate to Beezio, you can earn 5% of Beezio’s 15% platform fee on that affiliate’s sales. This bonus is paid out of Beezio’s share, not from the seller or the main affiliate’s commission."
-  },
-  {
-    question: 'Is my commission calculated before or after tax and shipping?',
-    answer:
-      'Your commission is calculated on the product price only (before tax and shipping). Tax and shipping are separate and do not change your commission amount.'
+    title: 'Technical',
+    faqs: [
+      {
+        question: 'Do you offer an API?',
+        answer:
+          'Not at the moment. We are focused on the core marketplace experience and will share updates if an API becomes available.'
+      },
+      {
+        question: 'Can I use a custom domain?',
+        answer:
+          'Yes, sellers can connect a custom domain to their storefront.'
+      },
+      {
+        question: 'Is there a mobile app?',
+        answer:
+          'Beezio runs as a responsive web app that works well on mobile. A dedicated app is not available yet.'
+      }
+    ]
   }
 ];
 
 const FAQPage: React.FC = () => {
-  const categories = [
-    { name: 'General', start: 0, end: 4 },
-    { name: 'For Sellers', start: 5, end: 9 },
-    { name: 'For Affiliates', start: 10, end: 14 },
-    { name: 'For Buyers', start: 15, end: 17 },
-    { name: 'Payments', start: 18, end: 20 },
-    { name: 'Fundraising', start: 21, end: 26 },
-    { name: 'Technical', start: 27, end: 30 }
-  ];
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -270,56 +148,21 @@ const FAQPage: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 sm:mb-6">Frequently Asked Questions</h1>
           <p className="text-base sm:text-xl md:text-2xl opacity-90">
-            Everything you need to know about selling, affiliate marketing, and fundraising on Beezio
+            Everything you need to know about buying, selling, and shopping on Beezio
           </p>
-        </div>
-      </section>
-
-      {/* Pricing FAQs */}
-      <section className="py-8 sm:py-12 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">For Sellers – How Pricing Works</h2>
-            <p className="text-gray-600 mt-2">Plain-English answers so you always know how money flows.</p>
-          </div>
-          <div className="grid grid-cols-1 gap-4">
-            {sellerPricingFaq.map((faq, idx) => (
-              <div key={`seller-${idx}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{faq.question}</h3>
-                <p className="text-gray-700">{faq.answer}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-4 sm:py-10 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">For Affiliates – How You Get Paid</h2>
-            <p className="text-gray-600 mt-2">Your commission, the seller’s payout, and Beezio’s cut are all baked into the product price.</p>
-          </div>
-          <div className="grid grid-cols-1 gap-4">
-            {affiliatePricingFaq.map((faq, idx) => (
-              <div key={`affiliate-${idx}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{faq.question}</h3>
-                <p className="text-gray-700">{faq.answer}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
       {/* FAQ Categories */}
       <section className="py-8 sm:py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          {categories.map((category, categoryIndex) => (
+          {faqSections.map((category, categoryIndex) => (
             <div key={categoryIndex} className="mb-8 sm:mb-12">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">
-                {category.name}
+                {category.title}
               </h2>
               <div className="space-y-4 sm:space-y-6">
-                {faqs.slice(category.start, category.end + 1).map((faq, idx) => (
+                {category.faqs.map((faq, idx) => (
                   <div key={idx} className="bg-white rounded-lg shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow">
                     <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">{faq.question}</h3>
                     <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{faq.answer}</p>
@@ -328,6 +171,12 @@ const FAQPage: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="pb-8 sm:pb-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <PayoutTimingNotice />
         </div>
       </section>
 

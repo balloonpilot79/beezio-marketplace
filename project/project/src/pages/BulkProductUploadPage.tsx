@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Package } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
-import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
+import { calculateCustomerProductPrice } from '../utils/pricing';
 
 interface ProductRow {
   title: string;
@@ -32,6 +33,10 @@ const BulkProductUploadPage: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
   const [previewData, setPreviewData] = useState<ProductRow[]>([]);
+  const parseNonNegativeNumber = (value: unknown, fallback = 0): number => {
+    const parsed = Number.parseFloat(String(value ?? '').trim());
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
+  };
 
   const downloadTemplate = () => {
     const template = [
@@ -52,14 +57,20 @@ const BulkProductUploadPage: React.FC = () => {
         image_url_3: '',
         image_url_4: '',
         image_url_5: '',
-        affiliate_commission_rate: 20
+        affiliate_commission_rate: 0.10
       }
     ];
 
-    const ws = XLSX.utils.json_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Products');
-    XLSX.writeFile(wb, 'beezio_product_template.xlsx');
+    const csv = Papa.unparse(template, { quotes: true });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'beezio_product_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,12 +78,24 @@ const BulkProductUploadPage: React.FC = () => {
     if (!file) return;
 
     try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json<any>(worksheet);
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Please upload a CSV file.');
+        return;
+      }
 
-      const products: ProductRow[] = jsonData.map(row => ({
+      const csvText = await file.text();
+      const parsed = Papa.parse<Record<string, any>>(csvText, {
+        header: true,
+        skipEmptyLines: true
+      });
+
+      if (parsed.errors?.length) {
+        console.error('CSV parse errors:', parsed.errors);
+        alert('Failed to read CSV. Please confirm it matches the template columns.');
+        return;
+      }
+
+      const products: ProductRow[] = (parsed.data || []).map(row => ({
         title: row.title || '',
         description: row.description || '',
         price: parseFloat(row.price) || 0,
@@ -89,13 +112,13 @@ const BulkProductUploadPage: React.FC = () => {
         image_url_3: row.image_url_3 || '',
         image_url_4: row.image_url_4 || '',
         image_url_5: row.image_url_5 || '',
-        affiliate_commission_rate: parseFloat(row.affiliate_commission_rate) || 20
+        affiliate_commission_rate: parseNonNegativeNumber(row.affiliate_commission_rate, 0)
       }));
 
       setPreviewData(products);
     } catch (error) {
       console.error('Error reading file:', error);
-      alert('Failed to read file. Please ensure it\'s a valid Excel/CSV file.');
+      alert('Failed to read file. Please ensure it\'s a valid CSV file.');
     }
   };
 
@@ -128,17 +151,32 @@ const BulkProductUploadPage: React.FC = () => {
           .ilike('name', product.category)
           .single();
 
+        const sellerAsk = product.price;
+        const affiliateRatePercent = Number.isFinite(product.affiliate_commission_rate)
+          ? product.affiliate_commission_rate > 1
+            ? product.affiliate_commission_rate
+            : product.affiliate_commission_rate * 100
+          : 0;
+        const listingPrice = calculateCustomerProductPrice(sellerAsk, 'percent', affiliateRatePercent);
+
         const productData = {
           seller_id: profile.id,
           title: product.title,
           description: product.description,
-          price: product.price,
+          price: listingPrice,
+          calculated_customer_price: listingPrice,
+          seller_ask: sellerAsk,
+          seller_amount: sellerAsk,
+          seller_ask_price: sellerAsk,
           category_id: categoryData?.id || null,
           sku: product.sku || null,
           stock_quantity: product.stock_quantity || 0,
           images: images,
-          affiliate_commission_rate: product.affiliate_commission_rate,
-          affiliate_commission_type: 'percentage',
+          commission_rate: affiliateRatePercent,
+          commission_type: 'percentage',
+          affiliate_commission_rate: affiliateRatePercent,
+          affiliate_commission_type: 'percent',
+          affiliate_commission_value: affiliateRatePercent,
           shipping_cost: product.shipping_cost || 0,
           is_active: true,
           sales_count: 0,
@@ -185,14 +223,14 @@ const BulkProductUploadPage: React.FC = () => {
             ← Back to Products
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Bulk Product Upload</h1>
-          <p className="text-gray-600 mt-2">Upload hundreds of products at once using Excel or Google Sheets</p>
+          <p className="text-gray-600 mt-2">Upload hundreds of products at once using CSV (Excel / Google Sheets export)</p>
         </div>
 
         {/* Instructions */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
           <h2 className="text-lg font-semibold text-blue-900 mb-4">📋 How to Use Bulk Upload</h2>
           <ol className="space-y-2 text-sm text-blue-800">
-            <li><strong>Step 1:</strong> Download the template Excel file</li>
+            <li><strong>Step 1:</strong> Download the template CSV file</li>
             <li><strong>Step 2:</strong> Fill in your product data (or link Google Sheets export)</li>
             <li><strong>Step 3:</strong> Upload the completed file</li>
             <li><strong>Step 4:</strong> Review preview and confirm upload</li>
@@ -212,7 +250,7 @@ const BulkProductUploadPage: React.FC = () => {
               <FileSpreadsheet className="w-8 h-8 text-green-600" />
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Download Template</h3>
-                <p className="text-sm text-gray-600">Get the Excel template with all required columns</p>
+                <p className="text-sm text-gray-600">Get the CSV template with all required columns</p>
               </div>
             </div>
             <button
@@ -231,11 +269,11 @@ const BulkProductUploadPage: React.FC = () => {
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
             <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600 mb-4">
-              Upload your Excel (.xlsx, .xls) or CSV file
+              Upload your CSV file
             </p>
             <input
               type="file"
-              accept=".xlsx,.xls,.csv"
+              accept=".csv"
               onChange={handleFileUpload}
               className="hidden"
               id="file-upload"

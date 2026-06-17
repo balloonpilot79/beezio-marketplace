@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { updateOrderTracking, submitProductReview } from '../api/orderFeatures';
 
@@ -49,8 +50,12 @@ const BuyerOrders: React.FC<{ buyerId: string }> = ({ buyerId }) => {
           <div key={order.id} className="border-b py-2 flex items-center space-x-4">
             <img src={order.products?.images?.[0] || ''} alt={order.products?.title} className="w-10 h-10 object-cover rounded" />
             <span className="font-medium">{order.products?.title}</span>
+            <span className="text-xs font-mono text-gray-500">{order.order_number || order.id}</span>
             <span className="text-gray-600">${order.products?.price}</span>
             <span className="text-xs text-gray-500">{new Date(order.created_at).toLocaleDateString()}</span>
+            <Link to={`/order-confirmation?order=${encodeURIComponent(String(order.id))}`} className="text-blue-600 underline">
+              Receipt
+            </Link>
             {order.tracking_url && (
               <a href={order.tracking_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Track Order</a>
             )}

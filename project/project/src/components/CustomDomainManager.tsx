@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Globe, CheckCircle, AlertCircle, Copy, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { resolveProfileIdForUser } from '../utils/resolveProfileId';
+import { normalizeStoreSlug } from '../utils/normalizeStoreSlug';
 
 interface CustomDomainManagerProps {
   userId: string;
@@ -12,12 +14,40 @@ interface CustomDomainManagerProps {
 
 const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role, currentDomain, subdomain, onUpdated }) => {
   const [domain, setDomain] = useState(currentDomain || '');
-  const [subdomainInput, setSubdomainInput] = useState(subdomain || '');
+  const normalizeSubdomainInput = (input: string) =>
+    normalizeStoreSlug(input)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+  const [subdomainInput, setSubdomainInput] = useState(normalizeSubdomainInput(subdomain || ''));
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'failed'>('pending');
   const [error, setError] = useState('');
   const [showInstructions, setShowInstructions] = useState(false);
+  const [resolvedUserId, setResolvedUserId] = useState(userId);
+  const slugLocked = false;
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!userId) {
+        setResolvedUserId('');
+        return;
+      }
+      const canonicalId = await resolveProfileIdForUser(userId);
+      if (!cancelled) {
+        setResolvedUserId(canonicalId || userId);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   useEffect(() => {
     if (currentDomain) {
@@ -27,8 +57,19 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
   }, [currentDomain]);
 
   const validateSubdomain = (input: string): boolean => {
-    const clean = input.trim().toLowerCase();
-    return /^[a-z0-9-]{3,32}$/.test(clean);
+    const clean = normalizeSubdomainInput(input);
+    if (!/^[a-z0-9-]{3,32}$/.test(clean)) return false;
+    if (clean.includes('beezio') || clean.includes('bzo')) return false;
+    const reserved = new Set([
+      'home','marketplace','stores','affiliates','affiliate','partner','affiliate-signup','affiliate-dashboard-preview',
+      'seller','sellers','store','products','product','dashboard','dashboard-preview','buyer-dashboard-preview',
+      'admin','auth','login','signup','onboarding','messages','earnings','checkout','cart',
+      'about','contact','privacy','terms','faq','search','how-it-works','get-started','start-earning',
+      'add-product','add-product-old','profile','orders','order-confirmation','contact-support','write-review',
+      'reset-password','change-password','test','testing','revolutionary','api'
+    ]);
+    if (reserved.has(clean)) return false;
+    return true;
   };
 
   const validateDomain = (input: string): boolean => {
@@ -43,15 +84,38 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
   const verifyDomain = async (domainToVerify: string) => {
     setVerifying(true);
     try {
-      // In production, you'd verify DNS records point to your site
-      // For now, just check if domain is valid format
-      if (validateDomain(domainToVerify)) {
-        setVerificationStatus('verified');
-      } else {
+      if (!validateDomain(domainToVerify)) {
         setVerificationStatus('failed');
+        return;
+      }
+
+      const cleanDomain = domainToVerify.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+      const isRootDomain = cleanDomain.split('.').length === 2;
+      const expectedCname = 'beezio-marketplace.netlify.app';
+      const expectedRootIp = '104.198.14.52';
+
+      const fetchDns = async (name: string, type: string) => {
+        const url = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=${type}`;
+        const res = await fetch(url, { headers: { accept: 'application/dns-json' } });
+        if (!res.ok) return null;
+        return res.json() as Promise<{ Answer?: Array<{ data: string }> }>;
+      };
+
+      if (isRootDomain) {
+        const [aRecords, cnameRecords] = await Promise.all([
+          fetchDns(cleanDomain, 'A'),
+          fetchDns(`www.${cleanDomain}`, 'CNAME')
+        ]);
+        const hasRootA = aRecords?.Answer?.some((record) => record.data === expectedRootIp);
+        const hasWwwCname = cnameRecords?.Answer?.some((record) => record.data.replace(/\.$/, '') === expectedCname);
+        setVerificationStatus(hasRootA && hasWwwCname ? 'verified' : 'pending');
+      } else {
+        const cnameRecords = await fetchDns(cleanDomain, 'CNAME');
+        const hasCname = cnameRecords?.Answer?.some((record) => record.data.replace(/\.$/, '') === expectedCname);
+        setVerificationStatus(hasCname ? 'verified' : 'pending');
       }
     } catch (err) {
-      setVerificationStatus('failed');
+      setVerificationStatus('pending');
     } finally {
       setVerifying(false);
     }
@@ -72,8 +136,16 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
     setError('');
 
     try {
-      const table = role === 'seller' ? 'store_settings' : 'affiliate_store_settings';
-      const idField = role === 'seller' ? 'seller_id' : 'affiliate_id';
+      const table = role === 'seller'
+        ? 'store_settings'
+        : 'affiliate_store_settings';
+      const idField = role === 'seller'
+        ? 'seller_id'
+        : 'affiliate_id';
+      if (!resolvedUserId) {
+        setError('Missing profile id. Please refresh and try again.');
+        return;
+      }
 
       // Clean the domain
       const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
@@ -83,18 +155,21 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
       }
 
       // Ensure uniqueness across seller + affiliate tables (not just within one table).
-      const [{ data: sellerMatch, error: sellerCheckError }, { data: affiliateMatch, error: affiliateCheckError }] = await Promise.all([
+      const [
+        { data: sellerMatch, error: sellerCheckError },
+        { data: affiliateMatch, error: affiliateCheckError }
+      ] = await Promise.all([
         supabase.from('store_settings').select('seller_id').eq('custom_domain', cleanDomain).maybeSingle(),
         supabase.from('affiliate_store_settings').select('affiliate_id').eq('custom_domain', cleanDomain).maybeSingle(),
       ]);
       if (sellerCheckError && sellerCheckError.code !== 'PGRST116') throw sellerCheckError;
       if (affiliateCheckError && affiliateCheckError.code !== 'PGRST116') throw affiliateCheckError;
 
-      if (sellerMatch?.seller_id && !(role === 'seller' && String(sellerMatch.seller_id) === String(userId))) {
+      if (sellerMatch?.seller_id && !(role === 'seller' && String(sellerMatch.seller_id) === String(resolvedUserId))) {
         setError('This domain is already in use by another store');
         return;
       }
-      if (affiliateMatch?.affiliate_id && !(role === 'affiliate' && String(affiliateMatch.affiliate_id) === String(userId))) {
+      if (affiliateMatch?.affiliate_id && !(role === 'affiliate' && String(affiliateMatch.affiliate_id) === String(resolvedUserId))) {
         setError('This domain is already in use by another store');
         return;
       }
@@ -102,11 +177,14 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
       // Use upsert so brand-new stores can claim a domain before any other settings exist.
       const { error: updateError } = await supabase
         .from(table)
-        .upsert({
-          [idField]: userId,
-          custom_domain: cleanDomain,
-          updated_at: new Date().toISOString(),
-        });
+        .upsert(
+          {
+            [idField]: resolvedUserId,
+            custom_domain: cleanDomain,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: idField }
+        );
 
       if (updateError) {
         if (updateError.code === '23505') {
@@ -129,9 +207,9 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
   };
 
   const saveSubdomain = async () => {
-    const clean = subdomainInput.trim().toLowerCase();
+    const clean = normalizeSubdomainInput(subdomainInput);
     if (!validateSubdomain(clean)) {
-      setError('Subdomain must be 3-32 characters, letters/numbers/hyphen only.');
+      setError('Store URL must be 3-32 characters, letters/numbers/hyphen only, and not a reserved word.');
       return;
     }
 
@@ -139,47 +217,58 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
     setError('');
 
     try {
-      // ensure uniqueness across seller + affiliate tables
-      const tables = ['store_settings', 'affiliate_store_settings'];
-      for (const table of tables) {
-        const { data: existing, error: checkError } = await supabase
-          .from(table)
-          .select('subdomain')
-          .eq('subdomain', clean)
-          .maybeSingle();
-        if (checkError && checkError.code !== 'PGRST116') {
-          throw checkError;
-        }
-        if (existing && table !== (role === 'seller' ? 'store_settings' : 'affiliate_store_settings')) {
-          setError('That subdomain is already taken. Please choose another.');
-          setSaving(false);
-          return;
-        }
+      const [
+        { data: sellerMatch, error: sellerCheckError },
+        { data: affiliateMatch, error: affiliateCheckError }
+      ] = await Promise.all([
+        supabase.from('store_settings').select('seller_id').eq('subdomain', clean).maybeSingle(),
+        supabase.from('affiliate_store_settings').select('affiliate_id').eq('subdomain', clean).maybeSingle(),
+      ]);
+
+      if (sellerCheckError && sellerCheckError.code !== 'PGRST116') throw sellerCheckError;
+      if (affiliateCheckError && affiliateCheckError.code !== 'PGRST116') throw affiliateCheckError;
+
+      if (sellerMatch?.seller_id && !(role === 'seller' && String(sellerMatch.seller_id) === String(resolvedUserId))) {
+        setError('That store URL is already taken. Please choose another.');
+        setSaving(false);
+        return;
+      }
+      if (affiliateMatch?.affiliate_id && !(role === 'affiliate' && String(affiliateMatch.affiliate_id) === String(resolvedUserId))) {
+        setError('That store URL is already taken. Please choose another.');
+        setSaving(false);
+        return;
       }
 
-      const table = role === 'seller' ? 'store_settings' : 'affiliate_store_settings';
-      const idField = role === 'seller' ? 'seller_id' : 'affiliate_id';
+      const table = role === 'seller'
+        ? 'store_settings'
+        : 'affiliate_store_settings';
+      const idField = role === 'seller'
+        ? 'seller_id'
+        : 'affiliate_id';
 
       const { error: updateError } = await supabase
         .from(table)
-        .upsert({
-          [idField]: userId,
-          subdomain: clean,
-          updated_at: new Date().toISOString()
-        });
+        .upsert(
+          {
+            [idField]: resolvedUserId,
+            subdomain: clean,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: idField }
+        );
 
       if (updateError) {
-        setError('Failed to save subdomain. Try another value.');
+        setError('Failed to save store URL. Try another value.');
       } else {
         setSubdomainInput(clean);
         setError('');
-        const path = role === 'seller' ? 'store' : 'affiliate';
-        alert(`Subdomain saved! Your new link is https://${clean}.beezio.co or beezio.co/${path}/${clean}`);
+        const prefix = role === 'seller' ? 'store' : 'partner';
+        alert(`Store URL saved! Your new link is https://beezio.co/${prefix}/${clean}`);
         onUpdated?.({ subdomain: clean });
       }
     } catch (err) {
       console.error('Subdomain save error', err);
-      setError('Failed to save subdomain. Please try again.');
+      setError('Failed to save store URL. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -192,13 +281,17 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
 
     setSaving(true);
     try {
-      const table = role === 'seller' ? 'store_settings' : 'affiliate_store_settings';
-      const idField = role === 'seller' ? 'seller_id' : 'affiliate_id';
+      const table = role === 'seller'
+        ? 'store_settings'
+        : 'affiliate_store_settings';
+      const idField = role === 'seller'
+        ? 'seller_id'
+        : 'affiliate_id';
 
       const { error: updateError } = await supabase
         .from(table)
         .update({ custom_domain: null })
-        .eq(idField, userId);
+        .eq(idField, resolvedUserId);
 
       if (!updateError) {
         setDomain('');
@@ -219,11 +312,14 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
     alert('Copied to clipboard!');
   };
 
-  const defaultStoreUrl = role === 'seller' 
-    ? `https://beezio.co/store/${subdomainInput || userId}`
-    : `https://beezio.co/affiliate/${subdomainInput || userId}`;
-  
-  const subdomainUrl = subdomainInput ? `https://${subdomainInput}.beezio.co` : null;
+  const fallbackPath = role === 'seller'
+    ? `store/${resolvedUserId || userId}`
+    : `partner/${resolvedUserId || userId}`;
+  const slugPrefix = 'store';
+  const defaultStoreUrl = subdomainInput
+    ? `https://beezio.co/${slugPrefix}/${subdomainInput}`
+    : `https://beezio.co/${fallbackPath}`;
+  const subdomainUrl = subdomainInput ? `https://beezio.co/${slugPrefix}/${subdomainInput}` : null;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -232,10 +328,10 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
         <h3 className="text-xl font-bold text-gray-900">Custom Domain</h3>
       </div>
 
-      {/* Subdomain URL (auto-generated from email) */}
+      {/* Store URL (path-based slug) */}
       {subdomainUrl && (
         <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
-          <p className="text-sm font-medium text-gray-700 mb-2">Your Beezio subdomain</p>
+          <p className="text-sm font-medium text-gray-700 mb-2">Your Beezio store link</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 px-3 py-2 bg-white border border-purple-200 rounded text-sm font-semibold text-purple-700">
               {subdomainUrl}
@@ -258,34 +354,40 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
             </a>
           </div>
           <p className="text-xs text-purple-600 mt-2">
-            Share this link with customers. You can also use the path link below.
+            Share this link with customers.
           </p>
         </div>
       )}
 
-      {/* Beezio subdomain setup */}
+      {/* Store URL slug setup */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Beezio Subdomain</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Store URL Slug</label>
         <div className="flex gap-2">
           <input
             type="text"
             value={subdomainInput}
-            onChange={(e) => setSubdomainInput(e.target.value.toLowerCase())}
+            onChange={(e) => setSubdomainInput(normalizeSubdomainInput(e.target.value))}
             placeholder="yourstore"
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+            disabled={slugLocked}
           />
           <button
             onClick={saveSubdomain}
-            disabled={saving}
+            disabled={saving || slugLocked}
             className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 font-medium"
           >
-            {saving ? 'Saving...' : 'Save Subdomain'}
+            {saving ? 'Saving...' : 'Save URL'}
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">Creates links like https://yourstore.beezio.co and beezio.co/store/yourstore</p>
+        <p className="text-xs text-gray-500 mt-2">Creates links like https://beezio.co/{slugPrefix}/yourstore</p>
+        {slugLocked && (
+          <p className="text-xs text-gray-600 mt-2">
+            Store URL slugs are locked after creation. Contact support to request a change.
+          </p>
+        )}
       </div>
 
-      {/* Current Store URL (fallback path) */}
+      {/* Current Store URL */}
       <div className="mb-6 p-4 bg-blue-50 rounded-lg">
         <p className="text-sm font-medium text-gray-700 mb-2">Alternative Store URL:</p>
         <div className="flex items-center gap-2">
@@ -310,7 +412,7 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
           </a>
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          This URL also works, but the subdomain above is shorter and more professional.
+          This URL always works for your store.
         </p>
       </div>
 
@@ -349,6 +451,26 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
         )}
       </div>
 
+      <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+        <div className="font-semibold text-gray-900 mb-2">How to connect your domain</div>
+        <div className="space-y-2 break-words">
+          <div>1) Save your domain here.</div>
+          <div>2) In your DNS provider, add the record(s) below:</div>
+          <div className="mt-2">
+            <div className="font-medium text-gray-800">Root domain (example.com)</div>
+            <div>A @ → 104.198.14.52</div>
+            <div>CNAME www → beezio-marketplace.netlify.app</div>
+          </div>
+          <div className="mt-2">
+            <div className="font-medium text-gray-800">Subdomain (shop.example.com)</div>
+            <div>CNAME shop → beezio-marketplace.netlify.app</div>
+          </div>
+          <div className="mt-2 text-xs text-gray-600">
+            DNS can take 5-30 minutes (up to 48 hours). Use the "Re-check now" button once it propagates.
+          </div>
+        </div>
+      </div>
+
       {/* Verification Status */}
       {domain && (
         <div className="mb-6 p-4 border rounded-lg">
@@ -361,18 +483,26 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
             ) : verificationStatus === 'verified' ? (
               <>
                 <CheckCircle className="w-5 h-5 text-green-600" />
-                <span className="text-sm text-green-600 font-medium">Domain format valid</span>
+                <span className="text-sm text-green-600 font-medium">DNS records verified</span>
               </>
             ) : (
               <>
                 <AlertCircle className="w-5 h-5 text-yellow-600" />
-                <span className="text-sm text-yellow-600 font-medium">DNS configuration pending</span>
+                <span className="text-sm text-yellow-600 font-medium">DNS not detected yet</span>
               </>
             )}
           </div>
           {!verifying && (
+            <button
+              onClick={() => verifyDomain(domain)}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+            >
+              Re-check now
+            </button>
+          )}
+          {!verifying && (
             <p className="text-xs text-gray-500">
-              Configure your domain's DNS settings to point to Beezio for it to work.
+              DNS must point to your store before the domain will work.
             </p>
           )}
         </div>
@@ -403,11 +533,19 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
                   <Globe className="w-5 h-5 text-bzo-black" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-bzo-black mb-2">DNS Configuration for {domain}</h4>
+                  <h4 className="font-semibold text-bzo-black mb-2">Connect your domain</h4>
                   <p className="text-sm text-gray-600 mb-4">
-                    To use your custom domain with Beezio, configure these DNS records with your domain provider:
+                    This works with GoDaddy, Namecheap, Google Domains, Cloudflare, etc. You just point DNS to your store.
                   </p>
                 </div>
+              </div>
+
+              <div className="bg-white rounded-lg border border-bzo-yellow-primary/30 p-4 space-y-2 text-sm text-gray-700">
+                <div className="font-semibold text-gray-900">Step-by-step</div>
+                <div>1) Log into your domain provider and open DNS management.</div>
+                <div>2) Delete any existing A/CNAME records that conflict with your root domain or subdomain.</div>
+                <div>3) Add the record(s) below and save.</div>
+                <div>4) Wait for DNS to propagate (5-30 minutes, up to 48 hours).</div>
               </div>
 
               {/* DNS Records */}
@@ -448,6 +586,10 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
                         <span className="font-mono bg-gray-100 px-2 py-1 rounded">3600</span>
                       </div>
                     )}
+                    <div className="text-xs text-gray-500">
+                      Root domains use the A record. Subdomains (like shop.yourdomain.com) use the CNAME record.
+                      Keep only one A record for @ and one CNAME for the same host.
+                    </div>
                   </div>
                 </div>
 
@@ -457,19 +599,19 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
                   <div className="grid md:grid-cols-2 gap-3 text-sm">
                     <div>
                       <p className="font-medium text-gray-700">Cloudflare:</p>
-                      <p className="text-gray-600">DNS → Records → Add record</p>
+                      <p className="text-gray-600">DNS - Records - Add record</p>
                     </div>
                     <div>
                       <p className="font-medium text-gray-700">GoDaddy:</p>
-                      <p className="text-gray-600">DNS Management → Add Record</p>
+                      <p className="text-gray-600">DNS Management - Add Record</p>
                     </div>
                     <div>
                       <p className="font-medium text-gray-700">Namecheap:</p>
-                      <p className="text-gray-600">Advanced DNS → Add New Record</p>
+                      <p className="text-gray-600">Advanced DNS - Add New Record</p>
                     </div>
                     <div>
                       <p className="font-medium text-gray-700">Google Domains:</p>
-                      <p className="text-gray-600">DNS → Custom records</p>
+                      <p className="text-gray-600">DNS - Custom records</p>
                     </div>
                   </div>
                 </div>
@@ -489,28 +631,40 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
                 </div>
 
                 {/* Timeline */}
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-                    <div>
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div>
                       <h5 className="font-medium text-blue-800 mb-1">Propagation Time</h5>
                       <p className="text-sm text-blue-700">
                         DNS changes typically take 5-30 minutes to propagate, but can take up to 48 hours. 
                         Your domain will work once propagation is complete.
                       </p>
-                    </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Help section */}
-              <div className="border-t border-bzo-yellow-primary/30 pt-4">
-                <p className="text-sm text-gray-600">
-                  Need help? Contact our support team with your domain name and we'll assist with the setup.
-                </p>
-                <button className="mt-2 text-sm text-bzo-yellow-primary hover:text-bzo-yellow-secondary font-medium">
-                  Contact Support →
-                </button>
+            {/* Troubleshooting */}
+            <div className="bg-white rounded-lg border border-bzo-yellow-primary/30 p-4 space-y-2 text-sm text-gray-700">
+              <div className="font-semibold text-gray-900">Troubleshooting</div>
+              <div>Make sure your domain is added in your DNS provider (not just in the registrar settings).</div>
+              <div>Remove extra A/CNAME records that conflict with the same host (only one per host).</div>
+              <div>If you set a CNAME, do not set an A record for that same host.</div>
+              <div>After changes, wait for propagation and refresh this page to re-check status.</div>
+            </div>
+
+            {/* Help section */}
+            <div className="border-t border-bzo-yellow-primary/30 pt-4">
+              <p className="text-sm text-gray-600">
+                Need help? Contact our support team with your domain name and we'll assist with the setup.
+              </p>
+                <a
+                  href="/contact-support"
+                  className="mt-2 inline-block text-sm text-bzo-yellow-primary hover:text-bzo-yellow-secondary font-medium"
+                >
+                  Contact Support
+                </a>
               </div>
             </div>
           )}
@@ -521,10 +675,10 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
       <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
         <h4 className="font-semibold text-gray-900 mb-2">Why Use a Custom Domain?</h4>
         <ul className="space-y-1 text-sm text-gray-700">
-          <li>✅ Professional branding for your store</li>
-          <li>✅ Easier to remember and share</li>
-          <li>✅ Better SEO and search visibility</li>
-          <li>✅ Builds customer trust and credibility</li>
+          <li>Professional branding for your store</li>
+          <li>Easier to remember and share</li>
+          <li>Better SEO and search visibility</li>
+          <li>Builds customer trust and credibility</li>
         </ul>
       </div>
     </div>

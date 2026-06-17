@@ -15,15 +15,15 @@ export const testBasicFunctionality = async () => {
     const sellerAmount = 100;
     const affiliateRate = 20;
     const affiliateAmount = sellerAmount * (affiliateRate / 100); // $20
-    const stripeBase = sellerAmount + affiliateAmount; // $120
-    const stripeFee = stripeBase * 0.03 + 0.60; // $4.20
-    const totalBeforePlatform = sellerAmount + affiliateAmount + stripeFee; // $124.20
-    const platformFee = totalBeforePlatform * 0.10; // $12.42
+    const processingBase = sellerAmount + affiliateAmount; // $120
+    const processingFee = processingBase * 0.03 + 0.60; // $4.20
+    const totalBeforePlatform = sellerAmount + affiliateAmount + processingFee; // $124.20
+    const platformFee = totalBeforePlatform * 0.15; // $18.63
     const customerPays = totalBeforePlatform + platformFee; // $136.62
     
     console.log(`   Seller: $${sellerAmount.toFixed(2)}`);
     console.log(`   Affiliate: $${affiliateAmount.toFixed(2)}`);
-    console.log(`   Stripe: $${stripeFee.toFixed(2)}`);
+    console.log(`   Processing: $${processingFee.toFixed(2)}`);
     console.log(`   Platform: $${platformFee.toFixed(2)}`);
     console.log(`   Customer Pays: $${customerPays.toFixed(2)}`);
     
@@ -123,20 +123,20 @@ export const testPricingFormula = () => {
       // Manual calculation using our formula
       const sellerAmount = testCase.seller;
       const affiliateAmount = sellerAmount * (testCase.affiliate / 100);
-      const stripeBase = sellerAmount + affiliateAmount;
-      const stripeFee = stripeBase * 0.03 + 0.60;
-      const totalBeforePlatform = sellerAmount + affiliateAmount + stripeFee;
-      const platformFee = totalBeforePlatform * 0.10;
+      const processingBase = sellerAmount + affiliateAmount;
+      const processingFee = processingBase * 0.03 + 0.60;
+      const totalBeforePlatform = sellerAmount + affiliateAmount + processingFee;
+      const platformFee = totalBeforePlatform * 0.15;
       const customerPays = totalBeforePlatform + platformFee;
       
       console.log(`   Seller gets: $${sellerAmount.toFixed(2)}`);
       console.log(`   Affiliate gets: $${affiliateAmount.toFixed(2)}`);
-      console.log(`   Stripe fee: $${stripeFee.toFixed(2)}`);
+      console.log(`   Processing fee: $${processingFee.toFixed(2)}`);
       console.log(`   Platform fee: $${platformFee.toFixed(2)}`);
       console.log(`   Customer pays: $${customerPays.toFixed(2)}`);
       
       // Verify the total adds up
-      const calculatedTotal = sellerAmount + affiliateAmount + stripeFee + platformFee;
+      const calculatedTotal = sellerAmount + affiliateAmount + processingFee + platformFee;
       const difference = Math.abs(calculatedTotal - customerPays);
       
       if (difference < 0.01) {

@@ -35,7 +35,7 @@ const SellerCompletePage: React.FC = () => {
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
                 <span className="text-2xl">🤝</span>
               </div>
-              <h3 className="text-xl font-semibold mb-2">2. Get Affiliates</h3>
+              <h3 className="text-xl font-semibold mb-2">2. Get Partners</h3>
               <p className="text-gray-600">
                 Our network connects you with affiliates who promote your products. You set the commission rates.
               </p>
@@ -101,7 +101,7 @@ const SellerCompletePage: React.FC = () => {
                     <span className="text-red-600">-$3.20</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Affiliate Commission:</span>
+                    <span>Partner Commission:</span>
                     <span className="text-red-600">-$10.00</span>
                   </div>
                   <hr className="my-2" />
@@ -128,9 +128,9 @@ const SellerCompletePage: React.FC = () => {
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h3 className="text-xl font-semibold mb-3">🤖 Smart Automation</h3>
+              <h3 className="text-xl font-semibold mb-3">🤖 Smart Operations</h3>
               <p className="text-gray-600">
-                Zapier integrations automate your workflow. From inventory management to order fulfillment.
+                Streamline inventory, orders, and fulfillment with built-in seller tools.
               </p>
             </div>
             
@@ -200,14 +200,14 @@ const SellerCompletePage: React.FC = () => {
             <details className="bg-white p-6 rounded-lg shadow-sm border">
               <summary className="font-semibold cursor-pointer">How do affiliate commissions work?</summary>
               <p className="mt-3 text-gray-600">
-                You set the commission rate (typically 10-30%). Affiliates only earn when they generate sales, so it's performance-based marketing.
+                You set the commission rate (typically 10-30%). Partners only earn when they generate sales, so it's performance-based marketing.
               </p>
             </details>
             
             <details className="bg-white p-6 rounded-lg shadow-sm border">
               <summary className="font-semibold cursor-pointer">What support do you provide?</summary>
               <p className="mt-3 text-gray-600">
-                24/7 seller support, marketing resources, analytics tools, and access to our global sourcing network and automation tools.
+                24/7 seller support, marketing resources, analytics tools, and access to our global sourcing network.
               </p>
             </details>
           </div>

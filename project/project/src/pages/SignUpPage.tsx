@@ -1,8 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
-import { Gift, Check, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
+import { deriveStoreSlug, isValidStoreSlug } from '../utils/storeSlug';
+import { buildDeterministicReferralCode } from '../utils/referralCode';
+import { assignInfluencerReferral } from '../utils/influencerReferrals';
+import { validatePasswordPolicy } from '../utils/passwordPolicy';
+import { sendSignupVerificationEmail } from '../services/signupVerificationClient';
+import {
+  clearPendingRecruitAttributionForUser,
+  queuePendingRecruitAttribution,
+} from '../utils/recruitAttribution';
+import { getNormalizedAccountRoles, isBuyerOnlyAccount } from '../utils/accountRoles';
 
 const SIGNUP_DRAFT_KEY = 'beezio_signup_draft_v1';
 
@@ -14,22 +24,46 @@ const SignUpPage: React.FC = () => {
     fullName: '',
     storeName: '',
     phone: '',
+    streetAddress: '',
     city: '',
     state: '',
     zipCode: '',
-    role: 'buyer',
+    role: 'seller',
   });
-  const [referralCode, setReferralCode] = useState<string>('');
-  const [referralValid, setReferralValid] = useState<boolean | null>(null);
-  const [referrerName, setReferrerName] = useState<string>('');
-  const [referrerAffiliateId, setReferrerAffiliateId] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedIndependentContractor, setAcceptedIndependentContractor] = useState(false);
+  const [acceptedTaxDelivery, setAcceptedTaxDelivery] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [skipPayoutSetup, setSkipPayoutSetup] = useState(false);
+  const [paypalEmail, setPaypalEmail] = useState('');
+  const [paypalConfirmed, setPaypalConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const { signUp, signIn, signOut, user, profile, loading: authLoading } = useAuth();
+  const [referralCode, setReferralCode] = useState('');
+  const [referralValid, setReferralValid] = useState<boolean | null>(null);
+  const [referralValidationLoading, setReferralValidationLoading] = useState(false);
+  const [referrerName, setReferrerName] = useState('');
+  const [referrerProfileId, setReferrerProfileId] = useState<string | null>(null);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+  const [storeSlugStatus, setStoreSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'error'>('idle');
+  const [storeSlugMessage, setStoreSlugMessage] = useState('');
+  const [storeSlugValue, setStoreSlugValue] = useState('');
+  const enableReferralCode = false;
+  const {
+    signUp,
+    signIn,
+    signOut,
+    resendVerificationEmail,
+    user,
+    profile,
+    userRoles,
+    currentRole,
+    addRole,
+    refreshProfile,
+    loading: authLoading,
+  } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  // Compliance hardening: disable recruiter/referrer signup codes.
 
   // Password strength calculation
   const getPasswordStrength = (password: string) => {
@@ -50,14 +84,162 @@ const SignUpPage: React.FC = () => {
 
   const passwordStrength = getPasswordStrength(formData.password);
 
-  // Check for referral code in URL
-  useEffect(() => {
-    const refCode = searchParams.get('recruit') || searchParams.get('ref');
-    if (refCode) {
-      setReferralCode(refCode);
-      validateReferralCode(refCode);
+  const urlRole = searchParams.get('role');
+  const referralFromLink =
+    searchParams.get('recruit') ||
+    searchParams.get('influencer') ||
+    searchParams.get('ic');
+  const urlInfluencer = String(referralFromLink || '').trim();
+  const inviteLinkPresent = Boolean(urlInfluencer);
+
+  const isIgnorableLookupError = (err: any) => {
+    if (!err) return true;
+    const code = String(err?.code || '').trim().toUpperCase();
+    if (code === 'PGRST116') return true; // no rows
+    const message = String(err?.message || '').toLowerCase();
+    return (
+      message.includes('schema cache') ||
+      message.includes('does not exist') ||
+      message.includes('could not find the')
+    );
+  };
+
+  const normalizeRecruitCode = (input: string): string => {
+    const raw = String(input || '').trim();
+    if (!raw) return '';
+
+    let candidate = raw;
+    if (/^https?:\/\//i.test(candidate)) {
+      try {
+        const parsed = new URL(candidate);
+        const fromQuery =
+          parsed.searchParams.get('recruit') ||
+          parsed.searchParams.get('influencer') ||
+          parsed.searchParams.get('ic') ||
+          parsed.searchParams.get('code') ||
+          '';
+        candidate = String(fromQuery || '').trim() || candidate;
+      } catch {
+        // keep raw input
+      }
     }
-  }, [searchParams]);
+
+    try {
+      candidate = decodeURIComponent(candidate);
+    } catch {
+      // keep undecoded value
+    }
+
+    return candidate
+      .trim()
+      .replace(/^['"`]+|['"`]+$/g, '')
+      .replace(/\/$/, '');
+  };
+
+  const validateReferralCode = useCallback(async (code: string) => {
+    const trimmed = normalizeRecruitCode(code);
+    if (!trimmed || trimmed.length < 3) {
+      setReferralValid(null);
+      setReferrerName('');
+      setReferrerProfileId(null);
+      setReferralValidationLoading(false);
+      return;
+    }
+
+    try {
+      setReferralValidationLoading(true);
+      let explicitlyInvalid = false;
+      // Prefer server-side resolver (service-role) so invite validation works for anonymous visitors.
+      try {
+        const response = await fetch(`/api/public/recruit/resolve?code=${encodeURIComponent(trimmed)}`);
+        if (response.ok) {
+          const payload = await response.json();
+          if (payload?.ok && payload?.valid && payload?.referrerProfileId) {
+            setReferralValid(true);
+            setReferrerProfileId(String(payload.referrerProfileId));
+            setReferrerName(String(payload.referrerName || 'this influencer'));
+            return;
+          }
+          if (payload?.ok && payload?.valid === false) {
+            explicitlyInvalid = true;
+          }
+        }
+      } catch {
+        // fallback below
+      }
+
+      // Fallback: direct client lookup for local/dev environments without Netlify function routing.
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmed);
+      const profileFilters = [`referral_code.ilike.${trimmed}`, `username.ilike.${trimmed}`];
+      if (isUuid) profileFilters.push(`id.eq.${trimmed}`);
+
+      const { data: profileRows, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name, username')
+        .or(profileFilters.join(','))
+        .limit(1);
+
+      const data = Array.isArray(profileRows) ? profileRows[0] : null;
+      if (!profileError && data?.id) {
+        setReferralValid(true);
+        setReferrerProfileId(String(data.id));
+        setReferrerName(data.full_name || data.username || 'this influencer');
+        return;
+      }
+
+      const { data: storeRow } = await supabase
+        .from('affiliate_stores')
+        .select('profile_id, store_name, store_slug')
+        .eq('store_slug', trimmed.toLowerCase())
+        .maybeSingle();
+
+      if ((storeRow as any)?.profile_id) {
+        setReferralValid(true);
+        setReferrerProfileId(String((storeRow as any).profile_id));
+        setReferrerName(String((storeRow as any).store_name || (storeRow as any).store_slug || 'this influencer'));
+        return;
+      }
+
+      setReferralValid(explicitlyInvalid ? false : null);
+      setReferrerName('');
+      setReferrerProfileId(null);
+    } catch {
+      setReferralValid(null);
+      setReferrerName('');
+      setReferrerProfileId(null);
+    } finally {
+      setReferralValidationLoading(false);
+    }
+  }, []);
+
+  const resolveStoreName = useCallback(() => {
+    const trimmed = String(formData.storeName || '').trim();
+    if (trimmed) return trimmed;
+    const emailBase = String(formData.email || '').trim().split('@')[0] || '';
+    return emailBase;
+  }, [formData.email, formData.storeName]);
+
+  const checkSlugAvailability = useCallback(async (slug: string) => {
+    if (!slug) return false;
+    const [
+      { data: sellerMatch, error: sellerCheckError },
+      { data: affiliateMatch, error: affiliateCheckError },
+      { data: profileMatch, error: profileCheckError }
+    ] = await Promise.all([
+      supabase.from('store_settings').select('seller_id').eq('subdomain', slug).maybeSingle(),
+      supabase.from('affiliate_store_settings').select('affiliate_id').eq('subdomain', slug).maybeSingle(),
+      supabase.from('profiles').select('id').eq('subdomain', slug).maybeSingle(),
+    ]);
+
+    if (!isIgnorableLookupError(sellerCheckError)) throw sellerCheckError;
+    if (!isIgnorableLookupError(affiliateCheckError)) throw affiliateCheckError;
+    if (!isIgnorableLookupError(profileCheckError)) throw profileCheckError;
+
+    if (sellerMatch?.seller_id) return false;
+    if (affiliateMatch?.affiliate_id) return false;
+    if (profileMatch?.id) return false;
+    return true;
+  }, []);
 
   // Restore draft (so refresh doesn’t wipe signup progress)
   useEffect(() => {
@@ -72,15 +254,15 @@ const SignUpPage: React.FC = () => {
       if (typeof parsed?.acceptedTerms === 'boolean') {
         setAcceptedTerms(parsed.acceptedTerms);
       }
-      if (typeof parsed?.referralCode === 'string' && parsed.referralCode.trim()) {
-        const cleaned = parsed.referralCode.trim();
-        setReferralCode(cleaned);
-        validateReferralCode(cleaned);
+      if (typeof parsed?.acceptedIndependentContractor === 'boolean') {
+        setAcceptedIndependentContractor(parsed.acceptedIndependentContractor);
+      }
+      if (typeof parsed?.acceptedTaxDelivery === 'boolean') {
+        setAcceptedTaxDelivery(parsed.acceptedTaxDelivery);
       }
     } catch {
       // ignore
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Persist draft while editing (avoid losing progress on refresh)
@@ -96,52 +278,67 @@ const SignUpPage: React.FC = () => {
             fullName: formData.fullName,
             storeName: formData.storeName,
             phone: formData.phone,
+            streetAddress: formData.streetAddress,
             city: formData.city,
             state: formData.state,
             zipCode: formData.zipCode,
             role: formData.role,
           },
-          referralCode,
           acceptedTerms,
+          acceptedIndependentContractor,
+          acceptedTaxDelivery,
         })
       );
     } catch {
       // ignore
     }
-  }, [acceptedTerms, formData, referralCode, user]);
+  }, [acceptedTerms, formData, user]);
 
-  const validateReferralCode = async (code: string) => {
-    try {
-      const cleaned = (code || '').trim();
-      if (!cleaned) {
-        setReferralValid(null);
-        setReferrerAffiliateId(null);
-        setReferrerName('');
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, referral_code, username, primary_role, role')
-        // Preferred: profiles.referral_code. Backward-compatible: username or id.
-        .or(`referral_code.ilike.${cleaned},username.ilike.${cleaned},id.eq.${cleaned}`)
-        .maybeSingle();
-
-      if (error || !data) {
-        setReferralValid(false);
-        setReferrerAffiliateId(null);
-        return;
-      }
-
-      setReferrerAffiliateId(data.id);
-      setReferralValid(true);
-      setReferrerName(data.full_name || data.referral_code || 'An affiliate');
-    } catch (err) {
-      console.error('Error validating referral code:', err);
-      setReferralValid(false);
-      setReferrerAffiliateId(null);
+  useEffect(() => {
+    const candidate = resolveStoreName();
+    if (!candidate) {
+      setStoreSlugStatus('idle');
+      setStoreSlugMessage('');
+      setStoreSlugValue('');
+      return;
     }
-  };
+
+    const slug = deriveStoreSlug(candidate);
+    setStoreSlugValue(slug);
+
+    if (!isValidStoreSlug(slug)) {
+      setStoreSlugStatus('invalid');
+      setStoreSlugMessage('Store URL must be 3-32 characters, letters/numbers/hyphens only, and not reserved.');
+      return;
+    }
+
+    let alive = true;
+    setStoreSlugStatus('checking');
+    setStoreSlugMessage('Checking store URL availability...');
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const available = await checkSlugAvailability(slug);
+        if (!alive) return;
+        if (available) {
+          setStoreSlugStatus('available');
+          setStoreSlugMessage('Store URL is available.');
+        } else {
+          setStoreSlugStatus('taken');
+          setStoreSlugMessage('That store URL is already taken.');
+        }
+      } catch {
+        if (!alive) return;
+        setStoreSlugStatus('error');
+        setStoreSlugMessage('Unable to check store URL right now.');
+      }
+    }, 400);
+
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
+  }, [checkSlugAvailability, formData.email, formData.storeName, resolveStoreName]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
@@ -155,6 +352,7 @@ const SignUpPage: React.FC = () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
+    setPendingVerificationEmail('');
 
     // Validation
     if (!formData.email || !formData.email.includes('@')) {
@@ -169,22 +367,135 @@ const SignUpPage: React.FC = () => {
       return;
     }
 
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
+    if (!acceptedIndependentContractor) {
+      setError('You must acknowledge that Beezio business users are independent contractors, not employees.');
       setLoading(false);
       return;
     }
 
-    if (!formData.storeName || formData.storeName.trim().length < 2) {
-      setError('Please choose a store name (at least 2 characters)');
+    if (!acceptedTaxDelivery) {
+      setError('You must agree to receive tax compliance notices in your dashboard and email.');
+      setLoading(false);
+      return;
+    }
+
+    if (!String(formData.fullName || '').trim()) {
+      setError('Full name is required.');
+      setLoading(false);
+      return;
+    }
+
+    if (!String(formData.phone || '').trim()) {
+      setError('Phone number is required.');
+      setLoading(false);
+      return;
+    }
+
+    if (!String(formData.streetAddress || '').trim()) {
+      setError('Street address is required.');
+      setLoading(false);
+      return;
+    }
+
+    if (!String(formData.city || '').trim()) {
+      setError('City is required.');
+      setLoading(false);
+      return;
+    }
+
+    if (!String(formData.state || '').trim()) {
+      setError('State is required.');
+      setLoading(false);
+      return;
+    }
+
+    const passwordError = validatePasswordPolicy(formData.password);
+    if (passwordError) {
+      setError(passwordError);
+      setLoading(false);
+      return;
+    }
+
+    const resolvedStoreName = resolveStoreName();
+    const storeSlug = deriveStoreSlug(resolvedStoreName);
+
+    if (!resolvedStoreName || resolvedStoreName.trim().length < 2) {
+      setError('Please choose a business or store name (at least 2 characters).');
+      setLoading(false);
+      return;
+    }
+
+    if (!skipPayoutSetup) {
+      const trimmed = paypalEmail.trim();
+      if (!trimmed || !trimmed.includes('@')) {
+        setError('Please enter the PayPal email you want to receive payouts to (or skip payout setup for now).');
+        setLoading(false);
+        return;
+      }
+      if (!paypalConfirmed) {
+        setError('Please confirm your PayPal payout email to continue (or skip payout setup for now).');
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (inviteLinkPresent && referralValidationLoading) {
+      setError('Invite link validation is still loading. Please try again in a moment.');
       setLoading(false);
       return;
     }
 
     try {
-      // Only assign selected role
-      const result = await signUp(formData.email, formData.password, { ...formData, role: formData.role, referralCode });
+      if (!isValidStoreSlug(storeSlug)) {
+        setError('Your store URL is not valid. Please choose a different business name.');
+        setLoading(false);
+        return;
+      }
+      const available = await checkSlugAvailability(storeSlug);
+      if (!available) {
+        setError('That store URL is already taken. Please choose a different business name.');
+        setLoading(false);
+        return;
+      }
+
+      const result = await signUp(formData.email, formData.password, {
+        ...formData,
+        role: 'seller',
+        bundleBusinessRoles: true,
+        storeName: resolvedStoreName,
+        storeSlug,
+        paypalEmail: paypalEmail.trim(),
+        paypalConfirmed,
+        referrerProfileId: referrerProfileId || '',
+        independentContractorAcknowledged: acceptedIndependentContractor,
+        taxDeliveryAcknowledged: acceptedTaxDelivery,
+      });
       if (result.user) {
+        if (!result.session) {
+          let emailSent = false;
+          let sendError = '';
+          try {
+            await sendSignupVerificationEmail({
+              userId: result.user.id,
+              email: formData.email,
+              fullName: formData.fullName,
+            });
+            emailSent = true;
+          } catch (resendErr: any) {
+            console.warn('Signup verification send failed after sign up:', resendErr);
+            sendError = String(resendErr?.message || 'Failed to send verification email.');
+          }
+          const verifyParams = new URLSearchParams({
+            flow: 'signup',
+            email: formData.email,
+            email_sent: emailSent ? '1' : '0',
+          });
+          if (sendError) verifyParams.set('send_error', sendError);
+          navigate(`/auth/verify?${verifyParams.toString()}`, { replace: true });
+          setLoading(false);
+          return;
+        }
+
         const getNewProfileId = async (userId: string): Promise<string | null> => {
           // Profile row is sometimes created asynchronously; retry briefly.
           for (let attempt = 0; attempt < 5; attempt++) {
@@ -206,12 +517,11 @@ const SignUpPage: React.FC = () => {
 
         const newProfileId = await getNewProfileId(result.user.id);
 
-        // If they signed up as an affiliate, ensure they have a permanent referral_code.
-        // Deterministic: derived from their profile id so it never changes.
-        if (formData.role === 'affiliate' && newProfileId) {
+        // Ensure every account has a permanent referral_code.
+        // Deterministic: derived from profile id so it never changes.
+        if (newProfileId) {
           try {
-            const compact = String(newProfileId).replace(/-/g, '').toUpperCase();
-            const deterministicReferralCode = `BZO${compact.slice(0, 12)}`;
+            const deterministicReferralCode = buildDeterministicReferralCode(String(newProfileId));
             await supabase
               .from('profiles')
               .update({ referral_code: deterministicReferralCode })
@@ -222,32 +532,32 @@ const SignUpPage: React.FC = () => {
           }
         }
 
-        // If there's a referral code, store it and create referral relationship
-        if (referralCode && referralValid && referrerAffiliateId) {
-          try {
-            if (newProfileId) {
-              // Update new user's profile with referred_by_affiliate_id (recruiter's profile ID)
-              await supabase
-                .from('profiles')
-                .update({ referred_by_affiliate_id: referrerAffiliateId })
-                .eq('id', newProfileId);
+        if (referrerProfileId && referrerProfileId !== newProfileId) {
+          queuePendingRecruitAttribution(result.user.id, referrerProfileId, 'seller');
+          queuePendingRecruitAttribution(result.user.id, referrerProfileId, 'affiliate');
 
-              console.log('Referral relationship created:', referrerAffiliateId, '->', newProfileId);
-              // The database trigger will automatically create the affiliate_recruiters record
+          if (newProfileId) {
+            try {
+              await Promise.all([
+                assignInfluencerReferral({
+                  recruitedProfileId: newProfileId,
+                  recruitedRole: 'seller',
+                  influencerProfileId: referrerProfileId,
+                }),
+                assignInfluencerReferral({
+                  recruitedProfileId: newProfileId,
+                  recruitedRole: 'affiliate',
+                  influencerProfileId: referrerProfileId,
+                }),
+              ]);
+              clearPendingRecruitAttributionForUser(result.user.id);
+            } catch {
+              // non-blocking: applied on first successful sign-in if needed
             }
-          } catch (refErr) {
-            console.error('Error saving referral relationship:', refErr);
-            // Don't fail signup if referral tracking fails
           }
         }
 
         setSuccess('Account created successfully! Signing you in...');
-        
-        if (!result.session) {
-          setSuccess('Account created! Please check your email to confirm your account before logging in.');
-          setLoading(false);
-          return;
-        }
         
         // Wait a moment for profile to be fully set in context
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -259,7 +569,7 @@ const SignUpPage: React.FC = () => {
             await new Promise(resolve => setTimeout(resolve, 500));
             
             console.log('✅ Sign up complete! Navigating to dashboard...');
-            if (String(formData.role) !== 'buyer') {
+            if (skipPayoutSetup) {
               navigate('/onboarding');
             } else {
               navigate('/dashboard');
@@ -278,30 +588,69 @@ const SignUpPage: React.FC = () => {
         }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred during registration');
+      const message = String(err?.message || '');
+      if (message.toLowerCase().includes('already') || message.toLowerCase().includes('exists')) {
+        setError('That email address already has an account. Use a different email or sign in.');
+      } else {
+        setError(message || 'An error occurred during registration');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Get role from URL params
-  const urlRole = searchParams.get('role');
   useEffect(() => {
-    if (urlRole && ['buyer', 'seller', 'affiliate', 'fundraiser'].includes(urlRole)) {
-      setFormData(prev => ({ ...prev, role: urlRole }));
+    if (urlRole === 'buyer') {
+      navigate('/account/signup', { replace: true });
     }
-  }, [urlRole]);
+  }, [navigate, urlRole]);
 
-  useEffect(() => {
-    if (urlRole) return;
-    if (location.pathname.includes('/seller')) {
-      setFormData(prev => ({ ...prev, role: 'seller' }));
-    } else if (location.pathname.includes('/affiliate')) {
-      setFormData(prev => ({ ...prev, role: 'affiliate' }));
-    } else if (location.pathname.includes('/fundraiser')) {
-      setFormData(prev => ({ ...prev, role: 'fundraiser' }));
+  const upgradeCurrentAccountToBusiness = async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const fullName =
+        String((profile as any)?.full_name || '').trim() ||
+        String(user.user_metadata?.full_name || user.user_metadata?.name || '').trim() ||
+        user.email ||
+        'Beezio Business';
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            user_id: user.id,
+            email: user.email,
+            full_name: fullName,
+            role: 'seller',
+            primary_role: 'seller',
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        );
+
+      if (profileError) throw profileError;
+
+      await Promise.all([addRole('seller'), addRole('affiliate'), addRole('influencer')]);
+      await refreshProfile();
+      navigate('/onboarding', { replace: true });
+    } catch (err: any) {
+      setError(String(err?.message || 'Could not upgrade this account. Please try again.'));
+    } finally {
+      setLoading(false);
     }
-  }, [location.pathname, urlRole]);
+  };
+
+  // Influencer recruiting link support (separate from site-wide partner attribution `?ref=`)
+  // Important: this is one-time attribution during signup; we never overwrite it later.
+  useEffect(() => {
+    if (!urlInfluencer) return;
+    const trimmed = normalizeRecruitCode(String(urlInfluencer));
+    if (!trimmed) return;
+    setReferralCode(trimmed);
+    void validateReferralCode(trimmed);
+  }, [urlInfluencer, validateReferralCode]);
 
   if (authLoading) {
     return (
@@ -317,16 +666,56 @@ const SignUpPage: React.FC = () => {
     const email = user.email || (profile as any)?.email || 'your account';
     const effectiveRole = String((profile as any)?.primary_role || (profile as any)?.role || 'buyer');
     const shouldOnboard = effectiveRole !== 'buyer';
+    const normalizedRoles = getNormalizedAccountRoles(userRoles, (profile as any)?.primary_role, (profile as any)?.role, currentRole);
+    const buyerOnlyAccount = isBuyerOnlyAccount(normalizedRoles);
 
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-xl mx-auto px-4 py-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-3">You’re already signed in</h1>
           <p className="text-gray-700 mb-6">
-            Signed in as <span className="font-semibold">{email}</span>. To create a new test account, sign out first
-            (use a separate browser profile/incognito for each test role).
+            {buyerOnlyAccount ? (
+              <>
+                Signed in as <span className="font-semibold">{email}</span>. This login is currently set up for customer purchases.
+              </>
+            ) : (
+              <>
+            Signed in as <span className="font-semibold">{email}</span>. This Beezio account can use seller, affiliate,
+            and influencer tools together. If you specifically need a separate test account, sign out first.
+              </>
+            )}
           </p>
 
+          {buyerOnlyAccount && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              This login is currently customer-only. Use Customer dashboard for purchases, or upgrade this same login to turn on seller,
+              affiliate, and influencer tools.
+            </div>
+          )}
+
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          {buyerOnlyAccount ? (
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => navigate('/account')}
+                className="inline-flex items-center justify-center px-5 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Customer dashboard
+              </button>
+              <button
+                onClick={upgradeCurrentAccountToBusiness}
+                disabled={loading}
+                className="inline-flex items-center justify-center px-5 py-3 rounded-lg bg-amber-500 text-black font-semibold hover:bg-amber-600 disabled:opacity-60 transition-colors"
+              >
+                {loading ? 'Upgrading...' : 'Upgrade this login'}
+              </button>
+            </div>
+          ) : (
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => navigate(shouldOnboard ? '/onboarding' : '/dashboard')}
@@ -334,6 +723,14 @@ const SignUpPage: React.FC = () => {
             >
               {shouldOnboard ? 'Continue onboarding' : 'Go to dashboard'}
             </button>
+            {shouldOnboard ? (
+              <button
+                onClick={() => navigate('/dashboard/store')}
+                className="inline-flex items-center justify-center px-5 py-3 rounded-lg border border-amber-300 text-amber-700 font-semibold hover:bg-amber-50 transition-colors"
+              >
+                Go to store setup
+              </button>
+            ) : null}
             <button
               onClick={async () => {
                 await signOut();
@@ -349,59 +746,49 @@ const SignUpPage: React.FC = () => {
               Sign out & create a new account
             </button>
           </div>
+          )}
         </div>
       </div>
     );
   }
 
-  // Role benefits data
-  const roleBenefits = {
-    seller: {
-      title: "Why Sell on Beezio?",
-      icon: "🏪",
-      benefits: [
-        "Custom storefront - Your brand, your way",
-        "You set your price - Keep exactly what you want",
-        "Set your own affiliate commission rates",
-        "No listing fees - Only pay when you sell",
-        "Access to thousands of affiliates ready to promote your products"
-      ]
-    },
-    affiliate: {
-      title: "Why Become an Affiliate?",
-      icon: "💰",
-      benefits: [
-        "Earn custom commission rates set by sellers",
-        "Custom affiliate store - Build your brand",
-        "Share products via your unique links",
-        "Get paid for every sale you generate",
-        "Plus: 2% referral bonus on affiliates you recruit"
-      ]
-    },
-    fundraiser: {
-      title: "Why Fundraise with Beezio?",
-      icon: "🎗️",
-      benefits: [
-        "Sell products to raise funds for your cause",
-        "No upfront costs - Only pay when you sell",
-        "Access our entire product marketplace",
-        "Custom fundraiser page",
-        "Track donations and sales in real-time"
-      ]
-    },
-    buyer: {
-      title: "Welcome to Beezio!",
-      icon: "🛍️",
-      benefits: [
-        "Shop from thousands of products",
-        "Support independent sellers and fundraisers",
-        "Secure checkout with multiple payment options",
-        "Track your orders in real-time"
-      ]
-    }
-  };
+  const businessBenefits = [
+    'Sell products and offers from one account.',
+    'Promote marketplace offers with affiliate tools.',
+    'Use your influencer link to recruit sellers and affiliates.',
+    'Run seller, affiliate, and influencer activity from one dashboard.',
+    'Set up once instead of creating three separate business accounts.',
+  ];
 
-  const currentBenefits = roleBenefits[formData.role as keyof typeof roleBenefits] || roleBenefits.buyer;
+  const businessWhatYouGet = [
+    'A seller storefront and checkout-ready business profile.',
+    'Affiliate tools to share marketplace offers and track earnings.',
+    'Influencer recruiting links tied to the same business account.',
+    'One dashboard for products, promotions, referrals, and payouts.',
+  ];
+
+  const storeSlugBlockingState =
+    !storeSlugValue ||
+    storeSlugStatus === 'checking' ||
+    storeSlugStatus === 'taken' ||
+    storeSlugStatus === 'invalid' ||
+    storeSlugStatus === 'error';
+
+  const storeNameInputClass =
+    storeSlugStatus === 'taken' || storeSlugStatus === 'invalid' || storeSlugStatus === 'error'
+      ? 'border-red-300 focus:ring-red-500'
+      : storeSlugStatus === 'available'
+      ? 'border-green-300 focus:ring-green-500'
+      : 'border-gray-300 focus:ring-amber-500';
+
+  const availabilityPanelClass =
+    storeSlugStatus === 'available'
+      ? 'border-green-200 bg-green-50 text-green-800'
+      : storeSlugStatus === 'checking'
+      ? 'border-amber-200 bg-amber-50 text-amber-800'
+      : storeSlugStatus === 'taken' || storeSlugStatus === 'invalid' || storeSlugStatus === 'error'
+      ? 'border-red-200 bg-red-50 text-red-800'
+      : 'border-gray-200 bg-gray-50 text-gray-700';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-6 px-4 sm:py-12 relative">
@@ -413,98 +800,140 @@ const SignUpPage: React.FC = () => {
         <span className="text-xl leading-none">×</span>
       </Link>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-4 sm:p-6 md:p-8">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 text-center">Create Your Account</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 text-center">Open Your Beezio Business Account</h2>
+        <p className="mb-4 text-center text-sm text-gray-600">
+          This signup gives you one business account with seller, affiliate, and influencer access already turned on. You will get a primary storefront, affiliate promotion tools, influencer recruit links, and one place to manage payouts.
+        </p>
+
+        <div className="mb-4 sm:mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">What You Get</p>
+          <ul className="mt-3 space-y-2 text-sm text-slate-700">
+            {businessWhatYouGet.map((item, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span className="mt-0.5 text-amber-600">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
         
         {/* Role Benefits Section */}
         <div className="mb-4 sm:mb-6 bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-lg p-3 sm:p-5">
           <div className="text-center mb-2 sm:mb-3">
-            <span className="text-2xl sm:text-3xl mb-1 sm:mb-2 inline-block">{currentBenefits.icon}</span>
-            <h3 className="text-base sm:text-lg font-bold text-gray-900">{currentBenefits.title}</h3>
+            <span className="text-2xl sm:text-3xl mb-1 sm:mb-2 inline-block">B</span>
+            <h3 className="text-base sm:text-lg font-bold text-gray-900">One Business Account</h3>
           </div>
           <ul className="space-y-1.5 sm:space-y-2">
-            {currentBenefits.benefits.map((benefit, idx) => (
+            {businessBenefits.map((benefit, idx) => (
               <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-gray-700">
                 <span className="text-yellow-600 font-bold mt-0.5 flex-shrink-0">✓</span>
                 <span>{benefit}</span>
               </li>
             ))}
           </ul>
-          {formData.role === 'affiliate' && (
-            <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-yellow-300">
-              <p className="text-xs text-gray-600 italic">
-                <strong>Referral Bonus:</strong> Earn 5% on everything your recruited affiliates sell - passive income for life!
-              </p>
-            </div>
-          )}
         </div>
 
-        {/* Stripe payout placeholder */}
+        <div className="mb-4 sm:mb-6 bg-white border border-gray-200 rounded-lg p-4 sm:p-5">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Business account snapshot</h3>
+          <ul className="text-sm text-gray-700 space-y-1">
+            <li>Your signup creates seller, affiliate, and influencer access together.</li>
+            <li>You get a seller storefront plus an affiliate storefront from the same account.</li>
+            <li>Seller payouts, affiliate earnings, and influencer payouts all use the same PayPal email you provide.</li>
+            <li>Invite links, recruit attribution, storefront tools, and payout history stay in one dashboard.</li>
+            <li>
+              Terms:{' '}
+              <Link to="/legal/seller-terms" className="text-amber-600 hover:text-amber-700 underline">Seller terms</Link>
+              {' '}·{' '}
+              <Link to="/legal/partner-terms" className="text-amber-600 hover:text-amber-700 underline">Partner terms</Link>
+              {' '}·{' '}
+              <Link to="/legal/influencer-terms" className="text-amber-600 hover:text-amber-700 underline">Influencer terms</Link>
+            </li>
+          </ul>
+        </div>
+
         <div className="mb-4 sm:mb-6 bg-white border border-amber-100 rounded-lg p-4 sm:p-5 shadow-sm">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-semibold">
               $
             </div>
             <div className="space-y-1">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Payout setup (Stripe)</h3>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Payout setup</h3>
               <p className="text-sm text-gray-700">
-                Connect Stripe to receive earnings. This is a placeholder until Stripe onboarding is fully configured.
+                Add the PayPal email where you want payouts sent. You can skip this for now, but payouts will be delayed until it’s completed.
               </p>
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center px-4 py-2 rounded-full bg-gray-200 text-gray-600 font-semibold cursor-not-allowed"
-              >
-                Stripe setup coming soon
-              </button>
+
+              {!skipPayoutSetup && (
+                <div className="mt-3 space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">PayPal payout email</label>
+                  <input
+                    type="email"
+                    value={paypalEmail}
+                    onChange={(e) => setPaypalEmail(e.target.value)}
+                    placeholder="you@paypal-email.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  <label className="flex items-start gap-2 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={paypalConfirmed}
+                      onChange={(e) => setPaypalConfirmed(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                    />
+                    <span>
+                      I confirm this is my PayPal email for receiving payouts.
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              <label className="mt-3 flex items-start gap-2 text-xs text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={skipPayoutSetup}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setSkipPayoutSetup(checked);
+                    if (checked) {
+                      setPaypalConfirmed(false);
+                    }
+                  }}
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                />
+                <span>
+                  Skip payout setup for now. We will track what you earn, but payouts may be delayed until payout details are completed.
+                </span>
+              </label>
             </div>
           </div>
         </div>
         
-        {/* Referral Banner */}
-        {referralValid && referralCode && (
-          <div className="mb-4 sm:mb-6 bg-gradient-to-r from-purple-50 to-purple-100 border-2 border-purple-300 rounded-lg p-3 sm:p-4">
-            <div className="flex items-start gap-2 sm:gap-3">
-              <Gift className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm sm:text-base font-semibold text-gray-900">🎉 You've been recruited!</p>
-                <p className="text-xs sm:text-sm text-gray-700 mt-1">
-                  <strong>{referrerName}</strong> invited you to join Beezio as an affiliate.
-                </p>
-                <p className="text-xs text-gray-600 mt-1 sm:mt-2">
-                  <strong>You'll earn:</strong> Full commission on your sales (set by sellers)<br />
-                  <strong>They'll earn:</strong> 5% passive income from platform fee on your sales
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {referralValid === false && (
-          <div className="mb-4 sm:mb-6 bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
-            <p className="text-xs sm:text-sm text-red-600">
-              Invalid or expired referral code. You can still sign up normally.
-            </p>
-          </div>
-        )}
-        
         {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
         {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">{success}</div>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+        {pendingVerificationEmail && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p>Email verification is required before this account can sign in.</p>
+            <button
+              type="button"
+              onClick={async () => {
+                setLoading(true);
+                setError(null);
+                setSuccess(null);
+                try {
+                  await resendVerificationEmail(pendingVerificationEmail);
+                  setSuccess(`Verification email sent again to ${pendingVerificationEmail}.`);
+                } catch (err: any) {
+                  setError(err?.message || 'Failed to resend verification email.');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="mt-2 font-medium text-amber-700 underline hover:text-amber-800"
             >
-              <option value="buyer">Buyer - Shop Products</option>
-              <option value="seller">Seller - Sell Products</option>
-              <option value="affiliate">Affiliate - Promote & Earn</option>
-              <option value="fundraiser">Fundraiser - Raise Funds</option>
-            </select>
+              Resend verification email
+            </button>
           </div>
+        )}
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
             <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
@@ -549,6 +978,10 @@ const SignUpPage: React.FC = () => {
                     {/\d/.test(formData.password) ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                     <span>At least one number</span>
                   </div>
+                  <div className={`text-xs flex items-center gap-1 ${/[^a-zA-Z\d]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                    {/[^a-zA-Z\d]/.test(formData.password) ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                    <span>At least one symbol</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -557,114 +990,114 @@ const SignUpPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
             <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Store Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Business or store name</label>
             <input
               type="text"
               name="storeName"
               value={formData.storeName}
               onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${storeNameInputClass}`}
               placeholder="e.g., Jason's Shop"
             />
+            {!formData.storeName.trim() && formData.email && (
+              <p className="text-xs text-gray-500 mt-1">
+                Defaulting to your username: {formData.email.split('@')[0]}
+              </p>
+            )}
+            {storeSlugValue && (
+              <div className={`mt-2 rounded-lg border px-3 py-2 ${availabilityPanelClass}`}>
+                <p className="text-xs">
+                  Store URL: <span className="font-semibold">/store/{storeSlugValue}</span>
+                </p>
+                <p className="mt-1 text-sm font-semibold">
+                  {storeSlugStatus === 'available'
+                    ? 'Available'
+                    : storeSlugStatus === 'taken'
+                    ? 'Not available'
+                    : storeSlugStatus === 'checking'
+                    ? 'Checking availability...'
+                    : storeSlugStatus === 'invalid'
+                    ? 'Invalid store name'
+                    : 'Availability unavailable'}
+                </p>
+                <p className="mt-1 text-xs">
+                  {storeSlugStatus === 'available'
+                    ? 'This store name can be used.'
+                    : storeSlugStatus === 'taken'
+                    ? 'This store name is already taken. You cannot create the account until you choose a different one.'
+                    : storeSlugMessage || 'Enter a different store name and try again.'}
+                </p>
+              </div>
+            )}
           </div>
 
+          {inviteLinkPresent && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+              <p className="text-sm font-medium text-emerald-900">Invite link detected</p>
+              <p className="mt-1 text-xs text-emerald-700">
+                This recruiter code will be attached to this business account across the combined tools.
+              </p>
+              {referralValidationLoading && (
+                <p className="mt-1 text-xs text-emerald-700">Verifying referrer...</p>
+              )}
+              {!referralValidationLoading && referralValid === true && (
+                <p className="mt-1 text-xs text-emerald-700">Invite link accepted.</p>
+              )}
+              {!referralValidationLoading && referralValid === false && (
+                <p className="mt-1 text-xs text-red-700">Invite link could not be verified. You can still continue.</p>
+              )}
+            </div>
+          )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Referral Code (optional)
-              <span className="block sm:inline sm:ml-2 text-xs text-gray-500 mt-1 sm:mt-0">If someone invited you, paste their code here.</span>
-            </label>
-            <input
-              type="text"
-              value={referralCode || ''}
-              onChange={(e) => {
-                const code = e.target.value.trim();
-                setReferralCode(code);
-                if (code.length >= 3) {
-                  validateReferralCode(code);
-                } else {
-                  setReferralValid(null);
-                  setReferrerName('');
-                }
-              }}
-              placeholder="Enter inviter's code"
-              className={`w-full px-3 py-2 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                referralValid === true
-                  ? 'border-green-500 bg-green-50'
-                  : referralValid === false
-                  ? 'border-red-500 bg-red-50'
-                  : 'border-gray-300'
-              }`}
-            />
-            {referralValid === true && (
-              <p className="text-xs text-green-600 mt-1">Valid code from {referrerName}</p>
-            )}
-            {referralValid === false && (
-              <p className="text-xs text-red-600 mt-1">Invalid code. Check the spelling or leave blank to skip.</p>
-            )}
+            <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+            <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Phone (Optional)</label>
-            <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            <label className="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
+            <input type="text" name="streetAddress" value={formData.streetAddress} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">City (Optional)</label>
-              <input type="text" name="city" value={formData.city} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+              <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+              <input type="text" name="city" value={formData.city} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">State (Optional)</label>
-              <input type="text" name="state" value={formData.state} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+              <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+              <input type="text" name="state" value={formData.state} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">ZIP Code (Optional)</label>
             <input type="text" name="zipCode" value={formData.zipCode} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
           </div>
-          
-          {false && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Referral Code (optional)
-              <span className="block sm:inline sm:ml-2 text-xs text-gray-500 mt-1 sm:mt-0">If someone invited you, paste their code here.</span>
-            </label>
-            <input 
-              type="text" 
-              value={referralCode || ''} 
-              onChange={(e) => {
-                const code = e.target.value.trim();
-                setReferralCode(code);
-                if (code.length >= 3) {
-                  validateReferralCode(code);
-                } else {
-                  setReferralValid(null);
-                  setReferrerName('');
-                }
-              }}
-              placeholder="Enter code (e.g., jason123 or profile id)"
-              className={`w-full px-3 py-2 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                referralValid === true 
-                  ? 'border-green-500 bg-green-50' 
-                  : referralValid === false 
-                  ? 'border-red-500 bg-red-50' 
-                  : 'border-gray-300'
-              }`}
-            />
-            {referralValid === true && (
-              <p className="text-xs text-green-600 mt-1 flex items-start gap-1">
-                <span className="flex-shrink-0">✓</span>
-                <span>Valid code! You'll earn 5% on everything {referrerName} sells</span>
-              </p>
-            )}
-            {referralValid === false && (
-              <p className="text-xs text-red-600 mt-1">
-                Invalid code. Check the spelling or leave blank to skip.
-              </p>
-            )}
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <p className="font-semibold">Tax and contractor acknowledgement</p>
+            <p className="mt-2 text-amber-900">
+              Beezio business accounts use independent contractor status. Your dashboard will hold your tax profile, payout reporting, and any year-end 1099 delivery status.
+            </p>
+            <div className="mt-3 space-y-3">
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={acceptedIndependentContractor}
+                  onChange={(e) => setAcceptedIndependentContractor(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                />
+                <span>I understand I am joining Beezio as an independent contractor and not as an employee of Beezio.</span>
+              </label>
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={acceptedTaxDelivery}
+                  onChange={(e) => setAcceptedTaxDelivery(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                />
+                <span>I agree that Beezio may place my tax forms, reporting notices, and year-end documents in my dashboard and send alerts to my email.</span>
+              </label>
+            </div>
           </div>
-          )}
-
           {/* Terms and Privacy Checkbox */}
           <div className="flex items-start gap-2">
             <input
@@ -677,11 +1110,11 @@ const SignUpPage: React.FC = () => {
             />
             <label htmlFor="terms" className="text-sm text-gray-600">
               I agree to the{' '}
-              <Link to="/terms" className="text-amber-600 hover:text-amber-700 underline" target="_blank">
+              <Link to="/legal/terms" className="text-amber-600 hover:text-amber-700 underline" target="_blank">
                 Terms of Service
               </Link>
               {' '}and{' '}
-              <Link to="/privacy" className="text-amber-600 hover:text-amber-700 underline" target="_blank">
+              <Link to="/legal/privacy" className="text-amber-600 hover:text-amber-700 underline" target="_blank">
                 Privacy Policy
               </Link>
             </label>
@@ -689,7 +1122,14 @@ const SignUpPage: React.FC = () => {
           
           <button 
             type="submit" 
-            disabled={loading || !acceptedTerms} 
+            disabled={
+              loading ||
+              !acceptedTerms ||
+              !acceptedIndependentContractor ||
+              !acceptedTaxDelivery ||
+              (inviteLinkPresent && referralValidationLoading) ||
+              storeSlugBlockingState
+            } 
             className="w-full bg-amber-500 text-white py-3 px-4 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-base sm:text-lg"
           >
             {loading ? 'Creating Account...' : 'Create Account'}
@@ -715,3 +1155,4 @@ const SignUpPage: React.FC = () => {
 };
 
 export default SignUpPage;
+

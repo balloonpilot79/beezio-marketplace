@@ -105,7 +105,7 @@ export const isNativeShareSupported = (): boolean => {
 // Generate share text with product info
 export const generateShareText = (product: any, affiliateCode?: string): ShareData => {
   const baseUrl = `${window.location.origin}/product/${product.id}`;
-  const url = affiliateCode ? `${baseUrl}?ref=${affiliateCode}` : baseUrl;
+  const url = affiliateCode ? `${baseUrl}?ref=${affiliateCode}&uid=${encodeURIComponent(affiliateCode)}` : baseUrl;
   const sellerText = product.profiles?.full_name ? ` by ${product.profiles.full_name}` : '';
   
   return {

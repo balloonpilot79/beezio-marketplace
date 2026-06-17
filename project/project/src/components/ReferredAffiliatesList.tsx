@@ -106,9 +106,9 @@ export default function ReferredAffiliatesList() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Your Referrals</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Your Partner Referrals</h2>
           <p className="text-gray-600 mt-1">
-            Affiliates you've recruited to the platform
+            Partners you've referred to the platform
           </p>
         </div>
         <div className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg font-semibold">
@@ -121,15 +121,15 @@ export default function ReferredAffiliatesList() {
         <div className="bg-white rounded-lg shadow p-12 text-center border border-gray-200">
           <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            No Referrals Yet
+            No Partner Referrals Yet
           </h3>
           <p className="text-gray-600 mb-6">
-            Share your referral link to start earning commissions from other affiliates!
+            Share your influencer link to start earning commissions from referred partners.
           </p>
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 max-w-md mx-auto">
             <p className="text-sm text-gray-700">
               💡 <strong>Tip:</strong> Share your link on social media, forums, or with 
-              colleagues who might be interested in affiliate marketing.
+              colleagues who might be interested in partner marketing.
             </p>
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function ReferredAffiliatesList() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Affiliate
+                    Partner
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -166,7 +166,7 @@ export default function ReferredAffiliatesList() {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {referral.email || 'Affiliate'}
+                            {referral.email || 'Partner'}
                           </div>
                           <div className="text-sm text-gray-500">
                             Code: {referral.referral_code}
@@ -221,7 +221,7 @@ export default function ReferredAffiliatesList() {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Summary</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-gray-600">Total Referrals</p>
+              <p className="text-sm text-gray-600">Total Partner Referrals</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
                 {referrals.length}
               </p>

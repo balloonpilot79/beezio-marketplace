@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../ui/Card';
-import Badge from '../ui/Badge';
 import { resolveProductImage } from '../../utils/imageHelpers';
+import { getProductIdentifierLines } from '../../utils/productIdentifiers';
 
 export interface ProductCardProps {
   id?: string;
@@ -10,8 +11,10 @@ export interface ProductCardProps {
   price: number;
   imageUrl?: string | null;
   sellerName?: string;
-  isFundraiser?: boolean;
   href?: string;
+  sku?: string | null;
+  cj_product_sku?: string | null;
+  cj_spu?: string | null;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -20,8 +23,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
   price,
   imageUrl,
   sellerName,
-  isFundraiser,
   href,
+  sku,
+  cj_product_sku,
+  cj_spu,
 }) => {
   const fallbackSeed = id || title;
   const resolvedImage = useMemo(
@@ -33,6 +38,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     [fallbackSeed],
   );
   const [currentImage, setCurrentImage] = useState(resolvedImage);
+  const identifierLines = getProductIdentifierLines({ sku, cj_product_sku, cj_spu });
 
   useEffect(() => {
     setCurrentImage(resolvedImage);
@@ -56,8 +62,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold text-bz-text line-clamp-2">{title}</p>
-          {isFundraiser && <Badge variant="info">Fundraiser</Badge>}
         </div>
+        {identifierLines.length > 0 && (
+          <div className="space-y-1">
+            {identifierLines.map((line) => (
+              <p key={line} className="text-[11px] font-medium text-amber-700">
+                {line}
+              </p>
+            ))}
+          </div>
+        )}
         {sellerName && <p className="text-xs text-bz-muted">by {sellerName}</p>}
         <p className="text-lg font-semibold text-bz-text">${price.toFixed(2)}</p>
       </div>

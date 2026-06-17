@@ -12,6 +12,9 @@ interface BehaviorTracker {
   trackShare: (productId: string, platform?: string) => void;
 }
 
+let behaviorTrackingDisabled = false;
+const behaviorTrackingEnabled = String(import.meta.env.VITE_ENABLE_BEHAVIOR_TRACKING || '').trim().toLowerCase() === 'true';
+
 export const useBehaviorTracker = (): BehaviorTracker => {
   const { user } = useAuth();
   const sessionStartTime = useRef<number>(Date.now());
@@ -84,9 +87,11 @@ export const useBehaviorTracker = (): BehaviorTracker => {
     metadata: any = {}
   ) => {
     try {
+      if (!behaviorTrackingEnabled) return;
+      if (behaviorTrackingDisabled) return;
       const duration = Math.round((Date.now() - pageStartTime.current) / 1000);
-      
-      await supabase.from('user_behaviors').insert([{
+
+      const { error } = await supabase.from('user_behaviors').insert([{
         user_id: user?.id || null,
         session_id: getSessionId(),
         behavior_type: behaviorType,
@@ -101,7 +106,27 @@ export const useBehaviorTracker = (): BehaviorTracker => {
           timestamp: new Date().toISOString()
         }
       }]);
+
+      if (!error) return;
+
+      const message = String((error as any)?.message || '');
+      const code = String((error as any)?.code || '');
+      const status = Number((error as any)?.status || 0);
+      if (status === 404 || code === '42P01' || /does not exist|schema cache/i.test(message)) {
+        behaviorTrackingDisabled = true;
+        console.warn('Behavior tracking disabled (user_behaviors table missing).');
+        return;
+      }
+      throw error;
     } catch (error) {
+      const message = String((error as any)?.message || '');
+      const code = String((error as any)?.code || '');
+      const status = Number((error as any)?.status || 0);
+      if (status === 404 || code === '42P01' || /does not exist/i.test(message)) {
+        behaviorTrackingDisabled = true;
+        console.warn('Behavior tracking disabled (user_behaviors table missing).');
+        return;
+      }
       console.error('Failed to track behavior:', error);
     }
   };

@@ -24,16 +24,16 @@ export const testTaxComplianceSystem = async () => {
     }
     console.log('ƒo. 1099 reports table accessible')
 
-    // Test 3: Check if embedded Stripe account creation function exists
-    console.log('3. Testing embedded Stripe account creation function...')
-    const { error: accountError } = await supabase.functions.invoke('create-embedded-stripe-account', {
+    // Test 3: Check if embedded payout account creation function exists
+    console.log('3. Testing embedded payout account creation function...')
+    const { error: accountError } = await supabase.functions.invoke('create-embedded-payout-account', {
       body: { type: 'invalid', agreements_signed: false },
     })
 
     if (accountError) {
-      console.log('ƒo. Embedded Stripe account function reachable (expected error):', accountError.message)
+      console.log('ƒo. Embedded payout account function reachable (expected error):', accountError.message)
     } else {
-      console.log('ƒo. Embedded Stripe account function accessible')
+      console.log('ƒo. Embedded payout account function accessible')
     }
 
     // Test 4: Check if 1099 generation function exists

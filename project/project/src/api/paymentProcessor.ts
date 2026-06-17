@@ -2,6 +2,7 @@
 // In a real app, this would be your backend API
 
 import { calculatePricing, PricingInput } from '../lib/pricing';
+import { computeBeezioPlatformFee } from '../../shared/beezioFee';
 
 export interface PaymentIntent {
   id: string;
@@ -19,7 +20,7 @@ export interface PaymentDistribution {
   sellerAmount: number;
   affiliateAmount: number;
   platformFee: number;
-  stripeFee: number;
+  processingFee: number;
   sellerPayout: number;
   affiliatePayout: number;
   platformRevenue: number;
@@ -42,7 +43,7 @@ const calculatePaymentDistribution = (
   let totalSellerAmount = 0;
   let totalAffiliateAmount = 0;
   let totalPlatformFee = 0;
-  let totalStripeFee = 0;
+  let totalProcessingFee = 0;
 
   // Process each item with correct fee structure
   for (const item of items) {
@@ -67,14 +68,14 @@ const calculatePaymentDistribution = (
     totalSellerAmount += breakdown.sellerAmount;
     totalAffiliateAmount += breakdown.affiliateAmount;
     totalPlatformFee += breakdown.platformFee;
-    totalStripeFee += breakdown.stripeFee;
+    totalProcessingFee += breakdown.processingFee;
   }
 
   return {
     sellerAmount: totalSellerAmount,
     affiliateAmount: totalAffiliateAmount,
     platformFee: totalPlatformFee,
-    stripeFee: totalStripeFee,
+    processingFee: totalProcessingFee,
     sellerPayout: totalSellerAmount, // Seller gets exactly what they wanted
     affiliatePayout: totalAffiliateAmount,
     platformRevenue: totalPlatformFee
@@ -96,7 +97,7 @@ export const processPayment = async (
   const totalAmount = distribution.sellerAmount + 
                      distribution.affiliateAmount + 
                      distribution.platformFee + 
-                     distribution.stripeFee;
+                     distribution.processingFee;
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -105,7 +106,7 @@ export const processPayment = async (
   const paymentIntentId = `pi_${Math.random().toString(36).substr(2, 24)}`;
 
   // In real implementation, this would:
-  // 1. Create Stripe PaymentIntent with correct amount
+  // 1. Create a payment intent with correct amount
   // 2. Store order in database with proper fee breakdown
   // 3. Update inventory
   // 4. Send confirmation emails
@@ -118,8 +119,8 @@ export const processPayment = async (
     breakdown: {
       seller: `$${distribution.sellerPayout.toFixed(2)} (gets exactly what they wanted)`,
       affiliate: `$${distribution.affiliatePayout.toFixed(2)} (commission)`,
-      platform: `$${distribution.platformRevenue.toFixed(2)} (15% platform fee)`,
-      stripe: `$${distribution.stripeFee.toFixed(2)} (2.9% + $0.60 processing)`
+        platform: `$${distribution.platformRevenue.toFixed(2)} (Beezio platform fee)`,
+      processing: `$${distribution.processingFee.toFixed(2)} (3.99% + $0.60 processing)`
     },
     itemCount: items.length,
     customer: customerInfo.email,
@@ -136,7 +137,7 @@ export const processPayment = async (
       'Seller gets': `$${distribution.sellerPayout.toFixed(2)}`,
       'Affiliate gets': `$${distribution.affiliatePayout.toFixed(2)}`,
       'Platform gets': `$${distribution.platformRevenue.toFixed(2)}`,
-      'Stripe gets': `$${distribution.stripeFee.toFixed(2)}`
+      'Processing fee': `$${distribution.processingFee.toFixed(2)}`
     });
 
     return {
@@ -178,7 +179,7 @@ export const validateItemPricing = (item: any): boolean => {
   return true;
 };
 
-// Helper to create payment metadata for Stripe
+// Helper to create payment metadata
 export const createPaymentMetadata = (
   orderId: string,
   distribution: PaymentDistribution,
@@ -189,7 +190,7 @@ export const createPaymentMetadata = (
     sellerPayout: distribution.sellerPayout.toFixed(2),
     affiliatePayout: distribution.affiliatePayout.toFixed(2),
     platformRevenue: distribution.platformRevenue.toFixed(2),
-    stripeFee: distribution.stripeFee.toFixed(2),
+    processingFee: distribution.processingFee.toFixed(2),
     affiliateId: affiliateId || '',
     feeStructure: 'seller_plus_10pct_plus_affiliate_plus_3pct'
   };
@@ -251,7 +252,7 @@ export const getCommissionBreakdown = (items: any[], affiliateId?: string) => {
       return sum + (item.price * item.quantity * (item.commission_rate || 25) / 100);
     }, 0);
     
-    const platformFee = subtotal * 0.15; // 15% platform fee - ALWAYS
+    const platformFee = computeBeezioPlatformFee(subtotal);
     
     return {
       type: 'affiliate',
@@ -261,19 +262,18 @@ export const getCommissionBreakdown = (items: any[], affiliateId?: string) => {
       },
       platform: {
         fee: platformFee,
-        percentage: '15.0'
+        percentage: 'variable'
       },
       transparency: `${affiliateCommission.toFixed(2)} goes to the affiliate who referred you, $${platformFee.toFixed(2)} covers platform operations.`
     };
   } else {
-    // No affiliate - platform still gets 15% fee
-    const platformFee = subtotal * 0.15;
+    const platformFee = computeBeezioPlatformFee(subtotal);
     
     return {
       type: 'direct',
       platform: {
         commission: platformFee,
-        percentage: '15.0'
+        percentage: 'variable'
       },
       transparency: `$${platformFee.toFixed(2)} supports platform operations, seller services, and marketplace development.`
     };

@@ -12,12 +12,6 @@ const InboxTab: React.FC = () => {
   useEffect(() => {
     const fetchUnread = async () => {
       try {
-        let query = supabase.from('contact_messages').select('id', { count: 'exact', head: true }).eq('status', 'new');
-        if (!isAdmin) {
-          query = query.eq('owner_id', ownerId);
-        }
-        const { count, error } = await query;
-
         let storeUnread = 0;
         try {
           const { data: unreadData, error: unreadError } = await supabase.rpc('get_store_inbox_unread_count');
@@ -28,7 +22,20 @@ const InboxTab: React.FC = () => {
           storeUnread = 0;
         }
 
-        if (!error && typeof count === 'number') setUnreadCount(count + storeUnread);
+        // Optional legacy contact_messages badge (admin/support); ignore if table doesn't exist.
+        let contactUnread = 0;
+        try {
+          let query = supabase.from('contact_messages').select('id', { count: 'exact', head: true }).eq('status', 'new');
+          if (!isAdmin) {
+            query = query.eq('owner_id', ownerId);
+          }
+          const { count, error } = await query;
+          if (!error && typeof count === 'number') contactUnread = count;
+        } catch {
+          contactUnread = 0;
+        }
+
+        setUnreadCount(storeUnread + contactUnread);
       } catch {
         setUnreadCount(0);
       }
@@ -37,8 +44,8 @@ const InboxTab: React.FC = () => {
   }, [ownerId, isAdmin]);
 
   return (
-    <Link to="/dashboard/inbox" className="block rounded-lg px-3 py-2 text-sm font-medium relative">
-      Inbox
+    <Link to="/inbox" className="block rounded-lg px-3 py-2 text-sm font-medium relative">
+      Support
       {unreadCount > 0 && (
         <span className="absolute top-1 right-2 bg-amber-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
           {unreadCount}

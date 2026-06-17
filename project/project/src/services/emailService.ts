@@ -267,6 +267,8 @@ const emailTemplates = {
       </div>
     `
   })
+  ,
+  // payout_email_confirmation removed (no email confirmation flow)
 };
 
 // Email service class
@@ -368,16 +370,11 @@ class EmailService {
       dashboardUrl: string;
     }
   ): Promise<boolean> {
-    const template = emailTemplates.commission_earned(commissionData);
-
-    return this.sendEmail({
-      to: userEmail,
-      subject: template.subject,
-      html: template.html,
-      type: 'commission_earned',
-      userId,
-      metadata: commissionData
-    });
+    // Affiliate and influencer sale notices belong in dashboards, not email.
+    void userId;
+    void userEmail;
+    void commissionData;
+    return true;
   }
 
   // Password reset email
@@ -442,6 +439,7 @@ class EmailService {
       metadata
     });
   }
+
 }
 
 // Export singleton instance

@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
+import { summarizePayeeSnapshots, type PayeeRole } from '../../server/payments/paypalPayoutLedger';
 
 function json(statusCode: number, body: unknown) {
   return {
@@ -33,18 +34,39 @@ const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
 
     const supabaseUrl = requireEnv('SUPABASE_URL', ['VITE_SUPABASE_URL']);
-    const anonKey = requireEnv('SUPABASE_ANON_KEY', ['VITE_SUPABASE_ANON_KEY']);
     const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
 
-    const authHeader = String(event.headers.authorization || event.headers.Authorization || '').trim();
-    if (!authHeader) return json(401, { error: 'Missing authorization header' });
+    let body: any = {};
+    try {
+      body = event.body ? JSON.parse(event.body) : {};
+    } catch {
+      body = {};
+    }
 
-    const { user, error: authErr } = await getAuthedUser({ supabaseUrl, anonKey, authHeader });
-    if (!user) return json(401, { error: 'Unauthorized', details: authErr });
+    const bodyToken = String(body?._access_token || body?.access_token || '').trim();
+    const headerToken = String(event.headers.authorization || event.headers.Authorization || '').trim();
+    const authHeader = headerToken || (bodyToken ? (bodyToken.startsWith('Bearer ') ? bodyToken : `Bearer ${bodyToken}`) : '');
+    const supabaseHost = (() => {
+      try {
+        const url = requireEnv('SUPABASE_URL', ['VITE_SUPABASE_URL']);
+        return new URL(url).host;
+      } catch {
+        return 'unknown';
+      }
+    })();
+    if (!authHeader) {
+      return json(401, {
+        error: 'Missing authorization header',
+        debug: { hasBodyToken: Boolean(bodyToken), hasAuthHeader: Boolean(headerToken), supabaseHost },
+      });
+    }
 
-    const body = event.body ? JSON.parse(event.body) : {};
+    // Validate JWT with the service role key to avoid anon-key mismatches in Netlify.
+    const { user, error: authErr } = await getAuthedUser({ supabaseUrl, anonKey: serviceRoleKey, authHeader });
+    if (!user) return json(401, { error: 'Unauthorized', details: authErr, debug: { supabaseHost } });
+    const userId = String(user.id || '');
     const requestedRole = String(body?.role || '').toLowerCase().trim();
-    if (requestedRole !== 'seller' && requestedRole !== 'affiliate') {
+    if (requestedRole !== 'seller' && requestedRole !== 'affiliate' && requestedRole !== 'influencer') {
       return json(400, { error: 'Invalid role' });
     }
 
@@ -53,43 +75,35 @@ const handler: Handler = async (event) => {
     const { data: profileRows, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('id, user_id')
-      .or(`id.eq.${user.id},user_id.eq.${user.id}`)
+      .or(`id.eq.${userId},user_id.eq.${userId}`)
       .limit(10);
     if (profileError) return json(500, { error: 'Failed to load profile', details: profileError.message });
     const rows = Array.isArray(profileRows) ? profileRows : (profileRows ? [profileRows] : []);
     const matched =
-      rows.find((r: any) => String(r?.user_id || '') === String(user.id)) ||
-      rows.find((r: any) => String(r?.id || '') === String(user.id)) ||
+      rows.find((r: any) => String(r?.user_id || '') === String(userId)) ||
+      rows.find((r: any) => String(r?.id || '') === String(userId)) ||
       rows[0];
     const profileId = matched?.id ? String(matched.id) : null;
     if (!profileId) return json(400, { error: 'Missing profile for user' });
 
-    const safe = (n: unknown) => {
-      const v = Number(n);
-      return Number.isFinite(v) ? v : 0;
-    };
+    const payeeRole: PayeeRole =
+      requestedRole === 'seller'
+        ? 'SELLER'
+        : requestedRole === 'influencer'
+          ? 'INFLUENCER'
+          : 'PARTNER';
+    const { data: snapshotRows, error: snapshotError } = await supabaseAdmin
+      .from('payout_snapshots')
+      .select('payee_user_id, payee_role, amount, status, hold_release_at, paid_at, updated_at, created_at')
+      .eq('payee_user_id', profileId)
+      .eq('payee_role', payeeRole)
+      .order('created_at', { ascending: false })
+      .limit(500);
 
-    const trySelect = async (select: string) => {
-      const { data, error } = await supabaseAdmin
-        .from('user_earnings')
-        .select(select)
-        .eq('user_id', profileId)
-        .eq('role', requestedRole)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    };
+    if (snapshotError) return json(500, { error: 'Failed to load payout snapshots', details: snapshotError.message });
 
-    let earningsRow: any = null;
-    try {
-      earningsRow = await trySelect('user_id, role, total_earned, pending_payout, paid_out, current_balance, held_balance, last_payout_at, updated_at');
-    } catch {
-      try {
-        earningsRow = await trySelect('user_id, role, total_earned, pending_payout, paid_out, current_balance, last_payout_at, updated_at');
-      } catch {
-        earningsRow = null;
-      }
-    }
+    const summary = summarizePayeeSnapshots((snapshotRows as any[]) || [], profileId, payeeRole);
+    const latestRow = Array.isArray(snapshotRows) && snapshotRows.length > 0 ? snapshotRows[0] : null;
 
     let requests: any[] = [];
     try {
@@ -105,29 +119,20 @@ const handler: Handler = async (event) => {
       requests = [];
     }
 
-    const earnings = earningsRow
-      ? {
-          user_id: String((earningsRow as any).user_id),
-          role: String((earningsRow as any).role),
-          total_earned: safe((earningsRow as any).total_earned),
-          pending_payout: safe((earningsRow as any).pending_payout),
-          paid_out: safe((earningsRow as any).paid_out),
-          current_balance: safe((earningsRow as any).current_balance),
-          held_balance: safe((earningsRow as any).held_balance),
-          last_payout_at: (earningsRow as any).last_payout_at || null,
-          updated_at: (earningsRow as any).updated_at || null,
-        }
-      : {
-          user_id: profileId,
-          role: requestedRole,
-          total_earned: 0,
-          pending_payout: 0,
-          paid_out: 0,
-          current_balance: 0,
-          held_balance: 0,
-          last_payout_at: null,
-          updated_at: null,
-        };
+    const earnings = {
+      user_id: profileId,
+      role: requestedRole,
+      total_earned: summary.total,
+      pending_payout: summary.available,
+      paid_out: summary.paid,
+      current_balance: summary.available,
+      held_balance: summary.pending + summary.onHold,
+      pending_hold_balance: summary.pending,
+      dispute_hold_balance: summary.onHold,
+      last_payout_at: (latestRow as any)?.paid_at || null,
+      updated_at: (latestRow as any)?.updated_at || null,
+      next_release_at: summary.nextReleaseAt,
+    };
 
     return json(200, { profileId, earnings, payout_requests: requests || [] });
   } catch (e) {

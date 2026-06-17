@@ -68,7 +68,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
               to="/affiliates" 
               className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200"
             >
-              For Affiliates
+              For Partners
             </Link>
           </nav>
 
@@ -112,7 +112,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
 
                 {/* Dropdown Menu */}
                 {isMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[999]">
                     <button
                       onClick={handleDashboardClick}
                       className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors duration-200"
@@ -195,7 +195,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAuthModal }) => {
                 className="text-gray-700 hover:text-primary-600 font-medium transition-colors duration-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                For Affiliates
+                For Partners
               </Link>
             </div>
           </div>

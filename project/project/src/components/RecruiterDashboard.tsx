@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Users, DollarSign, Link as LinkIcon, Copy, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import { copyTextToClipboard } from '../utils/clipboard';
 
 interface Recruit {
   id: string;
@@ -52,7 +53,7 @@ export default function RecruiterDashboard() {
     if (!profile) return;
     const baseUrl = window.location.origin;
     const code = (profile as any).referral_code || (profile as any).referralCode || profile.username || profile.id;
-    const link = `${baseUrl}/signup?ref=${encodeURIComponent(code)}`;
+    const link = `${baseUrl}/signup?recruit=${encodeURIComponent(code)}`;
     setRecruitmentLink(link);
   };
 
@@ -139,9 +140,11 @@ export default function RecruiterDashboard() {
   };
 
   const copyRecruitmentLink = async () => {
-    await navigator.clipboard.writeText(recruitmentLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const copiedOk = await copyTextToClipboard(recruitmentLink);
+    if (copiedOk) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   if (loading) {
@@ -159,9 +162,9 @@ export default function RecruiterDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">💰 Build Your Passive Income Empire</h2>
+        <h2 className="text-2xl font-bold mb-2">💰 Build Your Influencer Earnings</h2>
         <p className="text-purple-100">
-          Recruit affiliates and earn 5% commission on every sale they make. Forever.
+          Invite partners and earn a 5% commission on completed sales tied to your referrals.
         </p>
       </div>
 
@@ -173,12 +176,12 @@ export default function RecruiterDashboard() {
             <Users className="w-5 h-5 text-blue-600" />
           </div>
           <p className="text-3xl font-bold text-gray-900">{stats.totalRecruits}</p>
-          <p className="text-xs text-gray-600 mt-1">Affiliates you recruited</p>
+          <p className="text-xs text-gray-600 mt-1">Partners you referred</p>
         </div>
 
         <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-400 rounded-lg p-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-700">Pending Passive Income</h3>
+            <h3 className="text-sm font-medium text-gray-700">Pending Influencer Earnings</h3>
             <DollarSign className="w-5 h-5 text-yellow-600" />
           </div>
           <p className="text-3xl font-bold text-gray-900">${stats.pendingEarnings.toFixed(2)}</p>
@@ -191,7 +194,7 @@ export default function RecruiterDashboard() {
             <TrendingUp className="w-5 h-5 text-green-600" />
           </div>
           <p className="text-3xl font-bold text-gray-900">${stats.totalPassiveEarnings.toFixed(2)}</p>
-          <p className="text-xs text-gray-600 mt-1">Lifetime passive income</p>
+          <p className="text-xs text-gray-600 mt-1">All-time influencer earnings</p>
         </div>
       </div>
 
@@ -199,10 +202,10 @@ export default function RecruiterDashboard() {
       <div className="bg-gradient-to-r from-purple-50 to-purple-100 border-2 border-purple-400 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <LinkIcon className="w-5 h-5" />
-          Your Recruitment Link
+          Your Influencer Link
         </h3>
         <p className="text-sm text-gray-600 mb-3">
-          Share this link to recruit new affiliates. You'll earn 5% passive income on all their sales! 🚀
+          Share this link to invite partners. You earn 5% commission on completed sales attributed to partners you referred.
         </p>
         <div className="flex gap-3 items-center">
           <input
@@ -223,10 +226,10 @@ export default function RecruiterDashboard() {
           <h4 className="font-semibold text-gray-900 mb-2">💡 How It Works:</h4>
           <ul className="text-sm text-gray-600 space-y-1">
             <li>• Share your link on social media, email, or anywhere</li>
-            <li>• People sign up as affiliates using your link</li>
+            <li>• People sign up as partners using your link</li>
             <li>• They promote products and earn full commissions (set by sellers)</li>
-            <li>• You earn 5% passive income from Beezio's platform fee on their sales</li>
-            <li>• Passive income that grows as your team grows!</li>
+            <li>• You earn 5% commission on completed sales tied to those partners</li>
+            <li>• Earnings are issued after the standard payout review period</li>
           </ul>
         </div>
       </div>
@@ -234,7 +237,7 @@ export default function RecruiterDashboard() {
       {/* Recruits Table */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="text-lg font-semibold text-gray-900">Your Recruits ({stats.totalRecruits})</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Partners Referred ({stats.totalRecruits})</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -253,7 +256,7 @@ export default function RecruiterDashboard() {
                     <div className="text-gray-500">
                       <Users className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                       <p className="font-medium">No recruits yet</p>
-                      <p className="text-sm mt-1">Share your recruitment link to start earning passive income!</p>
+                      <p className="text-sm mt-1">Share your influencer link to start earning commissions.</p>
                     </div>
                   </td>
                 </tr>
@@ -280,17 +283,17 @@ export default function RecruiterDashboard() {
         </div>
       </div>
 
-      {/* Recent Passive Earnings */}
+      {/* Recent Influencer Earnings */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="text-lg font-semibold text-gray-900">Recent Passive Earnings</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Recent Influencer Earnings</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recruit</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Partner</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               </tr>

@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Grid, List, Search, ShoppingCart, Store, TrendingUp } from 'lucide-react';
+import { ArrowRight, Grid, List, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { SAMPLE_PRODUCTS } from '../lib/sampleData';
 import ProductCard from '../components/ProductCard';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import AddToAffiliateStoreButton from '../components/AddToAffiliateStoreButton';
 
 interface ProductProfile {
   full_name?: string;
@@ -16,17 +14,52 @@ interface MarketplaceProduct {
   title: string;
   description?: string;
   price: number;
+  stock_quantity?: number | null;
+  total_inventory?: number | null;
+  in_stock?: boolean | null;
+  track_inventory?: boolean | null;
   category?: string;
   images?: string[];
+  lineage?: string | null;
+  dropship_provider?: string | null;
+  seller_ask?: number | null;
+  seller_amount?: number | null;
   commission_rate?: number;
+  affiliate_commission_rate?: number;
   commission_type?: 'percentage' | 'flat_rate';
   flat_commission_amount?: number;
   profiles?: ProductProfile | null;
   average_rating?: number;
   review_count?: number;
+  derivedCategory?: string;
 }
 
 type SortOption = 'featured' | 'price-low' | 'price-high' | 'commission' | 'popular';
+
+const CATEGORY_KEYWORDS: Array<{ category: string; keywords: string[] }> = [
+  { category: 'Electronics', keywords: ['microphone', 'usb', 'keyboard', 'speaker', 'led', 'charger', 'camera', 'phone', 'laptop', 'tech', 'wireless', 'solar'] },
+  { category: 'Pet Supplies', keywords: ['dog', 'cat', 'pet', 'kitty', 'kennel', 'grooming', 'litter', 'puppy'] },
+  { category: 'Home & Garden', keywords: ['garden', 'house', 'porch', 'lamp', 'outdoor', 'kitchen', 'bedding', 'furniture', 'home'] },
+  { category: 'Sports & Outdoors', keywords: ['binocular', 'camp', 'hiking', 'bike', 'bicycle', 'outdoor', 'travel', 'fitness'] },
+  { category: 'Beauty & Personal Care', keywords: ['beauty', 'makeup', 'skincare', 'hair', 'cosmetic'] },
+  { category: 'Fashion', keywords: ['shirt', 'hoodie', 'jacket', 'fashion', 'dress', 'shoe', 'hat', 'sticker'] },
+  { category: 'Toys & Games', keywords: ['toy', 'game', 'kids', 'puzzle'] },
+  { category: 'Automotive', keywords: ['car', 'auto', 'vehicle'] },
+];
+
+const normalizeMarketplaceCategory = (product: MarketplaceProduct) => {
+  const explicit = String(product.category || '').trim();
+  if (explicit) return explicit;
+
+  const haystack = `${product.title || ''} ${product.description || ''}`.toLowerCase();
+  for (const entry of CATEGORY_KEYWORDS) {
+    if (entry.keywords.some((keyword) => haystack.includes(keyword))) {
+      return entry.category;
+    }
+  }
+
+  return 'Other';
+};
 
 const MarketplacePage: React.FC = () => {
   const { user, profile } = useAuth();
@@ -46,17 +79,35 @@ const MarketplacePage: React.FC = () => {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('*, profiles(full_name)')
-          .eq('is_active', true)
-          .limit(60);
+        const response = await fetch('/api/public/marketplace/products?limit=200');
+        const payload = await response.json().catch(() => ({}));
+        const liveProducts = Array.isArray(payload?.products) ? payload.products : [];
 
-        if (!error && data && data.length && isMounted) {
-          setProducts(data as MarketplaceProduct[]);
+        if (response.ok && liveProducts.length && isMounted) {
+          setProducts(
+            liveProducts.map((product: MarketplaceProduct) => ({
+              ...product,
+              derivedCategory: normalizeMarketplaceCategory(product),
+            }))
+          );
+        } else if (isMounted) {
+          setProducts(
+            SAMPLE_PRODUCTS.map((product: any) => ({
+              ...product,
+              derivedCategory: normalizeMarketplaceCategory(product),
+            }))
+          );
         }
       } catch (error) {
         console.warn('MarketplacePage: falling back to sample data', error);
+        if (isMounted) {
+          setProducts(
+            SAMPLE_PRODUCTS.map((product: any) => ({
+              ...product,
+              derivedCategory: normalizeMarketplaceCategory(product),
+            }))
+          );
+        }
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -75,11 +126,11 @@ const MarketplacePage: React.FC = () => {
     const unique = Array.from(
       new Set(
         products
-          .map((product) => (product.category ? product.category.trim() : ''))
+          .map((product) => (product.derivedCategory ? product.derivedCategory.trim() : ''))
           .filter(Boolean)
       )
     );
-    return ['All', ...unique];
+    return ['All', ...unique.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))];
   }, [products]);
 
   const filteredProducts = useMemo(() => {
@@ -95,7 +146,7 @@ const MarketplacePage: React.FC = () => {
     }
 
     if (selectedCategory !== 'All') {
-      filtered = filtered.filter((product) => product.category === selectedCategory);
+      filtered = filtered.filter((product) => product.derivedCategory === selectedCategory);
     }
 
     filtered.sort((a, b) => {
@@ -133,6 +184,20 @@ const MarketplacePage: React.FC = () => {
     };
   }, [products]);
 
+  const featuredProductsByCategory = useMemo(() => {
+    return categories
+      .filter((category) => category !== 'All')
+      .map((category) => ({
+        category,
+        products: filteredProducts
+          .filter((product) => product.derivedCategory === category)
+          .slice(0, 12),
+      }))
+      .filter(({ products }) => products.length > 0);
+  }, [categories, filteredProducts]);
+
+  const showCategoryRows = selectedCategory === 'All' && !searchTerm.trim();
+
   return (
     <div className="min-h-screen bg-slate-50">
       <section className="bg-gradient-to-br from-[#1f1746] via-[#2c1570] to-[#43126d] text-white">
@@ -140,10 +205,10 @@ const MarketplacePage: React.FC = () => {
           <div className="max-w-3xl">
             <p className="text-sm uppercase tracking-[0.3em] text-amber-300 mb-4">Beezio Marketplace</p>
             <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-6">
-              Browse community-built storefronts and products curated by real sellers, affiliates, and fundraisers.
+              Browse community-built storefronts and products curated by real sellers and partners.
             </h1>
             <p className="text-lg text-white/80 mb-8">
-              Promote any product instantly, earn commissions on every sale, and unlock 5% referral rewards for life when you bring new affiliates to Beezio.
+              Promote any product instantly, earn commissions on every sale, and unlock influencer bonuses: $1 per item sold by sellers you recruit and $1 per item on qualifying affiliate sales.
             </p>
             <div className="flex flex-wrap gap-3 text-sm text-white/70">
               <span className="inline-flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full">
@@ -172,11 +237,11 @@ const MarketplacePage: React.FC = () => {
                 className="w-full pl-12 pr-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
               <select
                 value={sortBy}
                 onChange={(event) => setSortBy(event.target.value as SortOption)}
-                className="px-4 py-3 rounded-2xl border border-gray-200 text-sm"
+                className="px-4 py-3 rounded-2xl border border-gray-200 text-sm flex-1 sm:flex-none min-w-[180px]"
               >
                 <option value="featured">Featured</option>
                 <option value="popular">Most Popular</option>
@@ -203,9 +268,26 @@ const MarketplacePage: React.FC = () => {
         </div>
       </section>
 
-      <section className="border-b border-gray-200 bg-white/90 backdrop-blur sticky top-0 z-30">
+      <section className="border-b border-gray-200 bg-white/90 backdrop-blur sticky top-14 z-30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center overflow-x-auto gap-3 py-4 text-sm">
+          <div className="py-4 md:hidden">
+            <label htmlFor="mobile-marketplace-category" className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
+              Category
+            </label>
+            <select
+              id="mobile-marketplace-category"
+              value={selectedCategory}
+              onChange={(event) => setSelectedCategory(event.target.value)}
+              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category === 'All' ? 'All Products' : category}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="hidden items-center overflow-x-auto gap-3 py-4 text-sm md:flex">
             {categories.map((category) => (
               <button
                 key={category}
@@ -261,16 +343,72 @@ const MarketplacePage: React.FC = () => {
           </div>
         )}
 
-        {filteredProducts.length > 0 && (
+        {filteredProducts.length > 0 && showCategoryRows && (
+          <div className="space-y-8">
+            <div className="rounded-3xl border border-amber-100 bg-gradient-to-r from-amber-50 to-white px-5 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Shop by category</h2>
+                  <p className="text-sm text-gray-600">Amazon-style category shelves. Empty categories stay hidden.</p>
+                </div>
+                <span className="hidden sm:inline text-sm font-semibold text-amber-700">
+                  {featuredProductsByCategory.length} active categories
+                </span>
+              </div>
+            </div>
+            {featuredProductsByCategory.map(({ category, products }) => (
+              <section key={category} className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{category}</h2>
+                    <p className="text-sm text-gray-500">Browse this category in one horizontal product shelf.</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedCategory(category);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="inline-flex items-center gap-2 rounded-full border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:border-amber-400 hover:bg-amber-50"
+                  >
+                    See more
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="-mx-1 overflow-x-auto pb-2">
+                  <div className="flex min-w-max gap-3 px-1">
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product as any}
+                      viewMode="grid"
+                      affiliateRef={affiliateRef}
+                      compact
+                    />
+                  ))}
+                  </div>
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+
+        {filteredProducts.length > 0 && !showCategoryRows && (
           <div
             className={
               viewMode === 'grid'
-                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5'
+                ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'
                 : 'space-y-4'
             }
           >
             {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product as any} viewMode={viewMode} affiliateRef={affiliateRef} />
+              <ProductCard
+                key={product.id}
+                product={product as any}
+                viewMode={viewMode}
+                affiliateRef={affiliateRef}
+                compact={viewMode === 'grid'}
+              />
             ))}
           </div>
         )}
@@ -278,17 +416,17 @@ const MarketplacePage: React.FC = () => {
 
       <section className="bg-gradient-to-br from-slate-900 via-purple-900 to-amber-900 text-white py-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          <p className="text-sm uppercase tracking-[0.4em] text-amber-200">Why affiliates love this marketplace</p>
+          <p className="text-sm uppercase tracking-[0.4em] text-amber-200">Why partners love this marketplace</p>
           <h2 className="text-3xl font-bold">Promote anything. Earn on everything.</h2>
           <p className="text-lg text-white/80 max-w-3xl mx-auto">
-            Every product listed here can be added to your storefront in seconds. Invite new affiliates and get 5% referral fees for life on everything they sell.
+            Every product listed here can be added to your storefront in seconds. Recruit sellers to earn $1 per item they sell, and earn an additional $1 per item on qualifying affiliate sales.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               to="/start-earning"
               className="px-8 py-3 rounded-full bg-white text-slate-900 font-semibold shadow-lg"
             >
-              Browse affiliate tools
+              Browse partner tools
             </Link>
             <Link
               to="/seller-complete"
@@ -369,7 +507,7 @@ export default MarketplacePage;
             <div className="flex items-center space-x-6 overflow-x-auto">
               <button
                 onClick={() => setSelectedCategory('')}
-                className={`flex items-center px-4 py-2 rounded-full transition-all duration-200 whitespace-nowrap ${
+                className={`flex shrink-0 items-center whitespace-nowrap rounded-full px-3 py-2 text-sm transition-all duration-200 sm:px-4 sm:text-base ${
                   selectedCategory === '' 
                     ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg transform scale-105' 
                     : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
@@ -382,7 +520,7 @@ export default MarketplacePage;
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
-                  className={`flex items-center px-4 py-2 rounded-full transition-all duration-200 whitespace-nowrap ${
+                  className={`flex shrink-0 items-center whitespace-nowrap rounded-full px-3 py-2 text-sm transition-all duration-200 sm:px-4 sm:text-base ${
                     selectedCategory === category 
                       ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg transform scale-105' 
                       : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
@@ -617,7 +755,7 @@ export default MarketplacePage;
                   <span className="text-3xl">💰</span>
                 </div>
                 <h3 className="text-xl font-bold mb-3">Earn Rewards</h3>
-                <p className="text-purple-200">Join our affiliate network and earn commissions on every sale you generate.</p>
+                <p className="text-purple-200">Join our partner network and earn commissions on every sale you generate.</p>
               </div>
               
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 text-center border border-white/20">
@@ -691,7 +829,7 @@ export default MarketplacePage;
             <div className="text-xl font-bold text-gray-900 mb-1">
               ${product.price}
               <span className="text-sm font-normal text-gray-600 ml-2">
-                ({product.commission_rate}% commission)
+                ({formatMarketplaceCommission(product)})
               </span>
             </div>
             
@@ -731,9 +869,10 @@ export default MarketplacePage;
         <button className="absolute top-2 right-2 text-gray-400 hover:text-red-500 bg-white rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
           <Heart className="w-4 h-4" />
         </button>
-        {product.commission_rate >= 15 && (
+        {((product.commission_type === 'flat_rate' && Number(product.flat_commission_amount || 0) > 0) ||
+          (product.commission_type !== 'flat_rate' && Number(product.commission_rate || 0) >= 15)) && (
           <div className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
-            {product.commission_rate}% Commission
+            {formatMarketplaceCommission(product)}
           </div>
         )}
       </div>

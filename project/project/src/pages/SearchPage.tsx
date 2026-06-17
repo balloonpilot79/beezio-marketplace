@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import AdvancedSearch from '../components/AdvancedSearch';
 import SearchResults from '../components/SearchResults';
 import VisualSearch from '../components/VisualSearch';
+import { TrendingUp, Sparkles } from 'lucide-react';
 
 interface SearchFilters {
   query: string;
@@ -17,11 +18,20 @@ interface SearchFilters {
   sortBy: 'relevance' | 'price_asc' | 'price_desc' | 'rating' | 'newest';
 }
 
+const normalizeSearchTerm = (value: unknown): string => String(value || '').trim();
+
+const buildIlikePattern = (value: string): string => {
+  const sanitized = value.replace(/[%_]/g, '').trim();
+  return `%${sanitized}%`;
+};
+
 const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   
   const [results, setResults] = useState<any[]>([]);
+  const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
+  const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -42,7 +52,86 @@ const SearchPage: React.FC = () => {
 
   useEffect(() => {
     performSearch(filters, currentPage);
+    void loadDiscoverySections();
   }, []);
+
+  const loadDiscoverySections = async () => {
+    try {
+      const { data: trending } = await supabase
+        .from('products')
+        .select('id,title,price,images,sales_count,average_rating')
+        .eq('is_active', true)
+        .order('sales_count', { ascending: false })
+        .order('average_rating', { ascending: false })
+        .limit(8);
+      setTrendingProducts(trending || []);
+
+      const sessionId = String(sessionStorage.getItem('sessionId') || '').trim();
+      if (!sessionId) {
+        const { data: fallbackRecs } = await supabase
+          .from('products')
+          .select('id,title,price,images,sales_count,average_rating,created_at')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(8);
+        setRecommendedProducts(fallbackRecs || []);
+        return;
+      }
+
+      const { data: clicks } = await supabase
+        .from('search_analytics')
+        .select('clicked_product_id,created_at')
+        .eq('session_id', sessionId)
+        .not('clicked_product_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      const clickedIds = Array.from(new Set((clicks || []).map((row: any) => String(row.clicked_product_id || '').trim()).filter(Boolean)));
+      if (!clickedIds.length) {
+        const { data: fallbackRecs } = await supabase
+          .from('products')
+          .select('id,title,price,images,sales_count,average_rating,created_at')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(8);
+        setRecommendedProducts(fallbackRecs || []);
+        return;
+      }
+
+      const { data: clickedProducts } = await supabase
+        .from('products')
+        .select('id,category_id')
+        .in('id', clickedIds);
+
+      const clickedCategories = Array.from(
+        new Set((clickedProducts || []).map((row: any) => String(row.category_id || '').trim()).filter(Boolean))
+      );
+
+      if (clickedCategories.length) {
+        const { data: categoryPool } = await supabase
+          .from('products')
+          .select('id,title,price,images,sales_count,average_rating,category_id')
+          .eq('is_active', true)
+          .in('category_id', clickedCategories)
+          .order('sales_count', { ascending: false })
+          .limit(40);
+        const categoryRecs = (categoryPool || []).filter((row: any) => !clickedIds.includes(String(row?.id || ''))).slice(0, 8);
+        setRecommendedProducts(categoryRecs);
+        return;
+      }
+
+      const { data: fallbackRecs } = await supabase
+        .from('products')
+        .select('id,title,price,images,sales_count,average_rating,created_at')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(8);
+      setRecommendedProducts(fallbackRecs || []);
+    } catch {
+      setTrendingProducts([]);
+      setRecommendedProducts([]);
+    }
+  };
 
   const updateUrlParams = (newFilters: SearchFilters, page: number = 1) => {
     const params = new URLSearchParams();
@@ -65,6 +154,44 @@ const SearchPage: React.FC = () => {
     setLoading(true);
     
     try {
+      const normalizedQuery = normalizeSearchTerm(searchFilters.query);
+      const identifierPattern = buildIlikePattern(normalizedQuery);
+      let mappedProductIds: string[] = [];
+
+      if (normalizedQuery) {
+        const normalizedIdentifier = normalizedQuery.toUpperCase();
+        const [productMatches, variantMatches] = await Promise.all([
+          supabase
+            .from('products')
+            .select('id')
+            .contains('searchable_codes', [normalizedIdentifier])
+            .limit(100),
+          supabase
+            .from('product_variants')
+            .select('product_id')
+            .contains('searchable_codes', [normalizedIdentifier])
+            .limit(100),
+        ]);
+
+        mappedProductIds = Array.from(
+          new Set(
+            [...(productMatches.data || []), ...(variantMatches.data || [])]
+              .map((row: any) => String(row?.product_id || row?.id || '').trim())
+              .filter(Boolean)
+          )
+        );
+      }
+
+      const searchClauses = normalizedQuery
+        ? [
+            `title.ilike.${identifierPattern}`,
+            `description.ilike.${identifierPattern}`,
+            `sku.ilike.${identifierPattern}`,
+            `external_product_id.ilike.${identifierPattern}`,
+            ...(mappedProductIds.length > 0 ? [`id.in.(${mappedProductIds.join(',')})`] : []),
+          ]
+        : [];
+
       // First, get the total count
       let countQuery = supabase
         .from('products')
@@ -72,8 +199,8 @@ const SearchPage: React.FC = () => {
         .eq('is_active', true);
 
       // Apply filters for count
-      if (searchFilters.query) {
-        countQuery = countQuery.textSearch('title,description,tags', searchFilters.query);
+      if (searchClauses.length > 0) {
+        countQuery = countQuery.or(searchClauses.join(','));
       }
       if (searchFilters.category) {
         countQuery = countQuery.eq('category_id', searchFilters.category);
@@ -108,7 +235,7 @@ const SearchPage: React.FC = () => {
             rating_min: searchFilters.rating ? parseFloat(searchFilters.rating) : null,
             has_commission: searchFilters.hasCommission,
             is_subscription: searchFilters.isSubscription,
-            seller_location: searchFilters.location || null,
+            seller_location_filter: searchFilters.location || null,
             sort_by: searchFilters.sortBy,
             limit_count: itemsPerPage,
             offset_count: (page - 1) * itemsPerPage
@@ -142,8 +269,8 @@ const SearchPage: React.FC = () => {
           .eq('is_active', true);
 
         // Apply filters
-        if (searchFilters.query) {
-          query = query.textSearch('title,description,tags', searchFilters.query);
+        if (searchClauses.length > 0) {
+          query = query.or(searchClauses.join(','));
         }
         if (searchFilters.category) {
           query = query.eq('category_id', searchFilters.category);
@@ -259,6 +386,66 @@ const SearchPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {(trendingProducts.length > 0 || recommendedProducts.length > 0) && (
+          <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {trendingProducts.length > 0 && (
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-emerald-600" />
+                  <h2 className="text-sm font-semibold text-gray-900">Trending Now</h2>
+                </div>
+                <div className="space-y-2">
+                  {trendingProducts.map((product: any) => (
+                    <button
+                      key={`trend-${product.id}`}
+                      onClick={() => navigate(`/product/${product.id}`)}
+                      className="flex w-full items-center gap-3 rounded-lg border border-gray-100 px-3 py-2 text-left hover:bg-gray-50"
+                    >
+                      <img
+                        src={product.images?.[0] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=500'}
+                        alt={product.title}
+                        className="h-10 w-10 rounded-md object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-gray-900">{product.title}</p>
+                        <p className="text-xs text-gray-500">${Number(product.price || 0).toFixed(2)}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {recommendedProducts.length > 0 && (
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-blue-600" />
+                  <h2 className="text-sm font-semibold text-gray-900">Recommended For You</h2>
+                </div>
+                <div className="space-y-2">
+                  {recommendedProducts.map((product: any) => (
+                    <button
+                      key={`rec-${product.id}`}
+                      onClick={() => navigate(`/product/${product.id}`)}
+                      className="flex w-full items-center gap-3 rounded-lg border border-gray-100 px-3 py-2 text-left hover:bg-gray-50"
+                    >
+                      <img
+                        src={product.images?.[0] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=500'}
+                        alt={product.title}
+                        className="h-10 w-10 rounded-md object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-gray-900">{product.title}</p>
+                        <p className="text-xs text-gray-500">${Number(product.price || 0).toFixed(2)}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Search Results */}
         <SearchResults

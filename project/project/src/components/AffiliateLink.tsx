@@ -145,7 +145,7 @@ const AffiliateLink: React.FC<AffiliateLinkProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <TrendingUp className="h-6 w-6 text-orange-600" />
-          <span className="text-xl font-extrabold text-orange-800 tracking-tight">Affiliate Opportunity</span>
+          <span className="text-xl font-extrabold text-orange-800 tracking-tight">Partner Opportunity</span>
         </div>
         {!siteWide && (
           <div className="text-right">
@@ -185,7 +185,7 @@ const AffiliateLink: React.FC<AffiliateLinkProps> = ({
           ) : (
             <>
               <TrendingUp className="h-5 w-5" />
-              <span>Generate Affiliate Link</span>
+              <span>Generate Partner Link</span>
             </>
           )}
         </button>
@@ -193,7 +193,7 @@ const AffiliateLink: React.FC<AffiliateLinkProps> = ({
         <div className="space-y-4">
           <div className="bg-white border border-orange-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-gray-500 mb-1 font-semibold">Your Affiliate Link:</div>
+              <div className="text-xs text-gray-500 mb-1 font-semibold">Your Partner Link:</div>
               <div className="text-sm text-gray-800 break-all font-mono bg-gray-50 p-2 rounded">
                 {affiliateLink}
               </div>

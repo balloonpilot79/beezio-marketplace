@@ -50,9 +50,9 @@ export const testPaymentCalculations = () => {
     console.log('🔍 Testing payment calculation function...');
     
     const testCases = [
-      { seller: 100, affiliate: 20, expected: { customer: 136.60, platform: 12.36, stripe: 4.24 } },
-      { seller: 50, affiliate: 15, expected: { customer: 65.90, platform: 6.08, stripe: 2.32 } },
-      { seller: 200, affiliate: 25, expected: { customer: 283.88, platform: 25.78, stripe: 8.10 } }
+      { seller: 100, affiliate: 20, expected: { customer: 136.60, platform: 12.36, processing: 4.24 } },
+      { seller: 50, affiliate: 15, expected: { customer: 65.90, platform: 6.08, processing: 2.32 } },
+      { seller: 200, affiliate: 25, expected: { customer: 283.88, platform: 25.78, processing: 8.10 } }
     ];
     
     let allPassed = true;
@@ -73,19 +73,19 @@ export const testPaymentCalculations = () => {
         // Check if calculations match expectations (within 1 cent)
         const customerMatch = Math.abs(result.listingPrice - testCase.expected.customer) < 0.01;
         const platformMatch = Math.abs(result.platformFee - testCase.expected.platform) < 0.01;
-        const stripeMatch = Math.abs(result.stripeFee - testCase.expected.stripe) < 0.01;
+        const processingMatch = Math.abs(result.processingFee - testCase.expected.processing) < 0.01;
         
-        if (customerMatch && platformMatch && stripeMatch) {
+        if (customerMatch && platformMatch && processingMatch) {
           console.log('✅ Calculations correct');
           console.log(`   Customer: $${result.listingPrice.toFixed(2)} ✓`);
           console.log(`   Platform: $${result.platformFee.toFixed(2)} ✓`);
-          console.log(`   Stripe: $${result.stripeFee.toFixed(2)} ✓`);
+          console.log(`   Processing: $${result.processingFee.toFixed(2)} ✓`);
         } else {
           allPassed = false;
           console.log('❌ Calculations incorrect');
           console.log(`   Customer: $${result.listingPrice.toFixed(2)} (expected $${testCase.expected.customer})`);
           console.log(`   Platform: $${result.platformFee.toFixed(2)} (expected $${testCase.expected.platform})`);
-          console.log(`   Stripe: $${result.stripeFee.toFixed(2)} (expected $${testCase.expected.stripe})`);
+          console.log(`   Processing: $${result.processingFee.toFixed(2)} (expected $${testCase.expected.processing})`);
         }
       } catch (error) {
         console.error(`❌ Error in test case ${index + 1}:`, error);
@@ -235,7 +235,7 @@ export const runComprehensiveVerification = async () => {
     console.log('Next steps:');
     console.log('1. Add real products through /seller/products/new');
     console.log('2. Set up affiliate accounts and test commission tracking');
-    console.log('3. Process test payments using Stripe test cards');
+    console.log('3. Process test payments using test cards');
     console.log('4. Verify payment distributions in real-time');
   } else {
     console.log('\n⚠️ Please address the failed tests before proceeding.');

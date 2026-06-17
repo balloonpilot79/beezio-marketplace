@@ -14,14 +14,20 @@ interface ChatLog {
   };
 }
 
-const ChatSupportDashboard: React.FC = () => {
+interface ChatSupportDashboardProps {
+  canManageSupport?: boolean;
+}
+
+const ChatSupportDashboard: React.FC<ChatSupportDashboardProps> = ({ canManageSupport }) => {
   const [chatLogs, setChatLogs] = useState<ChatLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin' || profile?.primary_role === 'admin';
+  const hasAccess = Boolean(canManageSupport || isAdmin);
   
   useEffect(() => {
-    if (profile?.role !== 'admin') return;
+    if (!hasAccess) return;
     
     const fetchChatLogs = async () => {
       setLoading(true);
@@ -68,13 +74,13 @@ const ChatSupportDashboard: React.FC = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [profile]);
+  }, [hasAccess]);
   
-  if (profile?.role !== 'admin') {
+  if (!hasAccess) {
     return (
       <div className="max-w-4xl mx-auto p-6">
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded">
-          Access denied. This page is only available to administrators.
+          Access denied. This page is only available to authorized support operators.
         </div>
       </div>
     );

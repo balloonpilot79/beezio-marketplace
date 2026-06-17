@@ -4,6 +4,10 @@ import { supabase } from '../lib/supabase';
 import { Plus, Check, Star, TrendingUp, Link as LinkIcon, Copy, ExternalLink, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
+import { ensureProfileIdForUser, resolveProfileIdForUser } from '../utils/resolveProfileId';
+import { addAffiliateProduct } from '../api/affiliateStore';
+import { getPayoutSettingsHref, hasStoredPayoutEmail } from '../utils/payoutSetup';
+import { getNormalizedAccountRoles, normalizeAccountRole } from '../utils/accountRoles';
 
 interface AddToAffiliateStoreButtonProps {
   productId: string;
@@ -11,9 +15,17 @@ interface AddToAffiliateStoreButtonProps {
   productTitle: string;
   productPrice: number;
   defaultCommissionRate: number;
+  commissionType?: 'percentage' | 'flat_rate';
+  flatCommissionAmount?: number;
+  productImage?: string;
+  productCategory?: string;
+  productDescription?: string;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'button' | 'icon' | 'card';
   ctaText?: string;
+  addedText?: string;
+  showRemove?: boolean;
+  instantAdd?: boolean;
 }
 
 const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
@@ -22,9 +34,17 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
   productTitle,
   productPrice,
   defaultCommissionRate,
+  commissionType = 'percentage',
+  flatCommissionAmount = 0,
+  productImage = '',
+  productCategory = '',
+  productDescription = '',
   size = 'md',
   variant = 'button',
   ctaText,
+  addedText,
+  showRemove = true,
+  instantAdd = false,
 }) => {
   const { user, profile, userRoles, currentRole, hasRole } = useAuth();
   const [isAdded, setIsAdded] = useState(false);
@@ -33,28 +53,129 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [affiliateLink, setAffiliateLink] = useState('');
   const [minimumBuyerPrice, setMinimumBuyerPrice] = useState<number | null>(null);
+  const [resolvedAffiliateId, setResolvedAffiliateId] = useState<string>('');
+  const [payoutReady, setPayoutReady] = useState<boolean>(false);
+  const [payoutChecked, setPayoutChecked] = useState<boolean>(false);
   const [customSettings, setCustomSettings] = useState({
-    customCommissionRate: defaultCommissionRate,
-    customPrice: productPrice,
     isFeatured: false,
     affiliateDescription: '',
     notes: ''
   });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const commissionDisplayLabel =
+    commissionType === 'flat_rate'
+      ? `$${Number(flatCommissionAmount || 0).toFixed(2)} per sale`
+      : `${Number(defaultCommissionRate || 0)}%`;
+  const commissionEarningsPreview =
+    commissionType === 'flat_rate'
+      ? Number(flatCommissionAmount || 0)
+      : (minimumBuyerPrice ?? productPrice) * (defaultCommissionRate / 100);
 
-  // Check if user is affiliate or fundraiser and if they already added this product
-  const role = String(profile?.primary_role || profile?.role || currentRole || '').toLowerCase();
-  const normalizedRoles = (userRoles || []).map(r => String(r).toLowerCase());
-  const isFundraiser = role === 'fundraiser' || normalizedRoles.includes('fundraiser') || hasRole('fundraiser');
+  // Check if user is affiliate and if they already added this product
+  const role = normalizeAccountRole(profile?.primary_role || profile?.role || currentRole);
+  const normalizedRoles = getNormalizedAccountRoles(userRoles);
   const isAffiliate =
-    isFundraiser ||
     role === 'affiliate' ||
     normalizedRoles.includes('affiliate') ||
-    hasRole('affiliate');
-  const affiliateProfileId = (profile as any)?.id || user?.id;
-  const isOwnProduct = Boolean(
-    (affiliateProfileId && affiliateProfileId === sellerId) ||
-    (user?.id && user.id === sellerId)
-  );
+    hasRole('affiliate') ||
+    hasRole('partner');
+  const affiliateProfileId = resolvedAffiliateId;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.id) {
+      setResolvedAffiliateId('');
+      return;
+    }
+    const profileId = (profile as any)?.id;
+    const profileIsFallback = Boolean((profile as any)?.__is_fallback);
+    if (profileId && !profileIsFallback) {
+      setResolvedAffiliateId(profileId);
+      return;
+    }
+    void (async () => {
+      const canonicalId = await resolveProfileIdForUser(user.id);
+      if (!cancelled) {
+        setResolvedAffiliateId(canonicalId || user.id);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, (profile as any)?.id, (profile as any)?.__is_fallback]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.id) {
+      setPayoutReady(false);
+      setPayoutChecked(false);
+      return;
+    }
+
+    const candidateOwnerIds = Array.from(
+      new Set(
+        [user.id, resolvedAffiliateId, profile?.id, profile?.user_id]
+          .filter(Boolean)
+          .map((value) => String(value).trim())
+          .filter((value) => value.length > 0)
+      )
+    );
+    if (!candidateOwnerIds.length) {
+      setPayoutReady(false);
+      setPayoutChecked(true);
+      return;
+    }
+
+    (async () => {
+      try {
+        const hasPayoutEmail = await hasStoredPayoutEmail(candidateOwnerIds);
+        if (cancelled) return;
+        setPayoutReady(hasPayoutEmail);
+        setPayoutChecked(true);
+      } catch {
+        if (!cancelled) {
+          setPayoutReady(false);
+          setPayoutChecked(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, resolvedAffiliateId, profile?.id]);
+
+  const extractMissingColumnName = (message: string): string | null => {
+    const msg = String(message || '');
+    const pg = msg.match(/column\s+"([^"]+)"\s+of\s+relation\s+"[^"]+"\s+does\s+not\s+exist/i);
+    if (pg?.[1]) return pg[1];
+    const pgDot = msg.match(/column\s+([a-z0-9_]+\.[a-z0-9_]+)\s+does\s+not\s+exist/i);
+    if (pgDot?.[1]) return pgDot[1].split('.').pop() || pgDot[1];
+    const pgrst = msg.match(/Could not find the '([^']+)' column of '[^']+' in the schema cache/i);
+    if (pgrst?.[1]) return pgrst[1];
+    return null;
+  };
+
+  const insertAffiliateLink = async (payload: Record<string, any>) => {
+    let working = { ...payload };
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const { data, error } = await supabase
+        .from('affiliate_links')
+        .insert(working)
+        .select('*')
+        .maybeSingle();
+      if (!error) return data;
+      const code = String((error as any)?.code || '').trim();
+      if (code === '23505') return null;
+      const missing = extractMissingColumnName(String((error as any)?.message || ''));
+      if (missing && Object.prototype.hasOwnProperty.call(working, missing)) {
+        delete (working as any)[missing];
+        continue;
+      }
+      break;
+    }
+    return null;
+  };
 
   useEffect(() => {
     if (affiliateProfileId && isAffiliate) {
@@ -70,7 +191,7 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
       try {
         const { data, error } = await supabase
           .from('products')
-          .select('price,seller_ask,seller_amount,seller_ask_price,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount')
+          .select('price,seller_ask,seller_amount,seller_ask_price,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value')
           .eq('id', productId)
           .maybeSingle();
 
@@ -83,12 +204,6 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
         const buyerPrice = getBuyerFacingProductPrice(data as any);
         setMinimumBuyerPrice(buyerPrice);
 
-        // Default the curated storefront price to the buyer-facing price.
-        // Do not allow setting a lower price that would bypass Beezio fees.
-        setCustomSettings((prev) => ({
-          ...prev,
-          customPrice: buyerPrice > 0 ? buyerPrice : prev.customPrice,
-        }));
       } catch (e) {
         console.warn('AddToAffiliateStoreButton: failed to load canonical product price (non-fatal):', e);
         setMinimumBuyerPrice(productPrice);
@@ -103,22 +218,13 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
 
   const checkIfAdded = async (currentAffiliateId: string) => {
     try {
-      if (isFundraiser) {
-        const { data } = await supabase
-          .from('fundraiser_products')
-          .select('id')
-          .eq('fundraiser_id', currentAffiliateId)
-          .eq('product_id', productId)
-          .maybeSingle();
-        setIsAdded(!!data);
-        return;
-      }
-
-      // Canonical affiliate store listings live in affiliate_products.
+      const candidateIds = Array.from(
+        new Set([currentAffiliateId, user?.id].filter(Boolean).map(String))
+      );
       const { data } = await supabase
         .from('affiliate_products')
-        .select('id')
-        .eq('affiliate_id', currentAffiliateId)
+        .select('id, affiliate_id')
+        .in('affiliate_id', candidateIds)
         .eq('product_id', productId)
         .maybeSingle();
 
@@ -128,127 +234,189 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
     }
   };
 
+  const resolveEffectiveAffiliateId = async (): Promise<string> => {
+    const current = String(resolvedAffiliateId || affiliateProfileId || '').trim();
+    if (current) return current;
+    const ensured = user ? await ensureProfileIdForUser(user as any) : '';
+    const nextId = String(ensured || '').trim();
+    if (nextId && nextId !== resolvedAffiliateId) {
+      setResolvedAffiliateId(nextId);
+    }
+    return nextId;
+  };
+
   const handleAddToStore = async () => {
+    if (isLoading) return;
     if (!user || !isAffiliate) {
-      alert('Please sign up as an affiliate to promote products!');
+      alert('Please sign up as a partner to promote products!');
       return;
     }
 
-    if (isOwnProduct) {
-      alert('You cannot promote your own products as an affiliate!');
+    const effectiveId = await resolveEffectiveAffiliateId();
+    if (!effectiveId) {
+      alert('We could not find your partner profile. Please refresh and try again.');
       return;
     }
 
-    if (!affiliateProfileId) {
-      alert('We could not find your affiliate profile. Please refresh and try again.');
+    if (instantAdd) {
+      await handleConfirmAdd({ silent: true });
       return;
     }
 
     setShowModal(true);
   };
 
-  const handleConfirmAdd = async () => {
-    if (!affiliateProfileId) {
-      alert('We could not find your affiliate profile. Please refresh and try again.');
+  const handleConfirmAdd = async (options?: { silent?: boolean }) => {
+    if (isLoading) return;
+    const effectiveIdFromSession = await resolveEffectiveAffiliateId();
+    if (!effectiveIdFromSession) {
+      alert('We could not find your partner profile. Please refresh and try again.');
       return;
     }
 
     setIsLoading(true);
+    setErrorMessage(null);
     try {
-      if (isFundraiser) {
-        // Fundraiser storefront reads fundraiser_products
-        const { error } = await supabase
-          .from('fundraiser_products')
-          .upsert(
-            {
-              fundraiser_id: affiliateProfileId,
-              product_id: productId,
-              custom_description: customSettings.affiliateDescription || null,
-              display_order: 0,
-              is_featured: customSettings.isFeatured,
-            },
-            { onConflict: 'fundraiser_id,product_id' }
-          );
-
-        if (error) {
-          if ((error as any).code === '23505') {
-            alert('You already have this product in your fundraiser store!');
-          } else {
-            throw error;
-          }
-          setIsLoading(false);
-          return;
-        }
-      } else {
-        // Canonical affiliate store listing.
-        const { error: addError } = await supabase
-          .from('affiliate_products')
-          .upsert(
-            {
-              affiliate_id: affiliateProfileId,
-              product_id: productId,
-              display_order: 0,
-              is_featured: customSettings.isFeatured,
-            },
-            { onConflict: 'affiliate_id,product_id' }
-          );
-
-        if (addError) {
-          if ((addError as any).code === '23505') {
-            alert('You already have this product in your store!');
-          } else {
-            throw addError;
-          }
-          setIsLoading(false);
-          return;
-        }
+      const resolvedId = effectiveIdFromSession || resolvedAffiliateId || affiliateProfileId;
+      const ensureId = resolvedId || (user ? await ensureProfileIdForUser(user) : '');
+      if (ensureId && ensureId !== resolvedAffiliateId) {
+        setResolvedAffiliateId(ensureId);
       }
 
-      // Generate trackable link (affiliates + fundraisers both use ref attribution)
-      const linkCode = await generateLinkCode();
-      const { data: linkData, error: linkError } = await supabase
-        .from('affiliate_links')
-        .insert({
-          affiliate_id: affiliateProfileId,
-          product_id: productId,
-          link_code: linkCode,
-          full_url: `${window.location.origin}/product/${productId}?ref=${affiliateProfileId}&code=${linkCode}`,
-          is_active: true
-        })
-        .select()
-        .single();
+      if (!ensureId) {
+        alert('We could not find your partner profile. Please refresh and try again.');
+        setIsLoading(false);
+        return;
+      }
 
-      if (!linkError && linkData) {
-        setAffiliateLink(linkData.full_url);
+      let addResult;
+      try {
+        addResult = await addAffiliateProduct(productId, {
+          isFeatured: customSettings.isFeatured,
+          affiliateId: ensureId || affiliateProfileId,
+        });
+      } catch (err: any) {
+        let msg = 'Failed to add product: ';
+        if (err && typeof err === 'object') {
+          if (err.message) msg += err.message;
+          if (err.details) msg += '\nDetails: ' + err.details;
+        } else {
+          msg += String(err || 'Unknown error');
+        }
+        setErrorMessage(msg);
+        setIsLoading(false);
+        alert(msg);
+        return;
+      }
+      const effectiveAffiliateId = String(addResult.affiliate_id || ensureId || affiliateProfileId || '').trim();
+      if (effectiveAffiliateId && effectiveAffiliateId !== resolvedAffiliateId) {
+        setResolvedAffiliateId(effectiveAffiliateId);
       }
 
       setIsAdded(true);
       setShowModal(false);
-      setShowSuccessModal(true);
+      if (!options?.silent) {
+        setShowSuccessModal(true);
+      }
 
-      // Track event
-      await supabase.from('integration_logs').insert({
-        integration_id: null,
-        action: 'add_to_affiliate_store',
-        status: 'success',
-        products_imported: 1,
-        metadata: {
-          product_id: productId,
-          affiliate_id: affiliateProfileId,
-          commission_rate: customSettings.customCommissionRate
+      try {
+        // Generate trackable link (affiliate attribution) without blocking the add flow.
+        const promoterUserId = user?.id || affiliateProfileId;
+        const shareBase = await resolveAffiliateShareBase(effectiveAffiliateId);
+        const effectiveIdForLink = String(effectiveAffiliateId || resolvedAffiliateId || affiliateProfileId || '').trim();
+        const publicToken = String(shareBase.publicToken || effectiveIdForLink).trim();
+        const linkCode = await generateLinkCode(publicToken, productId);
+        if (effectiveIdForLink) {
+          const fullUrl = `${shareBase.origin}${shareBase.pathPrefix}/product/${productId}?ref=${encodeURIComponent(publicToken)}&uid=${encodeURIComponent(String(promoterUserId))}&code=${encodeURIComponent(publicToken)}`;
+          try {
+            const linkData = await insertAffiliateLink({
+              affiliate_id: effectiveIdForLink,
+              product_id: productId,
+              link_code: linkCode,
+              full_url: fullUrl,
+              is_active: true
+            });
+            setAffiliateLink(String(linkData?.full_url || fullUrl));
+          } catch {
+            setAffiliateLink(fullUrl);
+          }
         }
-      });
+      } catch (linkError) {
+        console.warn('AddToAffiliateStoreButton: share-link generation failed (non-fatal):', linkError);
+      }
 
-    } catch (error) {
-      console.error('Error adding product:', error);
-      alert('Failed to add product to your store. Please try again.');
+      try {
+        const storageKey = `affiliate_products_${user.id}`;
+        const existing = JSON.parse(window.localStorage.getItem(storageKey) || '[]');
+        const rows = Array.isArray(existing) ? existing : [];
+        const withoutCurrent = rows.filter((entry: any) => String(entry?.productId || '') !== String(productId));
+        window.localStorage.setItem(
+          storageKey,
+          JSON.stringify([
+            ...withoutCurrent,
+            {
+              productId,
+              selected: true,
+              dateAdded: new Date().toISOString(),
+              product: {
+                id: productId,
+                title: productTitle,
+                description: productDescription,
+                price: minimumBuyerPrice ?? productPrice,
+                commission_rate: defaultCommissionRate,
+                commission_type: commissionType === 'flat_rate' ? 'fixed' : 'percentage',
+                flat_commission_amount: flatCommissionAmount,
+                seller_id: sellerId,
+                category: productCategory || 'General',
+                image_url: productImage,
+                images: productImage ? [productImage] : [],
+              },
+            },
+          ])
+        );
+      } catch {
+        // Local fallback is best-effort only; the database insert above is the source of truth.
+      }
+      if (payoutChecked && !payoutReady) {
+        const shouldRedirect = window.confirm(
+          'Product added to your store. You can keep promoting, but payouts stay on hold until you connect PayPal. Go to payout settings now?'
+        );
+        if (shouldRedirect) {
+          window.location.assign(getPayoutSettingsHref('affiliate'));
+          return;
+        }
+      }
+
+      // Tracking should never turn a successful product add into a visible failure.
+      try {
+        await supabase.from('integration_logs').insert({
+          integration_id: null,
+          action: 'add_to_affiliate_store',
+          status: 'success',
+          products_imported: 1,
+          metadata: {
+            product_id: productId,
+            affiliate_id: effectiveAffiliateId || affiliateProfileId,
+            commission_rate: defaultCommissionRate
+          }
+        });
+      } catch (loggingError) {
+        console.warn('AddToAffiliateStoreButton: integration log insert failed (non-fatal):', loggingError);
+      }
+
+    } catch (error: any) {
+      setErrorMessage(error instanceof Error ? error.message : 'Product failed to import from marketplace.');
+      alert('Failed to add product: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleRemoveFromStore = async () => {
-    if (!affiliateProfileId) {
-      alert('We could not find your affiliate profile. Please refresh and try again.');
+    if (isLoading) return;
+    const effectiveId = await resolveEffectiveAffiliateId();
+    if (!effectiveId) {
+      alert('We could not find your partner profile. Please refresh and try again.');
       return;
     }
 
@@ -256,21 +424,12 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
 
     setIsLoading(true);
     try {
-      if (isFundraiser) {
-        const { error } = await supabase
-          .from('fundraiser_products')
-          .delete()
-          .eq('fundraiser_id', affiliateProfileId)
-          .eq('product_id', productId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('affiliate_products')
-          .delete()
-          .eq('affiliate_id', affiliateProfileId)
-          .eq('product_id', productId);
-        if (error) throw error;
-      }
+      const { error } = await supabase
+        .from('affiliate_products')
+        .delete()
+        .eq('affiliate_id', effectiveId)
+        .eq('product_id', productId);
+      if (error) throw error;
 
       setIsAdded(false);
       alert('Product removed from your store');
@@ -281,34 +440,95 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
     setIsLoading(false);
   };
 
-  const generateLinkCode = async (): Promise<string> => {
-    const { data } = await supabase.rpc('generate_affiliate_link_code');
-    return data || Math.random().toString(36).substring(2, 10).toUpperCase();
+  const generateLinkCode = async (publicToken: string, currentProductId: string): Promise<string> => {
+    const cleanToken = String(publicToken || '').trim().toLowerCase();
+    const cleanProductId = String(currentProductId || '').trim().slice(0, 8).toLowerCase();
+    return cleanToken && cleanProductId ? `${cleanToken}-${cleanProductId}` : cleanToken || cleanProductId || 'affiliate-link';
+  };
+
+  const resolveAffiliateShareBase = async (affiliateIdOverride?: string) => {
+    const activeAffiliateId = String(affiliateIdOverride || affiliateProfileId || '').trim();
+    if (!activeAffiliateId) {
+      return { origin: window.location.origin, pathPrefix: '', publicToken: activeAffiliateId };
+    }
+    try {
+      const { data } = await supabase
+        .from('affiliate_store_settings')
+        .select('subdomain, custom_domain')
+        .eq('affiliate_id', activeAffiliateId)
+        .maybeSingle();
+      const customDomain = String(data?.custom_domain || '').trim();
+      const subdomain = String(data?.subdomain || '').trim().toLowerCase();
+      const origin = customDomain ? `https://${customDomain}` : window.location.origin;
+      const pathPrefix = customDomain ? '' : subdomain ? `/store/${subdomain}` : '';
+      return { origin, pathPrefix, publicToken: subdomain || activeAffiliateId };
+    } catch {
+      return { origin: window.location.origin, pathPrefix: '', publicToken: activeAffiliateId };
+    }
+  };
+
+  const resolveAffiliateStoreDestination = async (affiliateIdOverride?: string) => {
+    const activeAffiliateId = String(affiliateIdOverride || resolvedAffiliateId || affiliateProfileId || user?.id || '').trim();
+    if (!activeAffiliateId) return '/dashboard?section=affiliate&tab=products';
+
+    try {
+      const { data } = await supabase
+        .from('affiliate_store_settings')
+        .select('subdomain, custom_domain')
+        .eq('affiliate_id', activeAffiliateId)
+        .maybeSingle();
+
+      const customDomain = String(data?.custom_domain || '').trim();
+      if (customDomain) {
+        return `https://${customDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')}`;
+      }
+
+      const subdomain = String(data?.subdomain || '').trim().toLowerCase();
+      if (subdomain) {
+        return `/store/${subdomain}`;
+      }
+    } catch {
+      // Fallback route below keeps the storefront reachable without custom setup.
+    }
+
+    return `/partner/${encodeURIComponent(activeAffiliateId)}`;
   };
 
   const copyLink = () => {
     navigator.clipboard.writeText(affiliateLink);
-    alert('Affiliate link copied to clipboard!');
+    alert('Partner link copied to clipboard!');
   };
 
-  // Never show on own products
-  if (isOwnProduct) {
-    return null;
-  }
+  const stopCardNavigation = (
+    event:
+      | React.MouseEvent<HTMLButtonElement>
+      | React.PointerEvent<HTMLButtonElement>
+      | React.TouchEvent<HTMLButtonElement>
+  ) => {
+    event.stopPropagation();
+  };
+
+  const stopCardNavigationClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   // Show a clear CTA for non-affiliates so there is always an “accept/add” path visible.
   if (!isAffiliate) {
     if (variant === 'icon') return null;
 
-    const label = size === 'sm' ? 'Become an Affiliate' : 'Become an Affiliate to Add';
+    const label = size === 'sm' ? 'Become a Partner' : 'Become a Partner to Add';
 
     return (
       <button
         onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
+          stopCardNavigationClick(e);
           window.location.assign('/start-earning');
         }}
+        onMouseDown={stopCardNavigation}
+        onPointerDown={stopCardNavigation}
+        onTouchStart={stopCardNavigation}
+        type="button"
         className={`w-full rounded-lg border border-purple-200 text-purple-700 bg-white hover:bg-purple-50 transition-colors ${
           size === 'sm'
             ? 'px-3 py-2 text-xs font-semibold'
@@ -339,24 +559,29 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
     return (
       <>
         <button
+          type="button"
           onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (isAdded) {
+            stopCardNavigationClick(e);
+            if (isAdded && showRemove) {
               void handleRemoveFromStore();
             } else {
               void handleAddToStore();
             }
           }}
-          disabled={isLoading}
+          onMouseDown={stopCardNavigation}
+          onPointerDown={stopCardNavigation}
+          onTouchStart={stopCardNavigation}
+          disabled={isLoading || (isAdded && !showRemove)}
           className={`p-2 rounded-full transition-all ${
             isAdded
-              ? 'bg-red-500 text-white hover:bg-red-600'
+              ? showRemove
+                ? 'bg-red-500 text-white hover:bg-red-600'
+                : 'bg-green-600 text-white'
               : 'bg-purple-500 text-white hover:bg-purple-600'
           } disabled:opacity-50`}
-          title={isAdded ? 'Remove from my store' : 'Add to my store'}
+          title={isAdded ? 'Remove from my store' : 'Promote this product in my store'}
         >
-          {isAdded ? <X className={iconSizes[size]} /> : <Plus className={iconSizes[size]} />}
+          {isAdded ? (showRemove ? <X className={iconSizes[size]} /> : <Check className={iconSizes[size]} />) : <Plus className={iconSizes[size]} />}
         </button>
         {renderModals()}
       </>
@@ -374,22 +599,30 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
             <div className="flex-1">
               <h3 className="font-bold text-gray-900 mb-1">Promote This Product</h3>
               <p className="text-sm text-gray-600 mb-3">
-                Earn {defaultCommissionRate}% commission on every sale!
+                {commissionType === 'flat_rate'
+                  ? `Earn $${Number(flatCommissionAmount || 0).toFixed(2)} on every sale!`
+                  : `Earn ${defaultCommissionRate}% commission on every sale!`}
               </p>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (isAdded) {
-                    void handleRemoveFromStore();
-                  } else {
-                    void handleAddToStore();
-                  }
-                }}
-                disabled={isLoading}
+              <p className="text-xs text-purple-700 mb-3">Promoting this product also adds it to your custom store.</p>
+          <button
+            type="button"
+            onClick={(e) => {
+              stopCardNavigationClick(e);
+              if (isAdded && showRemove) {
+                void handleRemoveFromStore();
+              } else {
+                void handleAddToStore();
+              }
+            }}
+            onMouseDown={stopCardNavigation}
+            onPointerDown={stopCardNavigation}
+            onTouchStart={stopCardNavigation}
+            disabled={isLoading || (isAdded && !showRemove)}
                 className={`w-full ${buttonSizes[size]} rounded-lg font-semibold transition-all shadow-sm ${
                   isAdded
-                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    ? showRemove
+                      ? 'bg-red-500 text-white hover:bg-red-600'
+                      : 'bg-green-600 text-white'
                     : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600'
                 } disabled:opacity-50`}
               >
@@ -400,13 +633,13 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
                   </span>
                 ) : isAdded ? (
                   <span className="flex items-center justify-center gap-2">
-                    <X className="w-4 h-4" />
-                    Remove from My Store
+                    {showRemove ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                    {showRemove ? 'Remove from My Store' : (addedText || 'In My Store')}
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <Plus className="w-4 h-4" />
-                    Add to My Store
+                    Promote This Product
                   </span>
                 )}
               </button>
@@ -422,19 +655,24 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
   return (
     <>
       <button
+        type="button"
         onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (isAdded) {
+          stopCardNavigationClick(e);
+          if (isAdded && showRemove) {
             void handleRemoveFromStore();
           } else {
             void handleAddToStore();
           }
         }}
-        disabled={isLoading}
+        onMouseDown={stopCardNavigation}
+        onPointerDown={stopCardNavigation}
+        onTouchStart={stopCardNavigation}
+        disabled={isLoading || (isAdded && !showRemove)}
         className={`${buttonSizes[size]} rounded-lg font-semibold transition-all shadow-sm flex items-center gap-2 ${
           isAdded
-            ? 'bg-red-500 text-white hover:bg-red-600'
+            ? showRemove
+              ? 'bg-red-500 text-white hover:bg-red-600'
+              : 'bg-green-600 text-white'
             : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600'
         } disabled:opacity-50`}
       >
@@ -445,8 +683,8 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
           </>
         ) : isAdded ? (
           <>
-            <X className={iconSizes[size]} />
-            Remove from My Store
+            {showRemove ? <X className={iconSizes[size]} /> : <Check className={iconSizes[size]} />}
+            {showRemove ? 'Remove from My Store' : (addedText || 'In My Store')}
           </>
         ) : (
           <>
@@ -467,11 +705,16 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b bg-gradient-to-r from-purple-500 to-pink-500">
-                <h3 className="text-2xl font-bold text-white">Add Product to Your Store</h3>
-                <p className="text-purple-100 mt-1">Configure your promotion settings</p>
+                <h3 className="text-2xl font-bold text-white">Promote Product in Your Store</h3>
+                <p className="text-purple-100 mt-1">Configure your promotion settings and add it to your custom store</p>
               </div>
               
               <div className="p-6 space-y-6">
+                {errorMessage && (
+                  <div className="mb-2 p-2 bg-red-100 text-red-700 rounded">
+                    {errorMessage}
+                  </div>
+                )}
                 {/* Product Summary */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h4 className="font-semibold text-gray-900 mb-2">{productTitle}</h4>
@@ -481,12 +724,12 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
                   </div>
                   <div className="flex items-center justify-between text-sm mt-1">
                     <span className="text-gray-600">Default Commission:</span>
-                    <span className="font-bold text-green-600">{defaultCommissionRate}%</span>
+                    <span className="font-bold text-green-600">{commissionDisplayLabel}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm mt-1">
                     <span className="text-gray-600">Your Earnings:</span>
                     <span className="font-bold text-purple-600">
-                      ${(productPrice * (defaultCommissionRate / 100)).toFixed(2)} per sale
+                      ${commissionEarningsPreview.toFixed(2)} per sale
                     </span>
                   </div>
                 </div>
@@ -494,21 +737,18 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
                 {/* Commission Rate Override */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Commission Rate (%)
+                    {commissionType === 'flat_rate' ? 'Commission payout ($)' : 'Commission rate (%)'}
                   </label>
                   <input
                     type="number"
                     min="0"
-                    max="100"
-                    value={customSettings.customCommissionRate}
-                    onChange={(e) => setCustomSettings(prev => ({ 
-                      ...prev, 
-                      customCommissionRate: parseFloat(e.target.value) || 0 
-                    }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    max={commissionType === 'flat_rate' ? undefined : '100'}
+                    value={commissionType === 'flat_rate' ? Number(flatCommissionAmount || 0) : defaultCommissionRate}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-700"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    You'll earn ${((customSettings.customPrice || productPrice) * (customSettings.customCommissionRate / 100)).toFixed(2)} per sale
+                    You'll earn ${commissionEarningsPreview.toFixed(2)} per sale
                   </p>
                 </div>
 
@@ -521,15 +761,12 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={customSettings.customPrice}
-                    onChange={(e) => setCustomSettings(prev => ({ 
-                      ...prev, 
-                      customPrice: parseFloat(e.target.value) || 0 
-                    }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    value={minimumBuyerPrice ?? productPrice}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-700"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Leave at ${productPrice.toFixed(2)} or set your own price
+                    Price is set by the seller for all partners
                   </p>
                 </div>
 
@@ -599,7 +836,7 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
                   disabled={isLoading}
                   className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all font-semibold disabled:opacity-50"
                 >
-                  {isLoading ? 'Adding...' : 'Add to My Store'}
+                  {isLoading ? 'Adding...' : 'Promote This Product'}
                 </button>
               </div>
             </div>
@@ -614,15 +851,15 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
                 <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Check className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Product Added!</h3>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Product Ready to Promote!</h3>
                 <p className="text-gray-600 mb-6">
-                  {productTitle} is now in your store and ready to promote
+                  {productTitle} is now in your custom store and ready to promote
                 </p>
 
                 {affiliateLink && (
                   <div className="bg-purple-50 rounded-lg p-4 mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Your Affiliate Link
+                      Your Partner Link
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -647,19 +884,33 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <button
-                    onClick={() => window.open(`/affiliate/${affiliateProfileId ?? user?.id ?? ''}`, '_blank')}
+                    onClick={() => {
+                      void (async () => {
+                        const destination = await resolveAffiliateStoreDestination();
+                        window.open(destination, '_blank');
+                      })();
+                    }}
                     className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                   >
                     <ExternalLink className="w-4 h-4" />
                     View My Store
                   </button>
                   <button
+                    onClick={() => {
+                      setShowSuccessModal(false);
+                      window.location.assign('/dashboard?section=affiliate&tab=products');
+                    }}
+                    className="px-4 py-2 border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors font-medium"
+                  >
+                    Open Dashboard
+                  </button>
+                  <button
                     onClick={() => setShowSuccessModal(false)}
                     className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all font-semibold"
                   >
-                    Done
+                    Keep Adding
                   </button>
                 </div>
               </div>

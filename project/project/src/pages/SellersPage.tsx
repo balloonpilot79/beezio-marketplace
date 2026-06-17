@@ -33,56 +33,29 @@ const SellersPage: React.FC = () => {
         ],
       },
       {
-        id: 'affiliate',
-        label: 'Affiliate Store',
+        id: 'partner',
+        label: 'Partner Store',
         title: 'Maya Chen Studio',
-        subtitle: 'Lifestyle picks + referral rewards',
+        subtitle: 'Lifestyle picks + curated products',
         gradient: 'from-purple-600 via-indigo-600 to-slate-900',
         previewImage:
           'https://images.unsplash.com/photo-1475180098004-ca77a66827be?auto=format&fit=crop&w=800&q=80',
-        slug: 'affiliate-store',
+        slug: 'partner-store',
         guides: [
           {
             title: 'Pinned Collections',
             description:
-              'From Affiliate Dashboard, add marketplace products to “My Storefront” and group them by vibe.',
+              'From the partner dashboard, add marketplace products to "My Storefront" and group them by theme.',
           },
           {
-            title: 'Referral Promo',
+            title: 'Promotion Strip',
             description:
-              'Display the “5% referral rewards for life” badge using the Marketing strip block.',
+              'Use the Marketing strip block to highlight featured products or seasonal promos.',
           },
           {
             title: 'Link Hub CTA',
             description:
               'Add social icons + QR download pack so followers can shop from reels, livestreams, or in-person events.',
-          },
-        ],
-      },
-      {
-        id: 'fundraiser',
-        label: 'Fundraiser Store',
-        title: 'River City Robotics',
-        subtitle: 'Support a mission with every purchase',
-        gradient: 'from-emerald-500 via-teal-500 to-cyan-600',
-        previewImage:
-          'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80',
-        slug: 'fundraiser-store',
-        guides: [
-          {
-            title: 'Impact Tracker',
-            description:
-              'Enable Fundraiser Percent inside Store Settings and add a “Funds raised” counter block.',
-          },
-          {
-            title: 'Sponsor Wall',
-            description:
-              'Create a Custom Page for partner shout-outs, volunteer photos, and progress updates.',
-          },
-          {
-            title: 'Volunteer CTA',
-            description:
-              'Use dual buttons to link to donation forms and “Join the cause” signup flows.',
           },
         ],
       },
@@ -105,29 +78,48 @@ const SellersPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Sample Affiliate Store Preview */}
+      <section className="py-10 bg-emerald-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="rounded-3xl border border-emerald-200 bg-white p-6 md:p-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-700">Free to join</p>
+            <h2 className="mt-2 text-2xl md:text-3xl font-bold text-gray-900">Join free. Sell, promote, or influence — Beezio earns only when you do.</h2>
+            <p className="mt-3 text-sm md:text-base text-gray-700">
+              Beezio is free for sellers, affiliates, and influencers. Instead of monthly fees, Beezio’s platform fees and commissions are built into product pricing. Buyers see one all-in price, and earnings are distributed automatically after purchase.
+            </p>
+            <ul className="mt-4 grid gap-2 text-sm text-gray-800 md:grid-cols-2">
+              <li>✅ Free seller accounts</li>
+              <li>✅ Free affiliate + influencer accounts</li>
+              <li>✅ No monthly fees / no listing fees</li>
+              <li>✅ One clear buyer price (fees + commissions included)</li>
+              <li>✅ Automated payout splits after checkout</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Sample Partner Store Preview */}
       <section className="py-16 bg-slate-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-5">
-              <p className="text-sm uppercase tracking-wide text-amber-300 font-semibold">Sample Affiliate Store</p>
+              <p className="text-sm uppercase tracking-wide text-amber-300 font-semibold">Sample Partner Store</p>
               <h2 className="text-3xl font-bold leading-tight">
-                Give affiliates a beautiful storefront that updates itself.
+                Give partners a beautiful storefront that updates itself.
               </h2>
               <p className="text-lg text-white/80">
-                Affiliates can pin your products, add their own hero copy, and share a single URL across social channels. Every promoted product syncs automatically—no spreadsheets required.
+                Partners can pin your products, add their own hero copy, and share a single URL across social channels. Every promoted product syncs automatically—no spreadsheets required.
               </p>
               <ul className="space-y-3 text-white/80 text-sm">
                 <li className="flex items-start gap-3"><span className="mt-1">✨</span>Drag-and-drop featured products or auto-pull from the marketplace.</li>
                 <li className="flex items-start gap-3"><span className="mt-1">📱</span>Instant previews for reels, stories, QR flyers, and text campaigns.</li>
-                <li className="flex items-start gap-3"><span className="mt-1">🔁</span>Lifetime 5% referral rewards are promoted right inside the affiliate dashboard.</li>
+                <li className="flex items-start gap-3"><span className="mt-1">🔁</span>Partners see performance insights right inside their dashboard.</li>
               </ul>
             </div>
 
             <div className="bg-gradient-to-br from-purple-600 via-indigo-600 to-slate-900 rounded-3xl p-8 shadow-2xl border border-white/10">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-white/70">Affiliate Picks</p>
+                  <p className="text-xs uppercase tracking-[0.3em] text-white/70">Partner Picks</p>
                   <h3 className="text-2xl font-semibold">Maya Chen Studio</h3>
                 </div>
                 <span className="px-3 py-1 rounded-full bg-white/10 text-xs font-semibold">Live</span>
@@ -140,8 +132,8 @@ const SellersPage: React.FC = () => {
                     img: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=500&q=80',
                   },
                   {
-                    title: 'Mindful Living Course',
-                    tag: 'Digital Drop',
+                    title: 'Ceramic Tea Set',
+                    tag: 'New Arrival',
                     img: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=500&q=80',
                   },
                   {
@@ -168,7 +160,7 @@ const SellersPage: React.FC = () => {
                 ))}
               </div>
               <p className="text-white/70 text-xs mt-5 text-center">
-                Affiliates can clone this layout, embed QR flyers, and keep every call-to-action synced across devices.
+                Partners can clone this layout, embed QR flyers, and keep every call-to-action synced across devices.
               </p>
             </div>
           </div>
@@ -355,7 +347,7 @@ const SellersPage: React.FC = () => {
                   <div className="w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                     <span className="text-white text-sm font-bold">2</span>
                   </div>
-                  <p className="text-gray-600">Invite affiliates and fundraisers or make your store discoverable in the Beezio marketplace.</p>
+                  <p className="text-gray-600">Make your store discoverable in the Beezio marketplace so partners can share your products.</p>
                 </div>
                 <div className="flex items-start space-x-3">
                   <div className="w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -367,7 +359,7 @@ const SellersPage: React.FC = () => {
                   <div className="w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                     <span className="text-white text-sm font-bold">4</span>
                   </div>
-                  <p className="text-gray-600">Track sales, payouts, and affiliate activity from a single dashboard.</p>
+                  <p className="text-gray-600">Track sales and store activity from a single dashboard.</p>
                 </div>
               </div>
             </div>
@@ -375,30 +367,30 @@ const SellersPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Referral Rewards Highlight */}
+      {/* Partner-Powered Sales */}
       <section className="py-16 bg-slate-900 text-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <p className="text-sm uppercase tracking-[0.4em] text-amber-300">Affiliate & Seller Advantage</p>
-            <h2 className="text-3xl font-bold mb-4">5% Referral Rewards for Life</h2>
+            <p className="text-sm uppercase tracking-[0.4em] text-amber-300">Partner & Seller Advantage</p>
+            <h2 className="text-3xl font-bold mb-4">Partner-Powered Sales</h2>
             <p className="text-lg text-white/80 max-w-3xl mx-auto">
-              Invite new affiliates to Beezio and earn a lifetime 5% reward on every sale they generate. It stacks on top of your own storefront earnings, so your network works even when you are offline.
+              Get your products promoted by trusted partners with clear attribution and reporting.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
-                title: 'Share your invite link',
-                description: 'Every affiliate has a unique referral URL. Post it on your storefront, social channels, and onboarding emails.',
+                title: 'List once',
+                description: 'Publish products to the marketplace and keep your storefront updated automatically.',
               },
               {
-                title: 'They sell, you earn',
-                description: 'When a referred affiliate lands a sale, you automatically receive 5% of the checkout amount—forever.',
+                title: 'Partners promote',
+                description: 'Partners share product links, QR codes, and storefronts to drive traffic and conversions.',
               },
               {
-                title: 'Stacked passive income',
-                description: 'Referral rewards combine with your seller payouts and affiliate commissions so you can grow recurring revenue in the background.',
+                title: 'Track results',
+                description: 'See sales performance and payouts in one place with clear reporting.',
               },
             ].map((item) => (
               <div key={item.title} className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur">
@@ -421,13 +413,13 @@ const SellersPage: React.FC = () => {
             <div className="bg-white rounded-lg shadow-md p-6 text-center">
               <Shield className="h-12 w-12 text-amber-500 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-gray-900 mb-2">Secure & Trusted</h3>
-              <p className="text-gray-600">Bank-level security with Stripe payment processing</p>
+              <p className="text-gray-600">Bank-level security with secure payment processing</p>
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-6 text-center">
               <Globe className="h-12 w-12 text-blue-600 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-gray-900 mb-2">Global Reach</h3>
-              <p className="text-gray-600">Sell to customers worldwide with built-in affiliate network</p>
+              <p className="text-gray-600">Sell to customers worldwide with a built-in partner network</p>
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-6 text-center">
@@ -466,7 +458,7 @@ const SellersPage: React.FC = () => {
               
               <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-amber-500">
                 <h4 className="font-semibold text-gray-900 mb-2">Integrated Payment Processing</h4>
-                <p className="text-gray-600 text-sm">Stripe integration with automatic payouts, subscription billing, and multi-currency support.</p>
+                <p className="text-gray-600 text-sm">Integrated checkout with automatic payouts, subscription billing, and multi-currency support.</p>
               </div>
               
               <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-red-500">
@@ -475,8 +467,8 @@ const SellersPage: React.FC = () => {
               </div>
               
               <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-indigo-500">
-                <h4 className="font-semibold text-gray-900 mb-2">Affiliate Network Access</h4>
-                <p className="text-gray-600 text-sm">Connect with motivated affiliates, set commission rates, and track performance metrics.</p>
+                <h4 className="font-semibold text-gray-900 mb-2">Partner Network Access</h4>
+                <p className="text-gray-600 text-sm">Connect with approved partners and track performance metrics.</p>
               </div>
             </div>
           </div>
@@ -515,7 +507,7 @@ const SellersPage: React.FC = () => {
                   </div>
                   <div className="flex items-center text-gray-700">
                     <div className="w-2 h-2 bg-amber-500 rounded-full mr-3"></div>
-                    Affiliate Recruitment System
+                    Partner tools & network
                   </div>
                   <div className="flex items-center text-gray-700">
                     <div className="w-2 h-2 bg-amber-500 rounded-full mr-3"></div>

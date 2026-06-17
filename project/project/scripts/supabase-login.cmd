@@ -1,9 +1,14 @@
 @echo off
 setlocal
 
-REM Logs in to Supabase CLI using an access token (paste locally, never in chat).
-REM Usage:
-REM   scripts\supabase-login.cmd
+REM Logs in to Supabase CLI using an access token.
+REM IMPORTANT: This script is NON-INTERACTIVE to avoid terminal freezes.
+REM Provide the token via:
+REM   - environment variable: SB_TOKEN or SUPABASE_ACCESS_TOKEN
+REM   - argument 1: scripts\supabase-login.cmd sbp_xxx
+REM Examples:
+REM   PowerShell:  $env:SB_TOKEN = 'sbp_xxx'; .\scripts\supabase-login.cmd
+REM   CMD:         set SB_TOKEN=sbp_xxx & scripts\supabase-login.cmd
 
 cd /d "%~dp0.."
 
@@ -22,13 +27,19 @@ supabase logout --yes
 echo.
 
 echo Create a NEW access token in Supabase Dashboard ^> Account ^> Access Tokens.
-echo Paste it below. This will be visible on-screen while pasting.
+echo This script will NOT prompt for a token.
 echo.
-set /p SB_TOKEN=Supabase access token: 
-echo.
+
+set "_ARG_TOKEN=%~1"
+if not "%_ARG_TOKEN%"=="" set "SB_TOKEN=%_ARG_TOKEN%"
+if "%SB_TOKEN%"=="" set "SB_TOKEN=%SUPABASE_ACCESS_TOKEN%"
 
 if "%SB_TOKEN%"=="" (
   echo ERROR: No token provided.
+  echo.
+  echo Set SB_TOKEN or SUPABASE_ACCESS_TOKEN, or pass token as argument.
+  echo   PowerShell:  $env:SB_TOKEN = 'sbp_xxx'; .\scripts\supabase-login.cmd
+  echo   CMD:         set SB_TOKEN=sbp_xxx ^& scripts\supabase-login.cmd
   exit /b 2
 )
 

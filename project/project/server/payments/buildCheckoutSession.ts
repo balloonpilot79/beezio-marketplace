@@ -14,6 +14,9 @@ export type BuildCheckoutSessionInput = {
   success_url: string;
   cancel_url: string;
   metadata: Record<string, string>;
+  customer_email?: string;
+  shipping_address_collection?: Stripe.Checkout.SessionCreateParams.ShippingAddressCollection;
+  phone_number_collection?: Stripe.Checkout.SessionCreateParams.PhoneNumberCollection;
 };
 
 function normalizeCurrency(input: string): string {
@@ -55,6 +58,8 @@ export async function buildCheckoutSession(input: BuildCheckoutSessionInput): Pr
     cancel_url: input.cancel_url,
     metadata: input.metadata,
     payment_intent_data: { metadata: input.metadata },
+    ...(input.customer_email ? { customer_email: input.customer_email } : null),
+    ...(input.shipping_address_collection ? { shipping_address_collection: input.shipping_address_collection } : null),
+    ...(input.phone_number_collection ? { phone_number_collection: input.phone_number_collection } : null),
   });
 }
-

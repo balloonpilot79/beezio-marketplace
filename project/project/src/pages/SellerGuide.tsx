@@ -17,7 +17,28 @@ import {
   PieChart
 } from 'lucide-react';
 
+import { PLATFORM_FEE_PERCENT } from '../config/beezioConfig';
+import { calculateFinalPrice, computePayoutBreakdown } from '../utils/pricingEngine';
+
 const SellerGuide: React.FC = () => {
+  const exampleSellerAsk = 100;
+  const examplePartnerPercent = 30;
+  const exampleFinalPrice = calculateFinalPrice(exampleSellerAsk, {
+    affiliatePercent: examplePartnerPercent,
+    platformPercent: PLATFORM_FEE_PERCENT,
+  });
+  const exampleBreakdown = computePayoutBreakdown(
+    exampleFinalPrice,
+    exampleSellerAsk,
+    {
+      affiliatePercent: examplePartnerPercent,
+      platformPercent: PLATFORM_FEE_PERCENT,
+    },
+    { referralOverrideEnabled: false }
+  );
+  const exampleProcessingFee =
+    exampleBreakdown.processingPercentAmount + exampleBreakdown.processingFixedFee;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -69,7 +90,7 @@ const SellerGuide: React.FC = () => {
                 <span className="text-purple-600 font-bold text-xl">4</span>
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2">Start Earning</h3>
-              <p className="text-gray-600 text-sm">Get paid automatically through Stripe</p>
+              <p className="text-gray-600 text-sm">Get paid automatically through secure payouts</p>
             </div>
           </div>
         </div>
@@ -125,20 +146,20 @@ const SellerGuide: React.FC = () => {
                     <span className="font-bold text-green-600">$100.00</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-700">Affiliate Commission (30%):</span>
+                    <span className="text-gray-700">Partner Commission (30%):</span>
                     <span className="font-bold text-purple-600">$30.00</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-700">Platform Fee (10%):</span>
-                    <span className="font-bold text-gray-600">$13.00</span>
+                    <span className="text-gray-700">Platform Fee ({PLATFORM_FEE_PERCENT}%):</span>
+                    <span className="font-bold text-gray-600">${exampleBreakdown.platformGrossAmount.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-700">Processing Fee (3%):</span>
-                    <span className="font-bold text-gray-600">$4.29</span>
+                    <span className="text-gray-700">Processing Fee:</span>
+                    <span className="font-bold text-gray-600">${exampleProcessingFee.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 font-bold text-lg">
                     <span className="text-gray-900">Customer Pays:</span>
-                    <span className="text-blue-600">$147.29</span>
+                    <span className="text-blue-600">${exampleBreakdown.finalPrice.toFixed(2)}</span>
                   </div>
                 </div>
                 <div className="mt-4 p-3 bg-green-50 rounded-lg">
@@ -249,7 +270,7 @@ const SellerGuide: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-white rounded-lg shadow-lg p-6">
               <Target className="h-8 w-8 text-yellow-600 mb-4" />
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Optimize for Affiliates</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Optimize for Partners</h3>
               <ul className="space-y-2 text-gray-600">
                 <li>• Set competitive commission rates (25-50%)</li>
                 <li>• Create high-quality product images</li>
@@ -323,7 +344,7 @@ const SellerGuide: React.FC = () => {
                   <span className="font-bold text-green-600">2-5% (Good)</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Affiliate Click-Through Rate</span>
+                  <span className="text-gray-700">Partner Click-Through Rate</span>
                   <span className="font-bold text-green-600">3-8% (Good)</span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -346,7 +367,7 @@ const SellerGuide: React.FC = () => {
           <div className="text-center mb-12">
             <DollarSign className="h-12 w-12 mx-auto text-green-600 mb-4" />
             <h2 className="text-3xl font-bold text-gray-900 mb-4">💰 Getting Paid</h2>
-            <p className="text-xl text-gray-600">Fast, secure payments through Stripe</p>
+            <p className="text-xl text-gray-600">Fast, secure payments</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -358,8 +379,8 @@ const SellerGuide: React.FC = () => {
                     <span className="text-white text-sm font-bold">1</span>
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Connect Stripe Account</p>
-                    <p className="text-gray-600">Set up your Stripe account in your seller dashboard</p>
+                    <p className="font-semibold text-gray-900">Complete payout setup</p>
+                    <p className="text-gray-600">Set up your payout details in your seller dashboard</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">
@@ -368,7 +389,7 @@ const SellerGuide: React.FC = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900">Verify Information</p>
-                    <p className="text-gray-600">Complete Stripe's verification process</p>
+                    <p className="text-gray-600">Complete the required verification steps</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">
@@ -392,11 +413,11 @@ const SellerGuide: React.FC = () => {
                 </div>
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <h4 className="font-bold text-blue-800 mb-2">Express Payouts</h4>
-                  <p className="text-blue-700">Same-day payouts available through Stripe</p>
+                  <p className="text-blue-700">Same-day payouts may be available depending on your payout method</p>
                 </div>
                 <div className="p-4 bg-purple-50 rounded-lg">
                   <h4 className="font-bold text-purple-800 mb-2">International</h4>
-                  <p className="text-purple-700">Support for 40+ countries through Stripe</p>
+                  <p className="text-purple-700">International payouts are supported in many regions</p>
                 </div>
               </div>
             </div>

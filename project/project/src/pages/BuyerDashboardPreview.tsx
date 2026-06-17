@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, User, ShoppingBag, Heart, Star, Package, Calendar, CreditCard } from 'lucide-react';
+import { ArrowRight, User, ShoppingBag, Heart, Star, Package, CreditCard } from 'lucide-react';
 
 const BuyerDashboardPreview: React.FC = () => {
   // Mock data for preview
@@ -47,7 +47,7 @@ const BuyerDashboardPreview: React.FC = () => {
         
         {/* Quick Stats */}
         <section className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white rounded-lg shadow p-6 text-center">
               <div className="text-3xl font-bold text-blue-600">0</div>
               <div className="text-sm text-gray-600">Total Orders</div>
@@ -56,11 +56,6 @@ const BuyerDashboardPreview: React.FC = () => {
             <div className="bg-white rounded-lg shadow p-6 text-center">
               <div className="text-3xl font-bold text-green-600">$0</div>
               <div className="text-sm text-gray-600">Total Spent</div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow p-6 text-center">
-              <div className="text-3xl font-bold text-purple-600">0</div>
-              <div className="text-sm text-gray-600">Active Subscriptions</div>
             </div>
             
             <div className="bg-white rounded-lg shadow p-6 text-center">
@@ -83,30 +78,6 @@ const BuyerDashboardPreview: React.FC = () => {
                 <ShoppingBag className="w-4 h-4 mr-2" />
                 Browse Products
               </Link>
-            </div>
-          </div>
-        </section>
-        
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">Active Subscriptions</h2>
-          <div className="bg-white rounded shadow p-6">
-            <div className="text-center py-12">
-              <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">No active subscriptions - discover recurring products and services</p>
-              <div className="space-y-4">
-                <div className="border border-gray-200 rounded-lg p-4 max-w-md mx-auto">
-                  <h4 className="font-semibold text-gray-800 mb-2">Subscription Benefits</h4>
-                  <ul className="text-gray-600 text-sm space-y-1">
-                    <li>• Automatic deliveries</li>
-                    <li>• Exclusive subscriber discounts</li>
-                    <li>• Priority customer support</li>
-                    <li>• Cancel anytime</li>
-                  </ul>
-                </div>
-                <div className="bg-gray-100 text-gray-500 px-4 py-2 rounded font-medium inline-block">
-                  Explore Subscription Products (Demo)
-                </div>
-              </div>
             </div>
           </div>
         </section>
@@ -148,22 +119,16 @@ const BuyerDashboardPreview: React.FC = () => {
                   </div>
                   <h4 className="font-medium text-gray-800 mb-1">Premium Wireless Headphones</h4>
                   <p className="text-sm text-gray-600 mb-2">$199.99</p>
-                  <div className="flex items-center text-sm text-amber-600">
-                    <Star className="w-4 h-4 fill-current mr-1" />
-                    4.8 (324 reviews)
-                  </div>
+                  <div className="text-sm text-gray-500">No ratings yet</div>
                 </div>
                 
                 <div className="border border-gray-200 rounded-lg p-4">
                   <div className="w-full h-32 bg-gray-100 rounded mb-3 flex items-center justify-center">
                     <Package className="w-8 h-8 text-gray-400" />
                   </div>
-                  <h4 className="font-medium text-gray-800 mb-1">Organic Coffee Subscription</h4>
-                  <p className="text-sm text-gray-600 mb-2">$24.99/month</p>
-                  <div className="flex items-center text-sm text-amber-600">
-                    <Star className="w-4 h-4 fill-current mr-1" />
-                    4.9 (156 reviews)
-                  </div>
+                  <h4 className="font-medium text-gray-800 mb-1">Organic Coffee Beans</h4>
+                  <p className="text-sm text-gray-600 mb-2">$24.99</p>
+                  <div className="text-sm text-gray-500">No ratings yet</div>
                 </div>
                 
                 <div className="border border-gray-200 rounded-lg p-4">
@@ -172,10 +137,7 @@ const BuyerDashboardPreview: React.FC = () => {
                   </div>
                   <h4 className="font-medium text-gray-800 mb-1">Smart Fitness Tracker</h4>
                   <p className="text-sm text-gray-600 mb-2">$149.99</p>
-                  <div className="flex items-center text-sm text-amber-600">
-                    <Star className="w-4 h-4 fill-current mr-1" />
-                    4.7 (892 reviews)
-                  </div>
+                  <div className="text-sm text-gray-500">No ratings yet</div>
                 </div>
               </div>
               <div className="mt-6">
@@ -211,7 +173,7 @@ const BuyerDashboardPreview: React.FC = () => {
             
             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-amber-500">
               <h3 className="font-semibold text-gray-900 mb-2">💳 Flexible Payments</h3>
-              <p className="text-gray-600 text-sm mb-4">Multiple payment options including buy-now-pay-later and subscription billing.</p>
+              <p className="text-gray-600 text-sm mb-4">Multiple payment options including buy-now-pay-later.</p>
             </div>
             
             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">

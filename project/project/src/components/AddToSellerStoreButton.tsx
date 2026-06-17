@@ -2,37 +2,87 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Check, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
+import { resolveProfileIdForUser } from '../utils/resolveProfileId';
+import { addSellerStoreProduct } from '../api/sellerStore';
+import { getPayoutSettingsHref, hasStoredPayoutEmail } from '../utils/payoutSetup';
 
 interface AddToSellerStoreButtonProps {
   productId: string;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'button' | 'icon';
+  addedText?: string;
+  showRemove?: boolean;
 }
 
 const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
   productId,
   size = 'md',
   variant = 'button',
+  addedText,
+  showRemove = true,
 }) => {
-  const { profile, userRoles, currentRole, hasRole } = useAuth();
-  const sellerProfileId = profile?.id;
+  const { profile, user, userRoles, currentRole, hasRole } = useAuth();
+  const [resolvedSellerId, setResolvedSellerId] = useState<string | null>(profile?.id || null);
   const normalizedRoles = (userRoles || []).map((r) => String(r).toLowerCase());
   const role = String(profile?.primary_role || profile?.role || currentRole || '').toLowerCase();
   const isSeller = role === 'seller' || normalizedRoles.includes('seller') || hasRole?.('seller');
 
   const [isAdded, setIsAdded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOwnerProduct, setIsOwnerProduct] = useState(false);
+  const [payoutReady, setPayoutReady] = useState(false);
+  const [payoutChecked, setPayoutChecked] = useState(false);
 
   useEffect(() => {
-    if (!sellerProfileId || !isSeller) return;
+    let cancelled = false;
+    const profileIsFallback = Boolean((profile as any)?.__is_fallback);
+    const profileId = profile?.id;
+    if (profileId && !profileIsFallback) {
+      setResolvedSellerId(profileId);
+      return;
+    }
+    if (!user?.id) {
+      setResolvedSellerId(null);
+      return;
+    }
+    void (async () => {
+      const canonicalId = await resolveProfileIdForUser(user.id);
+      if (!cancelled) {
+        setResolvedSellerId(canonicalId || user.id);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id, (profile as any)?.__is_fallback, user?.id]);
+
+  useEffect(() => {
+    if (!resolvedSellerId || !isSeller) return;
 
     let mounted = true;
     (async () => {
       try {
+        const { data: productRow, error: productError } = await supabase
+          .from('products')
+          .select('seller_id')
+          .eq('id', productId)
+          .maybeSingle();
+
+        if (!mounted) return;
+        if (productError) throw productError;
+        const productSellerId = String(productRow?.seller_id || '').trim();
+        const isOwner = Boolean(productSellerId && productSellerId === resolvedSellerId);
+        setIsOwnerProduct(isOwner);
+        if (isOwner) {
+          // Seller-owned products are already part of the seller storefront.
+          setIsAdded(true);
+          return;
+        }
+
         const { data, error } = await supabase
           .from('seller_product_order')
           .select('product_id')
-          .eq('seller_id', sellerProfileId)
+          .eq('seller_id', resolvedSellerId)
           .eq('product_id', productId)
           .maybeSingle();
 
@@ -47,7 +97,35 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
     return () => {
       mounted = false;
     };
-  }, [sellerProfileId, isSeller, productId]);
+  }, [resolvedSellerId, isSeller, productId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!isSeller || !user?.id) {
+      setPayoutReady(false);
+      setPayoutChecked(false);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const ready = await hasStoredPayoutEmail([resolvedSellerId, profile?.id, user?.id]);
+        if (!cancelled) {
+          setPayoutReady(ready);
+          setPayoutChecked(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setPayoutReady(false);
+          setPayoutChecked(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSeller, profile?.id, resolvedSellerId, user?.id]);
 
   const generateLinkCode = async (): Promise<string> => {
     try {
@@ -58,37 +136,78 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
     }
   };
 
+  const extractMissingColumnName = (message: string): string | null => {
+    const msg = String(message || '');
+    const pg = msg.match(/column\s+"([^"]+)"\s+of\s+relation\s+"[^"]+"\s+does\s+not\s+exist/i);
+    if (pg?.[1]) return pg[1];
+    const pgDot = msg.match(/column\s+([a-z0-9_]+\.[a-z0-9_]+)\s+does\s+not\s+exist/i);
+    if (pgDot?.[1]) return pgDot[1].split('.').pop() || pgDot[1];
+    const pgrst = msg.match(/Could not find the '([^']+)' column of '[^']+' in the schema cache/i);
+    if (pgrst?.[1]) return pgrst[1];
+    return null;
+  };
+
+  const insertAffiliateLink = async (payload: Record<string, any>) => {
+    let working = { ...payload };
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const { error } = await supabase.from('affiliate_links').insert(working);
+      if (!error) return;
+      const code = String((error as any)?.code || '').trim();
+      if (code === '23505') return;
+      const missing = extractMissingColumnName(String((error as any)?.message || ''));
+      if (missing && Object.prototype.hasOwnProperty.call(working, missing)) {
+        delete (working as any)[missing];
+        continue;
+      }
+      break;
+    }
+  };
+
+  const resolveSellerShareBase = async () => {
+    if (!resolvedSellerId) {
+      return { origin: window.location.origin, pathPrefix: '' };
+    }
+    try {
+      const { data } = await supabase
+        .from('store_settings')
+        .select('subdomain, custom_domain')
+        .eq('seller_id', resolvedSellerId)
+        .maybeSingle();
+      const customDomain = String(data?.custom_domain || '').trim();
+      const subdomain = String(data?.subdomain || '').trim().toLowerCase();
+      const origin = customDomain ? `https://${customDomain}` : window.location.origin;
+      const pathPrefix = customDomain ? '' : subdomain ? `/store/${subdomain}` : '';
+      return { origin, pathPrefix };
+    } catch {
+      return { origin: window.location.origin, pathPrefix: '' };
+    }
+  };
+
   const ensureShareLink = async () => {
-    if (!sellerProfileId) return;
+    if (!resolvedSellerId) return;
 
     try {
       // If a link already exists, keep it.
       const { data: existing } = await supabase
         .from('affiliate_links')
-        .select('link_code, full_url')
-        .eq('affiliate_id', sellerProfileId)
+        .select('*')
+        .eq('affiliate_id', resolvedSellerId)
         .eq('product_id', productId)
         .maybeSingle();
 
-      if (existing?.full_url) return;
+      if (existing?.full_url || existing?.link_url) return;
 
       const linkCode = await generateLinkCode();
-      const origin = window.location.origin;
-      const fullUrl = `${origin}/product/${productId}?ref=${sellerProfileId}&code=${encodeURIComponent(linkCode)}`;
-
-      // Best-effort upsert; some schemas enforce uniqueness, some don’t.
-      await supabase
-        .from('affiliate_links')
-        .upsert(
-          {
-            affiliate_id: sellerProfileId,
-            product_id: productId,
-            link_code: linkCode,
-            full_url: fullUrl,
-            is_active: true,
-          },
-          { onConflict: 'affiliate_id,product_id' }
-        );
+      const shareBase = await resolveSellerShareBase();
+      const promoterUserId = user?.id || resolvedSellerId;
+      const fullUrl = `${shareBase.origin}${shareBase.pathPrefix}/product/${productId}`;      // Best-effort insert; handle missing columns or unique constraints gracefully.
+      await insertAffiliateLink({
+        affiliate_id: resolvedSellerId,
+        product_id: productId,
+        link_code: linkCode,
+        full_url: fullUrl,
+        is_active: true,
+      });
     } catch (e) {
       // Non-fatal: dashboard will still generate a share URL fallback.
       console.warn('[AddToSellerStoreButton] ensureShareLink failed (non-fatal):', e);
@@ -96,7 +215,8 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
   };
 
   const handleAdd = async () => {
-    if (!sellerProfileId || !isSeller) {
+    if (isLoading) return;
+    if (!resolvedSellerId || !isSeller) {
       alert('Please switch to a seller account to add products to your store.');
       return;
     }
@@ -104,41 +224,33 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
     try {
       setIsLoading(true);
 
-      // Best-effort display order: append to end
-      const { count } = await supabase
-        .from('seller_product_order')
-        .select('*', { count: 'exact', head: true })
-        .eq('seller_id', sellerProfileId);
-
-      const displayOrder = typeof count === 'number' ? count : 0;
-
-      const { error } = await supabase
-        .from('seller_product_order')
-        .upsert(
-          {
-            seller_id: sellerProfileId,
-            product_id: productId,
-            display_order: displayOrder,
-            is_featured: false,
-          },
-          { onConflict: 'seller_id,product_id' }
-        );
-
-      if (error) throw error;
+      // Prefer server endpoint (more robust than client-side RLS across deployments)
+      await addSellerStoreProduct(productId, { isFeatured: false });
 
       // Best-effort: create a share link + QR target for the dashboard.
       await ensureShareLink();
       setIsAdded(true);
+      if (payoutChecked && !payoutReady) {
+        const shouldRedirect = window.confirm(
+          'Product added to your store. You can keep selling, but payouts stay on hold until you connect PayPal. Go to payout settings now?'
+        );
+        if (shouldRedirect) {
+          window.location.assign(getPayoutSettingsHref('seller'));
+          return;
+        }
+      }
     } catch (e) {
       console.error('[AddToSellerStoreButton] add failed', e);
-      alert('Unable to add that product right now.');
+      const msg = String(e?.message || '').trim();
+      alert(msg ? `Unable to add that product right now. ${msg}` : 'Unable to add that product right now.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRemove = async () => {
-    if (!sellerProfileId || !isSeller) return;
+    if (isLoading) return;
+    if (!resolvedSellerId || !isSeller) return;
 
     if (!confirm('Remove this product from your seller storefront?')) return;
 
@@ -147,7 +259,7 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
       const { error } = await supabase
         .from('seller_product_order')
         .delete()
-        .eq('seller_id', sellerProfileId)
+        .eq('seller_id', resolvedSellerId)
         .eq('product_id', productId);
 
       if (error) throw error;
@@ -157,8 +269,17 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
         await supabase
           .from('affiliate_links')
           .delete()
-          .eq('affiliate_id', sellerProfileId)
+          .eq('affiliate_id', resolvedSellerId)
           .eq('product_id', productId);
+      } catch {
+        // ignore
+      }
+      try {
+        window.dispatchEvent(
+          new CustomEvent('seller-products-changed', {
+            detail: { productId, sellerId: resolvedSellerId },
+          })
+        );
       } catch {
         // ignore
       }
@@ -171,20 +292,44 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
     }
   };
 
+  const stopCardNavigation = (
+    event:
+      | React.MouseEvent<HTMLButtonElement>
+      | React.PointerEvent<HTMLButtonElement>
+      | React.TouchEvent<HTMLButtonElement>
+  ) => {
+    event.stopPropagation();
+  };
+
+  const stopCardNavigationClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
   const iconSize = size === 'sm' ? 16 : size === 'lg' ? 22 : 18;
+  const effectiveShowRemove = showRemove && !isOwnerProduct;
 
   if (!isSeller) return null;
 
   if (variant === 'icon') {
     return (
       <button
-        onClick={isAdded ? handleRemove : handleAdd}
-        disabled={isLoading}
+        type="button"
+        onClick={(event) => {
+          stopCardNavigationClick(event);
+          void (isAdded && effectiveShowRemove ? handleRemove() : handleAdd());
+        }}
+        onMouseDown={stopCardNavigation}
+        onPointerDown={stopCardNavigation}
+        onTouchStart={stopCardNavigation}
+        disabled={isLoading || (isAdded && !effectiveShowRemove)}
         title={isAdded ? 'Remove from My Store' : 'Add to My Store'}
         className={
           `h-10 w-10 rounded-full flex items-center justify-center border shadow-sm transition-colors ` +
           (isAdded
-            ? 'bg-green-600 border-green-600 text-white hover:bg-green-700'
+            ? effectiveShowRemove
+              ? 'bg-green-600 border-green-600 text-white hover:bg-green-700'
+              : 'bg-green-600 border-green-600 text-white'
             : 'bg-white border-gray-200 text-gray-900 hover:border-[#ffcb05]')
         }
       >
@@ -195,17 +340,26 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
 
   return (
     <button
-      onClick={isAdded ? handleRemove : handleAdd}
-      disabled={isLoading}
+      type="button"
+      onClick={(event) => {
+        stopCardNavigationClick(event);
+        void (isAdded && effectiveShowRemove ? handleRemove() : handleAdd());
+      }}
+      onMouseDown={stopCardNavigation}
+      onPointerDown={stopCardNavigation}
+      onTouchStart={stopCardNavigation}
+      disabled={isLoading || (isAdded && !effectiveShowRemove)}
       className={
         `inline-flex items-center gap-2 rounded-lg px-4 py-2 font-semibold border transition-colors ` +
         (isAdded
-          ? 'bg-green-600 border-green-600 text-white hover:bg-green-700'
+          ? effectiveShowRemove
+            ? 'bg-green-600 border-green-600 text-white hover:bg-green-700'
+            : 'bg-green-600 border-green-600 text-white'
           : 'bg-white border-gray-300 text-gray-900 hover:border-[#ffcb05]')
       }
     >
-      {isAdded ? <X size={iconSize} /> : <Plus size={iconSize} />}
-      {isAdded ? 'Remove' : 'Click to start selling this product'}
+      {isAdded ? <Check size={iconSize} /> : <Plus size={iconSize} />}
+      {isAdded ? (addedText || 'In My Store') : 'Add to Store'}
     </button>
   );
 };

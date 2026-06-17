@@ -54,7 +54,7 @@ const RevolutionaryShowcase: React.FC = () => {
       id: 'recurring-commissions',
       icon: RefreshCw,
       title: 'Monthly Recurring Commissions',
-      subtitle: 'Affiliates Earn Every Month, Not Just Once',
+      subtitle: 'Partners Earn Every Month, Not Just Once',
       description: 'Revolutionary affiliate system where partners earn recurring monthly commissions for subscription products. Build true wealth through compounding income streams.',
       uniqueValue: 'First marketplace with 100% recurring affiliate commissions',
       competitorComparison: 'Others pay once - we pay every month for customer lifetime',

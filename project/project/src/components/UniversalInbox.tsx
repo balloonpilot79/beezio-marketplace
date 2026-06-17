@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import { apiPost } from '../utils/netlifyApi';
+import IssueCenterPage from '../pages/IssueCenterPage';
 
 type Conversation = {
   id: string;
   owner_id: string; // auth.users.id
-  owner_type: 'seller' | 'affiliate' | 'fundraiser';
+  owner_type: 'seller' | 'affiliate';
   customer_id: string; // auth.users.id
   store_name: string | null;
   created_at: string;
@@ -19,6 +20,19 @@ type StoreMessage = {
   sender_id: string; // auth.users.id
   body: string;
   created_at: string;
+};
+
+type LegacyStoreMessage = {
+  id: string;
+  store_owner_id: string;
+  store_type: string;
+  sender_name: string;
+  sender_email: string;
+  subject: string;
+  message: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
 };
 
 type SupportThread = {
@@ -56,15 +70,37 @@ const formatDateTime = (value: string) => {
   }
 };
 
-const UniversalInbox: React.FC = () => {
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+  let timeoutHandle: number | undefined;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutHandle = window.setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutHandle) window.clearTimeout(timeoutHandle);
+  }
+};
+
+interface UniversalInboxProps {
+  embedded?: boolean;
+}
+
+const UniversalInbox: React.FC<UniversalInboxProps> = ({ embedded = false }) => {
+  const PLATFORM_SUPPORT_EMAIL = 'mail@beezio.co';
   const { profile, user, hasRole } = useAuth();
+
+  const isDev = Boolean(import.meta.env.DEV);
 
   const isAdmin = Boolean(
     hasRole?.('admin') || String((profile as any)?.primary_role || (profile as any)?.role || '').toLowerCase() === 'admin'
   );
   const selfUserId = user?.id || '';
 
-  const [tab, setTab] = useState<'store' | 'support' | 'announcements' | 'broadcast' | 'direct'>('store');
+  const [tab, setTab] = useState<'store' | 'support' | 'announcements' | 'broadcast' | 'direct' | 'disputes'>('store');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -73,20 +109,25 @@ const UniversalInbox: React.FC = () => {
   // Store messages
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [participantsByConversation, setParticipantsByConversation] = useState<Record<string, { last_read_at: string | null }>>({});
+  const [storeUnreadCount, setStoreUnreadCount] = useState(0);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<StoreMessage[]>([]);
   const [draft, setDraft] = useState('');
+  const [useLegacyStoreMessaging, setUseLegacyStoreMessaging] = useState(false);
+  const [legacyMessages, setLegacyMessages] = useState<LegacyStoreMessage[]>([]);
 
   // Support
   const [supportThreads, setSupportThreads] = useState<SupportThread[]>([]);
   const [activeSupportThreadId, setActiveSupportThreadId] = useState<string | null>(null);
   const [supportMessages, setSupportMessages] = useState<SupportMessage[]>([]);
+  const [supportUnreadCount, setSupportUnreadCount] = useState(0);
   const [supportSubject, setSupportSubject] = useState('');
   const [supportDraft, setSupportDraft] = useState('');
 
   // Announcements
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementReads, setAnnouncementReads] = useState<Record<string, boolean>>({});
+  const [announcementUnreadCount, setAnnouncementUnreadCount] = useState(0);
 
   // Admin composer
   const [broadcastTitle, setBroadcastTitle] = useState('');
@@ -124,8 +165,39 @@ const UniversalInbox: React.FC = () => {
     setNamesByUserId((prev) => ({ ...prev, ...next }));
   };
 
+  const refreshLegacyStoreMessages = async () => {
+    if (!profile?.id && !selfUserId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const ownerId = String(profile?.id || selfUserId);
+      const { data, error } = await withTimeout(
+        supabase
+          .from('store_messages')
+          .select('id, store_owner_id, store_type, sender_name, sender_email, subject, message, status, created_at, updated_at')
+          .eq('store_owner_id', ownerId)
+          .order('created_at', { ascending: false }),
+        12000,
+        'load legacy store messages'
+      );
+      if (error) throw error;
+      const rows = (data as LegacyStoreMessage[]) || [];
+      setLegacyMessages(rows);
+      setStoreUnreadCount(rows.filter((row) => String(row.status || '').toLowerCase() === 'unread').length);
+    } catch (err) {
+      console.error('[UniversalInbox] refreshLegacyStoreMessages failed:', err);
+      setError('Unable to load store messages. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const refreshConversations = async () => {
     if (!selfUserId) return;
+    if (useLegacyStoreMessaging) {
+      await refreshLegacyStoreMessages();
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -133,33 +205,58 @@ const UniversalInbox: React.FC = () => {
         .from('store_conversations')
         .select('id, owner_id, owner_type, customer_id, store_name, created_at, updated_at')
         .order('updated_at', { ascending: false });
-      const { data: convoRows, error: convoError } = isAdmin
-        ? await baseQuery
-        : await baseQuery.or(`owner_id.eq.${selfUserId},customer_id.eq.${selfUserId}`);
-      if (convoError) throw convoError;
+      const { data: convoRows, error: convoError } = await withTimeout(
+        isAdmin
+          ? baseQuery
+          : baseQuery.or(`owner_id.eq.${selfUserId},customer_id.eq.${selfUserId}`),
+        12000,
+        'load conversations'
+      );
+      if (convoError) {
+        const message = String((convoError as any)?.message || '');
+        const code = String((convoError as any)?.code || '');
+        if (code === '42P01' || /store_conversations/i.test(message)) {
+          setUseLegacyStoreMessaging(true);
+          await refreshLegacyStoreMessages();
+          return;
+        }
+        throw convoError;
+      }
 
       const convos = (convoRows as Conversation[]) || [];
+      setUseLegacyStoreMessaging(false);
       setConversations(convos);
       if (!activeConversationId && convos[0]?.id) setActiveConversationId(convos[0].id);
 
       const convoIds = convos.map((c) => c.id);
-      const { data: partRows } = await supabase
-        .from('store_conversation_participants')
-        .select('conversation_id, last_read_at')
-        .eq('user_id', selfUserId)
-        .in('conversation_id', convoIds);
+      const { data: partRows } = await withTimeout(
+        supabase
+          .from('store_conversation_participants')
+          .select('conversation_id, last_read_at')
+          .eq('user_id', selfUserId)
+          .in('conversation_id', convoIds),
+        12000,
+        'load conversation read markers'
+      );
       const byId: Record<string, { last_read_at: string | null }> = {};
       for (const row of (partRows as any[]) || []) {
         byId[String(row.conversation_id)] = { last_read_at: row.last_read_at ? String(row.last_read_at) : null };
       }
       setParticipantsByConversation(byId);
+      const unreadCount = convos.filter((c) => {
+        const marker = byId[c.id]?.last_read_at;
+        if (!marker) return !isAdmin;
+        return new Date(c.updated_at).getTime() > new Date(marker).getTime();
+      }).length;
+      setStoreUnreadCount(unreadCount);
 
       const userIds: string[] = [];
       for (const c of convos) {
         userIds.push(c.owner_id, c.customer_id);
       }
       await loadUserNames(userIds);
-    } catch {
+    } catch (err) {
+      console.error('[UniversalInbox] refreshConversations failed:', err);
       setError('Unable to load inbox. Please try again.');
     } finally {
       setLoading(false);
@@ -167,18 +264,35 @@ const UniversalInbox: React.FC = () => {
   };
 
   const loadMessages = async (conversationId: string) => {
-    const { data, error: msgError } = await supabase
-      .from('store_messages')
-      .select('id, conversation_id, sender_id, body, created_at')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
+    if (useLegacyStoreMessaging) return;
+    const { data, error: msgError } = await withTimeout(
+      supabase
+        .from('store_messages')
+        .select('id, conversation_id, sender_id, body, created_at')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true }),
+      12000,
+      'load store messages'
+    );
     if (!msgError) setMessages((data as StoreMessage[]) || []);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const apiSession = sessionData?.session ?? null;
-      await apiPost('/.netlify/functions/mark-store-conversation-read', apiSession, { conversationId });
+      await supabase.functions.invoke('mark-store-conversation-read', { body: { conversationId } });
+      await refreshConversations();
     } catch {
-      // non-fatal
+      try {
+        await supabase
+          .from('store_conversation_participants')
+          .upsert(
+            {
+              conversation_id: conversationId,
+              user_id: selfUserId,
+              last_read_at: new Date().toISOString(),
+            },
+            { onConflict: 'conversation_id,user_id' }
+          );
+      } catch {
+        // non-fatal
+      }
     }
   };
 
@@ -187,14 +301,25 @@ const UniversalInbox: React.FC = () => {
     const body = String(draft || '').trim();
     if (!body) return;
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const apiSession = sessionData?.session ?? null;
-      await apiPost('/.netlify/functions/send-store-message', apiSession, { conversationId: activeConversationId, body });
+      const { error: sendError } = await supabase.functions.invoke('send-store-message', {
+        body: { conversationId: activeConversationId, body },
+      });
+      if (sendError) throw sendError;
       setDraft('');
       await loadMessages(activeConversationId);
       await refreshConversations();
-    } catch {
-      setError('Unable to send message. Please try again.');
+    } catch (err) {
+      try {
+        const { error: insertError } = await supabase
+          .from('store_messages')
+          .insert({ conversation_id: activeConversationId, sender_id: selfUserId, body });
+        if (insertError) throw insertError;
+        setDraft('');
+        await loadMessages(activeConversationId);
+        await refreshConversations();
+      } catch {
+        setError('Unable to send message. Please try again.');
+      }
     }
   };
 
@@ -207,7 +332,11 @@ const UniversalInbox: React.FC = () => {
         .from('support_threads')
         .select('id, customer_id, subject, status, created_at, updated_at')
         .order('updated_at', { ascending: false });
-      const { data, error } = isAdmin ? await baseQuery : await baseQuery.eq('customer_id', selfUserId);
+      const { data, error } = await withTimeout(
+        isAdmin ? baseQuery : baseQuery.eq('customer_id', selfUserId),
+        12000,
+        'load support threads'
+      );
       if (error) throw error;
       const rows = (data as SupportThread[]) || [];
       setSupportThreads(rows);
@@ -215,7 +344,28 @@ const UniversalInbox: React.FC = () => {
 
       const ids = rows.map((t) => t.customer_id);
       await loadUserNames(ids);
-    } catch {
+      const threadIds = rows.map((t) => t.id);
+      const { data: participantRows } = await withTimeout(
+        supabase
+          .from('support_thread_participants')
+          .select('thread_id, last_read_at')
+          .eq('user_id', selfUserId)
+          .in('thread_id', threadIds),
+        12000,
+        'load support read markers'
+      );
+      const supportMarkers: Record<string, string | null> = {};
+      for (const row of (participantRows as any[]) || []) {
+        supportMarkers[String(row.thread_id)] = row.last_read_at ? String(row.last_read_at) : null;
+      }
+      const unreadCount = rows.filter((thread) => {
+        const marker = supportMarkers[thread.id];
+        if (!marker) return !isAdmin && thread.customer_id === selfUserId;
+        return new Date(thread.updated_at).getTime() > new Date(marker).getTime();
+      }).length;
+      setSupportUnreadCount(unreadCount);
+    } catch (err) {
+      console.error('[UniversalInbox] refreshSupportThreads failed:', err);
       setError('Unable to load support inbox. Please try again.');
     } finally {
       setLoading(false);
@@ -223,16 +373,19 @@ const UniversalInbox: React.FC = () => {
   };
 
   const loadSupportMessages = async (threadId: string) => {
-    const { data, error: msgError } = await supabase
-      .from('support_messages')
-      .select('id, thread_id, sender_id, body, created_at')
-      .eq('thread_id', threadId)
-      .order('created_at', { ascending: true });
+    const { data, error: msgError } = await withTimeout(
+      supabase
+        .from('support_messages')
+        .select('id, thread_id, sender_id, body, created_at')
+        .eq('thread_id', threadId)
+        .order('created_at', { ascending: true }),
+      12000,
+      'load support messages'
+    );
     if (!msgError) setSupportMessages((data as SupportMessage[]) || []);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const apiSession = sessionData?.session ?? null;
-      await apiPost('/.netlify/functions/mark-support-thread-read', apiSession, { threadId });
+      await supabase.functions.invoke('mark-support-thread-read', { body: { threadId } });
+      await refreshSupportThreads();
     } catch {
       // non-fatal
     }
@@ -246,13 +399,10 @@ const UniversalInbox: React.FC = () => {
       return;
     }
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const apiSession = sessionData?.session ?? null;
-      const data = await apiPost<{ thread: { id: string } }>(
-        '/.netlify/functions/create-support-thread',
-        apiSession,
-        { subject: subject || null, message }
-      );
+      const { data, error: fnError } = await supabase.functions.invoke('create-support-thread', {
+        body: { subject: subject || null, message },
+      });
+      if (fnError) throw fnError;
       const threadId = String((data as any)?.thread?.id || '');
       if (!threadId) throw new Error('Failed to create thread');
       setSupportSubject('');
@@ -270,9 +420,10 @@ const UniversalInbox: React.FC = () => {
     const body = String(supportDraft || '').trim();
     if (!body) return;
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const apiSession = sessionData?.session ?? null;
-      await apiPost('/.netlify/functions/send-support-message', apiSession, { threadId: activeSupportThreadId, body });
+      const { error: sendError } = await supabase.functions.invoke('send-support-message', {
+        body: { threadId: activeSupportThreadId, body },
+      });
+      if (sendError) throw sendError;
       setSupportDraft('');
       await loadSupportMessages(activeSupportThreadId);
       await refreshSupportThreads();
@@ -286,25 +437,36 @@ const UniversalInbox: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase
-        .from('admin_announcements')
-        .select('id, sender_id, title, body, starts_at, ends_at, created_at')
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const { data, error } = await withTimeout(
+        supabase
+          .from('admin_announcements')
+          .select('id, sender_id, title, body, starts_at, ends_at, created_at')
+          .order('created_at', { ascending: false })
+          .limit(50),
+        12000,
+        'load announcements'
+      );
       if (error) throw error;
       const rows = (data as Announcement[]) || [];
       setAnnouncements(rows);
 
       const ids = rows.map((r) => String(r.id));
-      const { data: reads } = await supabase
-        .from('admin_announcement_reads')
-        .select('announcement_id')
-        .eq('user_id', selfUserId)
-        .in('announcement_id', ids);
+      const { data: reads } = await withTimeout(
+        supabase
+          .from('admin_announcement_reads')
+          .select('announcement_id')
+          .eq('user_id', selfUserId)
+          .in('announcement_id', ids),
+        12000,
+        'load announcement reads'
+      );
       const readMap: Record<string, boolean> = {};
       for (const r of (reads as any[]) || []) readMap[String(r.announcement_id)] = true;
       setAnnouncementReads(readMap);
-    } catch {
+      const unreadCount = rows.filter((row) => !readMap[String(row.id)]).length;
+      setAnnouncementUnreadCount(unreadCount);
+    } catch (err) {
+      console.error('[UniversalInbox] refreshAnnouncements failed:', err);
       setError('Unable to load announcements.');
     } finally {
       setLoading(false);
@@ -313,9 +475,7 @@ const UniversalInbox: React.FC = () => {
 
   const markAnnouncementRead = async (announcementId: string) => {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const apiSession = sessionData?.session ?? null;
-      await apiPost('/.netlify/functions/mark-announcement-read', apiSession, { announcementId });
+      await supabase.functions.invoke('mark-announcement-read', { body: { announcementId } });
       setAnnouncementReads((prev) => ({ ...prev, [announcementId]: true }));
     } catch {
       // ignore
@@ -331,9 +491,8 @@ const UniversalInbox: React.FC = () => {
       return;
     }
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const apiSession = sessionData?.session ?? null;
-      await apiPost('/.netlify/functions/admin-create-announcement', apiSession, { title, body });
+      const { error: fnError } = await supabase.functions.invoke('admin-create-announcement', { body: { title, body } });
+      if (fnError) throw fnError;
       setBroadcastTitle('');
       setBroadcastBody('');
       setTab('announcements');
@@ -353,9 +512,8 @@ const UniversalInbox: React.FC = () => {
       return;
     }
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const apiSession = sessionData?.session ?? null;
-      await apiPost('/.netlify/functions/admin-send-direct-message', apiSession, { email, subject, body });
+      const { error: fnError } = await supabase.functions.invoke('admin-send-direct-message', { body: { email, subject, body } });
+      if (fnError) throw fnError;
       setDirectEmail('');
       setDirectBody('');
       setTab('support');
@@ -375,34 +533,58 @@ const UniversalInbox: React.FC = () => {
     if (tab === 'announcements') void refreshAnnouncements();
     if (tab === 'broadcast') setLoading(false);
     if (tab === 'direct') setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (tab === 'disputes') setLoading(false);
   }, [selfUserId, tab]);
 
   useEffect(() => {
+    if (!selfUserId) return;
+    const interval = setInterval(() => {
+      void refreshConversations();
+      void refreshSupportThreads();
+      void refreshAnnouncements();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [selfUserId]);
+
+  useEffect(() => {
     if (tab !== 'store') return;
+    if (useLegacyStoreMessaging) return;
     if (!activeConversationId) return;
     void loadMessages(activeConversationId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeConversationId, tab]);
+  }, [activeConversationId, tab, useLegacyStoreMessaging]);
 
   useEffect(() => {
     if (tab !== 'support') return;
     if (!activeSupportThreadId) return;
     void loadSupportMessages(activeSupportThreadId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSupportThreadId, tab]);
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">Inbox</h1>
-          <p className="text-gray-600">All communication stays inside Beezio (logged and auditable).</p>
-        </div>
-      </div>
+  const outerClass = embedded ? 'w-full' : 'min-h-screen bg-gray-50';
+  const innerClass = embedded ? 'w-full' : 'max-w-6xl mx-auto px-4 py-8';
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-4 flex flex-wrap gap-2">
+  return (
+    <div className={outerClass}>
+      {!embedded && (
+        <div className="bg-white border-b shadow-sm">
+          <div className="max-w-6xl mx-auto px-4 py-6">
+            <h1 className="text-3xl font-bold text-gray-900">Inbox</h1>
+            <p className="text-gray-600">
+              All communication stays inside Beezio (logged and auditable). Support email: {PLATFORM_SUPPORT_EMAIL}.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className={innerClass}>
+        {embedded && (
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold text-gray-900">Inbox</h2>
+            <p className="text-sm text-gray-600">
+              Store, support, and platform messages in one place. Support email: {PLATFORM_SUPPORT_EMAIL}.
+            </p>
+          </div>
+        )}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <button
             onClick={() => setTab('store')}
             className={`px-3 py-2 rounded-lg text-sm font-semibold border ${
@@ -410,6 +592,11 @@ const UniversalInbox: React.FC = () => {
             }`}
           >
             {isAdmin ? 'All Store Conversations' : 'Store Messages'}
+            {storeUnreadCount > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold px-2">
+                {storeUnreadCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setTab('support')}
@@ -418,6 +605,11 @@ const UniversalInbox: React.FC = () => {
             }`}
           >
             Beezio Support
+            {supportUnreadCount > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold px-2">
+                {supportUnreadCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setTab('announcements')}
@@ -428,6 +620,11 @@ const UniversalInbox: React.FC = () => {
             }`}
           >
             Announcements
+            {announcementUnreadCount > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold px-2">
+                {announcementUnreadCount}
+              </span>
+            )}
           </button>
           {isAdmin && (
             <>
@@ -449,14 +646,24 @@ const UniversalInbox: React.FC = () => {
               >
                 Admin Direct Message
               </button>
+              <button
+                onClick={() => setTab('disputes')}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold border ${
+                  tab === 'disputes' ? 'bg-black text-white border-black' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                Disputes
+              </button>
             </>
           )}
         </div>
 
         {loading ? (
-          <div className="text-center py-12">Loading…</div>
+          <div className="text-center py-12">Loading...</div>
         ) : error ? (
           <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg">{error}</div>
+        ) : tab === 'disputes' ? (
+          <IssueCenterPage embedded />
         ) : tab === 'broadcast' ? (
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
             <div className="text-xl font-bold text-gray-900">Send site-wide announcement</div>
@@ -478,6 +685,15 @@ const UniversalInbox: React.FC = () => {
               <button onClick={createBroadcast} className="w-full px-4 py-2 rounded-lg bg-black text-white font-semibold hover:bg-gray-800">
                 Send announcement
               </button>
+
+              {(isAdmin || isDev) && (
+                <Link
+                  to="/messaging-smoke"
+                  className="ml-auto px-3 py-2 rounded-lg text-sm font-semibold border bg-white text-gray-900 border-gray-200 hover:bg-gray-50"
+                >
+                  Smoke Test
+                </Link>
+              )}
             </div>
           </div>
         ) : tab === 'direct' ? (
@@ -640,6 +856,31 @@ const UniversalInbox: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        ) : tab === 'store' && useLegacyStoreMessaging ? (
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b bg-gray-50">
+              <div className="font-semibold text-gray-900">Store Messages</div>
+              <div className="text-xs text-gray-500">Legacy inbox mode. Replies are handled by email.</div>
+            </div>
+            {legacyMessages.length === 0 ? (
+              <div className="p-6 text-sm text-gray-600">No messages yet.</div>
+            ) : (
+              <div className="divide-y">
+                {legacyMessages.map((msg) => (
+                  <div key={msg.id} className="px-4 py-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="font-semibold text-gray-900">{msg.subject || 'Store message'}</div>
+                      <span className="text-xs text-gray-500">{formatDateTime(msg.created_at)}</span>
+                    </div>
+                    <div className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{msg.message}</div>
+                    <div className="mt-3 text-xs text-gray-500">
+                      From {msg.sender_name || 'Customer'} ({msg.sender_email || 'no email'})
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : conversations.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">

@@ -6,12 +6,12 @@ const AffiliateDashboardPreview: React.FC = () => {
   // Mock data for preview
   const mockProfile = {
     id: 'demo-affiliate-123',
-    full_name: 'Demo Affiliate',
+    full_name: 'Demo Partner',
     role: 'affiliate' as const,
-    email: 'demo@affiliate.com'
+    email: 'demo@partner.com'
   };
 
-  const affiliateStoreUrl = `${window.location.origin}/affiliate/${mockProfile.id}`;
+  const affiliateStoreUrl = `${window.location.origin}/partner/${mockProfile.id}`;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -22,7 +22,7 @@ const AffiliateDashboardPreview: React.FC = () => {
             <div className="flex items-center space-x-3">
               <span className="text-2xl">👀</span>
               <div>
-                <p className="font-semibold">Affiliate Dashboard Preview</p>
+                <p className="font-semibold">Partner Dashboard Preview</p>
                 <p className="text-sm text-blue-100">This is a demo view - sign up to access your real dashboard</p>
               </div>
             </div>
@@ -79,10 +79,10 @@ const AffiliateDashboardPreview: React.FC = () => {
 
         
         <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">My Affiliate Storefront</h2>
+          <h2 className="text-xl font-semibold mb-2">My Partner Storefront</h2>
           <div className="bg-white rounded shadow p-4 flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-gray-700 text-sm mb-2">Your unique affiliate store link:</div>
+              <div className="text-gray-700 text-sm mb-2">Your unique partner store link:</div>
               <div className="flex items-center space-x-2">
                 <span className="text-blue-600 break-all">{affiliateStoreUrl}</span>
                 <ExternalLink className="w-4 h-4 text-gray-400" />
@@ -96,19 +96,19 @@ const AffiliateDashboardPreview: React.FC = () => {
           </div>
         </section>
         
-        {/* Affiliate Tools Section */}
+        {/* Partner Tools Section */}
         <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">🚀 Affiliate Tools & Features</h2>
+          <h2 className="text-xl font-semibold mb-4">🚀 Partner Tools & Features</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
               <h3 className="font-semibold text-gray-900 mb-2">🏪 Personal Storefront</h3>
-              <p className="text-gray-600 text-sm mb-4">Branded affiliate store with curated products, custom layouts, and your unique tracking codes.</p>
+              <p className="text-gray-600 text-sm mb-4">Branded partner store with curated products, custom layouts, and your unique tracking codes.</p>
               <div className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer">View Your Store →</div>
             </div>
             
             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
               <h3 className="font-semibold text-gray-900 mb-2">🔗 Smart Link Generator</h3>
-              <p className="text-gray-600 text-sm mb-4">Auto-generate tracked affiliate links for any product with built-in analytics and conversion tracking.</p>
+              <p className="text-gray-600 text-sm mb-4">Auto-generate tracked partner links for any product with built-in analytics and conversion tracking.</p>
               <div className="text-green-600 hover:text-green-700 text-sm font-medium cursor-pointer">Generate Links →</div>
             </div>
             
@@ -132,7 +132,7 @@ const AffiliateDashboardPreview: React.FC = () => {
 
 <div className="bg-white rounded-lg shadow p-6 border-l-4 border-pink-500">
               <h3 className="font-semibold text-gray-900 mb-2">💬 Community Hub</h3>
-              <p className="text-gray-600 text-sm mb-4">Connect with top affiliates, share strategies, access exclusive webinars, and get mentorship.</p>
+              <p className="text-gray-600 text-sm mb-4">Connect with top partners, share strategies, access exclusive webinars, and get mentorship.</p>
               <div className="text-pink-600 hover:text-pink-700 text-sm font-medium cursor-pointer">Join Community →</div>
             </div>
             
@@ -144,7 +144,7 @@ const AffiliateDashboardPreview: React.FC = () => {
             
             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
               <h3 className="font-semibold text-gray-900 mb-2">💰 Payment Flexibility</h3>
-              <p className="text-gray-600 text-sm mb-4">Multiple payout options: PayPal, bank transfer, crypto, or reinvest earnings for bonus commissions.</p>
+              <p className="text-gray-600 text-sm mb-4">Payouts are issued to the PayPal email on file after the standard review period.</p>
               <div className="text-orange-600 hover:text-orange-700 text-sm font-medium cursor-pointer">Payment Settings →</div>
             </div>
           </div>
@@ -164,11 +164,11 @@ const AffiliateDashboardPreview: React.FC = () => {
         </section>
         
         <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">Affiliate Links</h2>
+          <h2 className="text-xl font-semibold mb-2">Partner Links</h2>
           <div className="bg-white rounded shadow p-6">
             <div className="text-center py-8">
               <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">Generate and manage your affiliate links here</p>
+              <p className="text-gray-500 mb-4">Generate and manage your partner links here</p>
               <div className="bg-gray-100 text-gray-500 px-4 py-2 rounded font-medium inline-block">
                 Create Your First Link
               </div>
@@ -213,7 +213,7 @@ const AffiliateDashboardPreview: React.FC = () => {
         <section className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-8 text-center text-white">
           <h2 className="text-2xl font-bold mb-4">Ready to Start Earning?</h2>
           <p className="text-lg mb-6 opacity-90">
-            Join thousands of affiliates earning commissions by promoting quality products!
+            Join thousands of partners earning commissions by promoting quality products!
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link

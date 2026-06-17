@@ -1,14 +1,50 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { getPartnerLabel } from '../../utils/processorSafeCopy';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
   onOpenAuthModal?: (config: { isOpen: boolean; mode: 'login' | 'register' }) => void;
+  className?: string;
+  contentClassName?: string;
 }
 
-const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
+const PublicLayout: React.FC<PublicLayoutProps> = ({ children, className, contentClassName }) => {
+  const shellClassName = className ? `min-h-screen ${className}` : 'min-h-screen bg-white text-gray-900';
+  const mainClassName = ['max-w-6xl mx-auto px-4 py-10', contentClassName].filter(Boolean).join(' ');
+
   return (
-    <div className="min-h-screen bg-white text-gray-900">
-      <main className="max-w-6xl mx-auto px-4 py-10">{children}</main>
+    <div className={shellClassName}>
+      <main className={mainClassName}>{children}</main>
+      <footer className="border-t border-gray-200 bg-gradient-to-r from-white via-amber-50 to-orange-50">
+        <div className="max-w-6xl mx-auto px-4 py-10">
+          <div className="rounded-3xl border border-amber-100 bg-white/80 px-6 py-8 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.4em] text-amber-600">Beezio</p>
+                <h2 className="mt-2 text-2xl font-semibold text-gray-900">Ready to build your Beezio storefront?</h2>
+                <p className="mt-2 text-sm text-gray-700">
+                  Join as a seller or start choosing and sharing as a {getPartnerLabel().toLowerCase()}.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  to="/auth/signup?role=seller"
+                  className="inline-flex items-center justify-center rounded-full bg-amber-500 px-6 py-3 text-sm font-semibold text-black shadow-sm hover:bg-amber-600 transition-colors"
+                >
+                  Join as a seller
+                </Link>
+                <Link
+                  to="/affiliate/signup"
+                  className="inline-flex items-center justify-center rounded-full border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-900 hover:border-amber-400 hover:text-amber-700 transition-colors"
+                >
+                  Apply as a {getPartnerLabel().toLowerCase()}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

@@ -24,17 +24,22 @@ export type Database = {
           user_id: string;
           email: string;
           full_name: string;
-          role: 'buyer' | 'seller' | 'affiliate' | 'fundraiser' | 'admin';
-          primary_role?: 'buyer' | 'seller' | 'affiliate' | 'fundraiser' | 'admin' | null;
+          role: 'buyer' | 'seller' | 'affiliate' | 'admin';
+          primary_role?: 'buyer' | 'seller' | 'affiliate' | 'admin' | null;
           referred_by_affiliate_id?: string | null;
           avatar_url?: string;
           bio?: string;
           website?: string;
           location?: string;
+          street_address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          country?: string | null;
           phone?: string;
           zip_code?: string;
-          stripe_customer_id?: string;
-          stripe_account_id?: string;
+          payment_customer_id?: string;
+          payment_account_id?: string;
+          sale_email_notifications?: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -50,13 +55,29 @@ export type Database = {
           created_at: string;
         };
       };
-      products: {
-        Row: {
-          id: string;
-          seller_id: string;
-          category_id?: string;
-          title: string;
-          description?: string;
+        products: {
+          Row: {
+            id: string;
+            seller_id: string;
+            category_id?: string;
+            beezio_category_id?: string | null;
+            cj_product_id?: string | null;
+            source?: string | null;
+            cj_pid?: string | null;
+            cj_product_code?: string | null;
+            cj_product_sku?: string | null;
+            cj_spu?: string | null;
+            cj_name_raw?: string | null;
+            cj_source_payload_json?: Record<string, unknown> | null;
+            searchable_codes?: string[] | null;
+            import_status?: 'ready' | 'needs_review' | null;
+            legacy_code?: string | null;
+            display_search_code?: string | null;
+            source_import_version?: string | null;
+            status?: 'draft' | 'active' | 'archived' | null;
+            title: string;
+            description?: string;
+            primary_image_url?: string | null;
           // Product lineage / source: affects fulfillment, fees, etc.
           // Backed by a text/varchar column in the products table.
           // Expected values (non-exhaustive):
@@ -68,10 +89,26 @@ export type Database = {
           seller_ask?: number | null;
           seller_amount?: number | null;
           seller_ask_price?: number | null;
-          currency?: string | null;
-          images: string[];
-          stock_quantity: number;
-          is_active: boolean;
+            currency?: string | null;
+            images: string[];
+            base_weight_oz?: number | null;
+            package_length_in?: number | null;
+            package_width_in?: number | null;
+            package_height_in?: number | null;
+            base_cost_cents?: number | null;
+            retail_price_cents?: number | null;
+            shipping_estimate_cents?: number | null;
+            affiliate_percent?: number | null;
+            affiliate_floor_cents?: number | null;
+            markup_type?: 'flat' | 'percent' | null;
+            markup_value?: number | null;
+            paypal_fee_bps?: number | null;
+            paypal_fixed_cents?: number | null;
+            track_inventory?: boolean | null;
+            in_stock?: boolean | null;
+            total_inventory?: number | null;
+            stock_quantity: number;
+            is_active: boolean;
           is_subscription?: boolean | null;
           subscription_interval?: string | null;
           subscription_price?: number | null;
@@ -82,8 +119,19 @@ export type Database = {
           affiliate_commission_type?: 'percent' | 'flat';
           affiliate_commission_value?: number | null;
           calculated_customer_price?: number | null;
+          sample_enabled?: boolean | null;
+          sample_price?: number | null;
           shipping_cost: number;
           shipping_price?: number | null;
+          is_digital?: boolean | null;
+          digital_download_bucket?: string | null;
+          digital_download_path?: string | null;
+          digital_download_filename?: string | null;
+          digital_download_content_type?: string | null;
+          digital_download_file_size?: number | null;
+          digital_download_instructions?: string | null;
+          digital_download_limit?: number | null;
+          digital_return_policy_notice?: string | null;
           tags: string[];
           videos: string[];
           unique_slug?: string;
@@ -99,8 +147,23 @@ export type Database = {
           id: string;
           product_id: string;
           provider: string;
-          cj_product_id: string;
-          cj_variant_id: string;
+          source?: string | null;
+          cj_product_id: string | null;
+          cj_variant_id: string | null;
+          cj_vid?: string | null;
+          cj_variant_sku?: string | null;
+          cj_variant_code?: string | null;
+          cj_sku?: string | null;
+          cj_option_summary?: string | null;
+          supplier_variant_ref?: string | null;
+          external_inventory_key?: string | null;
+          variant_display_sku?: string | null;
+          searchable_codes?: string[] | null;
+          is_orderable?: boolean | null;
+          order_reference_type?: 'cj_vid' | 'cj_variant_id' | 'none' | null;
+          raw_variant_payload_json?: Record<string, unknown> | null;
+          import_status?: 'ready' | 'needs_review' | null;
+          legacy_code?: string | null;
           sku: string;
           price: number;
           compare_at_price: number | null;
@@ -109,6 +172,22 @@ export type Database = {
           attributes: Record<string, string> | null;
           inventory: number | null;
           is_active: boolean;
+          source_platform?: string | null;
+          external_product_id?: string | null;
+          external_variant_id?: string | null;
+          external_data?: Record<string, unknown> | null;
+          option1_name?: string | null;
+          option1_value?: string | null;
+          option2_name?: string | null;
+          option2_value?: string | null;
+          option3_name?: string | null;
+          option3_value?: string | null;
+          weight_oz?: number | null;
+          cost_cents?: number | null;
+          retail_price_cents?: number | null;
+          inventory_policy?: 'deny' | 'continue' | null;
+          in_stock?: boolean | null;
+          inventory_source?: 'manual' | 'cj' | 'printful' | 'printify' | null;
           created_at: string;
           updated_at: string;
         };
@@ -116,8 +195,23 @@ export type Database = {
           id?: string;
           product_id: string;
           provider?: string;
-          cj_product_id: string;
-          cj_variant_id: string;
+          source?: string | null;
+          cj_product_id?: string | null;
+          cj_variant_id?: string | null;
+          cj_vid?: string | null;
+          cj_variant_sku?: string | null;
+          cj_variant_code?: string | null;
+          cj_sku?: string | null;
+          cj_option_summary?: string | null;
+          supplier_variant_ref?: string | null;
+          external_inventory_key?: string | null;
+          variant_display_sku?: string | null;
+          searchable_codes?: string[] | null;
+          is_orderable?: boolean | null;
+          order_reference_type?: 'cj_vid' | 'cj_variant_id' | 'none' | null;
+          raw_variant_payload_json?: Record<string, unknown> | null;
+          import_status?: 'ready' | 'needs_review' | null;
+          legacy_code?: string | null;
           sku: string;
           price: number;
           compare_at_price?: number | null;
@@ -126,6 +220,22 @@ export type Database = {
           attributes?: Record<string, string> | null;
           inventory?: number | null;
           is_active?: boolean;
+          source_platform?: string | null;
+          external_product_id?: string | null;
+          external_variant_id?: string | null;
+          external_data?: Record<string, unknown> | null;
+          option1_name?: string | null;
+          option1_value?: string | null;
+          option2_name?: string | null;
+          option2_value?: string | null;
+          option3_name?: string | null;
+          option3_value?: string | null;
+          weight_oz?: number | null;
+          cost_cents?: number | null;
+          retail_price_cents?: number | null;
+          inventory_policy?: 'deny' | 'continue' | null;
+          in_stock?: boolean | null;
+          inventory_source?: 'manual' | 'cj' | 'printful' | 'printify' | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -133,8 +243,23 @@ export type Database = {
           id?: string;
           product_id?: string;
           provider?: string;
-          cj_product_id?: string;
-          cj_variant_id?: string;
+          source?: string | null;
+          cj_product_id?: string | null;
+          cj_variant_id?: string | null;
+          cj_vid?: string | null;
+          cj_variant_sku?: string | null;
+          cj_variant_code?: string | null;
+          cj_sku?: string | null;
+          cj_option_summary?: string | null;
+          supplier_variant_ref?: string | null;
+          external_inventory_key?: string | null;
+          variant_display_sku?: string | null;
+          searchable_codes?: string[] | null;
+          is_orderable?: boolean | null;
+          order_reference_type?: 'cj_vid' | 'cj_variant_id' | 'none' | null;
+          raw_variant_payload_json?: Record<string, unknown> | null;
+          import_status?: 'ready' | 'needs_review' | null;
+          legacy_code?: string | null;
           sku?: string;
           price?: number;
           compare_at_price?: number | null;
@@ -143,8 +268,70 @@ export type Database = {
           attributes?: Record<string, string> | null;
           inventory?: number | null;
           is_active?: boolean;
+          source_platform?: string | null;
+          external_product_id?: string | null;
+          external_variant_id?: string | null;
+          external_data?: Record<string, unknown> | null;
+          option1_name?: string | null;
+          option1_value?: string | null;
+          option2_name?: string | null;
+          option2_value?: string | null;
+          option3_name?: string | null;
+          option3_value?: string | null;
+          weight_oz?: number | null;
+          cost_cents?: number | null;
+          retail_price_cents?: number | null;
+          inventory_policy?: 'deny' | 'continue' | null;
+          in_stock?: boolean | null;
+          inventory_source?: 'manual' | 'cj' | 'printful' | 'printify' | null;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      cj_products: {
+        Row: {
+          cj_product_id: string;
+          raw_json: Record<string, unknown>;
+          imported_at: string;
+        };
+      };
+      category_map_cj_to_beezio: {
+        Row: {
+          cj_category_path: string;
+          beezio_category_id: string | null;
+          fallback: boolean;
+        };
+      };
+      pricing_rules: {
+        Row: {
+          beezio_category_id: string;
+          affiliate_percent: number;
+          affiliate_floor_cents: number;
+          affiliate_enabled: boolean;
+          markup_type: 'flat' | 'percent';
+          markup_value: number;
+          paypal_fee_bps: number;
+          paypal_fixed_cents: number;
+        };
+      };
+      shipping_rules: {
+        Row: {
+          id: string;
+          name: string;
+          tiers_json: Record<string, unknown>;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+      audit_log: {
+        Row: {
+          id: string;
+          actor_user_id: string | null;
+          action: string;
+          entity_type: string;
+          entity_id: string;
+          details: Record<string, unknown>;
+          created_at: string;
         };
       };
       shipping_options: {
@@ -238,7 +425,7 @@ export type Database = {
           referral_bonus?: number | null;
           beezio_gross?: number | null;
           beezio_net?: number | null;
-          stripe_fee?: number | null;
+          processing_fee?: number | null;
           commission_rate?: number | null;
           affiliate_commission_rate?: number | null;
           variant_id?: string | null;
@@ -247,6 +434,9 @@ export type Database = {
           attributes_snapshot?: Record<string, unknown> | null;
           cj_product_id?: string | null;
           cj_variant_id?: string | null;
+          source_platform?: string | null;
+          external_product_id?: string | null;
+          external_variant_id?: string | null;
           sku?: string | null;
           shipping_cost?: number | null;
           created_at: string;
@@ -268,7 +458,7 @@ export type Database = {
           referral_bonus?: number | null;
           beezio_gross?: number | null;
           beezio_net?: number | null;
-          stripe_fee?: number | null;
+          processing_fee?: number | null;
           commission_rate?: number | null;
           affiliate_commission_rate?: number | null;
           variant_id?: string | null;
@@ -277,6 +467,9 @@ export type Database = {
           attributes_snapshot?: Record<string, unknown> | null;
           cj_product_id?: string | null;
           cj_variant_id?: string | null;
+          source_platform?: string | null;
+          external_product_id?: string | null;
+          external_variant_id?: string | null;
           sku?: string | null;
           shipping_cost?: number | null;
           created_at?: string;
@@ -298,7 +491,7 @@ export type Database = {
           referral_bonus?: number | null;
           beezio_gross?: number | null;
           beezio_net?: number | null;
-          stripe_fee?: number | null;
+          processing_fee?: number | null;
           commission_rate?: number | null;
           affiliate_commission_rate?: number | null;
           variant_id?: string | null;
@@ -307,8 +500,76 @@ export type Database = {
           attributes_snapshot?: Record<string, unknown> | null;
           cj_product_id?: string | null;
           cj_variant_id?: string | null;
+          source_platform?: string | null;
+          external_product_id?: string | null;
+          external_variant_id?: string | null;
           sku?: string | null;
           shipping_cost?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      digital_download_entitlements: {
+        Row: {
+          id: string;
+          order_id: string;
+          order_item_id: string;
+          product_id: string;
+          seller_id?: string | null;
+          buyer_user_id?: string | null;
+          billing_email?: string | null;
+          storage_bucket: string;
+          storage_path: string;
+          original_filename: string;
+          content_type?: string | null;
+          file_size_bytes?: number | null;
+          download_limit: number;
+          download_count: number;
+          last_downloaded_at?: string | null;
+          access_status: string;
+          metadata?: Record<string, unknown> | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          order_item_id: string;
+          product_id: string;
+          seller_id?: string | null;
+          buyer_user_id?: string | null;
+          billing_email?: string | null;
+          storage_bucket: string;
+          storage_path: string;
+          original_filename: string;
+          content_type?: string | null;
+          file_size_bytes?: number | null;
+          download_limit?: number;
+          download_count?: number;
+          last_downloaded_at?: string | null;
+          access_status?: string;
+          metadata?: Record<string, unknown> | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          order_item_id?: string;
+          product_id?: string;
+          seller_id?: string | null;
+          buyer_user_id?: string | null;
+          billing_email?: string | null;
+          storage_bucket?: string;
+          storage_path?: string;
+          original_filename?: string;
+          content_type?: string | null;
+          file_size_bytes?: number | null;
+          download_limit?: number;
+          download_count?: number;
+          last_downloaded_at?: string | null;
+          access_status?: string;
+          metadata?: Record<string, unknown> | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -316,6 +577,7 @@ export type Database = {
       orders: {
         Row: {
           id: string;
+          order_number?: string | null;
           user_id?: string | null;
           affiliate_id?: string | null;
           store_id?: string | null;
@@ -325,7 +587,7 @@ export type Database = {
           currency?: string | null;
           status?: string | null;
           payment_status?: string | null;
-          stripe_payment_intent_id?: string | null;
+          payment_reference_id?: string | null;
           billing_name?: string | null;
           billing_email?: string | null;
           shipping_address?: Record<string, unknown> | null;
@@ -339,6 +601,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
+          order_number?: string | null;
           user_id?: string | null;
           affiliate_id?: string | null;
           store_id?: string | null;
@@ -348,7 +611,7 @@ export type Database = {
           currency?: string | null;
           status?: string | null;
           payment_status?: string | null;
-          stripe_payment_intent_id?: string | null;
+          payment_reference_id?: string | null;
           billing_name?: string | null;
           billing_email?: string | null;
           shipping_address?: Record<string, unknown> | null;
@@ -362,6 +625,7 @@ export type Database = {
         };
         Update: {
           id?: string;
+          order_number?: string | null;
           user_id?: string | null;
           affiliate_id?: string | null;
           store_id?: string | null;
@@ -371,7 +635,7 @@ export type Database = {
           currency?: string | null;
           status?: string | null;
           payment_status?: string | null;
-          stripe_payment_intent_id?: string | null;
+          payment_reference_id?: string | null;
           billing_name?: string | null;
           billing_email?: string | null;
           shipping_address?: Record<string, unknown> | null;
@@ -388,8 +652,18 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
-          role: 'buyer' | 'seller' | 'affiliate' | 'fundraiser' | 'admin';
+          role: 'buyer' | 'seller' | 'affiliate' | 'admin';
           is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+      influencer_referrals: {
+        Row: {
+          id: string;
+          recruited_profile_id: string;
+          recruited_role: 'seller' | 'affiliate';
+          influencer_profile_id: string;
           created_at: string;
           updated_at: string;
         };

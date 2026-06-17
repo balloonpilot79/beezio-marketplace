@@ -124,9 +124,9 @@ export default function ReferralDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Referral Program</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Influencer Program</h2>
         <p className="text-gray-600 mt-1">
-          Earn 2% commission from all sales made by affiliates you refer
+          Earn 5% commission on completed sales tied to partners you refer
         </p>
       </div>
 
@@ -135,7 +135,7 @@ export default function ReferralDashboard() {
         <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Referrals</p>
+              <p className="text-sm text-gray-600">Total Partners Referred</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalReferrals}</p>
             </div>
             <Users className="h-8 w-8 text-blue-500" />
@@ -145,7 +145,7 @@ export default function ReferralDashboard() {
         <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Active Referrals</p>
+              <p className="text-sm text-gray-600">Active Partners</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{stats.activeReferrals}</p>
             </div>
             <TrendingUp className="h-8 w-8 text-green-500" />
@@ -179,9 +179,9 @@ export default function ReferralDashboard() {
 
       {/* Referral Link Section */}
       <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg shadow-lg p-6 border border-yellow-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Your Referral Link</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Your Influencer Link</h3>
         <p className="text-sm text-gray-600 mb-4">
-          Share this link with other affiliates. You'll earn 2% from their sales!
+          Share this link with partners. You'll earn 5% commission on completed sales tied to those partners.
         </p>
         
         <div className="bg-white rounded-lg p-4 border border-gray-300 mb-4">
@@ -234,7 +234,7 @@ export default function ReferralDashboard() {
             <div>
               <p className="font-medium text-gray-900">Share Your Link</p>
               <p className="text-sm text-gray-600">
-                Send your referral link to other affiliates who want to join Beezio
+                Send your influencer link to partners who want to join Beezio
               </p>
             </div>
           </div>
@@ -246,7 +246,7 @@ export default function ReferralDashboard() {
             <div>
               <p className="font-medium text-gray-900">They Sign Up</p>
               <p className="text-sm text-gray-600">
-                When they create an account using your link, they become your referral
+                When they create an account using your link, they become your referred partner
               </p>
             </div>
           </div>
@@ -258,7 +258,7 @@ export default function ReferralDashboard() {
             <div>
               <p className="font-medium text-gray-900">Earn Commissions</p>
               <p className="text-sm text-gray-600">
-                You earn 2% from every sale they make. The more they sell, the more you earn!
+                You earn 5% from completed sales tied to your referred partners.
               </p>
             </div>
           </div>
