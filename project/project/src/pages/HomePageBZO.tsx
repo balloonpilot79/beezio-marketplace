@@ -151,12 +151,10 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
                   Build your store
                 </Link>
                 <a
-                  href="https://www.beezio.co/partner/teststore"
-                  target="_blank"
-                  rel="noreferrer"
+                  href="/stores"
                   className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-900 transition-colors hover:border-amber-400 hover:text-amber-700"
                 >
-                  View live example
+                  Browse storefronts
                 </a>
               </div>
             </div>

@@ -45,7 +45,7 @@ const AboutPage: React.FC = () => {
               and orders are fulfilled with tracking and support.
             </p>
             <p>
-              Beezio is a marketplace platform that facilitates transactions between buyers and independent sellers. Partners are
+              Beezio is a marketplace platform that facilitates transactions between buyers and independent sellers. Affiliates are
               independent contractors who market products using Beezio tools.
             </p>
           </Section>

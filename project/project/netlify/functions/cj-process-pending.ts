@@ -17,10 +17,8 @@ const supabase = createClient(
   SUPABASE_SERVICE_ROLE_KEY || 'missing-service-role-key'
 );
 
-export const config = {
-  // Process deferred CJ orders (e.g. waiting for funds to clear) every 15 minutes.
-  schedule: '*/15 * * * *',
-};
+// Retired integration: historical order support remains, but this function is
+// intentionally no longer scheduled.
 
 export const handler: Handler = async () => {
   const { data: pending, error } = await supabase
@@ -77,4 +75,3 @@ export const handler: Handler = async () => {
     }),
   };
 };
-

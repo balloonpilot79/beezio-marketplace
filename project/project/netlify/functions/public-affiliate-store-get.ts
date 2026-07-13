@@ -332,13 +332,25 @@ const handler: Handler = async (event) => {
 
     rowsWithProducts = sortStorefrontRows(rowsWithProducts);
 
-    const [customPagesResult, insuranceListings] = await Promise.all([
+    const [customPagesResult, collectionsResult, placementsResult, insuranceListings] = await Promise.all([
       supabaseAdmin
         .from('custom_pages')
         .select('page_slug,page_title,is_active,display_order')
         .eq('owner_id', canonicalAffiliateId)
         .eq('owner_type', 'affiliate')
         .eq('is_active', true)
+        .order('display_order', { ascending: true }),
+      supabaseAdmin
+        .from('store_collections')
+        .select('id,name,slug,description,image_url,display_order,is_visible')
+        .in('owner_id', Array.from(affiliateAliases))
+        .eq('is_visible', true)
+        .order('display_order', { ascending: true }),
+      supabaseAdmin
+        .from('store_product_placements')
+        .select('product_id,placement_type,collection_id,custom_page_id,section_key,display_order,is_visible')
+        .in('owner_id', Array.from(affiliateAliases))
+        .eq('is_visible', true)
         .order('display_order', { ascending: true }),
       buildStoreInsuranceListings(
         supabaseAdmin,
@@ -349,6 +361,13 @@ const handler: Handler = async (event) => {
 
     const customPages = customPagesResult.data || [];
 
+    if (collectionsResult.error) {
+      console.warn('[public-affiliate-store-get] collections lookup error (non-fatal):', collectionsResult.error.message);
+    }
+    if (placementsResult.error) {
+      console.warn('[public-affiliate-store-get] placements lookup error (non-fatal):', placementsResult.error.message);
+    }
+
     return json(200, {
       ok: true,
       canonical_affiliate_id: canonicalAffiliateId,
@@ -357,6 +376,8 @@ const handler: Handler = async (event) => {
       rows: rowsWithProducts,
       insurance_listings: insuranceListings,
       custom_pages: customPages,
+      collections: collectionsResult.data || [],
+      product_placements: placementsResult.data || [],
     });
   } catch (e) {
     return json(500, {

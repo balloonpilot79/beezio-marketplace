@@ -510,7 +510,7 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
                     <LinkIcon className="w-4 h-4" />
                     <p className="text-sm font-semibold">Your invite link</p>
                   </div>
-                  <p className="mt-1 text-xs text-emerald-800">Share this link to recruit partners. You earn recurring influencer commission on their sales.</p>
+                  <p className="mt-1 text-xs text-emerald-800">Share this link to refer sellers and affiliates. Eligible referral bonuses are earned on their completed sales.</p>
                 </div>
                 <div className="flex w-full sm:w-auto gap-2">
                   <input

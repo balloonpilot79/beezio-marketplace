@@ -1517,7 +1517,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
           <h1 className="mt-2 text-2xl font-bold text-gray-900">Business tools are not active on this account</h1>
           <p className="mt-3 text-sm leading-6 text-gray-700">
             This login can still view purchases, receipts, and support in the customer dashboard. To sell products,
-            promote products, or recruit partners, upgrade the same login to a Beezio business account.
+            promote products, or refer sellers and affiliates, upgrade the same login to a Beezio business account.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button

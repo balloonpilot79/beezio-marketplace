@@ -61,8 +61,10 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
   const [canonicalAffiliateId, setCanonicalAffiliateId] = useState<string | null>(null);
   const [showCustomization, setShowCustomization] = useState(false);
   const [customPages, setCustomPages] = useState<any[]>([]);
+  const [storeCollections, setStoreCollections] = useState<any[]>([]);
+  const [productPlacements, setProductPlacements] = useState<any[]>([]);
   const [contactModal, setContactModal] = useState(false);
-  const [activeCollection, setActiveCollection] = useState<'all' | 'featured' | 'in-stock'>('all');
+  const [activeCollection, setActiveCollection] = useState<string>('all');
 
   useEffect(() => {
     console.log('[AffiliateStorePage] useEffect triggered with affiliateId:', affiliateId);
@@ -158,6 +160,8 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
               setProducts(buyerFacingProducts);
               setInsuranceListings(Array.isArray(payload?.insurance_listings) ? payload.insurance_listings : []);
               setCustomPages(Array.isArray(payload?.custom_pages) ? payload.custom_pages : []);
+              setStoreCollections(Array.isArray(payload?.collections) ? payload.collections : []);
+              setProductPlacements(Array.isArray(payload?.product_placements) ? payload.product_placements : []);
 
               if (canonicalId) {
                 localStorage.setItem('affiliate_referral', canonicalId);
@@ -548,6 +552,15 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
   const filteredProducts = products.filter((product) => {
     if (activeCollection === 'featured') return Boolean(product?.is_featured);
     if (activeCollection === 'in-stock') return isProductInStock(product);
+    if (activeCollection.startsWith('collection:')) {
+      const collectionId = activeCollection.slice('collection:'.length);
+      return productPlacements.some(
+        (placement) =>
+          placement.product_id === product.id &&
+          placement.placement_type === 'collection' &&
+          placement.collection_id === collectionId
+      );
+    }
     return true;
   });
   const storeHomePath = isCustomDomain
@@ -834,10 +847,11 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
               { id: 'all', label: 'All' },
               { id: 'featured', label: 'Featured' },
               { id: 'in-stock', label: 'In Stock' },
+              ...storeCollections.map((collection) => ({ id: `collection:${collection.id}`, label: collection.name })),
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveCollection(tab.id as 'all' | 'featured' | 'in-stock')}
+                onClick={() => setActiveCollection(tab.id)}
                 className="px-4 py-2 rounded-lg text-sm font-semibold transition-colors border"
                 style={
                   activeCollection === tab.id
@@ -889,12 +903,12 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
             <div className="text-center py-12">
               <Package className="w-16 h-16 text-slate-300 mx-auto mb-5" />
               <h3 className="text-2xl font-bold text-slate-900 mb-3">
-                {isOwner ? 'No products yet' : 'Store coming soon'}
+                {isOwner ? 'No products yet' : 'No products have been published yet'}
               </h3>
               <p className="text-slate-600 mb-8 max-w-md mx-auto">
                 {isOwner
                   ? 'Products added to your store will appear here.'
-                  : 'This store is being set up. Check back soon for products.'}
+                  : 'This storefront is active, but it does not have any published products yet.'}
               </p>
               {isOwner && (
                 <div className="max-w-2xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-3 mb-8 text-left">

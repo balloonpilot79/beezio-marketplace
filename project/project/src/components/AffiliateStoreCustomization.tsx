@@ -852,7 +852,7 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
       <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-8 text-white">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-3xl font-extrabold mb-2 tracking-tight">Partner Store Customization</h2>
+            <h2 className="text-3xl font-extrabold mb-2 tracking-tight">Affiliate Store Customization</h2>
             <p className="text-lg text-purple-100">Personalize your affiliate store to attract more customers</p>
           </div>
           <div className="flex items-center gap-4">
@@ -1083,7 +1083,7 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
                     type="text"
                     value={storeSettings.store_name || ''}
                     onChange={(e) => handleInputChange('store_name', e.target.value)}
-                    placeholder="Your Partner Store Name"
+                    placeholder="Your Affiliate Store Name"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                 </div>

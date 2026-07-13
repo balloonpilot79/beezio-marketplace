@@ -21,26 +21,26 @@ describe('pricing utilities', () => {
     const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, 0.2);
 
     // Unified ask-based pricing model (matches pricingEngine/beezioConfig):
-    // - Platform fee: $2 under $20, otherwise 15% of ask
+    // - Platform fee: $2 under $25, otherwise 15% of ask
     // - Affiliate: 20% of ask
     // - Processing is baked into the listing price (buyer pays)
     // Includes baked-in influencer reserve for both seller and affiliate influencer slots:
-    // - >= $20 ask => $2.00 reserve per sale
+    // - >= $25 ask => $2.00 reserve per sale
     expect(salePrice).toBeCloseTo(137, 2);
   });
 
-  it('bakes in $1.00 total influencer reserve for products under $20', () => {
+  it('bakes in $1.00 total influencer reserve for products under $25', () => {
     const sellerAsk = 19.99;
     const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, 0.2);
     expect(salePrice).toBeGreaterThan(0);
     expect(salePrice).toBeCloseTo(28.74, 2);
   });
 
-  it('bakes in $2.00 total influencer reserve for products at or above $20', () => {
-    const sellerAsk = 20;
+  it('bakes in $2.00 total influencer reserve for products at or above $25', () => {
+    const sellerAsk = 25;
     const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, 0.2);
     expect(salePrice).toBeGreaterThan(0);
-    expect(salePrice).toBeCloseTo(29.79, 2);
+    expect(salePrice).toBeCloseTo(36.04, 2);
   });
 
   it('keeps the flat $2 Beezio fee through $24.99, then switches PayPal inside the platform pool at $25', () => {
@@ -109,7 +109,7 @@ describe('pricing utilities', () => {
     expect(payouts.beezioNet).toBe(6.33);
   });
 
-  it('uses the lower flat referral bonus under $20', () => {
+  it('uses the lower flat referral bonus under $25', () => {
     const sellerAsk = 19.99;
     const salePrice = calculateSalePriceFromSellerAsk(sellerAsk, DEFAULT_AFFILIATE_RATE);
     const payouts = calculatePayouts(salePrice, sellerAsk, {

@@ -26,7 +26,7 @@ describe('mock sale verification ($10 with affiliate + influencer)', () => {
     expect(split.affiliate_commission_amount).toBe(2);
     expect(split.affiliate_amount).toBe(2);
 
-    // Under $20, Beezio has a flat $2 platform profit and the influencer reserve remains separate.
+    // Under $25, Beezio has a flat $2 platform profit and the influencer reserve remains separate.
     expect(split.referral_fee_amount).toBe(0.5);
     expect(split.referrer_amount).toBe(0.5);
     expect(split.beezio_fee_amount).toBe(2.5);

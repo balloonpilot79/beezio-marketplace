@@ -38,6 +38,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [customPages, setCustomPages] = useState<any[]>([]);
+  const [storeCollections, setStoreCollections] = useState<any[]>([]);
+  const [productPlacements, setProductPlacements] = useState<any[]>([]);
   const [contactModal, setContactModal] = useState(false);
   
   useEffect(() => {
@@ -59,7 +61,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         
         // Sample store fallback data (check FIRST to avoid database queries)
         // Each store is a UNIQUE mini-website with custom domains, internal messaging, and distinct designs
-        const sampleStores: Record<string, any> = {
+        const sampleStores: Record<string, any> =
+          import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_STORES === 'true' ? {
           'beezio-store': {
             id: 'beezio-store',
             full_name: 'Beezio Marketplace',
@@ -201,7 +204,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             custom_css: '.store-header { background: linear-gradient(135deg, #ec4899 0%, #f59e0b 100%); color: white; } .product-card { border: 2px solid #fbbf24; } .impact-badge { background: #10b981; }',
             has_contact_page: true
           }
-        };
+        } : {};
 
         const isSampleStore = Boolean(sampleStores[sellerId]);
         const isBeezioDemoStore = sellerId === 'beezio-store';
@@ -246,6 +249,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                 setProducts(Array.isArray(payload.products) ? payload.products : []);
                 setInsuranceListings(Array.isArray(payload.insurance_listings) ? payload.insurance_listings : []);
                 setCustomPages(Array.isArray(payload.custom_pages) ? payload.custom_pages : []);
+                setStoreCollections(Array.isArray(payload.collections) ? payload.collections : []);
+                setProductPlacements(Array.isArray(payload.product_placements) ? payload.product_placements : []);
                 setStoreStats(prev => ({
                   ...prev,
                   totalProducts: Array.isArray(payload.products) ? payload.products.length : 0,
@@ -608,11 +613,26 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
     (user?.id && sellerId && user.id === sellerId)
   );
 
-  const categories = ['all', ...new Set(products.map(p => p.category).filter(Boolean))];
+  const collectionLabelByFilter = new Map(
+    storeCollections.map((collection) => [`collection:${collection.id}`, collection.name])
+  );
+  const categories = [
+    'all',
+    ...storeCollections.map((collection) => `collection:${collection.id}`),
+    ...new Set(products.map(p => p.category).filter(Boolean)),
+  ];
   const showCategoryFilters = (seller?.layout_config as any)?.show_categories !== false && categories.length > 1;
   const showSearchBar = (seller?.layout_config as any)?.show_search !== false;
   const filteredProducts = products.filter((product) => {
-    const matchesCategory = activeCategory === 'all' || product.category === activeCategory;
+    const matchesCollection = activeCategory.startsWith('collection:')
+      ? productPlacements.some(
+          (placement) =>
+            placement.product_id === product.id &&
+            placement.placement_type === 'collection' &&
+            `collection:${placement.collection_id}` === activeCategory
+        )
+      : null;
+    const matchesCategory = activeCategory === 'all' || matchesCollection === true || product.category === activeCategory;
     if (!matchesCategory) return false;
     if (!searchQuery.trim()) return true;
     const needle = searchQuery.trim().toLowerCase();
@@ -745,7 +765,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                         : { backgroundColor: '#ffffff', color: textColor, borderColor: secondaryColor }
                     }
                   >
-                    {category === 'all' ? 'All Products' : category}
+                    {category === 'all' ? 'All Products' : collectionLabelByFilter.get(category) || category}
                   </button>
                 ))}
               </div>

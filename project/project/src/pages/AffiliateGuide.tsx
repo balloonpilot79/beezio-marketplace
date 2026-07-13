@@ -56,7 +56,7 @@ const AffiliateGuide: React.FC = () => {
           <div className="max-w-4xl">
             <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-600 shadow-sm">
               <Share2 className="h-4 w-4 text-[#131921]" />
-              Beezio Partner Guide
+              Beezio Affiliate Guide
             </div>
             <h1 className="mt-6 text-4xl font-black tracking-tight text-slate-900 sm:text-6xl">
               One partner account.
@@ -153,7 +153,7 @@ const AffiliateGuide: React.FC = () => {
             <div className="rounded-2xl border border-slate-200 p-4">
               <Users className="h-5 w-5 text-violet-600" />
               <div className="mt-3 text-sm font-semibold text-slate-900">Build a network layer</div>
-              <p className="mt-2 text-sm text-slate-600">Partners can earn directly from their own promotions and from the partner network they recruit.</p>
+              <p className="mt-2 text-sm text-slate-600">Affiliates earn product commissions from their promotions and may also earn fixed influencer bonuses for eligible seller and affiliate referrals.</p>
             </div>
           </div>
         </div>

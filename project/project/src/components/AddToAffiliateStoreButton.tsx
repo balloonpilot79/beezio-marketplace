@@ -8,6 +8,11 @@ import { ensureProfileIdForUser, resolveProfileIdForUser } from '../utils/resolv
 import { addAffiliateProduct } from '../api/affiliateStore';
 import { getPayoutSettingsHref, hasStoredPayoutEmail } from '../utils/payoutSetup';
 import { getNormalizedAccountRoles, normalizeAccountRole } from '../utils/accountRoles';
+import StorePlacementPicker, {
+  EMPTY_STORE_PLACEMENT,
+  StorePlacementSelection,
+} from './StorePlacementPicker';
+import { saveStoreProductPlacement } from '../utils/storeProductPlacement';
 
 interface AddToAffiliateStoreButtonProps {
   productId: string;
@@ -62,6 +67,7 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
     notes: ''
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [placement, setPlacement] = useState<StorePlacementSelection>({ ...EMPTY_STORE_PLACEMENT });
   const commissionDisplayLabel =
     commissionType === 'flat_rate'
       ? `$${Number(flatCommissionAmount || 0).toFixed(2)} per sale`
@@ -292,7 +298,7 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
       let addResult;
       try {
         addResult = await addAffiliateProduct(productId, {
-          isFeatured: customSettings.isFeatured,
+          isFeatured: customSettings.isFeatured || placement.featureOnHomepage,
           affiliateId: ensureId || affiliateProfileId,
         });
       } catch (err: any) {
@@ -311,6 +317,13 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
       const effectiveAffiliateId = String(addResult.affiliate_id || ensureId || affiliateProfileId || '').trim();
       if (effectiveAffiliateId && effectiveAffiliateId !== resolvedAffiliateId) {
         setResolvedAffiliateId(effectiveAffiliateId);
+      }
+
+      try {
+        await saveStoreProductPlacement(effectiveAffiliateId || ensureId, productId, placement);
+      } catch (placementError) {
+        console.warn('AddToAffiliateStoreButton: placement save failed (product remains added):', placementError);
+        setErrorMessage('The product was added, but its store location could not be saved. It is available in All Products.');
       }
 
       setIsAdded(true);
@@ -775,11 +788,12 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
                   <label className="flex items-center space-x-2">
                     <input
                       type="checkbox"
-                      checked={customSettings.isFeatured}
-                      onChange={(e) => setCustomSettings(prev => ({ 
-                        ...prev, 
-                        isFeatured: e.target.checked 
-                      }))}
+                      checked={placement.featureOnHomepage}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setCustomSettings((prev) => ({ ...prev, isFeatured: checked }));
+                        setPlacement((current) => ({ ...current, featureOnHomepage: checked }));
+                      }}
                       className="rounded border-gray-300 text-purple-500 focus:ring-purple-500"
                     />
                     <span className="font-medium text-gray-900">
@@ -788,6 +802,19 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
                     </span>
                   </label>
                 </div>
+
+                <StorePlacementPicker
+                  ownerId={resolvedAffiliateId || affiliateProfileId}
+                  ownerType="affiliate"
+                  value={placement}
+                  onChange={(nextPlacement) => {
+                    setPlacement(nextPlacement);
+                    setCustomSettings((current) => ({
+                      ...current,
+                      isFeatured: nextPlacement.featureOnHomepage,
+                    }));
+                  }}
+                />
 
                 {/* Custom Description */}
                 <div>

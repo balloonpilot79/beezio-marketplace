@@ -61,7 +61,6 @@ const RevolutionaryShowcaseSimple = lazy(() => import('./components/Revolutionar
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 const DebugServiceWorkerPage = lazy(() => import('./pages/DebugServiceWorkerPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
-const TermsPage = lazy(() => import('./pages/TermsPage'));
 const TermsOfService = lazy(() => import('./pages/legal/TermsOfService'));
 const SellerTerms = lazy(() => import('./pages/legal/SellerTerms'));
 const PartnerTerms = lazy(() => import('./pages/legal/PartnerTerms'));
@@ -84,14 +83,11 @@ const AuthPage = lazy(() => import('./pages/AuthPage'));
 const AuthConfirmPage = lazy(() => import('./pages/AuthConfirmPage'));
 const StorefrontAuthPage = lazy(() => import('./pages/StorefrontAuthPage'));
 const StorefrontBuyerAccountPage = lazy(() => import('./pages/StorefrontBuyerAccountPage'));
-const CJAdminCatalogPage = lazy(() => import('./pages/CJAdminCatalogPage'));
-const AliExpressImportPage = lazy(() => import('./pages/AliExpressImportPage'));
 const EggRacksImportPage = lazy(() => import('./pages/EggRacksImportPage'));
 const BulkProductUploadPage = lazy(() => import('./pages/BulkProductUploadPage'));
 const AdminProductHubPage = lazy(() => import('./pages/AdminProductHubPage'));
 const AdminPayoutsQueuePage = lazy(() => import('./pages/AdminPayoutsQueuePage'));
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
-const AdminBulkImportPage = lazy(() => import('./pages/AdminBulkImportPage'));
 const AdminPrintfulImportPage = lazy(() => import('./pages/AdminPrintfulImportPage'));
 const SupportOperationsPage = lazy(() => import('./pages/SupportOperationsPage'));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'));
@@ -230,15 +226,6 @@ const InsurancePublicRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (loading) return <RouteFallback />;
   if (!isAdminUser) return <InsuranceComingSoon />;
-  return <>{children}</>;
-};
-
-// CJ Import Route - intentionally restricted to the official Beezio store account(s)
-const CJImportRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
-  if (!canAccessCJImport(user?.email)) {
-    return <div className="max-w-xl mx-auto mt-20 text-center text-red-600 text-lg font-bold">Access denied.</div>;
-  }
   return <>{children}</>;
 };
 
@@ -841,7 +828,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/debug-sw" element={<DebugServiceWorkerPage />} />
                     <Route path="/privacy" element={<PrivacyPage />} />
-                    <Route path="/terms" element={<TermsPage />} />
+                    <Route path="/terms" element={<Navigate to="/legal/terms" replace />} />
                     <Route path="/legal/terms" element={<TermsOfService />} />
                     <Route path="/legal/payments-payouts" element={<PaymentsRolesPayouts />} />
                     <Route path="/legal/seller-terms" element={<SellerTerms />} />
@@ -857,7 +844,6 @@ const AppWorking: React.FC = () => {
                     <Route path="/faq/custom-domains" element={<CustomDomainFAQPage />} />
                     <Route path="/affiliate-guide" element={<AffiliateGuide />} />
                     <Route path="/admin" element={<AdminRoute><Navigate to="/dashboard/admin" replace /></AdminRoute>} />
-                    <Route path="/admin/cj-bulk-import" element={<AdminRoute><Navigate to="/admin/cj-import" replace /></AdminRoute>} />
                     <Route path="/admin/products" element={<AdminRoute><AdminProductHubPage /></AdminRoute>} />
                     <Route path="/admin/printful" element={<AdminRoute><AdminPrintfulImportPage /></AdminRoute>} />
                     <Route path="/admin/bulk-products" element={<AdminRoute><BulkProductUploadPage /></AdminRoute>} />
@@ -866,8 +852,6 @@ const AppWorking: React.FC = () => {
                     <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
                     <Route path="/admin/settings" element={<AdminRoute><PlatformSettings /></AdminRoute>} />
                     <Route path="/admin/messaging-smoke" element={<AdminRoute><MessagingSmokeTestPage /></AdminRoute>} />
-                    <Route path="/admin/cj-import" element={<CJImportRoute><CJAdminCatalogPage /></CJImportRoute>} />
-                    <Route path="/admin/aliexpress-import" element={<AdminRoute><AliExpressImportPage /></AdminRoute>} />
                     <Route path="/admin/eggracks-import" element={<AdminRoute><EggRacksImportPage /></AdminRoute>} />
                     <Route path="/support/ops" element={<SupportRoute><SupportOperationsPage /></SupportRoute>} />
                     <Route path="/support" element={<ContactSupport />} />

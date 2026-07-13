@@ -3,10 +3,8 @@ import { getEnvBool } from './_lib/env';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { runCjInventorySync } from './inventory-cj-sync';
 
-export const config = {
-  // Keep CJ inventory fresh for all seller listings every 15 minutes.
-  schedule: '*/15 * * * *',
-};
+// Retired integration: this function remains readable for deployment history,
+// but it is intentionally no longer scheduled.
 
 export const handler: Handler = async () => {
   try {

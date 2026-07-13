@@ -10,7 +10,6 @@ import {
   ShieldAlert,
   MessageSquare,
   Settings,
-  Layers,
   Store,
   FlaskConical,
   RefreshCw
@@ -28,7 +27,6 @@ import {
 import ContentModerationDashboard from './ContentModerationDashboard';
 import ChatSupportDashboard from './ChatSupportDashboard';
 import IssueCenterPage from '../pages/IssueCenterPage';
-import CJAdminCatalogPage from '../pages/CJAdminCatalogPage';
 import AdminPrintfulImportPage from '../pages/AdminPrintfulImportPage';
 import ManualFulfillmentQueue from './ManualFulfillmentQueue';
 import AdminOrderLedgerPanel from './AdminOrderLedgerPanel';
@@ -291,29 +289,6 @@ interface PrintfulDiagnostics {
   notes: string[];
 }
 
-interface CjVerificationDiagnostics {
-  checked: number;
-  verified: number;
-  failed: number;
-  lastRunAt: string;
-  results: Array<{
-    beezio_product_id: string;
-    title: string;
-    cj_product_id: string | null;
-    cj_product_sku: string | null;
-    cj_variant_id: string | null;
-    verification?: {
-      verified?: boolean;
-      matched_pid?: string | null;
-      matched_product_sku?: string | null;
-      matched_product_spu?: string | null;
-      matched_variant_id?: string | null;
-      matched_variant_sku?: string | null;
-      error?: string | null;
-    } | null;
-  }>;
-}
-
 type PayPalAdminConfig = {
   ok: boolean;
   env: 'sandbox' | 'live';
@@ -323,7 +298,7 @@ type PayPalAdminConfig = {
   };
 };
 
-type AdminTab = 'overview' | 'orders' | 'payouts' | 'analytics' | 'cj-import' | 'eggracks' | 'printful' | 'fulfillment' | 'moderation' | 'support' | 'tools';
+type AdminTab = 'overview' | 'orders' | 'payouts' | 'analytics' | 'eggracks' | 'printful' | 'fulfillment' | 'moderation' | 'support' | 'tools';
 type TimeFilter = 'day' | 'week' | 'month' | '3mo' | '6mo' | 'year';
 
 type DateRange = {
@@ -416,9 +391,6 @@ export default function PlatformAdminDashboard() {
   const [printfulDiagnostics, setPrintfulDiagnostics] = useState<PrintfulDiagnostics | null>(null);
   const [printfulDiagLoading, setPrintfulDiagLoading] = useState(false);
   const [printfulDiagError, setPrintfulDiagError] = useState<string | null>(null);
-  const [cjVerificationDiagnostics, setCjVerificationDiagnostics] = useState<CjVerificationDiagnostics | null>(null);
-  const [cjVerificationLoading, setCjVerificationLoading] = useState(false);
-  const [cjVerificationError, setCjVerificationError] = useState<string | null>(null);
   const [paypalAdminConfig, setPaypalAdminConfig] = useState<PayPalAdminConfig | null>(null);
   const [paypalAdminLoading, setPaypalAdminLoading] = useState(false);
   const [paypalAdminError, setPaypalAdminError] = useState<string | null>(null);
@@ -712,50 +684,6 @@ export default function PlatformAdminDashboard() {
       setTestProductError(err?.message || 'Failed to create the PayPal test product.');
     } finally {
       setSavingTestProduct(false);
-    }
-  };
-
-  const runCjVerificationDiagnostics = async () => {
-    try {
-      setCjVerificationLoading(true);
-      setCjVerificationError(null);
-      setCjVerificationDiagnostics(null);
-
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        throw sessionError;
-      }
-
-      const token = sessionData?.session?.access_token;
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const res = await fetch('/.netlify/functions/cj-verify-mappings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ limit: 25 }),
-      });
-
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(String(payload?.error || 'CJ mapping verification failed'));
-      }
-
-      setCjVerificationDiagnostics({
-        checked: Number(payload?.summary?.checked || 0),
-        verified: Number(payload?.summary?.verified || 0),
-        failed: Number(payload?.summary?.failed || 0),
-        lastRunAt: new Date().toISOString(),
-        results: Array.isArray(payload?.results) ? payload.results : [],
-      });
-    } catch (err: any) {
-      setCjVerificationError(err?.message || 'CJ mapping verification failed.');
-    } finally {
-      setCjVerificationLoading(false);
     }
   };
 
@@ -1845,17 +1773,6 @@ export default function PlatformAdminDashboard() {
                 Analytics
               </button>
               <button
-                onClick={() => setActiveTab('cj-import')}
-                className={`px-6 py-2 rounded-md transition-colors flex items-center gap-2 ${
-                  activeTab === 'cj-import'
-                    ? 'bg-amber-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                CJ Catalog
-              </button>
-              <button
                 onClick={() => setActiveTab('eggracks')}
                 className={`px-6 py-2 rounded-md transition-colors flex items-center gap-2 ${
                   activeTab === 'eggracks'
@@ -2508,12 +2425,6 @@ export default function PlatformAdminDashboard() {
 
           {activeTab === 'moderation' && <ContentModerationDashboard />}
 
-          {activeTab === 'cj-import' && (
-            <div className="mt-4">
-              <CJAdminCatalogPage embedded />
-            </div>
-          )}
-
           {activeTab === 'eggracks' && (
             <div className="mt-4 rounded-lg bg-white shadow-sm p-6">
               <div className="max-w-3xl space-y-4">
@@ -2552,7 +2463,7 @@ export default function PlatformAdminDashboard() {
               <ManualFulfillmentQueue
                 scope="admin"
                 title="Admin Order Fulfillment"
-                subtitle="Open an order number to see product descriptions, SKU/SPU/CJ numbers, shipping details, and move it from needs ordering to ordered to shipped."
+                subtitle="Open an order number to see product descriptions, supplier identifiers, shipping details, and move it from needs ordering to ordered to shipped."
               />
             </div>
           )}
@@ -2958,96 +2869,6 @@ export default function PlatformAdminDashboard() {
               </section>
 
               <section className="bg-white rounded-lg shadow-sm p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">CJ Mapping Verification</h3>
-                    <p className="text-sm text-gray-600">
-                      Verifies recent CJ imports against the CJ API using stored product and variant identifiers.
-                    </p>
-                  </div>
-                  <button
-                    onClick={runCjVerificationDiagnostics}
-                    className="bg-indigo-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50"
-                    disabled={cjVerificationLoading}
-                  >
-                    {cjVerificationLoading ? 'Verifying...' : 'Run Verification'}
-                  </button>
-                </div>
-
-                {cjVerificationError && (
-                  <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {cjVerificationError}
-                  </div>
-                )}
-
-                {cjVerificationDiagnostics ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="rounded-lg border border-gray-200 p-4">
-                        <div className="text-xs uppercase text-gray-500">Checked</div>
-                        <div className="mt-2 text-2xl font-bold text-gray-900">{cjVerificationDiagnostics.checked}</div>
-                      </div>
-                      <div className="rounded-lg border border-gray-200 p-4">
-                        <div className="text-xs uppercase text-gray-500">Verified</div>
-                        <div className="mt-2 text-2xl font-bold text-emerald-700">{cjVerificationDiagnostics.verified}</div>
-                      </div>
-                      <div className="rounded-lg border border-gray-200 p-4">
-                        <div className="text-xs uppercase text-gray-500">Failed</div>
-                        <div className="mt-2 text-2xl font-bold text-red-700">{cjVerificationDiagnostics.failed}</div>
-                      </div>
-                      <div className="rounded-lg border border-gray-200 p-4">
-                        <div className="text-xs uppercase text-gray-500">Last Run</div>
-                        <div className="mt-2 text-sm font-semibold text-gray-900">
-                          {new Date(cjVerificationDiagnostics.lastRunAt).toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg border border-gray-200 overflow-hidden">
-                      <div className="grid grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr] gap-4 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        <div>Product</div>
-                        <div>CJ Product</div>
-                        <div>Variant</div>
-                        <div>Status</div>
-                      </div>
-                      <div className="divide-y divide-gray-200">
-                        {cjVerificationDiagnostics.results.slice(0, 8).map((item) => (
-                          <div
-                            key={`${item.beezio_product_id}-${item.cj_variant_id || item.cj_product_id || item.title}`}
-                            className="grid grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr] gap-4 px-4 py-3 text-sm"
-                          >
-                            <div>
-                              <div className="font-semibold text-gray-900">{item.title}</div>
-                              <div className="text-xs text-gray-500">{item.beezio_product_id}</div>
-                            </div>
-                            <div className="text-gray-700">
-                              <div>{item.cj_product_id || item.cj_product_sku || 'missing'}</div>
-                              <div className="text-xs text-gray-500">
-                                Match: {item.verification?.matched_pid || item.verification?.matched_product_sku || item.verification?.matched_product_spu || 'n/a'}
-                              </div>
-                            </div>
-                            <div className="text-gray-700">
-                              <div>{item.cj_variant_id || 'n/a'}</div>
-                              <div className="text-xs text-gray-500">
-                                Match: {item.verification?.matched_variant_id || item.verification?.matched_variant_sku || 'n/a'}
-                              </div>
-                            </div>
-                            <div className={item.verification?.verified ? 'text-emerald-700 font-semibold' : 'text-red-700 font-semibold'}>
-                              {item.verification?.verified ? 'Verified' : item.verification?.error || 'Failed'}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-600">
-                    Run verification to confirm the stored CJ product and variant mappings still resolve against the CJ API.
-                  </div>
-                )}
-              </section>
-
-              <section className="bg-white rounded-lg shadow-sm p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">API Key Management</h3>
                 <input
                   type="text"
@@ -3105,12 +2926,6 @@ export default function PlatformAdminDashboard() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Admin Tools</h3>
                 <div className="flex flex-wrap gap-3">
                   <Link
-                    to="/admin/cj-import"
-                    className="inline-flex items-center px-5 py-2 rounded-lg bg-amber-500 text-black font-semibold hover:bg-amber-600 transition-colors"
-                  >
-                    Open CJ Catalog
-                  </Link>
-                  <Link
                     to="/admin/products"
                     className="inline-flex items-center px-5 py-2 rounded-lg bg-gray-900 text-amber-200 font-semibold hover:bg-black transition-colors"
                   >
@@ -3145,12 +2960,6 @@ export default function PlatformAdminDashboard() {
                     className="inline-flex items-center px-5 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors"
                   >
                     Messaging Smoke Test
-                  </Link>
-                  <Link
-                    to="/admin/cj-import"
-                    className="inline-flex items-center px-5 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors"
-                  >
-                    CJ USA Catalog
                   </Link>
                   <button
                     type="button"

@@ -164,7 +164,7 @@ export default function RecruiterDashboard() {
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg p-6 text-white">
         <h2 className="text-2xl font-bold mb-2">💰 Build Your Influencer Earnings</h2>
         <p className="text-purple-100">
-          Invite partners and earn a 5% commission on completed sales tied to your referrals.
+          Refer sellers and affiliates and earn the applicable fixed influencer bonus on completed sales tied to your referrals.
         </p>
       </div>
 
@@ -176,7 +176,7 @@ export default function RecruiterDashboard() {
             <Users className="w-5 h-5 text-blue-600" />
           </div>
           <p className="text-3xl font-bold text-gray-900">{stats.totalRecruits}</p>
-          <p className="text-xs text-gray-600 mt-1">Partners you referred</p>
+          <p className="text-xs text-gray-600 mt-1">Sellers and affiliates you referred</p>
         </div>
 
         <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-400 rounded-lg p-6">
@@ -205,7 +205,7 @@ export default function RecruiterDashboard() {
           Your Influencer Link
         </h3>
         <p className="text-sm text-gray-600 mb-3">
-          Share this link to invite partners. You earn 5% commission on completed sales attributed to partners you referred.
+          Share this link to invite sellers and affiliates. An eligible referral slot pays $0.50 per item below $25 or $1.00 per item at $25 or more.
         </p>
         <div className="flex gap-3 items-center">
           <input
@@ -226,9 +226,9 @@ export default function RecruiterDashboard() {
           <h4 className="font-semibold text-gray-900 mb-2">💡 How It Works:</h4>
           <ul className="text-sm text-gray-600 space-y-1">
             <li>• Share your link on social media, email, or anywhere</li>
-            <li>• People sign up as partners using your link</li>
+            <li>• Sellers and affiliates sign up using your link</li>
             <li>• They promote products and earn full commissions (set by sellers)</li>
-            <li>• You earn 5% commission on completed sales tied to those partners</li>
+            <li>• You earn the applicable fixed referral bonus on eligible completed sales</li>
             <li>• Earnings are issued after the standard payout review period</li>
           </ul>
         </div>
@@ -237,7 +237,7 @@ export default function RecruiterDashboard() {
       {/* Recruits Table */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="text-lg font-semibold text-gray-900">Partners Referred ({stats.totalRecruits})</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Users Referred ({stats.totalRecruits})</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -293,7 +293,7 @@ export default function RecruiterDashboard() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Partner</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referred User</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               </tr>

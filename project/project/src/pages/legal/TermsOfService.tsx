@@ -2,7 +2,7 @@ import React from 'react';
 import LegalPageLayout from './LegalPageLayout';
 
 const TermsOfService: React.FC = () => (
-  <LegalPageLayout title="Terms of Service" updated="June 13, 2026">
+  <LegalPageLayout title="Terms of Service" updated="July 13, 2026">
     <section>
       <h2 className="text-xl font-semibold text-gray-900">1. Marketplace Facilitator Role</h2>
       <p>
@@ -55,7 +55,7 @@ const TermsOfService: React.FC = () => (
       <h2 className="text-xl font-semibold text-gray-900">6. Payments and Payout Timing</h2>
       <ul className="list-disc list-inside space-y-2">
         <li>Buyers are charged at checkout using approved payment providers.</li>
-        <li>Payouts are issued after a standard risk review period of up to 14 days.</li>
+        <li>Standard earnings have a 14-day hold and are then eligible for a scheduled payday on the 15th or last calendar day of the month.</li>
         <li>Payouts may be delayed if disputes, chargebacks, or suspected fraud occur.</li>
       </ul>
     </section>

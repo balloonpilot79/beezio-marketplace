@@ -443,13 +443,36 @@ const handler: Handler = async (event) => {
       }
     }
 
-    const [{ data: pagesData, error: pagesError }, insuranceListings] = await Promise.all([
+    const [
+      { data: pagesData, error: pagesError },
+      { data: collectionsData, error: collectionsError },
+      { data: placementsData, error: placementsError },
+      insuranceListings,
+    ] = await Promise.all([
       pagesPromise,
+      supabaseAdmin
+        .from('store_collections')
+        .select('id,name,slug,description,image_url,display_order,is_visible')
+        .in('owner_id', sellerAliases)
+        .eq('is_visible', true)
+        .order('display_order', { ascending: true }),
+      supabaseAdmin
+        .from('store_product_placements')
+        .select('product_id,placement_type,collection_id,custom_page_id,section_key,display_order,is_visible')
+        .in('owner_id', sellerAliases)
+        .eq('is_visible', true)
+        .order('display_order', { ascending: true }),
       buildStoreInsuranceListings(supabaseAdmin, mergedSeller.location, 6),
     ]);
 
     if (pagesError) {
       console.warn('[public-store-get] custom pages lookup error (non-fatal):', (pagesError as any)?.message || String(pagesError));
+    }
+    if (collectionsError) {
+      console.warn('[public-store-get] collections lookup error (non-fatal):', (collectionsError as any)?.message || String(collectionsError));
+    }
+    if (placementsError) {
+      console.warn('[public-store-get] placements lookup error (non-fatal):', (placementsError as any)?.message || String(placementsError));
     }
 
     const responseBody = {
@@ -460,6 +483,8 @@ const handler: Handler = async (event) => {
       products: orderedProducts,
       insurance_listings: insuranceListings,
       custom_pages: pagesData || [],
+      collections: collectionsData || [],
+      product_placements: placementsData || [],
     };
 
     // Cache hot stores briefly in-memory to avoid repeat Supabase calls.

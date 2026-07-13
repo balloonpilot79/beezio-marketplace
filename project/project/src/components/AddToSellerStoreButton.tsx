@@ -5,6 +5,11 @@ import { supabase } from '../lib/supabase';
 import { resolveProfileIdForUser } from '../utils/resolveProfileId';
 import { addSellerStoreProduct } from '../api/sellerStore';
 import { getPayoutSettingsHref, hasStoredPayoutEmail } from '../utils/payoutSetup';
+import StorePlacementPicker, {
+  EMPTY_STORE_PLACEMENT,
+  StorePlacementSelection,
+} from './StorePlacementPicker';
+import { saveStoreProductPlacement } from '../utils/storeProductPlacement';
 
 interface AddToSellerStoreButtonProps {
   productId: string;
@@ -32,6 +37,8 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
   const [isOwnerProduct, setIsOwnerProduct] = useState(false);
   const [payoutReady, setPayoutReady] = useState(false);
   const [payoutChecked, setPayoutChecked] = useState(false);
+  const [showPlacementModal, setShowPlacementModal] = useState(false);
+  const [placement, setPlacement] = useState<StorePlacementSelection>({ ...EMPTY_STORE_PLACEMENT });
 
   useEffect(() => {
     let cancelled = false;
@@ -225,11 +232,19 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
       setIsLoading(true);
 
       // Prefer server endpoint (more robust than client-side RLS across deployments)
-      await addSellerStoreProduct(productId, { isFeatured: false });
+      await addSellerStoreProduct(productId, { isFeatured: placement.featureOnHomepage });
+
+      try {
+        await saveStoreProductPlacement(resolvedSellerId, productId, placement);
+      } catch (placementError) {
+        console.warn('[AddToSellerStoreButton] placement save failed (product remains added)', placementError);
+        alert('Product added to All Products, but its additional store location could not be saved.');
+      }
 
       // Best-effort: create a share link + QR target for the dashboard.
       await ensureShareLink();
       setIsAdded(true);
+      setShowPlacementModal(false);
       if (payoutChecked && !payoutReady) {
         const shouldRedirect = window.confirm(
           'Product added to your store. You can keep selling, but payouts stay on hold until you connect PayPal. Go to payout settings now?'
@@ -313,55 +328,102 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
 
   if (variant === 'icon') {
     return (
+      <>
+        <button
+          type="button"
+          onClick={(event) => {
+            stopCardNavigationClick(event);
+            if (isAdded && effectiveShowRemove) void handleRemove();
+            else setShowPlacementModal(true);
+          }}
+          onMouseDown={stopCardNavigation}
+          onPointerDown={stopCardNavigation}
+          onTouchStart={stopCardNavigation}
+          disabled={isLoading || (isAdded && !effectiveShowRemove)}
+          title={isAdded ? 'Remove from My Store' : 'Add to My Store'}
+          className={
+            `h-10 w-10 rounded-full flex items-center justify-center border shadow-sm transition-colors ` +
+            (isAdded
+              ? effectiveShowRemove
+                ? 'bg-green-600 border-green-600 text-white hover:bg-green-700'
+                : 'bg-green-600 border-green-600 text-white'
+              : 'bg-white border-gray-200 text-gray-900 hover:border-[#ffcb05]')
+          }
+        >
+          {isAdded ? <Check size={iconSize} /> : <Plus size={iconSize} />}
+        </button>
+        {renderPlacementModal()}
+      </>
+    );
+  }
+
+  return (
+    <>
       <button
         type="button"
         onClick={(event) => {
           stopCardNavigationClick(event);
-          void (isAdded && effectiveShowRemove ? handleRemove() : handleAdd());
+          if (isAdded && effectiveShowRemove) void handleRemove();
+          else setShowPlacementModal(true);
         }}
         onMouseDown={stopCardNavigation}
         onPointerDown={stopCardNavigation}
         onTouchStart={stopCardNavigation}
         disabled={isLoading || (isAdded && !effectiveShowRemove)}
-        title={isAdded ? 'Remove from My Store' : 'Add to My Store'}
         className={
-          `h-10 w-10 rounded-full flex items-center justify-center border shadow-sm transition-colors ` +
+          `inline-flex items-center gap-2 rounded-lg px-4 py-2 font-semibold border transition-colors ` +
           (isAdded
             ? effectiveShowRemove
               ? 'bg-green-600 border-green-600 text-white hover:bg-green-700'
               : 'bg-green-600 border-green-600 text-white'
-            : 'bg-white border-gray-200 text-gray-900 hover:border-[#ffcb05]')
+            : 'bg-white border-gray-300 text-gray-900 hover:border-[#ffcb05]')
         }
       >
         {isAdded ? <Check size={iconSize} /> : <Plus size={iconSize} />}
+        {isAdded ? (addedText || 'In My Store') : 'Add to Store'}
       </button>
+      {renderPlacementModal()}
+    </>
+  );
+
+  function renderPlacementModal() {
+    if (!showPlacementModal || !resolvedSellerId) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(event) => event.stopPropagation()}>
+        <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+          <div className="border-b border-slate-200 p-5">
+            <h3 className="text-xl font-bold text-slate-900">Add product to your store</h3>
+            <p className="mt-1 text-sm text-slate-600">Choose its locations now, or leave it in All Products.</p>
+          </div>
+          <div className="p-5">
+            <StorePlacementPicker
+              ownerId={resolvedSellerId}
+              ownerType="seller"
+              value={placement}
+              onChange={setPlacement}
+            />
+          </div>
+          <div className="flex gap-3 border-t border-slate-200 p-5">
+            <button
+              type="button"
+              onClick={() => setShowPlacementModal(false)}
+              className="flex-1 rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleAdd()}
+              disabled={isLoading}
+              className="flex-1 rounded-lg bg-[#ffcb05] px-4 py-2 font-bold text-[#131921] disabled:opacity-50"
+            >
+              {isLoading ? 'Adding...' : 'Add to Store'}
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
-
-  return (
-    <button
-      type="button"
-      onClick={(event) => {
-        stopCardNavigationClick(event);
-        void (isAdded && effectiveShowRemove ? handleRemove() : handleAdd());
-      }}
-      onMouseDown={stopCardNavigation}
-      onPointerDown={stopCardNavigation}
-      onTouchStart={stopCardNavigation}
-      disabled={isLoading || (isAdded && !effectiveShowRemove)}
-      className={
-        `inline-flex items-center gap-2 rounded-lg px-4 py-2 font-semibold border transition-colors ` +
-        (isAdded
-          ? effectiveShowRemove
-            ? 'bg-green-600 border-green-600 text-white hover:bg-green-700'
-            : 'bg-green-600 border-green-600 text-white'
-          : 'bg-white border-gray-300 text-gray-900 hover:border-[#ffcb05]')
-      }
-    >
-      {isAdded ? <Check size={iconSize} /> : <Plus size={iconSize} />}
-      {isAdded ? (addedText || 'In My Store') : 'Add to Store'}
-    </button>
-  );
 };
 
 export default AddToSellerStoreButton;

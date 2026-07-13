@@ -10,8 +10,8 @@ const steps = [
     detail: 'Sellers create product pages, set pricing, and manage availability from one dashboard.',
   },
   {
-    title: '2. Partners and influencers share',
-    detail: 'Partners and influencers share storefront links, product picks, and campaigns to their audiences.',
+    title: '2. Affiliates and influencers share',
+    detail: 'Affiliates share products through their storefronts and campaigns, while influencers refer sellers and affiliates.',
   },
   {
     title: '3. Buyers checkout on Beezio',
