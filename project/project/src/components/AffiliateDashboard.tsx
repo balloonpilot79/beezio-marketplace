@@ -280,7 +280,7 @@ const AffiliateDashboard: React.FC = () => {
         >
           {requestingPayout ? 'Requesting...' : 'Add payout request'}
         </button>
-        <div className="text-xs text-gray-500 mt-2">Payouts run bi-monthly (1st & 15th UTC).</div>
+        <div className="text-xs text-gray-500 mt-2">Payouts run on the 15th and the last day of each month.</div>
         {earnings?.next_release_at ? (
           <div className="text-xs text-gray-500 mt-1">Next hold release: {new Date(earnings.next_release_at).toLocaleString()}</div>
         ) : null}

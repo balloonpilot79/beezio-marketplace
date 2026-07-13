@@ -289,7 +289,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
     const nextBreakdown = calculatePricing({
       sellerDesiredAmount: pricingSeed.sellerAmount,
-      affiliateRate: pricingSeed.affiliateAmount,
+      affiliateRate: formData.affiliate_enabled ? pricingSeed.affiliateAmount : 0,
       affiliateType: pricingSeed.affiliateType === 'flat' ? 'flat_rate' : 'percentage',
       shippingIncludedAmount: (formData as any).shipping_included_in_price ? Number(formData.shipping_price) || 0 : 0,
       referralRate: 0,
@@ -298,7 +298,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     });
 
     setPricingBreakdown(nextBreakdown);
-  }, [formData.shipping_included_in_price, formData.shipping_price, formData.title, pricingSeed]);
+  }, [formData.affiliate_enabled, formData.shipping_included_in_price, formData.shipping_price, formData.title, pricingSeed]);
 
   // Use hard navigation from success CTAs to avoid rare router state stalls after save.
   const goTo = (path: string) => {
@@ -1021,6 +1021,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       abortSubmit('Please configure your pricing first');
       return;
     }
+    const affiliateEnabled = formData.affiliate_enabled !== false;
     if (!formData.title.trim()) {
       abortSubmit('Please add a product title');
       return;
@@ -1195,9 +1196,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             title: formData.title,
             description: formData.description,
             price: pricingBreakdown.listingPrice,
-            commission_rate: pricingBreakdown.affiliateType === 'percentage' ? pricingBreakdown.affiliateRate : 0,
+            commission_rate: affiliateEnabled && pricingBreakdown.affiliateType === 'percentage' ? pricingBreakdown.affiliateRate : 0,
             commission_type: pricingBreakdown.affiliateType,
-            flat_commission_amount: pricingBreakdown.affiliateType === 'flat_rate' ? pricingBreakdown.affiliateAmount : 0,
+            flat_commission_amount: affiliateEnabled && pricingBreakdown.affiliateType === 'flat_rate' ? pricingBreakdown.affiliateAmount : 0,
             images: formData.images,
             videos: formData.videos,
             tags: mergedTags,
@@ -1229,12 +1230,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             digital_download_limit: isDigitalProduct ? Math.max(1, Number((formData as any).digital_download_limit || 1)) : null,
             digital_download_instructions: isDigitalProduct ? (formData as any).digital_download_instructions : null,
             digital_return_policy_notice: isDigitalProduct ? (formData as any).digital_return_policy_notice : null,
-            affiliate_enabled: true,
+            affiliate_enabled: affiliateEnabled,
             affiliate_commission_type: pricingBreakdown.affiliateType === 'flat_rate' ? 'flat' : 'percent',
-            affiliate_commission_value: pricingBreakdown.affiliateRate,
+            affiliate_commission_value: affiliateEnabled ? pricingBreakdown.affiliateRate : 0,
              calculated_customer_price: pricingBreakdown.listingPrice,
-             status: requiresManualReview ? 'draft' : 'active',
-             is_promotable: !requiresManualReview,
+             status: requiresManualReview ? 'draft' : affiliateEnabled ? 'active' : 'store_only',
+             is_promotable: affiliateEnabled && !requiresManualReview,
              is_active: !requiresManualReview,
              has_variants: Boolean(variantConfig.enabled),
              ...importPayloadFields,
@@ -1314,9 +1315,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             title: formData.title,
             description: formData.description,
             price: pricingBreakdown.listingPrice,
-            commission_rate: pricingBreakdown.affiliateType === 'percentage' ? pricingBreakdown.affiliateRate : 0,
+            commission_rate: affiliateEnabled && pricingBreakdown.affiliateType === 'percentage' ? pricingBreakdown.affiliateRate : 0,
             commission_type: pricingBreakdown.affiliateType,
-            flat_commission_amount: pricingBreakdown.affiliateType === 'flat_rate' ? pricingBreakdown.affiliateAmount : 0,
+            flat_commission_amount: affiliateEnabled && pricingBreakdown.affiliateType === 'flat_rate' ? pricingBreakdown.affiliateAmount : 0,
             images: formData.images,
             videos: formData.videos,
             tags: mergedTags,
@@ -1348,12 +1349,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             digital_download_limit: isDigitalProduct ? Math.max(1, Number((formData as any).digital_download_limit || 1)) : null,
             digital_download_instructions: isDigitalProduct ? (formData as any).digital_download_instructions : null,
             digital_return_policy_notice: isDigitalProduct ? (formData as any).digital_return_policy_notice : null,
-            affiliate_enabled: true,
+            affiliate_enabled: affiliateEnabled,
             affiliate_commission_type: pricingBreakdown.affiliateType === 'flat_rate' ? 'flat' : 'percent',
-            affiliate_commission_value: pricingBreakdown.affiliateRate,
+            affiliate_commission_value: affiliateEnabled ? pricingBreakdown.affiliateRate : 0,
              calculated_customer_price: pricingBreakdown.listingPrice,
-             status: requiresManualReview ? 'draft' : 'active',
-             is_promotable: !requiresManualReview,
+             status: requiresManualReview ? 'draft' : affiliateEnabled ? 'active' : 'store_only',
+             is_promotable: affiliateEnabled && !requiresManualReview,
              is_active: !requiresManualReview,
              has_variants: Boolean(variantConfig.enabled),
              ...importPayloadFields,

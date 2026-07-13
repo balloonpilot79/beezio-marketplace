@@ -184,7 +184,11 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     askTotal = round2(askTotal + sellerLine);
     listingSubtotal = round2(listingSubtotal + listingUnit * quantity);
     partnerTotal = round2(partnerTotal + partnerLine);
-    platformFeeGrossTotal = round2(platformFeeGrossTotal + beezioFeeGrossLine);
+    // Low-price items use the single $2 flat Beezio fee tracked below. Do not
+    // also add that fee to the regular platform bucket or it is counted twice.
+    if (!isLowPriceItem) {
+      platformFeeGrossTotal = round2(platformFeeGrossTotal + beezioFeeGrossLine);
+    }
     influencerBonusPoolPerSlot = round2(influencerBonusPoolPerSlot + influencerPerSlotLine);
     if (isLowPriceItem) {
       lowPriceListingSubtotal = round2(lowPriceListingSubtotal + (listingUnit * quantity));

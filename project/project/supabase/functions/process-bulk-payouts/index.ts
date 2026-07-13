@@ -100,10 +100,11 @@ serve(async (req) => {
     const onlyUserIdRaw = (body as any)?.only_user_id ?? (body as any)?.onlyUserId ?? null
     const onlyUserId = typeof onlyUserIdRaw === 'string' && onlyUserIdRaw.trim() ? onlyUserIdRaw.trim() : null
 
-    // Bi-monthly payout schedule: 1st and 15th of each month (UTC).
+    // Payout schedule: 15th and final calendar day of each month.
     const now = new Date()
     const day = now.getUTCDate()
-    const isPayoutDay = day === 1 || day === 15
+    const lastDayOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate()
+    const isPayoutDay = day === 15 || day === lastDayOfMonth
 
     // Authorization: either an admin JWT, or a cron secret header.
     const cronSecret = (Deno.env.get('BEEZIO_PAYOUT_CRON_SECRET') ?? '').trim()
@@ -556,7 +557,7 @@ serve(async (req) => {
       success: true,
       batchNumber,
       provider: 'paypal',
-      schedule: { bi_monthly_days_utc: [1, 15], forced: force, dry_run: dryRun },
+      schedule: { days: ['15th', 'last_day_of_month'], forced: force, dry_run: dryRun },
       paypal_api_used: usePaypalApi,
       paypal_response: paypalResponse,
       results: {
