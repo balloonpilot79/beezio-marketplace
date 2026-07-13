@@ -1,4 +1,7 @@
-export const REFERRER_BONUS_THRESHOLD = 20;
+// Each sale reserves two lifetime influencer slots: one for the seller's
+// recruiter and one for the affiliate's recruiter.  The slot value changes at
+// the same $25 boundary as Beezio's platform-fee policy.
+export const REFERRER_BONUS_THRESHOLD = 25;
 export const REFERRER_BONUS_UNDER_THRESHOLD = 0.5;
 export const REFERRER_BONUS_AT_OR_ABOVE_THRESHOLD = 1;
 export const INFLUENCER_BONUS_SLOT_COUNT = 2;

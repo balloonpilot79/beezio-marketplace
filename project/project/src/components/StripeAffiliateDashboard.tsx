@@ -323,7 +323,7 @@ export const StripeAffiliateDashboard: React.FC = () => {
       {beezioEarnings && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900">Payouts</h3>
-          <p className="text-sm text-gray-600">Payouts run bi-monthly (1st & 15th UTC). You can optionally add a payout request for audit/visibility.</p>
+          <p className="text-sm text-gray-600">Payouts run on the 15th and the last day of each month. You can optionally add a payout request for audit/visibility.</p>
 
           <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-gray-50 rounded-lg p-4">
@@ -495,7 +495,7 @@ export const StripeAffiliateDashboard: React.FC = () => {
           <div>
             <h4 className="font-medium text-blue-900 mb-1">Payment Schedule</h4>
             <p className="text-blue-700 text-sm mb-2">
-              Payouts are processed bi-monthly on the 1st and 15th (UTC) for both affiliates and sellers (seller payouts may be held until shipped + 14 days).
+              Payouts are processed on the 15th and the last day of each month for affiliates, sellers, and influencers after the 14-day hold.
             </p>
             <ul className="text-blue-700 text-sm space-y-1">
               <li>• Minimum payout: $25.00</li>

@@ -83,7 +83,7 @@ describe('buildPayPalLedgerPlan', () => {
       items: [
         {
           ...baseInput.items[0],
-          seller_ask_amount: 21,
+          seller_ask_amount: 25,
           computed_listing_price: 28.86,
           partner_rate: 0.1,
         },
@@ -91,12 +91,11 @@ describe('buildPayPalLedgerPlan', () => {
     });
 
     expect(plan.aggregate.influencerEarnings).toBe(0);
-    expect(plan.aggregate.beezioFeeGross).toBeCloseTo(4, 2);
-    expect(plan.aggregate.beezioFeeNet).toBeCloseTo(4, 2);
+    expect(plan.aggregate.beezioFeeGross).toBeCloseTo(3.75, 2);
     expect(plan.aggregate.notes).toContain('influencer_bonus_pool_total=2.00');
   });
 
-  it('keeps the unassigned under-$20 influencer reserve with Beezio when no influencer is attached', () => {
+  it('keeps the unassigned under-$25 influencer reserve with Beezio when no influencer is attached', () => {
     const plan = buildPayPalLedgerPlan({
       ...baseInput,
       partnerId: 'affiliate-1',
@@ -139,51 +138,50 @@ describe('buildPayPalLedgerPlan', () => {
     ]);
   });
 
-  it('applies seller influencer under $20 bonus at $0.50 per qualified item', () => {
+  it('applies seller influencer under $25 bonus at $0.50 per qualified item', () => {
     const plan = buildPayPalLedgerPlan({
       ...baseInput,
       sellerInfluencerId: 'influencer-1',
       items: [
         {
           ...baseInput.items[0],
-          seller_ask_amount: 19.99,
+          seller_ask_amount: 24.99,
           computed_listing_price: 24.58,
         },
       ],
     });
 
     expect(plan.aggregate.influencerEarnings).toBe(0.5);
-    expect(plan.aggregate.beezioFeeGross).toBeCloseTo(4, 2);
-    expect(plan.aggregate.beezioFeeNet).toBeCloseTo(4, 2);
+    expect(plan.aggregate.beezioFeeGross).toBeCloseTo(2, 2);
+    expect(plan.aggregate.beezioFeeNet).toBeCloseTo(2, 2);
     expect(plan.payees.map((row) => `${row.payeeRole}:${row.amount}`)).toEqual([
-      'SELLER:19.99',
+      'SELLER:24.99',
       'INFLUENCER:0.5',
     ]);
   });
 
-  it('applies seller influencer $20 and over bonus at $1.00 per qualified item', () => {
+  it('applies seller influencer $25 and over bonus at $1.00 per qualified item', () => {
     const plan = buildPayPalLedgerPlan({
       ...baseInput,
       sellerInfluencerId: 'influencer-1',
       items: [
         {
           ...baseInput.items[0],
-          seller_ask_amount: 20,
+          seller_ask_amount: 25,
           computed_listing_price: 25.63,
         },
       ],
     });
 
     expect(plan.aggregate.influencerEarnings).toBe(1);
-    expect(plan.aggregate.beezioFeeGross).toBeCloseTo(4, 2);
-    expect(plan.aggregate.beezioFeeNet).toBeCloseTo(4, 2);
+    expect(plan.aggregate.beezioFeeGross).toBeCloseTo(3.75, 2);
     expect(plan.payees.map((row) => `${row.payeeRole}:${row.amount}`)).toEqual([
-      'SELLER:20',
+      'SELLER:25',
       'INFLUENCER:1',
     ]);
   });
 
-  it('applies affiliate influencer under $20 bonus at $0.50 per qualified item', () => {
+  it('applies affiliate influencer under $25 bonus at $0.50 per qualified item', () => {
     const plan = buildPayPalLedgerPlan({
       ...baseInput,
       partnerId: 'affiliate-1',
@@ -191,25 +189,25 @@ describe('buildPayPalLedgerPlan', () => {
       items: [
         {
           ...baseInput.items[0],
-          seller_ask_amount: 19.99,
+          seller_ask_amount: 24.99,
           computed_listing_price: 26.66,
           partner_rate: 0.1,
         },
       ],
     });
 
-    expect(plan.aggregate.partnerEarnings).toBe(2);
+    expect(plan.aggregate.partnerEarnings).toBe(2.5);
     expect(plan.aggregate.influencerEarnings).toBe(0.5);
-    expect(plan.aggregate.beezioFeeGross).toBeCloseTo(4, 2);
-    expect(plan.aggregate.beezioFeeNet).toBeCloseTo(4, 2);
+    expect(plan.aggregate.beezioFeeGross).toBeCloseTo(2, 2);
+    expect(plan.aggregate.beezioFeeNet).toBeCloseTo(2, 2);
     expect(plan.payees.map((row) => `${row.payeeRole}:${row.amount}`)).toEqual([
-      'SELLER:19.99',
-      'PARTNER:2',
+      'SELLER:24.99',
+      'PARTNER:2.5',
       'INFLUENCER:0.5',
     ]);
   });
 
-  it('applies affiliate influencer $20 and over bonus at $1.00 per qualified item', () => {
+  it('applies affiliate influencer $25 and over bonus at $1.00 per qualified item', () => {
     const plan = buildPayPalLedgerPlan({
       ...baseInput,
       partnerId: 'affiliate-1',
@@ -217,20 +215,19 @@ describe('buildPayPalLedgerPlan', () => {
       items: [
         {
           ...baseInput.items[0],
-          seller_ask_amount: 20,
+          seller_ask_amount: 25,
           computed_listing_price: 27.71,
           partner_rate: 0.1,
         },
       ],
     });
 
-    expect(plan.aggregate.partnerEarnings).toBe(2);
+    expect(plan.aggregate.partnerEarnings).toBe(2.5);
     expect(plan.aggregate.influencerEarnings).toBe(1);
-    expect(plan.aggregate.beezioFeeGross).toBeCloseTo(4, 2);
-    expect(plan.aggregate.beezioFeeNet).toBeCloseTo(4, 2);
+    expect(plan.aggregate.beezioFeeGross).toBeCloseTo(3.75, 2);
     expect(plan.payees.map((row) => `${row.payeeRole}:${row.amount}`)).toEqual([
-      'SELLER:20',
-      'PARTNER:2',
+      'SELLER:25',
+      'PARTNER:2.5',
       'INFLUENCER:1',
     ]);
   });
@@ -244,7 +241,7 @@ describe('buildPayPalLedgerPlan', () => {
       items: [
         {
           ...baseInput.items[0],
-          seller_ask_amount: 21,
+          seller_ask_amount: 25,
           computed_listing_price: 28.86,
           partner_rate: 0.1,
         },
@@ -253,11 +250,10 @@ describe('buildPayPalLedgerPlan', () => {
 
     expect(plan.aggregate.influencerEarnings).toBe(2);
     expect(plan.aggregate.influencerId).toBe(null);
-    expect(plan.aggregate.beezioFeeGross).toBeCloseTo(4, 2);
-    expect(plan.aggregate.beezioFeeNet).toBeCloseTo(4, 2);
+    expect(plan.aggregate.beezioFeeGross).toBeCloseTo(3.75, 2);
     expect(plan.payees.map((row) => `${row.payeeUserId}:${row.payeeRole}:${row.amount}`)).toEqual([
-      'seller-1:SELLER:21',
-      'affiliate-1:PARTNER:2.1',
+      'seller-1:SELLER:25',
+      'affiliate-1:PARTNER:2.5',
       'seller-influencer-1:INFLUENCER:1',
       'affiliate-influencer-1:INFLUENCER:1',
     ]);
@@ -333,7 +329,7 @@ describe('buildPayPalLedgerPlan', () => {
       input: {
         ...baseInput,
         sellerInfluencerId: 'seller-influencer-1',
-        items: [{ ...baseInput.items[0], seller_ask_amount: 20, computed_listing_price: 25.63 }],
+        items: [{ ...baseInput.items[0], seller_ask_amount: 25, computed_listing_price: 30.63 }],
       },
       expectedInfluencerId: 'seller-influencer-1',
       expectedInfluencerAmount: 1,
@@ -357,7 +353,7 @@ describe('buildPayPalLedgerPlan', () => {
         partnerId: 'affiliate-1',
         sellerInfluencerId: 'seller-influencer-1',
         partnerInfluencerId: 'affiliate-influencer-1',
-        items: [{ ...baseInput.items[0], seller_ask_amount: 20, computed_listing_price: 27.71, partner_rate: 0.1 }],
+        items: [{ ...baseInput.items[0], seller_ask_amount: 25, computed_listing_price: 33.21, partner_rate: 0.1 }],
       },
       expectedInfluencerId: null,
       expectedInfluencerAmount: 2,

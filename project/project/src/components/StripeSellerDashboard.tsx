@@ -298,7 +298,7 @@ export const StripeSellerDashboard: React.FC = () => {
                 <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-semibold text-gray-900">Beezio Earnings</h4>
-                      <p className="text-sm text-gray-600">Payouts run bi-monthly (1st & 15th UTC). Seller funds may be held until shipped + 14 days.</p>
+                      <p className="text-sm text-gray-600">Payouts run on the 15th and the last day of each month after the 14-day hold.</p>
                     </div>
                   <div className="text-right text-sm text-gray-700">
                     <div>Available: <span className="font-semibold">${beezioEarnings.current_balance.toFixed(2)}</span></div>
