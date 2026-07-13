@@ -867,7 +867,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
           Affiliate Dashboard
         </h1>
         <p className="text-sm sm:text-base text-gray-600">
-          Track earnings, manage links, and promote products, digital offers, and insurance pages
+          Track earnings, manage links, and promote marketplace products from one storefront
         </p>
       </div>
 
@@ -924,7 +924,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
                 Total Earnings
               </p>
               <p className="text-xl sm:text-2xl font-bold text-gray-900">${stats.total_earnings.toLocaleString()}</p>
-              <p className="text-xs sm:text-sm text-green-600 mt-1">+12.5% this month</p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">Completed-sale earnings</p>
             </div>
             <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
           </div>
@@ -972,7 +972,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8">
         <div className="flex items-center space-x-2">
           <Calendar className="w-5 h-5 text-blue-600" />
-          <span className="text-blue-800 font-medium">Payout timing: up to 14 days after order completion</span>
+          <span className="text-blue-800 font-medium">Payout timing: 14-day hold, then the next scheduled payday</span>
         </div>
         <p className="text-blue-700 text-sm mt-1">Payouts may be delayed if a dispute, chargeback, or fraud review is opened.</p>
       </div>
@@ -1094,16 +1094,16 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
               </div>
               <div className="rounded-lg border border-gray-200 bg-violet-50 p-4">
                 <div className="text-sm font-semibold text-violet-800">Influencer referrals</div>
-                <div className="mt-2 text-sm text-gray-700">Recruit partners under your link and earn recurring influencer income from their activity.</div>
+                <div className="mt-2 text-sm text-gray-700">Refer sellers and affiliates and earn eligible fixed influencer bonuses from completed sales.</div>
               </div>
             </div>
           </div>
 
-          {/* My Partner Store Section */}
+          {/* My Affiliate Store Section */}
           <div className="bg-gradient-to-r from-purple-500 to-blue-500 p-6 rounded-xl shadow-lg text-white">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold mb-2">My Partner Store</h3>
+                <h3 className="text-lg font-semibold mb-2">My Affiliate Store</h3>
                 <p className="text-purple-100 mb-4">Share your personalized store link to earn commissions on every sale</p>
                 <div className="flex space-x-4">
                   <a
@@ -1191,7 +1191,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
                   <div className="flex items-center space-x-3">
                     <ExternalLink className="w-5 h-5 text-blue-600" />
                     <span className="font-medium">
-                      My Partner Links
+                      My Affiliate Links
                     </span>
                   </div>
                 </button>
@@ -1221,7 +1221,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
                 <h3 className="text-lg font-semibold">Multiple ways to earn</h3>
-                <p className="text-sm text-gray-600">Use one Beezio store and link system to rotate between products, digital offers, and partner recruitment.</p>
+                <p className="text-sm text-gray-600">Use one Beezio store and link system for products, digital offers, and seller or affiliate referrals.</p>
               </div>
               <button
                 onClick={() => copyToClipboard(generateSiteWideLink())}
@@ -1245,7 +1245,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
               </div>
               <div className="rounded-lg bg-gray-50 p-4">
                 <div className="text-sm font-semibold text-gray-900">Influencer recruitment link</div>
-                <div className="mt-2 text-sm text-gray-600">Bring on new partners and create a second layer of earnings through your referral code.</div>
+                <div className="mt-2 text-sm text-gray-600">Refer new sellers and affiliates and earn the applicable fixed referral bonus through your code.</div>
               </div>
             </div>
           </div>
@@ -1291,11 +1291,11 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
           {/* Downline Snapshot */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold">Referred Partners</h3>
+              <h3 className="text-lg font-semibold">Referred Users</h3>
               <span className="text-sm text-gray-600">{referredAffiliates.length} total</span>
             </div>
             {referredAffiliates.length === 0 ? (
-              <p className="text-sm text-gray-600">Invite partners with your link to build your 5% influencer earnings.</p>
+              <p className="text-sm text-gray-600">Invite sellers and affiliates. Eligible referral slots pay $0.50 below $25 or $1.00 at $25 and above.</p>
             ) : (
               <div className="space-y-3">
                 {referredAffiliates.map((aff) => (
@@ -1683,8 +1683,8 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
           </div>
 
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Influencer Link for New Partners</h3>
-            <p className="text-gray-600 mb-4">Share this link so affiliates sign up under you. You earn 5% of Beezio’s fee on their sales.</p>
+            <h3 className="text-lg font-semibold mb-4">Influencer Referral Link</h3>
+            <p className="text-gray-600 mb-4">Share this link so sellers and affiliates sign up under you. Eligible completed sales pay the applicable fixed referral bonus.</p>
             
             {/* Referral Code Display */}
             {referralCode && (
@@ -1731,7 +1731,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
             <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
               <p className="text-xs sm:text-sm text-purple-800">
                 <strong>💰 Influencer Earnings:</strong> When someone signs up using your code/link and makes sales, 
-                you earn <strong>5%</strong> of the platform fee on every sale they make while the program is active.
+                you earn <strong>$0.50 per eligible item below $25 or $1.00 per eligible item at $25 and above</strong> while the program is active.
               </p>
             </div>
           </div>
@@ -1840,7 +1840,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
                     alt="Site-wide QR Code" 
                     className="mx-auto mb-4"
                   />
-                  <p className="text-sm text-gray-600 mb-4">Scan to visit the marketplace with your partner link</p>
+                  <p className="text-sm text-gray-600 mb-4">Scan to visit the marketplace with your affiliate link</p>
                   <div className="flex space-x-2">
                     <button
                       onClick={() => {

@@ -485,7 +485,7 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
             <div>
               <p className="font-semibold mb-2">Buyer basics</p>
               <ul className="space-y-1">
-                <li>- Refunds are available within 14 days of delivery.</li>
+                <li>- Refund eligibility follows the seller&apos;s return policy and Beezio&apos;s refund policy.</li>
                 <li>- Exchanges are available within 30 days of delivery.</li>
                 <li>- File order issues and refund requests from this customer dashboard.</li>
                 <li>- Beezio receives disputes, reviews the order, and handles refund decisions.</li>

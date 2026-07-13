@@ -22,15 +22,15 @@ export const MIN_AFFILIATE_PAYOUT = 0;
 export const SELLER_REFERRER_BONUS_PER_ITEM = 0.5;
 export const AFFILIATE_REFERRER_BONUS_PER_ITEM = 0.5;
 // Referral bonuses are fixed per sold item:
-// - under $20 ask => $0.50
-// - $20 and above ask => $1.00
+// - under $25 ask => $0.50 per eligible referral slot
+// - $25 and above ask => $1.00 per eligible referral slot
 export const INFLUENCER_SHARE_OF_PLATFORM_FEE_PERCENT = 0;
 // Backward-compatible alias used by existing pricing utilities.
 export const REFERRAL_OVERRIDE_PERCENT_OF_SALE = INFLUENCER_SHARE_OF_PLATFORM_FEE_PERCENT;
 export const PROCESSING_PERCENT = 3.99; // PayPal processing variable fee %
 export const PROCESSING_FIXED_FEE = 0.6; // Card processing fixed fee per item/order (see pricing model)
 export const DEFAULT_AFFILIATE_COMMISSION_PERCENT = 10;
-export const INFLUENCER_BONUS_THRESHOLD = 20;
+export const INFLUENCER_BONUS_THRESHOLD = 25;
 export const INFLUENCER_BONUS_UNDER_THRESHOLD = 0.5;
 export const INFLUENCER_BONUS_AT_OR_ABOVE_THRESHOLD = 1;
 // Prelaunch guardrail: keep ratings/reviews/social-proof counters at zero unless real data exists post-launch.

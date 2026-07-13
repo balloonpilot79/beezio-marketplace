@@ -335,13 +335,6 @@ const AutomatedFulfillmentDashboard: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
               <div>
-                <h4 className="font-medium">AliExpress</h4>
-                <p className="text-sm text-gray-600">Dropshipping integration</p>
-              </div>
-              <span className="text-yellow-600 font-medium">Coming Soon</span>
-            </div>
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-              <div>
                 <h4 className="font-medium">Oberlo</h4>
                 <p className="text-sm text-gray-600">Shopify dropshipping</p>
               </div>

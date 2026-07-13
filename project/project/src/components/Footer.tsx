@@ -123,7 +123,7 @@ const Footer: React.FC = () => {
               </li>
               <li>
                 <Link to="/legal/partner-terms" className="hover:text-[#ffcb05] transition-colors">
-                  Partner Terms
+                  Affiliate Terms
                 </Link>
               </li>
               <li>

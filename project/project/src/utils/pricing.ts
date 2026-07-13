@@ -289,7 +289,7 @@ export function calculatePayouts(
       referralBonus,
       beezioGross: roundToCurrency(breakdown.platformGrossAmount),
       beezioNet: roundToCurrency(Math.max(
-        breakdown.platformGrossAmount - regularPayPalAllocation,
+        breakdown.platformGrossAmount - referralBonus - regularPayPalAllocation,
         0
       )),
       processingFee,
@@ -311,7 +311,7 @@ export function calculatePayouts(
 
   const referralBonus = getAssignedInfluencerPayoutTotal(sellerAsk, assignedInfluencerCount);
   const regularPayPalAllocation = sellerAsk >= 25 ? roundToCurrency(salePrice * PROCESSING_PERCENT + PROCESSING_FLAT) : 0;
-  const beezioNet = roundToCurrency(Math.max(platformGross - regularPayPalAllocation, 0));
+  const beezioNet = roundToCurrency(Math.max(platformGross - referralBonus - regularPayPalAllocation, 0));
   const processingFee = roundToCurrency(salePrice * PROCESSING_PERCENT + PROCESSING_FLAT);
   const sellerPayout = roundToCurrency(sellerAsk);
 

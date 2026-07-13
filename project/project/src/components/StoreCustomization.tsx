@@ -22,6 +22,7 @@ import ImageUploader from './ImageUploader';
 import CustomPageBuilder from './CustomPageBuilder';
 import ProductOrderManager from './ProductOrderManager';
 import ProductBrowserForSellers from './ProductBrowserForSellers';
+import StoreOrganizationPanel from './StoreOrganizationPanel';
 import StoreTemplateSelector, { type StoreTemplate } from './StoreTemplateSelector';
 import { blocksToHtml, starterPackTemplates } from '../utils/storePageTemplates';
 import { normalizeThemeName } from '../utils/themes';
@@ -1033,6 +1034,8 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                   <ProductBrowserForSellers sellerId={resolvedId || userId} />
                 </div>
               )}
+
+              <StoreOrganizationPanel ownerId={resolvedId || userId} role={role} />
 
               <div className="rounded-[24px] border border-stone-200 bg-white p-6 shadow-sm">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

@@ -34,7 +34,7 @@ const SellersPage: React.FC = () => {
       },
       {
         id: 'partner',
-        label: 'Partner Store',
+        label: 'Affiliate Store',
         title: 'Maya Chen Studio',
         subtitle: 'Lifestyle picks + curated products',
         gradient: 'from-purple-600 via-indigo-600 to-slate-900',
@@ -97,29 +97,29 @@ const SellersPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Sample Partner Store Preview */}
+      {/* Affiliate Store Preview */}
       <section className="py-16 bg-slate-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-5">
-              <p className="text-sm uppercase tracking-wide text-amber-300 font-semibold">Sample Partner Store</p>
+              <p className="text-sm uppercase tracking-wide text-amber-300 font-semibold">Affiliate Storefront</p>
               <h2 className="text-3xl font-bold leading-tight">
                 Give partners a beautiful storefront that updates itself.
               </h2>
               <p className="text-lg text-white/80">
-                Partners can pin your products, add their own hero copy, and share a single URL across social channels. Every promoted product syncs automatically—no spreadsheets required.
+                Affiliates can add your eligible products, organize them into storefront sections, and share a single branded URL. Product details stay connected to the marketplace listing.
               </p>
               <ul className="space-y-3 text-white/80 text-sm">
                 <li className="flex items-start gap-3"><span className="mt-1">✨</span>Drag-and-drop featured products or auto-pull from the marketplace.</li>
                 <li className="flex items-start gap-3"><span className="mt-1">📱</span>Instant previews for reels, stories, QR flyers, and text campaigns.</li>
-                <li className="flex items-start gap-3"><span className="mt-1">🔁</span>Partners see performance insights right inside their dashboard.</li>
+                <li className="flex items-start gap-3"><span className="mt-1">🔁</span>Affiliates see performance insights in the same business dashboard.</li>
               </ul>
             </div>
 
             <div className="bg-gradient-to-br from-purple-600 via-indigo-600 to-slate-900 rounded-3xl p-8 shadow-2xl border border-white/10">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-white/70">Partner Picks</p>
+                  <p className="text-xs uppercase tracking-[0.3em] text-white/70">Affiliate Picks</p>
                   <h3 className="text-2xl font-semibold">Maya Chen Studio</h3>
                 </div>
                 <span className="px-3 py-1 rounded-full bg-white/10 text-xs font-semibold">Live</span>
@@ -138,7 +138,7 @@ const SellersPage: React.FC = () => {
                   },
                   {
                     title: 'Handmade Aromatherapy Set',
-                    tag: 'Cause Partner',
+                    tag: 'Cause Affiliate',
                     img: 'https://images.unsplash.com/photo-1449247709967-d4461a6a6103?auto=format&fit=crop&w=500&q=80',
                   },
                   {
@@ -160,7 +160,7 @@ const SellersPage: React.FC = () => {
                 ))}
               </div>
               <p className="text-white/70 text-xs mt-5 text-center">
-                Partners can clone this layout, embed QR flyers, and keep every call-to-action synced across devices.
+                Affiliates can customize this layout, use QR flyers, and keep calls-to-action consistent across devices.
               </p>
             </div>
           </div>
@@ -367,12 +367,12 @@ const SellersPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Partner-Powered Sales */}
+      {/* Affiliate-Powered Sales */}
       <section className="py-16 bg-slate-900 text-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <p className="text-sm uppercase tracking-[0.4em] text-amber-300">Partner & Seller Advantage</p>
-            <h2 className="text-3xl font-bold mb-4">Partner-Powered Sales</h2>
+            <p className="text-sm uppercase tracking-[0.4em] text-amber-300">Affiliate & Seller Advantage</p>
+            <h2 className="text-3xl font-bold mb-4">Affiliate-Powered Sales</h2>
             <p className="text-lg text-white/80 max-w-3xl mx-auto">
               Get your products promoted by trusted partners with clear attribution and reporting.
             </p>
@@ -385,8 +385,8 @@ const SellersPage: React.FC = () => {
                 description: 'Publish products to the marketplace and keep your storefront updated automatically.',
               },
               {
-                title: 'Partners promote',
-                description: 'Partners share product links, QR codes, and storefronts to drive traffic and conversions.',
+                title: 'Affiliates promote',
+                description: 'Affiliates share product links, QR codes, and storefronts to drive traffic and conversions.',
               },
               {
                 title: 'Track results',
@@ -467,7 +467,7 @@ const SellersPage: React.FC = () => {
               </div>
               
               <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-indigo-500">
-                <h4 className="font-semibold text-gray-900 mb-2">Partner Network Access</h4>
+                <h4 className="font-semibold text-gray-900 mb-2">Affiliate Network Access</h4>
                 <p className="text-gray-600 text-sm">Connect with approved partners and track performance metrics.</p>
               </div>
             </div>
@@ -507,7 +507,7 @@ const SellersPage: React.FC = () => {
                   </div>
                   <div className="flex items-center text-gray-700">
                     <div className="w-2 h-2 bg-amber-500 rounded-full mr-3"></div>
-                    Partner tools & network
+                    Affiliate tools & network
                   </div>
                   <div className="flex items-center text-gray-700">
                     <div className="w-2 h-2 bg-amber-500 rounded-full mr-3"></div>

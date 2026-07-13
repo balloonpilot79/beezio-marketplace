@@ -9,8 +9,8 @@ const getEnvFlag = () => {
 
 export const isPublicPartnerCopyEnabled = () => getEnvFlag();
 
-export const getPartnerLabel = () => (isPublicPartnerCopyEnabled() ? 'Partners' : 'Partners');
-export const getPartnerSingularLabel = () => (isPublicPartnerCopyEnabled() ? 'Partner' : 'Partner');
-export const getPartnerProgramLabel = () => (isPublicPartnerCopyEnabled() ? 'Partner Program' : 'Partner Program');
+export const getPartnerLabel = () => (isPublicPartnerCopyEnabled() ? 'Affiliates' : 'Affiliates');
+export const getPartnerSingularLabel = () => (isPublicPartnerCopyEnabled() ? 'Affiliate' : 'Affiliate');
+export const getPartnerProgramLabel = () => (isPublicPartnerCopyEnabled() ? 'Affiliate Program' : 'Affiliate Program');
 export const getPartnerPromotionLabel = () =>
-  (isPublicPartnerCopyEnabled() ? 'Partner Promotions' : 'Partner Promotions');
+  (isPublicPartnerCopyEnabled() ? 'Affiliate Promotions' : 'Affiliate Promotions');

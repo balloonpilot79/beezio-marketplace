@@ -201,7 +201,7 @@ export default function AffiliateMarketingToolkit() {
       <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-2 border-yellow-400 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <ExternalLink className="w-5 h-5" />
-          Your Partner Store Link
+          Your Affiliate Store Link
         </h3>
         <div className="flex gap-3 items-center">
           <input

@@ -683,7 +683,7 @@ export default function ManualFulfillmentQueue({
                               value={orderRefs[item.orderId] || ''}
                               onChange={(e) => setOrderRefs((prev) => ({ ...prev, [item.orderId]: e.target.value }))}
                               className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                              placeholder="Paste CJ/manual order number"
+                              placeholder="Paste supplier or fulfillment order number"
                             />
                           </label>
                           <label className="text-sm text-gray-700">
@@ -766,14 +766,14 @@ export default function ManualFulfillmentQueue({
 
                       {(item.cjStatus || item.cjOrderNumber || item.cjError) ? (
                         <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
-                          <div className="font-semibold">CJ Data</div>
+                          <div className="font-semibold">Historical Supplier Data</div>
                           <div className="mt-2">Status: {item.cjStatus || 'N/A'}</div>
                           <div className="mt-2">Order: {item.cjOrderNumber || item.cjOrderId || 'N/A'}</div>
                           <div className="mt-2">Tracking: {item.cjTrackingNumber || 'N/A'}</div>
                           {item.cjTrackingUrl ? (
                             <a href={item.cjTrackingUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-700">
                               <ExternalLink className="h-3 w-3" />
-                              Open CJ tracking
+                              Open historical tracking
                             </a>
                           ) : null}
                           {item.cjError ? <div className="mt-2 text-red-700">Error: {item.cjError}</div> : null}

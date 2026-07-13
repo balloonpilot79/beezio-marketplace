@@ -1,4 +1,7 @@
-import { DEFAULT_BEEZIO_PLATFORM_RATE, computeBeezioPlatformFee } from './beezioFee';
+import {
+  DEFAULT_BEEZIO_PLATFORM_RATE,
+  computeBeezioPlatformPoolForPrice,
+} from './beezioFee';
 import { getLowPriceFlatFeeTotal, isLowPriceAmount } from './lowPriceFeePolicy';
 import { getInfluencerReserveTotal } from './referralBonus';
 
@@ -43,10 +46,17 @@ export function computeCustomerListingPrice(params: {
   const beezioRate = Number.isFinite(params.beezioRate) ? Math.max(0, Number(params.beezioRate)) : DEFAULT_BEEZIO_PLATFORM_RATE;
 
   const affiliateAmount = computeAffiliateAmountFromAsk(ask, params.affiliateType, params.affiliateValue);
+  const influencerReserve = round2(getInfluencerReserveTotal(ask));
   const platformFee = isLowPriceAmount(ask)
     ? round2(getLowPriceFlatFeeTotal(1))
-    : round2(computeBeezioPlatformFee(ask, { rate: beezioRate }));
-  const influencerReserve = round2(getInfluencerReserveTotal(ask));
+    : round2(computeBeezioPlatformPoolForPrice({
+        sellerAsk: ask,
+        affiliateAmount,
+        influencerReserve,
+        paypalPercent,
+        paypalFixed,
+        rate: beezioRate,
+      }));
   const subtotalBeforeProcessor = ask + affiliateAmount + platformFee + influencerReserve + payoutBuffer;
 
   if (!isLowPriceAmount(ask)) {

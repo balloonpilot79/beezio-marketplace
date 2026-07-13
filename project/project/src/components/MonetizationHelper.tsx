@@ -46,7 +46,7 @@ const MonetizationHelper: React.FC = () => {
       difficulty: 'Medium',
       timeToProfit: '2-6 weeks',
       steps: [
-        'Find suppliers with API access (AliExpress, Spocket, etc.)',
+        'Choose approved suppliers with reliable product and order APIs',
         'Connect via Custom API integration',
         'Markup products 100-200%',
         'Offer 30% partner commissions',

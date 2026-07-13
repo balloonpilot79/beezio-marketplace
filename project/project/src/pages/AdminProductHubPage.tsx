@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Trash2, RefreshCw, Search, FlaskConical } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContextMultiRole';
-import { canAccessCJImport } from '../utils/cjImportAccess';
 import { supabase } from '../lib/supabase';
 import { deleteProductById } from '../utils/deleteProduct';
 import {
@@ -31,8 +29,11 @@ type AdminProductRow = {
   } | null;
 };
 
-const isCjProduct = (product: AdminProductRow) =>
-  String(product.source_platform || '').trim().toLowerCase() === 'cj' || !!String(product.cj_product_id || '').trim();
+const isRetiredSupplierProduct = (product: AdminProductRow) => {
+  const source = String(product.source_platform || '').trim().toLowerCase();
+  return ['cj', 'cjdropshipping', 'cj dropshipping', 'aliexpress'].includes(source) ||
+    !!String(product.cj_product_id || '').trim();
+};
 
 const formatMoney = (value: number | null) => {
   if (typeof value !== 'number' || Number.isNaN(value)) return 'n/a';
@@ -47,15 +48,13 @@ const formatDate = (value: string | null) => {
 };
 
 const AdminProductHubPage: React.FC = () => {
-  const { user } = useAuth();
-  const showCJImport = canAccessCJImport(user?.email);
   const [products, setProducts] = useState<AdminProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sourceFilter, setSourceFilter] = useState<'non-cj' | 'all' | 'cj'>('non-cj');
+  const [sourceFilter, setSourceFilter] = useState<'current' | 'all' | 'retired'>('current');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [savingTestProduct, setSavingTestProduct] = useState(false);
@@ -211,7 +210,11 @@ const AdminProductHubPage: React.FC = () => {
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredProducts = products.filter((product) => {
     const matchesSource =
-      sourceFilter === 'all' ? true : sourceFilter === 'cj' ? isCjProduct(product) : !isCjProduct(product);
+      sourceFilter === 'all'
+        ? true
+        : sourceFilter === 'retired'
+          ? isRetiredSupplierProduct(product)
+          : !isRetiredSupplierProduct(product);
 
     const matchesStatus =
       statusFilter === 'all'
@@ -246,7 +249,7 @@ const AdminProductHubPage: React.FC = () => {
       product.seller_id ||
       'unknown seller';
     const title = product.title || product.id;
-    const sourceLabel = isCjProduct(product) ? 'CJ/imported' : 'non-CJ/manual';
+    const sourceLabel = isRetiredSupplierProduct(product) ? 'retired supplier' : 'current supplier or seller';
     const confirmed = window.confirm(
       `Delete listing "${title}" from ${sellerLabel}?\n\nSource: ${sourceLabel}\nProduct ID: ${product.id}\n\nThis cannot be undone.`
     );
@@ -278,41 +281,18 @@ const AdminProductHubPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-3xl font-bold mb-2">Admin Product Hub</h1>
           <p className="text-gray-300">
-            Manage all marketplace listings. Admin delete works across any seller account, with CJ products separated so you can keep them.
+            Manage current listings and review retired supplier records without deleting order history.
           </p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-        {showCJImport && (
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">CJ USA Catalog</h2>
-            <p className="text-gray-700 mb-4">
-              Browse the CJ catalog inside Beezio with USA-shipping products first, then search by SKU, SPU, PID, name, or category.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to="/admin/cj-import"
-                className="inline-flex items-center px-5 py-3 rounded-lg bg-[#ffcb05] text-black font-semibold hover:bg-[#e0b000] transition-colors"
-              >
-                Open CJ Catalog
-              </Link>
-              <Link
-                to="/dashboard?section=admin"
-                className="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 text-gray-900 font-semibold hover:bg-gray-50 transition-colors"
-              >
-                Open Admin Dashboard
-              </Link>
-            </div>
-          </div>
-        )}
-
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Listing Manager</h2>
               <p className="text-gray-700">
-                Default filter hides CJ products so it is easier to remove test listings without touching imported catalog items.
+                Current products are shown by default. Retired supplier products stay archived for historical orders and tracking.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -350,12 +330,12 @@ const AdminProductHubPage: React.FC = () => {
 
             <select
               value={sourceFilter}
-              onChange={(e) => setSourceFilter(e.target.value as 'non-cj' | 'all' | 'cj')}
+              onChange={(e) => setSourceFilter(e.target.value as 'current' | 'all' | 'retired')}
               className="rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none"
             >
-              <option value="non-cj">Non-CJ only</option>
+              <option value="current">Current sources</option>
               <option value="all">All sources</option>
-              <option value="cj">CJ only</option>
+              <option value="retired">Retired suppliers</option>
             </select>
 
             <select
@@ -372,8 +352,8 @@ const AdminProductHubPage: React.FC = () => {
           <div className="mt-4 flex flex-wrap gap-3 text-sm text-gray-600">
             <span>Total loaded: {products.length}</span>
             <span>Visible: {filteredProducts.length}</span>
-            <span>Visible CJ: {filteredProducts.filter(isCjProduct).length}</span>
-            <span>Visible non-CJ: {filteredProducts.filter((product) => !isCjProduct(product)).length}</span>
+            <span>Retired supplier records: {filteredProducts.filter(isRetiredSupplierProduct).length}</span>
+            <span>Current source records: {filteredProducts.filter((product) => !isRetiredSupplierProduct(product)).length}</span>
           </div>
 
           {statusMessage && (
@@ -416,7 +396,7 @@ const AdminProductHubPage: React.FC = () => {
                         <div className="mt-1 text-xs text-gray-500">ID: {product.id}</div>
                         <div className="mt-1 text-xs text-gray-500">
                           SKU: {product.sku || 'n/a'}
-                          {product.cj_product_id ? ` | CJ ID: ${product.cj_product_id}` : ''}
+                          {product.cj_product_id ? ` | Legacy source ID: ${product.cj_product_id}` : ''}
                         </div>
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-700">
@@ -426,12 +406,12 @@ const AdminProductHubPage: React.FC = () => {
                       <td className="px-4 py-4 text-sm">
                         <span
                           className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                            isCjProduct(product)
+                            isRetiredSupplierProduct(product)
                               ? 'bg-blue-100 text-blue-800'
                               : 'bg-amber-100 text-amber-900'
                           }`}
                         >
-                          {isCjProduct(product) ? 'CJ' : (product.source_platform || 'manual').toUpperCase()}
+                          {isRetiredSupplierProduct(product) ? 'RETIRED' : (product.source_platform || 'manual').toUpperCase()}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-700">{formatMoney(product.price)}</td>
@@ -510,30 +490,9 @@ const AdminProductHubPage: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">AliExpress Catalog</h2>
-            <p className="text-gray-700 mb-4">
-              Connect AliExpress with OAuth, verify the dropshipping API, and import marketplace products directly into the admin panel.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to="/admin/aliexpress-import"
-                className="inline-flex items-center px-5 py-3 rounded-lg bg-[#101820] text-white font-semibold hover:bg-black transition-colors"
-              >
-                Open AliExpress Import
-              </Link>
-              <Link
-                to="/dashboard?section=admin"
-                className="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 text-gray-900 font-semibold hover:bg-gray-50 transition-colors"
-              >
-                Open Admin Fulfillment
-              </Link>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Bulk Add Products (Spreadsheet)</h2>
             <p className="text-gray-700 mb-4">
-              Upload many products at once and set affiliate commission per item. Use this for products you will fulfill outside CJ.
+              Upload many products at once and set affiliate commission per item. Use this for seller-managed or approved supplier products.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
@@ -553,10 +512,9 @@ const AdminProductHubPage: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Other Suppliers</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Approved Product Sources</h2>
           <p className="text-gray-700">
-            Adding additional dropshipping or fulfillment providers is possible only if the provider exposes import and order APIs.
-            Printful now has a dedicated admin import flow here, Printify remains available in integrations, AliExpress has a dedicated admin import flow here, and EggRacks now has a draft-first URL import flow here.
+            Printful has a dedicated admin import flow, Printify remains available in integrations, and EggRacks uses a draft-first URL import flow. New sources should be reviewed before being enabled.
           </p>
         </div>
       </div>

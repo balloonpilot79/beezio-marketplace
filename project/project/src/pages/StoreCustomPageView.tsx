@@ -4,6 +4,7 @@ import { AlertCircle, ArrowLeft, LogOut, Store, UserCircle } from 'lucide-react'
 import DOMPurify from 'dompurify';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import ProductGrid from '../components/ProductGrid';
 
 type OwnerType = 'seller' | 'affiliate';
 
@@ -39,6 +40,7 @@ const StoreCustomPageView: React.FC<StoreCustomPageViewProps> = ({ ownerId, owne
   const [owner, setOwner] = useState<OwnerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [pageProducts, setPageProducts] = useState<any[]>([]);
   const signedInLabel =
     String(profile?.full_name || '').trim() ||
     String(user?.user_metadata?.full_name || user?.user_metadata?.name || '').trim() ||
@@ -86,6 +88,39 @@ const StoreCustomPageView: React.FC<StoreCustomPageViewProps> = ({ ownerId, owne
           console.warn('[StoreCustomPageView] owner lookup failed:', ownerError);
         }
 
+        const { data: placementRows, error: placementError } = await supabase
+          .from('store_product_placements')
+          .select('product_id,display_order')
+          .eq('owner_id', ownerId)
+          .eq('placement_type', 'page')
+          .eq('custom_page_id', pageData.id)
+          .eq('is_visible', true)
+          .order('display_order', { ascending: true });
+
+        if (placementError) {
+          console.warn('[StoreCustomPageView] page product placement lookup failed:', placementError);
+        }
+
+        const productIds = (placementRows || []).map((row: any) => row.product_id).filter(Boolean);
+        if (productIds.length) {
+          const { data: productRows, error: productError } = await supabase
+            .from('products')
+            .select('*')
+            .in('id', productIds);
+          if (productError) {
+            console.warn('[StoreCustomPageView] page products lookup failed:', productError);
+          } else {
+            const orderById = new Map((placementRows || []).map((row: any) => [row.product_id, row.display_order]));
+            setPageProducts(
+              (productRows || []).sort(
+                (a: any, b: any) => Number(orderById.get(a.id) || 0) - Number(orderById.get(b.id) || 0)
+              )
+            );
+          }
+        } else {
+          setPageProducts([]);
+        }
+
         setPage(pageData as CustomPage);
         setOwner((ownerData as OwnerProfile) || null);
         setError('');
@@ -99,6 +134,12 @@ const StoreCustomPageView: React.FC<StoreCustomPageViewProps> = ({ ownerId, owne
 
     void loadPage();
   }, [ownerId, ownerType, pageSlug]);
+
+  useEffect(() => {
+    if (!ownerId) return;
+    localStorage.setItem('beezio-store-scope', `store:${ownerType}:${ownerId}`);
+    window.dispatchEvent(new Event('beezio-store-scope-changed'));
+  }, [ownerId, ownerType]);
 
   if (loading) {
     return (
@@ -179,6 +220,23 @@ const StoreCustomPageView: React.FC<StoreCustomPageViewProps> = ({ ownerId, owne
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(page.page_content) }}
           />
         </div>
+
+        {pageProducts.length > 0 && (
+          <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+            <h2 className="mb-5 text-2xl font-bold text-slate-900">Shop this page</h2>
+            <ProductGrid
+              products={pageProducts}
+              hideAffiliateUI
+              hideFilters
+              hideShareUI
+              hideSellerInfo
+              ctaMode="storefront"
+              forcePurchaseCtas
+              productBasePath={`${backPath}/product`}
+              storefrontBrand={{ name: owner?.full_name || 'Store' }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

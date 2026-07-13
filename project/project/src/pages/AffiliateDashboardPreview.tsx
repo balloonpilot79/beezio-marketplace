@@ -79,7 +79,7 @@ const AffiliateDashboardPreview: React.FC = () => {
 
         
         <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">My Partner Storefront</h2>
+          <h2 className="text-xl font-semibold mb-2">My Affiliate Storefront</h2>
           <div className="bg-white rounded shadow p-4 flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
               <div className="text-gray-700 text-sm mb-2">Your unique partner store link:</div>

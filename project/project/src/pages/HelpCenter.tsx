@@ -28,7 +28,7 @@ const HelpCenter: React.FC = () => {
       link: '/seller-guide'
     },
     {
-      title: 'Complete Partner Guide', 
+      title: 'Complete Affiliate Guide',
       description: 'Master partner marketing and start earning commissions',
       icon: Share2,
       color: 'pink',
