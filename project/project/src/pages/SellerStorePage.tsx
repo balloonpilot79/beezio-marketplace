@@ -25,6 +25,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   const [products, setProducts] = useState<any[]>([]);
   const [insuranceListings, setInsuranceListings] = useState<any[]>([]);
   const [canonicalSellerId, setCanonicalSellerId] = useState<string | null>(null);
+  const [canonicalStorefrontId, setCanonicalStorefrontId] = useState<string | null>(null);
   const [storeStats, setStoreStats] = useState({
     totalProducts: 0,
     totalSales: 0,
@@ -238,13 +239,15 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           const controller = new AbortController();
           const timeout = window.setTimeout(() => controller.abort(), 4500);
           try {
-            const resp = await fetch(`/api/public/store/get?store=${encodeURIComponent(String(sellerId))}`, {
+            const publicStoreLookup = String(storeSlug || sellerId);
+            const resp = await fetch(`/api/public/store/get?store=${encodeURIComponent(publicStoreLookup)}`, {
               signal: controller.signal,
             });
             if (resp.ok) {
               const payload: any = await resp.json().catch(() => ({}));
               if (payload?.ok && payload?.seller_id) {
                 setCanonicalSellerId(String(payload.seller_id));
+                setCanonicalStorefrontId(payload.storefront_id ? String(payload.storefront_id) : null);
                 setSeller(payload.seller || null);
                 setProducts(Array.isArray(payload.products) ? payload.products : []);
                 setInsuranceListings(Array.isArray(payload.insurance_listings) ? payload.insurance_listings : []);
@@ -730,10 +733,10 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
 
   useEffect(() => {
     if (!storeRouteId) return;
-    const scopeKey = `store:seller:${storeRouteId}`;
+    const scopeKey = `store:seller:${canonicalStorefrontId || storeRouteId}`;
     localStorage.setItem('beezio-store-scope', scopeKey);
     window.dispatchEvent(new Event('beezio-store-scope-changed'));
-  }, [storeRouteId]);
+  }, [canonicalStorefrontId, storeRouteId]);
 
   const renderStorefrontSection = (sectionId: string) => {
     if (sectionId === 'search' || sectionId === 'categories') {
@@ -1310,6 +1313,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         ownerId={resolvedSellerId}
         ownerType="seller"
         storeName={seller?.full_name}
+        storefrontId={canonicalStorefrontId}
       />
     </div>
   );

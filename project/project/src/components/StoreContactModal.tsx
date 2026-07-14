@@ -8,9 +8,10 @@ interface StoreContactModalProps {
   ownerId: string;
   ownerType: 'seller' | 'affiliate';
   storeName?: string;
+  storefrontId?: string | null;
 }
 
-const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, ownerId, ownerType, storeName }) => {
+const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, ownerId, ownerType, storeName, storefrontId }) => {
   const { user, profile } = useAuth();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
@@ -73,7 +74,7 @@ const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, 
       }
       const { data } = await supabase
         .from('profiles')
-        .select('user_id')
+        .select('id, user_id')
         .or(`id.eq.${raw},user_id.eq.${raw}`)
         .maybeSingle();
       const resolvedUserId = String((data as any)?.user_id || raw);
@@ -93,7 +94,7 @@ const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, 
       setStatus('starting');
       try {
         const { data, error } = await supabase.functions.invoke('start-store-conversation', {
-          body: { ownerId: resolvedOwnerUserId, ownerType, storeName: storeName || null },
+          body: { ownerId: resolvedOwnerUserId, ownerType, storeName: storeName || null, storefrontId: storefrontId || null },
         });
         if (error) throw error;
         const id = String((data as any)?.conversation?.id || '');
@@ -144,7 +145,7 @@ const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, 
     };
 
     start();
-  }, [isOpen, canMessage, resolvedOwnerUserId, ownerType, storeName]);
+  }, [isOpen, canMessage, resolvedOwnerUserId, ownerType, storeName, storefrontId]);
 
   const send = async () => {
     const body = String(input || '').trim();

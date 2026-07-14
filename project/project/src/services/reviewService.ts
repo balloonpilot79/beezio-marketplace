@@ -139,8 +139,26 @@ const userOwnsReviewByColumn = async (productId: string, userId: string, userCol
   return { exists: Boolean(data), missingColumn: false };
 };
 
+const userOwnsReviewByAuthId = async (productId: string, userId: string) => {
+  const { data, error } = await supabase
+    .from('product_reviews')
+    .select('id')
+    .eq('product_id', productId)
+    .eq('reviewer_user_id', userId)
+    .maybeSingle();
+  if (error) {
+    if (isMissingColumnError(error, 'reviewer_user_id')) return { exists: false, missingColumn: true };
+    throw error;
+  }
+  return { exists: Boolean(data), missingColumn: false };
+};
+
 export async function hasExistingProductReview(productId: string, userId: string): Promise<boolean> {
   try {
+    const authUserCheck = await userOwnsReviewByAuthId(productId, userId);
+    if (authUserCheck.exists) return true;
+    if (!authUserCheck.missingColumn) return false;
+
     const reviewerCheck = await userOwnsReviewByColumn(productId, userId, 'reviewer_id');
     if (reviewerCheck.exists) return true;
     if (!reviewerCheck.missingColumn) return false;
@@ -227,8 +245,7 @@ export async function submitProductReview(input: SubmitProductReviewInput): Prom
 
   await insertReviewWithFallback({
     product_id: productId,
-    reviewer_id: userId,
-    buyer_id: userId,
+    reviewer_user_id: userId,
     rating,
     title,
     content,
@@ -240,9 +257,12 @@ export async function submitProductReview(input: SubmitProductReviewInput): Prom
 }
 
 export async function getUserProductReviewStatus(productId: string, userId: string): Promise<{ hasReviewed: boolean; verifiedPurchase: boolean }> {
-  const hasReviewed = await hasExistingProductReview(productId, userId);
+  const [hasReviewed, verifiedPurchase] = await Promise.all([
+    hasExistingProductReview(productId, userId),
+    hasVerifiedPurchase(productId, userId),
+  ]);
 
-  return { hasReviewed, verifiedPurchase: false };
+  return { hasReviewed, verifiedPurchase };
 }
 
 export async function fetchProductReviews(productId: string, limit: number = 20): Promise<ProductReviewRecord[]> {

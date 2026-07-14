@@ -52,12 +52,14 @@ const handler: Handler = async (event) => {
     const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    const [sellerSettingsRes, profileRowsRes, affiliateSettingsRes] = await Promise.all([
+    const [brandStorefrontRes, sellerSettingsRes, profileRowsRes, affiliateSettingsRes] = await Promise.all([
+      supabaseAdmin.from('storefronts').select('id, owner_id, type, slug, updated_at').eq('slug', slug).eq('is_active', true).limit(10),
       supabaseAdmin.from('store_settings').select('seller_id, subdomain, updated_at').eq('subdomain', slug).limit(10),
       supabaseAdmin.from('profiles').select('id, role, primary_role, subdomain, updated_at').eq('subdomain', slug).limit(10),
       supabaseAdmin.from('affiliate_store_settings').select('affiliate_id, subdomain, updated_at').eq('subdomain', slug).limit(10),
     ]);
 
+    const brandStorefrontRows = Array.isArray(brandStorefrontRes.data) ? brandStorefrontRes.data : [];
     const sellerSettingsRows = Array.isArray(sellerSettingsRes.data) ? sellerSettingsRes.data : [];
     const affiliateSettingsRows = Array.isArray(affiliateSettingsRes.data) ? affiliateSettingsRes.data : [];
     const profileRows = Array.isArray(profileRowsRes.data) ? profileRowsRes.data : [];
@@ -68,6 +70,18 @@ const handler: Handler = async (event) => {
         const rightTs = new Date(String(right?.updated_at || 0)).getTime();
         return rightTs - leftTs;
       })[0] || null;
+
+    const latestBrandStorefront = pickLatest(brandStorefrontRows as any[]);
+    if (latestBrandStorefront?.id && latestBrandStorefront?.owner_id) {
+      const body = {
+        ok: true,
+        store_type: 'seller',
+        store_id: String(latestBrandStorefront.owner_id).trim(),
+        storefront_id: String(latestBrandStorefront.id).trim(),
+      };
+      setCache(cacheKey, body, 5 * 60_000);
+      return json(200, body);
+    }
 
     const latestSellerSettings = pickLatest(sellerSettingsRows as any[]);
     const latestAffiliateSettings = pickLatest(affiliateSettingsRows as any[]);

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
 import { resolveProfileIdForUser } from '../utils/resolveProfileId';
 import StoreCustomization from './StoreCustomization';
+import BrandStorefrontManager from './BrandStorefrontManager';
 import StripeSellerDashboard from './StripeSellerDashboard';
 import StripeAffiliateDashboard from './StripeAffiliateDashboard';
 import CJProductImportPage from '../pages/CJProductImportPage';
@@ -1187,6 +1188,7 @@ const UnifiedMegaDashboard: React.FC = () => {
             {/* STORE SETTINGS TAB */}
             {activeTab === 'store' && (canSellProducts || isAffiliate) && user && (
               <div>
+                {profile?.id && <BrandStorefrontManager ownerId={String(profile.id)} />}
                 <StoreCustomization 
                   userId={user.id} 
                   role={String(profile?.primary_role || profile?.role || currentRole || '').toLowerCase() === 'affiliate' || String(profile?.primary_role || profile?.role || currentRole || '').toLowerCase() === 'fundraiser' ? 'affiliate' : 'seller'} 

@@ -204,25 +204,51 @@ const handler: Handler = async (event) => {
 
     let sellerId = '';
     let storeSlug = '';
+    let brandStorefront: any = null;
 
     if (isUuid(storeRaw)) {
+      const { data: storefrontMatch } = await supabaseAdmin
+        .from('storefronts')
+        .select('id,owner_id,type,name,slug,custom_domain,logo_url,description,banner_url,store_theme,product_page_template,layout_config,theme_settings,color_scheme,social_links,business_hours,shipping_policy,return_policy,custom_css,is_active')
+        .eq('id', storeRaw)
+        .eq('is_active', true)
+        .maybeSingle();
+      if ((storefrontMatch as any)?.owner_id) {
+        brandStorefront = storefrontMatch;
+        sellerId = String((storefrontMatch as any).owner_id).trim();
+        storeSlug = String((storefrontMatch as any).slug || '').trim().toLowerCase();
+      }
+
+      if (!sellerId) {
       const { data: profileMatch } = await supabaseAdmin
         .from('profiles')
         .select('id')
         .or(`id.eq.${storeRaw},user_id.eq.${storeRaw}`)
         .maybeSingle();
       sellerId = String((profileMatch as any)?.id || storeRaw).trim();
+      }
     } else {
       storeSlug = storeRaw.toLowerCase();
 
       // Do slug lookups in parallel (fast path).
-      const [{ data: fromSettings }, { data: fromProfiles }] = await Promise.all([
+      const [{ data: fromStorefront }, { data: fromSettings }, { data: fromProfiles }] = await Promise.all([
+        supabaseAdmin
+          .from('storefronts')
+          .select('id,owner_id,type,name,slug,custom_domain,logo_url,description,banner_url,store_theme,product_page_template,layout_config,theme_settings,color_scheme,social_links,business_hours,shipping_policy,return_policy,custom_css,is_active')
+          .eq('slug', storeSlug)
+          .eq('is_active', true)
+          .maybeSingle(),
         supabaseAdmin.from('store_settings').select('seller_id').eq('subdomain', storeSlug).maybeSingle(),
         supabaseAdmin.from('profiles').select('id, role, primary_role').eq('subdomain', storeSlug).maybeSingle(),
       ]);
 
+      if ((fromStorefront as any)?.owner_id) {
+        brandStorefront = fromStorefront;
+        sellerId = String((fromStorefront as any).owner_id).trim();
+      }
+
       const settingsId = String((fromSettings as any)?.seller_id || '').trim();
-      if (settingsId) sellerId = settingsId;
+      if (!sellerId && settingsId) sellerId = settingsId;
 
       if (!sellerId) {
         const id = String((fromProfiles as any)?.id || '').trim();
@@ -253,24 +279,25 @@ const handler: Handler = async (event) => {
 
     const mergedSeller: any = {
       id: sellerId,
-      full_name: (profile as any)?.full_name ?? (storeSettings as any)?.store_name ?? 'Store',
-      bio: (profile as any)?.bio ?? (storeSettings as any)?.store_description ?? '',
-      store_theme: (storeSettings as any)?.store_theme ?? (profile as any)?.store_theme ?? 'modern',
-      store_banner: (storeSettings as any)?.store_banner ?? (profile as any)?.store_banner ?? null,
-      store_logo: (storeSettings as any)?.store_logo ?? (profile as any)?.store_logo ?? null,
-      subdomain: ((storeSettings as any)?.subdomain ?? (profile as any)?.subdomain ?? storeSlug) || null,
-      custom_domain: (storeSettings as any)?.custom_domain ?? (profile as any)?.custom_domain ?? null,
+      storefront_id: brandStorefront?.id || null,
+      full_name: brandStorefront?.name ?? (profile as any)?.full_name ?? (storeSettings as any)?.store_name ?? 'Store',
+      bio: brandStorefront?.description ?? (profile as any)?.bio ?? (storeSettings as any)?.store_description ?? '',
+      store_theme: brandStorefront?.store_theme ?? (storeSettings as any)?.store_theme ?? (profile as any)?.store_theme ?? 'modern',
+      store_banner: brandStorefront?.banner_url ?? (storeSettings as any)?.store_banner ?? (profile as any)?.store_banner ?? null,
+      store_logo: brandStorefront?.logo_url ?? (storeSettings as any)?.store_logo ?? (profile as any)?.store_logo ?? null,
+      subdomain: (brandStorefront?.slug ?? (storeSettings as any)?.subdomain ?? (profile as any)?.subdomain ?? storeSlug) || null,
+      custom_domain: brandStorefront?.custom_domain ?? (storeSettings as any)?.custom_domain ?? (profile as any)?.custom_domain ?? null,
       location: (profile as any)?.location ?? null,
-      social_links: (storeSettings as any)?.social_links ?? (profile as any)?.social_links ?? {},
-      business_hours: (storeSettings as any)?.business_hours ?? (profile as any)?.business_hours ?? null,
-      shipping_policy: (storeSettings as any)?.shipping_policy ?? (profile as any)?.shipping_policy ?? null,
-      return_policy: (storeSettings as any)?.return_policy ?? (profile as any)?.return_policy ?? null,
+      social_links: brandStorefront?.social_links ?? (storeSettings as any)?.social_links ?? (profile as any)?.social_links ?? {},
+      business_hours: brandStorefront?.business_hours ?? (storeSettings as any)?.business_hours ?? (profile as any)?.business_hours ?? null,
+      shipping_policy: brandStorefront?.shipping_policy ?? (storeSettings as any)?.shipping_policy ?? (profile as any)?.shipping_policy ?? null,
+      return_policy: brandStorefront?.return_policy ?? (storeSettings as any)?.return_policy ?? (profile as any)?.return_policy ?? null,
       template_id: (storeSettings as any)?.template_id ?? (profile as any)?.template_id ?? null,
-      product_page_template: (storeSettings as any)?.product_page_template ?? (profile as any)?.product_page_template ?? null,
-      layout_config: (storeSettings as any)?.layout_config ?? (profile as any)?.layout_config ?? null,
-      theme_settings: (storeSettings as any)?.theme_settings ?? (profile as any)?.theme_settings ?? null,
-      custom_css: (storeSettings as any)?.custom_css ?? (profile as any)?.custom_css ?? null,
-      color_scheme: (storeSettings as any)?.color_scheme ?? (profile as any)?.color_scheme ?? null,
+      product_page_template: brandStorefront?.product_page_template ?? (storeSettings as any)?.product_page_template ?? (profile as any)?.product_page_template ?? null,
+      layout_config: brandStorefront?.layout_config ?? (storeSettings as any)?.layout_config ?? (profile as any)?.layout_config ?? null,
+      theme_settings: brandStorefront?.theme_settings ?? (storeSettings as any)?.theme_settings ?? (profile as any)?.theme_settings ?? null,
+      custom_css: brandStorefront?.custom_css ?? (storeSettings as any)?.custom_css ?? (profile as any)?.custom_css ?? null,
+      color_scheme: brandStorefront?.color_scheme ?? (storeSettings as any)?.color_scheme ?? (profile as any)?.color_scheme ?? null,
     };
 
     const sellerAliases = Array.from(
@@ -282,7 +309,7 @@ const handler: Handler = async (event) => {
     );
 
     // Fetch page links concurrently; doesn't affect product ordering.
-    const pagesPromise = supabaseAdmin
+    const pagesPromise = brandStorefront?.id ? Promise.resolve({ data: [], error: null } as any) : supabaseAdmin
       .from('custom_pages')
       .select('page_slug,page_title,is_active,display_order')
       .eq('owner_id', sellerId)
@@ -290,10 +317,21 @@ const handler: Handler = async (event) => {
       .eq('is_active', true)
       .order('display_order', { ascending: true });
 
-    const { data: orderData, error: orderError } = await supabaseAdmin
-      .from('seller_product_order')
-      .select('product_id, display_order, is_featured')
-      .in('seller_id', sellerAliases);
+    const orderLookup = brandStorefront?.id
+      ? await supabaseAdmin
+          .from('storefront_products')
+          .select('product_id, position')
+          .eq('storefront_id', brandStorefront.id)
+      : await supabaseAdmin
+          .from('seller_product_order')
+          .select('product_id, display_order, is_featured')
+          .in('seller_id', sellerAliases);
+    const orderData = (orderLookup.data || []).map((row: any) => ({
+      ...row,
+      display_order: row.display_order ?? row.position ?? 999,
+      is_featured: Boolean(row.is_featured),
+    }));
+    const orderError = orderLookup.error;
 
     if (orderError) {
       console.warn('[public-store-get] product order lookup error (non-fatal):', (orderError as any)?.message || String(orderError));
@@ -309,12 +347,14 @@ const handler: Handler = async (event) => {
     let curatedProducts: any[] = [];
 
     for (let attempt = 0; attempt < 16; attempt++) {
-      const ownedQuery = supabaseAdmin
-        .from('products')
-        .select(selectFields)
-        .in('seller_id', sellerAliases)
-        .order('created_at', { ascending: false })
-        .limit(200);
+      const ownedQuery = brandStorefront?.id
+        ? Promise.resolve({ data: [], error: null } as any)
+        : supabaseAdmin
+            .from('products')
+            .select(selectFields)
+            .in('seller_id', sellerAliases)
+            .order('created_at', { ascending: false })
+            .limit(200);
 
       const curatedQuery = orderIds.length
         ? supabaseAdmin.from('products').select(selectFields).in('id', orderIds)
@@ -372,7 +412,7 @@ const handler: Handler = async (event) => {
     });
 
     const sharedSlug = String(mergedSeller.subdomain || storeSlug || '').trim().toLowerCase();
-    if (sharedSlug) {
+    if (sharedSlug && !brandStorefront?.id) {
       const { data: affiliateSettingsRow } = await supabaseAdmin
         .from('affiliate_store_settings')
         .select('affiliate_id')
@@ -450,13 +490,13 @@ const handler: Handler = async (event) => {
       insuranceListings,
     ] = await Promise.all([
       pagesPromise,
-      supabaseAdmin
+      brandStorefront?.id ? Promise.resolve({ data: [], error: null } as any) : supabaseAdmin
         .from('store_collections')
         .select('id,name,slug,description,image_url,display_order,is_visible')
         .in('owner_id', sellerAliases)
         .eq('is_visible', true)
         .order('display_order', { ascending: true }),
-      supabaseAdmin
+      brandStorefront?.id ? Promise.resolve({ data: [], error: null } as any) : supabaseAdmin
         .from('store_product_placements')
         .select('product_id,placement_type,collection_id,custom_page_id,section_key,display_order,is_visible')
         .in('owner_id', sellerAliases)
@@ -478,6 +518,7 @@ const handler: Handler = async (event) => {
     const responseBody = {
       ok: true,
       seller_id: sellerId,
+      storefront_id: brandStorefront?.id || null,
       store_slug: mergedSeller.subdomain || null,
       seller: mergedSeller,
       products: orderedProducts,

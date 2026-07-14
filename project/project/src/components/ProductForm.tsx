@@ -461,7 +461,54 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [categoriesLoadedFromDatabase, setCategoriesLoadedFromDatabase] = useState(false);
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
   const [createdMarketplaceStatus, setCreatedMarketplaceStatus] = useState<'marketplace' | 'store_only' | null>(null);
+  const [ownedStorefronts, setOwnedStorefronts] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const [selectedStorefrontIds, setSelectedStorefrontIds] = useState<string[]>([]);
+  const [storefrontsLoading, setStorefrontsLoading] = useState(false);
   const digitalCategoryId = categories.find((category) => isDigitalCategoryOption(category))?.id || DIGITAL_CATEGORY_FALLBACK.id;
+
+  useEffect(() => {
+    let cancelled = false;
+    const ownerId = String(profile?.id || '').trim();
+    if (!ownerId) return;
+
+    setStorefrontsLoading(true);
+    void (async () => {
+      const { data, error: storefrontError } = await supabase
+        .from('storefronts')
+        .select('id,name,slug')
+        .eq('owner_id', ownerId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true });
+      if (cancelled) return;
+      if (storefrontError) {
+        console.warn('[ProductForm] storefront lookup failed:', storefrontError);
+        setOwnedStorefronts([]);
+        return;
+      }
+
+      const rows = ((data as any[]) || [])
+        .map((row) => ({ id: String(row.id), name: String(row.name || 'Storefront'), slug: String(row.slug || '') }))
+        .filter((row) => row.id);
+      setOwnedStorefronts(rows);
+
+      if (editProductId && rows.length > 0) {
+        const { data: assigned } = await supabase
+          .from('storefront_products')
+          .select('storefront_id')
+          .eq('product_id', editProductId)
+          .in('storefront_id', rows.map((row) => row.id));
+        if (!cancelled) setSelectedStorefrontIds(((assigned as any[]) || []).map((row) => String(row.storefront_id)));
+      } else if (rows.length === 1) {
+        setSelectedStorefrontIds([rows[0].id]);
+      }
+    })().finally(() => {
+      if (!cancelled) setStorefrontsLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editProductId, profile?.id]);
 
   useEffect(() => {
     if (error || success) setShowStickyAlert(true);
@@ -883,6 +930,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
 
+    if (ownedStorefronts.length > 0 && selectedStorefrontIds.length === 0) {
+      abortSubmit('Choose at least one brand storefront for this product.');
+      return;
+    }
+
     if (!pricingBreakdown) {
       abortSubmit('Please configure your pricing first');
       return;
@@ -1296,6 +1348,27 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         }
       }
 
+      if (savedProductId && ownedStorefronts.length > 0) {
+        const ownedIds = ownedStorefronts.map((storefront) => storefront.id);
+        const { error: clearStoreError } = await supabase
+          .from('storefront_products')
+          .delete()
+          .eq('product_id', savedProductId)
+          .in('storefront_id', ownedIds);
+        if (clearStoreError) throw clearStoreError;
+
+        if (selectedStorefrontIds.length > 0) {
+          const { error: assignStoreError } = await supabase
+            .from('storefront_products')
+            .insert(selectedStorefrontIds.map((storefrontId, position) => ({
+              storefront_id: storefrontId,
+              product_id: savedProductId,
+              position,
+            })));
+          if (assignStoreError) throw assignStoreError;
+        }
+      }
+
       if (savedProductId && !requiresManualReview) {
         await forceMarketplaceListing(savedProductId);
       }
@@ -1528,6 +1601,42 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               <div>3. Open optional sections for variants, shipping, or video only.</div>
             </div>
           </div>
+
+          {ownedStorefronts.length > 0 && (
+            <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <div className="text-sm font-bold text-slate-950">Choose the brand storefront</div>
+              <p className="mt-1 text-sm text-slate-700">
+                This controls which branded store sells the product. Select more than one only when the same product belongs in multiple stores.
+              </p>
+              {storefrontsLoading ? (
+                <p className="mt-3 text-sm text-slate-600">Loading your storefronts...</p>
+              ) : (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {ownedStorefronts.map((storefront) => {
+                    const checked = selectedStorefrontIds.includes(storefront.id);
+                    return (
+                      <label key={storefront.id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${checked ? 'border-amber-500 bg-white' : 'border-amber-200 bg-amber-50/50'}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => setSelectedStorefrontIds((current) =>
+                            current.includes(storefront.id)
+                              ? current.filter((id) => id !== storefront.id)
+                              : [...current, storefront.id]
+                          )}
+                          className="rounded border-slate-300"
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold text-slate-950">{storefront.name}</span>
+                          <span className="block text-xs text-slate-600">beezio.co/store/{storefront.slug}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Product Title */}
           <div>
