@@ -445,7 +445,7 @@ const MarketplacePageDual: React.FC = () => {
       <section className="border-b border-slate-200 bg-slate-950 text-white">
         <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">Business product marketplace</p>
-          <h1 className="mt-2 text-2xl font-bold sm:text-4xl">Find products for your storefront</h1>
+          <h1 className="mt-2 text-2xl font-bold text-white sm:text-4xl">Find products for your storefront</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
             Review seller offers, commission terms, and demand signals. Add the products you want to your branded storefront, then promote the store or any product with your tracked business links.
           </p>

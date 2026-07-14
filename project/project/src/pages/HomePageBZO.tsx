@@ -156,8 +156,8 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
             <div className="relative">
               <div className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-100 via-white to-amber-50 p-3 shadow-[0_24px_60px_rgba(15,23,42,0.12)]">
                 <img
-                  src="/teststore-homepage-shot.png"
-                  alt="Example Beezio custom webstore showing marketplace products in a branded storefront"
+                  src="/marebelle-storefront-example.png"
+                  alt="MareBelle example Beezio slug storefront mixing brand-owned and marketplace products"
                   className="w-full rounded-[20px] border border-slate-200 object-cover"
                 />
               </div>
