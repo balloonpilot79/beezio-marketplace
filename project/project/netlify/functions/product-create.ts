@@ -86,7 +86,7 @@ export const handler: Handler = async (event) => {
       category_id: payload.category_id ? String(payload.category_id) : null,
       seller_id: sellerProfileId,
       affiliate_enabled: Boolean(payload.affiliate_enabled ?? true),
-      status: Boolean(payload.affiliate_enabled ?? true) ? 'active' : 'store_only',
+      status: payload.affiliate_enabled ?? true ? 'active' : 'store_only',
       is_promotable: Boolean(payload.affiliate_enabled ?? true),
       is_active: true,
       commission_rate: 20,

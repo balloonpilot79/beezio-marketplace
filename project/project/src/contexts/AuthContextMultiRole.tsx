@@ -13,7 +13,7 @@ import { buildDeterministicReferralCode } from '../utils/referralCode';
 import { assignInfluencerReferral } from '../utils/influencerReferrals';
 import {
   clearPendingRecruitAttributionForUser,
-  getPendingRecruitAttributionForUser,
+  getPendingRecruitAttributionsForUser,
 } from '../utils/recruitAttribution';
 
 const PENDING_SIGNUP_KEY = 'beezio-pending-signup-bootstrap';
@@ -316,8 +316,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const authUserId = String(authUser?.id || '').trim();
     if (!authUserId) return;
 
-    const pending = getPendingRecruitAttributionForUser(authUserId);
-    if (!pending?.referrerProfileId) return;
+    const pendingAssignments = getPendingRecruitAttributionsForUser(authUserId);
+    if (!pendingAssignments.length) return;
 
     const targetProfileId =
       String(profileIdHint || '').trim() ||
@@ -328,27 +328,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           user_metadata: authUser.user_metadata as any,
         })
       ).trim();
-    if (!targetProfileId || targetProfileId === pending.referrerProfileId) return;
+    if (!targetProfileId) return;
 
     try {
-      const { data: existingRow } = await supabase
-        .from('influencer_referrals')
-        .select('influencer_profile_id')
-        .eq('recruited_profile_id', targetProfileId)
-        .eq('recruited_role', pending.recruitedRole)
-        .maybeSingle();
+      for (const pending of pendingAssignments) {
+        if (targetProfileId === pending.referrerProfileId) continue;
+        const { data: existingRow } = await supabase
+          .from('influencer_referrals')
+          .select('influencer_profile_id')
+          .eq('recruited_profile_id', targetProfileId)
+          .eq('recruited_role', pending.recruitedRole)
+          .maybeSingle();
 
-      const existingReferrerId = String((existingRow as any)?.influencer_profile_id || '').trim();
-      if (existingReferrerId) {
-        clearPendingRecruitAttributionForUser(authUserId);
-        return;
+        const existingReferrerId = String((existingRow as any)?.influencer_profile_id || '').trim();
+        if (existingReferrerId) continue;
+
+        await assignInfluencerReferral({
+          recruitedProfileId: targetProfileId,
+          recruitedRole: pending.recruitedRole,
+          influencerProfileId: pending.referrerProfileId,
+        });
       }
-
-      await assignInfluencerReferral({
-        recruitedProfileId: targetProfileId,
-        recruitedRole: pending.recruitedRole,
-        influencerProfileId: pending.referrerProfileId,
-      });
 
       clearPendingRecruitAttributionForUser(authUserId);
     } catch {

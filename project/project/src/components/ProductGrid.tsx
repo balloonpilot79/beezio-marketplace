@@ -224,7 +224,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
             <h2 className="text-3xl font-display font-bold text-gray-800 mb-8">Featured Products</h2>
             <div className="bg-red-100 border border-red-300 rounded-lg p-6 max-w-md mx-auto">
               <div className="flex items-center justify-center mb-4">
-                <span className="text-4xl">âš ï¸</span>
+                <span className="text-4xl" aria-hidden="true">⚠️</span>
               </div>
               <p className="text-red-800 text-sm">{error}</p>
               <p className="text-red-600 text-xs mt-2">
@@ -244,7 +244,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 relative overflow-hidden">
           <div className="relative">
             <h3 className="text-lg font-display font-bold text-gray-800 mb-4 flex items-center">
-              <span className="mr-2">ðŸ›ï¸</span>
+              <span className="mr-2" aria-hidden="true">🛍️</span>
               Shop by Category
             </h3>
             <div className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-2 sm:mx-0 sm:flex-wrap sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0">
@@ -256,7 +256,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                   : 'bg-gray-100 text-gray-700 border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-200'
               }`}
             >
-              ðŸ›ï¸ All Products
+              🛍️ All Products
             </button>
             <button
               onClick={() => setFilter('affiliate')}
@@ -266,28 +266,28 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                   : 'bg-accent-100 text-accent-800 border-2 border-accent-300 hover:border-accent-400 hover:bg-accent-200'
               }`}
             >
-              ðŸ’° Partner Products
+              💰 Affiliate Products
             </button>
             {/* Additional category buttons based on available categories */}
             <button
               className="shrink-0 whitespace-nowrap rounded-full border-2 border-primary-300 bg-primary-50 px-4 py-2.5 text-sm font-semibold text-primary-700 transition-all duration-300 hover:border-primary-400 hover:bg-primary-100 sm:px-6 sm:py-3 sm:text-base sm:hover:scale-105"
             >
-              ðŸ“± Electronics
+              📱 Electronics
             </button>
             <button
               className="shrink-0 whitespace-nowrap rounded-full border-2 border-green-300 bg-green-100 px-4 py-2.5 text-sm font-semibold text-green-800 transition-all duration-300 hover:border-green-400 hover:bg-green-200 sm:px-6 sm:py-3 sm:text-base sm:hover:scale-105"
             >
-              ðŸ‘• Fashion
+              👕 Fashion
             </button>
             <button
               className="shrink-0 whitespace-nowrap rounded-full border-2 border-orange-300 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-800 transition-all duration-300 hover:border-orange-400 hover:bg-orange-100 sm:px-6 sm:py-3 sm:text-base sm:hover:scale-105"
             >
-              ðŸ½ï¸ Food & Beverage
+              🍽️ Food &amp; Beverage
             </button>
             <button
               className="shrink-0 whitespace-nowrap rounded-full border-2 border-yellow-300 bg-yellow-100 px-4 py-2.5 text-sm font-semibold text-yellow-800 transition-all duration-300 hover:border-yellow-400 hover:bg-yellow-200 sm:px-6 sm:py-3 sm:text-base sm:hover:scale-105"
             >
-              ðŸ  Home & Garden
+              🏠 Home &amp; Garden
             </button>
             </div>
           </div>

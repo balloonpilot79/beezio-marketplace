@@ -72,6 +72,18 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/api/signup/bootstrap"
+  to = "/.netlify/functions/signup-bootstrap"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/public/recruit/resolve"
+  to = "/.netlify/functions/public-recruit-resolve"
+  status = 200
+  force = true
+
 # SPA fallback
 [[redirects]]
   from = "/*"

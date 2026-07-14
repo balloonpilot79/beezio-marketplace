@@ -687,7 +687,6 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
         </aside>
 
         <main className="space-y-6">
-          {(true || activeTab === 'overview') && (
             <>
               <div id="builder-overview" className="scroll-mt-24 rounded-[24px] border border-stone-200 bg-white p-6 shadow-sm">
                 <h3 className="text-2xl font-bold text-stone-950">Build your store in five easy steps</h3>
@@ -734,9 +733,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                 </div>
               </div>
             </>
-          )}
 
-          {(true || activeTab === 'brand') && (
             <>
               <div id="builder-brand" className="scroll-mt-24 rounded-[24px] border border-stone-200 bg-white p-6 shadow-sm">
                 <h3 className="text-2xl font-bold text-stone-950">Make the store yours</h3>
@@ -904,9 +901,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                 </div>
               </div>
             </>
-          )}
 
-          {(true || activeTab === 'layout') && (
             <>
               <div id="builder-layout" className="scroll-mt-24 rounded-[24px] border border-stone-200 bg-white p-6 shadow-sm">
                 <h3 className="text-2xl font-bold text-stone-950">Choose the store look</h3>
@@ -1008,9 +1003,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                 </div>
               </div>
             </>
-          )}
 
-          {(true || activeTab === 'content') && (
             <>
               <div id="builder-content" className="scroll-mt-24 rounded-[24px] border border-stone-200 bg-white p-6 shadow-sm">
                 <h3 className="text-2xl font-bold text-stone-950">Add products and pages</h3>
@@ -1066,9 +1059,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                 <CustomPageBuilder ownerType={role} />
               </div>
             </>
-          )}
 
-          {(true || activeTab === 'publish') && (
             <>
               <div id="builder-publish" className="scroll-mt-24 rounded-[24px] border border-stone-200 bg-white p-6 shadow-sm">
                 <h3 className="text-2xl font-bold text-stone-950">Publish and launch</h3>
@@ -1103,7 +1094,6 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                 />
               </div>
             </>
-          )}
         </main>
 
         <aside className="xl:sticky xl:top-6 xl:self-start">

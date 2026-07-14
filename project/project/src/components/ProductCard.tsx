@@ -101,7 +101,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const commissionDisplayLabel = commissionType === 'flat_rate'
     ? `$${flatCommission.toFixed(2)} affiliate commission`
     : `${commissionRate}% affiliate commission`;
-  const showCommissionDisplay =
+  const hasCommission =
     commissionType === 'flat_rate'
       ? flatCommission > 0
       : commissionRate > 0;
@@ -118,9 +118,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const canAddAsSeller =
     Boolean(user?.id) &&
     (isSellerRole || hasRole('seller'));
-  const isSellingRole = isSellerRole || isAffiliateRole || canAddAsAffiliate;
+  const isSellingRole = isSellerRole || isAffiliateRole || canAddAsAffiliate || canAddAsSeller;
   const isStorefrontCtas = ctaMode === 'storefront';
-  const showPurchaseCtas = forcePurchaseCtas || isStorefrontCtas || !isSellingRole;
+  const showCommissionDisplay = !isStorefrontCtas && hasCommission;
+  const showPurchaseCtas = forcePurchaseCtas || isStorefrontCtas;
   const showStoreCta = Boolean(user?.id) && !isStorefrontCtas && isSellingRole;
   const showAffiliateEarnings = !isStorefrontCtas && canAddAsAffiliate;
   const cartAffiliateId = String(affiliateRef || affiliateUid || '').trim() || undefined;
@@ -143,13 +144,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       : null;
   const stockQuantity = typeof rawInventory === 'number' ? Math.max(0, Math.floor(rawInventory)) : null;
   const hasKnownStock = typeof stockQuantity === 'number';
-  const allowBackorder =
-    String((product as any)?.lineage || '').toUpperCase() === 'CJ' ||
-    String((product as any)?.dropship_provider || '').toLowerCase() === 'cj' ||
-    String((product as any)?.source_platform || '').toLowerCase() === 'cj' ||
-    String((product as any)?.source || '').toLowerCase() === 'cj' ||
-    String((product as any)?.inventory_source || '').toLowerCase() === 'cj' ||
-    Boolean((product as any)?.cj_product_id || (product as any)?.cj_pid || (product as any)?.cj_spu || (product as any)?.display_search_code);
+  const allowBackorder = false;
   const tracksInventory = product.track_inventory !== false;
   const explicitInStock = typeof product.in_stock === 'boolean' ? product.in_stock : null;
   const isListedProduct =

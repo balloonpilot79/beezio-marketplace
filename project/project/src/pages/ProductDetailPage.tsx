@@ -472,7 +472,6 @@ const ProductDetailPage: React.FC = () => {
   const canAddToSellerStore = hasRole('seller') || isSellerRole;
   const storeScope = String(localStorage.getItem('beezio-store-scope') || '');
   const isStorefrontScope = storeScope.startsWith('store:seller:') || storeScope.startsWith('store:affiliate:');
-  const showBuyerCtas = true;
   const rawStoreSlug = storeSlug?.trim().toLowerCase() || '';
   const lookupStoreSlug = normalizeStoreSlug(rawStoreSlug);
   const isCustomDomainHost = useMemo(() => {
@@ -484,6 +483,13 @@ const ProductDetailPage: React.FC = () => {
     const path = String(location.pathname || '').toLowerCase();
     return path.startsWith('/store/') || path.startsWith('/partner/');
   }, [location.pathname, rawStoreSlug]);
+  const isTrackedPromotion = Boolean(
+    searchParams.get('ref') ||
+    searchParams.get('uid') ||
+    searchParams.get('code') ||
+    searchParams.get('promo') === '1'
+  );
+  const showBuyerCtas = isStorefrontProductView || isCustomDomainHost || isTrackedPromotion;
   const showStoreAddCtas = Boolean(user?.id) && isSellingRole && !isStorefrontProductView && !isStorefrontScope && !isCustomDomainHost;
 
   const isAdminRole = useMemo(() => {
@@ -1857,7 +1863,7 @@ const ProductDetailPage: React.FC = () => {
             <div className="space-y-1">
               <div className="flex items-center space-x-3">
                 <span data-testid="product-detail-price" className="text-3xl font-bold text-gray-900">
-                  {showBuyerCtas ? formatMoneyDisplay(finalDisplayPrice) : formatMoneyDisplay(earningsAmount ?? 0)}
+                  {formatMoneyDisplay(finalDisplayPrice)}
                 </span>
                 {showBuyerCtas && product.requires_shipping && (
                   <span className="text-sm text-gray-600">
@@ -1872,7 +1878,14 @@ const ProductDetailPage: React.FC = () => {
               </div>
 
               {!showBuyerCtas && (
-                <div className="text-xs text-gray-500">You would make</div>
+                <div className="space-y-1">
+                  <div className="text-xs text-gray-500">Storefront buyer price</div>
+                  {earningsAmount !== null && commissionValue > 0 && (
+                    <div className="text-sm font-semibold text-green-700">
+                      Affiliate earns {formatMoneyDisplay(earningsAmount)} per sale
+                    </div>
+                  )}
+                </div>
               )}
 
               {showBuyerCtas && isOutOfStock && (
@@ -1902,10 +1915,10 @@ const ProductDetailPage: React.FC = () => {
               <div className="flex items-center space-x-2 mb-4">
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                   <Heart className="w-4 h-4 mr-2" />
-                  Creator-Supported Purchase
+                  Available to promote
                 </span>
                 <span className="text-sm text-gray-600">
-                  Helps independent sellers grow their business
+                  Add this product to your storefront or create a single-product campaign
                 </span>
               </div>
             )}
@@ -2017,30 +2030,32 @@ const ProductDetailPage: React.FC = () => {
               )}
 
               {/* Main Action Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  onClick={() => addToCart()}
-                  disabled={isOutOfStock}
-                  className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 ${
-                    isOutOfStock
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-amber-600 text-white hover:bg-amber-700'
-                  }`}
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  <span>Add to Cart</span>
-                </button>
+              {showBuyerCtas && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={() => addToCart()}
+                    disabled={isOutOfStock}
+                    className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 ${
+                      isOutOfStock
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-amber-600 text-white hover:bg-amber-700'
+                    }`}
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    <span>Add to Cart</span>
+                  </button>
 
-                <button
-                  onClick={handleBuyNow}
-                  disabled={isOutOfStock}
-                  className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors ${
-                    isOutOfStock ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white hover:bg-gray-800'
-                  }`}
-                >
-                  Buy Now
-                </button>
-              </div>
+                  <button
+                    onClick={handleBuyNow}
+                    disabled={isOutOfStock}
+                    className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors ${
+                      isOutOfStock ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    Buy Now
+                  </button>
+                </div>
+              )}
 
               {/* Shipping (after primary CTAs) */}
               {showBuyerCtas && product && productId && !isOutOfStock && (
@@ -2115,7 +2130,7 @@ const ProductDetailPage: React.FC = () => {
               )}
 
               {/* Sign Up Prompt for Non-Users */}
-              {!user && (
+              {!user && showBuyerCtas && (
                 <div className="text-center py-2">
                   <p className="text-gray-600 text-sm">
                     Not registered? 
@@ -2129,6 +2144,21 @@ const ProductDetailPage: React.FC = () => {
                       Sign up here
                     </button>
                   </p>
+                </div>
+              )}
+
+              {!user && !showBuyerCtas && (
+                <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 text-center">
+                  <p className="font-semibold text-gray-900">Want to sell or promote this product?</p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Create one Beezio business account for your storefront, affiliate promotions, and influencer referrals.
+                  </p>
+                  <Link
+                    to="/signup"
+                    className="mt-3 inline-flex items-center justify-center rounded-lg bg-purple-600 px-5 py-2.5 font-semibold text-white hover:bg-purple-700"
+                  >
+                    Create business account
+                  </Link>
                 </div>
               )}
             </div>

@@ -9,6 +9,7 @@ import { getPromoDisplayPrice, slugifyPromoValue } from '../../utils/promoLinks'
 import { apiPost } from '../../utils/netlifyApi';
 import { fetchAccountOwnedProducts } from '../../utils/accountOwnedProducts';
 import { buildPromoterReferralParams } from '../../utils/promoAttribution';
+import { QRCodeSVG } from 'qrcode.react';
 
 type PromoProduct = {
   id: string;
@@ -133,6 +134,7 @@ const buildPublicPromoBase = (
   if (ownerId) {
     params.set('owner', ownerId);
   }
+  params.set('promo', '1');
   buildPromoterReferralParams({ promoterRole, ownerId, productSellerId }).forEach((value, key) => {
     params.set(key, value);
   });
@@ -454,6 +456,8 @@ export default function SingleProductPromoStudio(props: Props) {
       ownerId,
       productSellerId: selectedProduct.seller_id,
     });
+    params.set('promo', '1');
+    if (ownerId) params.set('owner', ownerId);
     const query = params.toString();
     return `${window.location.origin}/product/${encodeURIComponent(selectedProduct.id)}${query ? `?${query}` : ''}`;
   }, [generateAffiliateLink, ownerId, promoterRole, selectedProduct]);
@@ -476,11 +480,7 @@ export default function SingleProductPromoStudio(props: Props) {
     }));
   }, [ownerId, promoterRole, selectedProduct]);
 
-  const qrImageUrl = useMemo(() => {
-    const target = landingLink || directLink;
-    if (!target) return '';
-    return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(target)}`;
-  }, [directLink, landingLink]);
+  const qrTarget = landingLink || directLink;
 
   const socialCaptions = useMemo(() => {
     if (!selectedProduct) return [];
@@ -859,7 +859,13 @@ export default function SingleProductPromoStudio(props: Props) {
             </div>
             <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="rounded-2xl border border-gray-200 bg-white p-3">
-                <img src={qrImageUrl} alt="Product QR code" className="h-44 w-44 rounded-xl" />
+                <QRCodeSVG
+                  value={qrTarget}
+                  size={176}
+                  level="M"
+                  marginSize={2}
+                  title={`QR code for ${selectedProduct.title}`}
+                />
               </div>
               <div className="flex-1">
                 <div className="text-sm font-semibold text-gray-900">QR campaign target</div>

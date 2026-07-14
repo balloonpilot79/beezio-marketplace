@@ -9,25 +9,25 @@ interface HomePageProps {
 
 const freeToJoinPoints = [
   'One free business account includes seller, affiliate, and influencer tools',
-  'Separate buyer account for checkout, orders, and support',
   'No monthly fees or listing fees',
-  'Free custom web stores for sellers and affiliates',
-  'One clear buyer price with built-in fees and commissions',
-  'Automated payout tracking after checkout',
+  'One branded storefront for your products and marketplace products',
+  'Single-product links, QR codes, social copy, and promotional assets',
+  'Lifetime influencer attribution when a referred business makes eligible sales',
+  'Automated seller, affiliate, and influencer payout tracking',
 ];
 
 const roleExplainers = [
   {
-    title: 'Business Account',
-    detail: 'Sell, promote, and recruit from one login',
+    title: 'Sell',
+    detail: 'List your own products and manage fulfillment',
   },
   {
-    title: 'Buyer Account',
-    detail: 'Shop across storefronts with one verified account',
+    title: 'Promote',
+    detail: 'Add marketplace products and share tracked promotions',
   },
   {
-    title: 'Payout Flow',
-    detail: 'Track seller, affiliate, and influencer earnings in one place',
+    title: 'Recruit',
+    detail: 'Invite businesses and track lifetime influencer earnings',
   },
 ];
 
@@ -43,16 +43,16 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
             <div className="space-y-6">
               <div className="space-y-4">
                 <h2 className="max-w-4xl text-4xl font-semibold leading-tight text-gray-900 md:text-5xl" style={{ fontFamily: 'Fraunces, serif' }}>
-                  One Beezio business account lets you sell, promote, and recruit from the same login.
+                  Build your store, promote products, and grow a business network from one Beezio account.
                 </h2>
                 <p className="max-w-3xl text-base leading-7 text-gray-700 md:text-lg">
-                  Beezio does not make business users choose between seller, affiliate, or influencer at signup. One business account opens all three toolsets together, while buyers use a separate verified account for shopping, orders, and support.
+                  Beezio is the business platform behind independent seller and affiliate storefronts. Every business account includes seller, affiliate, and influencer tools together—without forcing you to choose only one way to earn.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white/85 p-4 shadow-sm backdrop-blur">
                 <p className="text-sm leading-6 text-gray-800 md:text-base">
-                  Business users get one account with a storefront, affiliate sharing tools, influencer recruiting links, and payout tracking. Buyers get a separate account with email confirmation, order history, and support access across storefronts.
+                  Add your own products, choose products from the business marketplace, organize them in one branded storefront, and promote any single item with tracked links, QR codes, ready-to-paste copy, posters, email, SMS, and embeds.
                 </p>
               </div>
 
@@ -88,16 +88,10 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
                   Create Business Account
                 </Link>
                 <Link
-                  to="/account/signup"
-                  className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-900 transition-colors hover:border-amber-400 hover:text-amber-700"
-                >
-                  Create Buyer Account
-                </Link>
-                <Link
-                  to="/how-it-works"
+                  to="/marketplace"
                   className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-900 transition-colors hover:border-emerald-400 hover:text-emerald-700"
                 >
-                  See How It Works
+                  Explore Products to Promote
                 </Link>
               </div>
             </div>
@@ -119,19 +113,19 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
           <div className="relative grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
             <div className="space-y-5">
               <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-700">Free custom webstores</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-700">One branded storefront</p>
                 <h2 className="text-3xl font-semibold leading-tight text-gray-900 md:text-4xl" style={{ fontFamily: 'Fraunces, serif' }}>
                   Launch a custom store, load it with marketplace products, add your own items, or sell both at the same time.
                 </h2>
                 <p className="max-w-2xl text-sm leading-7 text-gray-700 md:text-base">
-                  Beezio gives sellers and affiliates a free custom webstore that is ready to earn. Start with products from the marketplace, bring in your own inventory, or combine both into one storefront built to convert.
+                  Your one customizable storefront is where shoppers discover and buy. Beezio stays behind the scenes as the business dashboard, sourcing marketplace, attribution system, and payout ledger.
                 </p>
               </div>
 
               <div className="grid gap-3 text-sm text-gray-800">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
                   <p className="font-semibold text-gray-900">Use marketplace products immediately</p>
-                  <p className="mt-1 text-gray-600">Add proven offers fast so your store is not empty on day one.</p>
+                  <p className="mt-1 text-gray-600">Choose products from sellers who allow affiliates, then place them exactly where you want in your storefront.</p>
                 </div>
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
                   <p className="font-semibold text-gray-900">Sell your own products too</p>
@@ -139,13 +133,13 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
                 </div>
                 <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
                   <p className="font-semibold text-gray-900">Mix both in one store</p>
-                  <p className="mt-1 text-gray-600">Run your own catalog beside marketplace products and create more ways to make money from the same traffic.</p>
+                  <p className="mt-1 text-gray-600">Run your own catalog beside promoted products while keeping one brand, one store URL, and one dashboard.</p>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-3 pt-1">
                 <Link
-                  to="/auth/signup?role=seller"
+                  to="/signup"
                   className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
                 >
                   Build your store
@@ -154,7 +148,7 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
                   href="/stores"
                   className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-900 transition-colors hover:border-amber-400 hover:text-amber-700"
                 >
-                  Browse storefronts
+                  See storefront examples
                 </a>
               </div>
             </div>
@@ -204,49 +198,45 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
         <section className="bzo-marketing-band rounded-3xl p-6 md:p-8">
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-700">How Beezio works</p>
-            <h2 className="text-2xl font-semibold text-gray-900 md:text-3xl">A simple system with four people who all need each other</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 md:text-3xl">One business account with three connected ways to grow</h2>
           </div>
-          <div className="mt-5 grid gap-4 md:grid-cols-4">
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
               <p className="text-sm font-semibold text-gray-900">Influencers grow</p>
-              <p className="mt-2 text-sm text-gray-700">Influencers bring sellers and affiliates onto Beezio and build passive income as platform activity grows.</p>
+              <p className="mt-2 text-sm text-gray-700">Influencers refer new business accounts and receive the applicable lifetime bonus whenever those recruited sellers or affiliates make eligible sales.</p>
             </div>
             <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
               <p className="text-sm font-semibold text-gray-900">Affiliates promote</p>
-              <p className="mt-2 text-sm text-gray-700">Affiliates choose offers to promote and can combine products, digital offers, and insurance storefronts in one earning flow.</p>
+              <p className="mt-2 text-sm text-gray-700">Affiliates choose marketplace products, add them to their branded storefront, and share tracked store or single-product promotions.</p>
             </div>
             <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
-              <p className="text-sm font-semibold text-gray-900">Sellers and agents convert</p>
-              <p className="mt-2 text-sm text-gray-700">Sellers fulfill orders while insurance agents receive vetted, warm inbound shoppers looking for coverage.</p>
-            </div>
-            <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
-              <p className="text-sm font-semibold text-gray-900">Buyers take action</p>
-              <p className="mt-2 text-sm text-gray-700">Buyers either checkout on Beezio or request insurance help through a real storefront built to convert.</p>
+              <p className="text-sm font-semibold text-gray-900">Sellers fulfill</p>
+              <p className="mt-2 text-sm text-gray-700">Sellers add products, choose affiliate terms, receive orders from storefront shoppers, and manage fulfillment and tracking.</p>
             </div>
           </div>
           <p className="mt-5 text-sm text-gray-600">
-            Beezio gives approved affiliates the tools to promote offers, grow audience income, and help sellers and agents get real results.
+            Shoppers enter through a seller or affiliate storefront or a tracked single-product promotion. Beezio provides the business tools and attribution behind that experience.
           </p>
         </section>
 
         <section className="bzo-marketing-band rounded-3xl p-6 md:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-700">Influencer earnings</p>
-          <h2 className="mt-2 text-2xl font-semibold text-gray-900 md:text-3xl">Influencers are first because Beezio turns audience growth into passive income</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-gray-900 md:text-3xl">Influencer attribution stays attached to the business account</h2>
           <p className="mt-3 text-sm text-gray-700 md:text-base">
-            If you can attract people, you can build income here. Bring in sellers. Bring in affiliates. Help drive platform activity. That is how influencers turn Beezio into a long-term earning engine instead of a one-time promo link.
+            Share your influencer signup link with a business. When that account joins under your code, Beezio permanently records the relationship for its seller and affiliate activity and credits eligible future sales under the published payout rules.
           </p>
           <div className="mt-5 grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
               <p className="text-sm font-semibold text-gray-900">Bring in sellers</p>
-              <p className="mt-2 text-sm text-gray-700">Help businesses launch on Beezio and create long-term earning potential from the activity they generate.</p>
+              <p className="mt-2 text-sm text-gray-700">A seller recruited under your code stays connected when products from that business sell.</p>
             </div>
             <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
               <p className="text-sm font-semibold text-gray-900">Bring in affiliates</p>
-              <p className="mt-2 text-sm text-gray-700">Grow a network of people promoting offers every day and turn that network effect into recurring income.</p>
+              <p className="mt-2 text-sm text-gray-700">An affiliate recruited under your code stays connected when that affiliate drives eligible sales.</p>
             </div>
             <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
-              <p className="text-sm font-semibold text-gray-900">Own the attention</p>
-              <p className="mt-2 text-sm text-gray-700">Use your audience to move buyers toward products and insurance pages that already have a payout structure behind them.</p>
+              <p className="text-sm font-semibold text-gray-900">Track every result</p>
+              <p className="mt-2 text-sm text-gray-700">See invite tools, recruited-account totals, held earnings, available payouts, and paid history in your dashboard.</p>
             </div>
           </div>
         </section>

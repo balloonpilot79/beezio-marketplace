@@ -56,7 +56,7 @@ type CategoryRow = {
 const PAGE_SIZE = 160;
 const MARKETPLACE_FETCH_TIMEOUT_MS = 12000;
 const MARKETPLACE_SELECT_FIELDS =
-  'id,title,description,price,calculated_customer_price,seller_ask,seller_amount,seller_ask_price,is_digital,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status,lineage,dropship_provider,source_platform';
+  'id,title,description,price,calculated_customer_price,seller_ask,seller_amount,seller_ask_price,is_digital,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status';
 
 const CATEGORY_KEYWORDS: Array<{ category: string; keywords: string[] }> = [
   { category: 'Electronics', keywords: ['microphone', 'usb', 'keyboard', 'speaker', 'charger', 'camera', 'phone', 'tablet', 'laptop', 'tech', 'wireless', 'led', 'headphone'] },
@@ -64,6 +64,8 @@ const CATEGORY_KEYWORDS: Array<{ category: string; keywords: string[] }> = [
   { category: 'Home & Garden', keywords: ['garden', 'house', 'porch', 'lamp', 'outdoor', 'kitchen', 'bedding', 'furniture', 'home', 'decor'] },
   { category: 'Sports & Outdoors', keywords: ['camp', 'hiking', 'bike', 'bicycle', 'outdoor', 'travel', 'fitness', 'sports', 'tent'] },
   { category: 'Beauty & Personal Care', keywords: ['beauty', 'makeup', 'skincare', 'hair', 'cosmetic', 'lotion'] },
+  { category: 'Fragrance & Candles', keywords: ['fragrance', 'perfume', 'cologne', 'scent', 'candle', 'wax melt', 'aromatherapy'] },
+  { category: 'Equestrian & Horse Supplies', keywords: ['horse', 'equestrian', 'tack', 'saddle', 'bridle', 'halter', 'stable', 'grooming brush'] },
   { category: 'Fashion', keywords: ['shirt', 'hoodie', 'jacket', 'fashion', 'dress', 'shoe', 'hat', 'pants', 'bag'] },
   { category: 'Toys & Games', keywords: ['toy', 'game', 'kids', 'puzzle', 'play'] },
   { category: 'Automotive', keywords: ['car', 'auto', 'vehicle', 'truck', 'tire'] },
@@ -76,14 +78,11 @@ const isMarketplaceVisible = (row: any) => {
   }
   const promotable = row?.is_promotable === true;
   const active = row?.is_active === true;
-  const sourcePlatform = String(row?.source_platform || '').trim().toLowerCase();
-  const lineage = String(row?.lineage || '').trim().toUpperCase();
-  const isImportedCjProduct = sourcePlatform === 'cj' || lineage === 'CJ';
   const hasExplicitVisibilityState =
     Object.prototype.hasOwnProperty.call(row || {}, 'is_active') ||
     Object.prototype.hasOwnProperty.call(row || {}, 'is_promotable') ||
     status.length > 0;
-  if (status === 'active' || promotable || active || isImportedCjProduct) {
+  if (status === 'active' || promotable || active) {
     return true;
   }
   return !hasExplicitVisibilityState;
@@ -443,6 +442,15 @@ const MarketplacePageDual: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#eaeded]">
+      <section className="border-b border-slate-200 bg-slate-950 text-white">
+        <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">Business product marketplace</p>
+          <h1 className="mt-2 text-2xl font-bold sm:text-4xl">Find products for your storefront</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
+            Review seller offers, commission terms, and demand signals. Add the products you want to your branded storefront, then promote the store or any product with your tracked business links.
+          </p>
+        </div>
+      </section>
       <section className="border-b border-slate-200 bg-white shadow-sm md:sticky md:top-16 md:z-20">
         <div className="mx-auto max-w-7xl px-3 py-3 sm:px-6 sm:py-5 lg:px-8">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
@@ -615,7 +623,7 @@ const MarketplacePageDual: React.FC = () => {
             {selectedCategory !== 'All' && ` in ${selectedCategoryLabel}`}
           </span>
           <Link to="/start-earning" className="text-sm font-semibold text-[#0f6cbf] hover:underline">
-            {canAddToStore ? 'Add products to your store from this marketplace' : 'Explore selling and affiliate tools'}
+            {canAddToStore ? 'Add products to your storefront from this marketplace' : 'Create a business account to add products'}
           </Link>
         </div>
 

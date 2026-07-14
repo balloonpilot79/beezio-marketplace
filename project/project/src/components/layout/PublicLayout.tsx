@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { getPartnerLabel } from '../../utils/processorSafeCopy';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -24,21 +23,15 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children, className, conten
                 <p className="text-xs font-semibold uppercase tracking-[0.4em] text-amber-600">Beezio</p>
                 <h2 className="mt-2 text-2xl font-semibold text-gray-900">Ready to build your Beezio storefront?</h2>
                 <p className="mt-2 text-sm text-gray-700">
-                  Join as a seller or start choosing and sharing as a {getPartnerLabel().toLowerCase()}.
+                  One free business account includes seller, affiliate, influencer, storefront, promotion, and payout tools.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Link
-                  to="/auth/signup?role=seller"
+                  to="/signup"
                   className="inline-flex items-center justify-center rounded-full bg-amber-500 px-6 py-3 text-sm font-semibold text-black shadow-sm hover:bg-amber-600 transition-colors"
                 >
-                  Join as a seller
-                </Link>
-                <Link
-                  to="/affiliate/signup"
-                  className="inline-flex items-center justify-center rounded-full border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-900 hover:border-amber-400 hover:text-amber-700 transition-colors"
-                >
-                  Apply as a {getPartnerLabel().toLowerCase()}
+                  Create Your Business Account
                 </Link>
               </div>
             </div>

@@ -174,7 +174,7 @@ const UnifiedMegaDashboard: React.FC = () => {
     if (user) {
       fetchProducts();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [productScope, user?.id, profile?.id, isAdmin]);
 
   useEffect(() => {
@@ -183,7 +183,7 @@ const UnifiedMegaDashboard: React.FC = () => {
     } else {
       setSellingProducts([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [user?.id, profile?.id, derivedRole]);
 
   useEffect(() => {
