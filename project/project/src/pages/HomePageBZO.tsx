@@ -110,57 +110,52 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
           <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-amber-100/50 blur-3xl" />
           <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-emerald-100/50 blur-3xl" />
 
-          <div className="relative grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-            <div className="space-y-5">
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-700">One branded storefront</p>
-                <h2 className="text-3xl font-semibold leading-tight text-gray-900 md:text-4xl" style={{ fontFamily: 'Fraunces, serif' }}>
-                  Launch a custom store, load it with marketplace products, add your own items, or sell both at the same time.
-                </h2>
-                <p className="max-w-2xl text-sm leading-7 text-gray-700 md:text-base">
-                  Your one customizable storefront is where shoppers discover and buy. Beezio stays behind the scenes as the business dashboard, sourcing marketplace, attribution system, and payout ledger.
-                </p>
-              </div>
-
-              <div className="grid gap-3 text-sm text-gray-800">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                  <p className="font-semibold text-gray-900">Use marketplace products immediately</p>
-                  <p className="mt-1 text-gray-600">Choose products from sellers who allow affiliates, then place them exactly where you want in your storefront.</p>
-                </div>
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
-                  <p className="font-semibold text-gray-900">Sell your own products too</p>
-                  <p className="mt-1 text-gray-600">List your own items, control your pricing, and grow your brand under your own store link.</p>
-                </div>
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
-                  <p className="font-semibold text-gray-900">Mix both in one store</p>
-                  <p className="mt-1 text-gray-600">Run your own catalog beside promoted products while keeping one brand, one store URL, and one dashboard.</p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-3 pt-1">
-                <Link
-                  to="/signup"
-                  className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
-                >
-                  Build your store
-                </Link>
-                <a
-                  href="/stores"
-                  className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-900 transition-colors hover:border-amber-400 hover:text-amber-700"
-                >
-                  See storefront examples
-                </a>
-              </div>
+          <div className="relative">
+            <div className="mx-auto max-w-4xl space-y-3 text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-700">Built with Beezio storefront tools</p>
+              <h2 className="text-3xl font-semibold leading-tight text-gray-900 md:text-5xl" style={{ fontFamily: 'Fraunces, serif' }}>
+                Meet MareBelle—an example of the branded store you can build on Beezio.
+              </h2>
+              <p className="mx-auto max-w-3xl text-sm leading-7 text-gray-700 md:text-base">
+                This sample uses the same Beezio storefront tools available to every business account: one store slug, custom branding, your own products, and marketplace products you choose to promote.
+              </p>
             </div>
 
-            <div className="relative">
-              <div className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-100 via-white to-amber-50 p-3 shadow-[0_24px_60px_rgba(15,23,42,0.12)]">
+            <div className="relative mt-8">
+              <div className="rounded-[30px] border border-amber-200 bg-gradient-to-br from-slate-100 via-white to-amber-50 p-3 shadow-[0_28px_70px_rgba(15,23,42,0.16)] md:p-4">
                 <img
                   src="/marebelle-storefront-example.png"
                   alt="MareBelle example Beezio slug storefront mixing brand-owned and marketplace products"
-                  className="w-full rounded-[20px] border border-slate-200 object-cover"
+                  className="w-full rounded-[22px] border border-slate-200 object-cover"
                 />
               </div>
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-amber-200 bg-white px-5 py-2 text-center text-xs font-bold uppercase tracking-[0.2em] text-amber-800 shadow-lg">
+                Beezio storefront example
+              </div>
+            </div>
+
+            <div className="mt-10 grid gap-3 text-sm text-gray-800 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <p className="font-semibold text-gray-900">Your products</p>
+                <p className="mt-1 text-gray-600">List your own items, control pricing, and build recognition for your brand.</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+                <p className="font-semibold text-gray-900">Marketplace products</p>
+                <p className="mt-1 text-gray-600">Choose products from other sellers and place them where they fit your store.</p>
+              </div>
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+                <p className="font-semibold text-gray-900">One branded destination</p>
+                <p className="mt-1 text-gray-600">Keep one store URL, one look, and one dashboard while selling both.</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-center">
+              <Link
+                to="/signup"
+                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-7 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+              >
+                Build your Beezio storefront
+              </Link>
             </div>
           </div>
         </section>
