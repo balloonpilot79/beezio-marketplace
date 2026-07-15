@@ -565,8 +565,7 @@ begin
   where p.id = v_profile_id
   on conflict (user_id, role) do update set is_active = true, updated_at = now();
 
-  update public.profiles
-  set role = 'admin', primary_role = 'admin', updated_at = now()
-  where id = v_profile_id;
+  -- Keep the account's primary role unchanged. Admin access is granted through
+  -- user_roles above so the existing anti-self-assignment trigger remains intact.
 end;
 $do$;

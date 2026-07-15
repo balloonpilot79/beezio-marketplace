@@ -863,7 +863,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
 
     if (sectionId === 'about' && showAboutCard) {
       return (
-        <div key="about" className="mb-4 rounded-[24px] border bg-white p-5 shadow-sm" style={{ borderColor: secondaryColor }}>
+        <div id="about" key="about" className="mb-4 scroll-mt-28 rounded-[24px] border bg-white p-5 shadow-sm" style={{ borderColor: secondaryColor }}>
           <div className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: accentColor }}>Brand story</div>
           <p className="mt-2 text-sm leading-6" style={{ color: textColor }}>
             {aboutSummary}
@@ -1037,13 +1037,17 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                   : { borderColor: '#e2e8f0', backgroundColor: '#f8fafc', color: '#475569' }}
               >
                 <a href="#products" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">{products.length > 0 ? 'Shop' : 'Collection'}</a>
-              {aboutCustomPage ? (
+              {aboutCustomPage && !hasEditorialBrand ? (
                 <Link
                   to={`${storeHomePath === '/' ? '' : storeHomePath}/${aboutCustomPage.page_slug}`.replace('//', '/')}
                   className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900"
                 >
                   About
                 </Link>
+              ) : hasEditorialBrand ? (
+                <a href="#about" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">
+                  About
+                </a>
               ) : (
                 <Link to={aboutPath} className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">
                   About
@@ -1069,8 +1073,11 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             <div className="flex flex-wrap items-center justify-end gap-2">
               <a
                 href="#products"
-                className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: hasEditorialBrand ? editorialAccentColor : primaryColor }}
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
+                style={{
+                  backgroundColor: hasEditorialBrand ? editorialAccentColor : primaryColor,
+                  color: hasEditorialBrand && isMareBelle ? '#080808' : '#ffffff',
+                }}
               >
                 <ShoppingBag className="w-4 h-4" />
                 {products.length > 0 ? 'Start shopping' : 'Explore the brand'}
@@ -1078,7 +1085,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               {user ? (
                 <Link
                   to="/account"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 transition-colors"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors"
+                  style={hasEditorialBrand ? { borderColor: '#ffffff55', color: '#ffffff' } : undefined}
                   aria-label="Open account"
                 >
                   <User className="h-4 w-4" />
@@ -1086,7 +1094,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               ) : (
                 <Link
                   to="/account/login"
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:text-slate-900 transition-colors"
+                  className="inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors"
+                  style={hasEditorialBrand ? { borderColor: '#ffffff55', color: '#ffffff' } : undefined}
                 >
                   Sign In
                 </Link>
@@ -1094,7 +1103,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               {!isCustomDomain && (
                 <Link
                   to="/cart"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 transition-colors"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors"
+                  style={hasEditorialBrand ? { borderColor: '#ffffff55', color: '#ffffff' } : undefined}
                   aria-label="Open cart"
                 >
                   <ShoppingBag className="h-4 w-4" />
@@ -1104,13 +1114,17 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           </div>
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:hidden">
             <a href="#products" className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">Products</a>
-            {aboutCustomPage ? (
+            {aboutCustomPage && !hasEditorialBrand ? (
               <Link
                 to={`${storeHomePath === '/' ? '' : storeHomePath}/${aboutCustomPage.page_slug}`.replace('//', '/')}
                 className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700"
               >
                 About
               </Link>
+            ) : hasEditorialBrand ? (
+              <a href="#about" className="shrink-0 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold text-white">
+                About
+              </a>
             ) : (
               <Link to={aboutPath} className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
                 About
@@ -1140,15 +1154,20 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             className="overflow-hidden border shadow-[0_32px_100px_rgba(0,0,0,0.24)]"
             style={{ backgroundColor: '#080808', borderColor: `${editorialAccentColor}66` }}
           >
-            <img
-              src={editorialHeroUrl}
-              alt={`${seller.full_name || 'Brand'} editorial storefront`}
-              className="block h-auto w-full"
-            />
+            <div className={`relative overflow-hidden ${isMareBelle ? 'h-[260px] sm:h-[340px] lg:h-[420px]' : 'h-[300px] sm:h-[380px] lg:h-[460px]'}`}>
+              <img
+                src={editorialHeroUrl}
+                alt={`${seller.full_name || 'Brand'} editorial storefront direction`}
+                className="absolute left-1/2 top-0 h-auto w-full min-w-[960px] max-w-none"
+                style={{
+                  transform: isMareBelle ? 'translate(-50%, -16.35%)' : 'translate(-50%, 0)',
+                }}
+              />
+            </div>
             <div className="flex flex-col gap-4 border-t px-6 py-6 text-white sm:flex-row sm:items-center sm:justify-between lg:px-10" style={{ borderColor: `${editorialAccentColor}55` }}>
               <div>
                 <div className="text-xs font-bold uppercase tracking-[0.28em]" style={{ color: editorialAccentColor }}>{brandKicker}</div>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-white/72">
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-white/90">
                   {products.length > 0
                     ? `Shop the live ${seller.full_name || 'brand'} collection below.`
                     : 'This is the brand direction. The shoppable collection will appear here only when real products are published.'}
