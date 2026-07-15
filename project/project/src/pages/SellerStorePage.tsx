@@ -765,6 +765,19 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
     : isRedTail
       ? 'Horse • ranch • outdoor essentials'
       : 'An independent brand powered by Beezio';
+  const hasEditorialBrand = isMareBelle || isRedTail;
+  const editorialHeroUrl = isMareBelle
+    ? '/marebelle-editorial-hero.png'
+    : isRedTail
+      ? '/redtail-editorial-hero.png'
+      : '';
+  const editorialLogoUrl = isMareBelle
+    ? '/marebelle-editorial-logo.png'
+    : isRedTail
+      ? '/redtail-editorial-logo.png'
+      : '';
+  const effectiveStoreLogoUrl = storeLogoUrl || editorialLogoUrl;
+  const editorialAccentColor = isMareBelle ? '#c9a462' : isRedTail ? '#b52025' : accentColor;
 
   useEffect(() => {
     if (!storeRouteId) return;
@@ -775,7 +788,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
 
   const renderStorefrontSection = (sectionId: string) => {
     if (sectionId === 'search' || sectionId === 'categories') {
-      if (!showSearchBar && !showCategoryFilters) return null;
+      if (products.length === 0 || (!showSearchBar && !showCategoryFilters)) return null;
       return (
         <div key="browse-controls" className="mb-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -986,15 +999,21 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         <style>{seller.custom_css}</style>
       )}
       
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+      <header
+        className="sticky top-0 z-40 border-b shadow-sm backdrop-blur"
+        style={hasEditorialBrand
+          ? { backgroundColor: '#070707', borderColor: isMareBelle ? '#4b3a22' : '#4f1719' }
+          : { backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#e2e8f0' }}
+      >
         <div className="mx-auto max-w-[1440px] px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center gap-4 justify-between">
             <Link to={storeHomePath} className="flex items-center gap-3">
-            {storeLogoUrl ? (
+            {effectiveStoreLogoUrl ? (
               <img
-                src={storeLogoUrl}
+                src={effectiveStoreLogoUrl}
                 alt={`${seller.full_name || 'Store'} logo`}
-                className="h-12 w-12 rounded-2xl object-cover border border-slate-200 bg-white"
+                className="h-14 w-14 rounded-xl object-cover border bg-white"
+                style={{ borderColor: hasEditorialBrand ? editorialAccentColor : '#e2e8f0' }}
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}
@@ -1005,13 +1024,18 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               </div>
             )}
             <div className="leading-tight">
-              <div className="text-[0.65rem] font-bold uppercase tracking-[0.3em]" style={{ color: accentColor }}>Independent shop</div>
-              <div className="text-xl font-black tracking-tight" style={{ color: textColor }}>{seller.full_name || 'Store'}</div>
+              <div className="text-[0.65rem] font-bold uppercase tracking-[0.3em]" style={{ color: hasEditorialBrand ? editorialAccentColor : accentColor }}>{isMareBelle ? 'Equestrian boutique' : isRedTail ? 'Automotive performance' : 'Independent shop'}</div>
+              <div className={`text-xl tracking-tight ${hasEditorialBrand ? 'font-serif font-semibold' : 'font-black'}`} style={{ color: hasEditorialBrand ? '#ffffff' : textColor }}>{seller.full_name || 'Store'}</div>
             </div>
             </Link>
 
             <div className="hidden lg:flex flex-1 items-center justify-center px-4">
-              <nav className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-semibold text-slate-600">
+              <nav
+                className="flex items-center gap-2 rounded-full border p-1 text-sm font-semibold"
+                style={hasEditorialBrand
+                  ? { borderColor: '#ffffff2b', backgroundColor: '#ffffff0d', color: '#ffffff' }
+                  : { borderColor: '#e2e8f0', backgroundColor: '#f8fafc', color: '#475569' }}
+              >
                 <a href="#products" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">{products.length > 0 ? 'Shop' : 'Collection'}</a>
               {aboutCustomPage ? (
                 <Link
@@ -1046,7 +1070,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               <a
                 href="#products"
                 className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: primaryColor }}
+                style={{ backgroundColor: hasEditorialBrand ? editorialAccentColor : primaryColor }}
               >
                 <ShoppingBag className="w-4 h-4" />
                 {products.length > 0 ? 'Start shopping' : 'Explore the brand'}
@@ -1110,7 +1134,40 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         </div>
       </header>
 
-      {showStoreIntroSection && (
+      {hasEditorialBrand && (
+        <div className="mx-auto max-w-[1440px] px-3 pt-4 sm:px-6 lg:px-8 lg:pt-7">
+          <section
+            className="overflow-hidden border shadow-[0_32px_100px_rgba(0,0,0,0.24)]"
+            style={{ backgroundColor: '#080808', borderColor: `${editorialAccentColor}66` }}
+          >
+            <img
+              src={editorialHeroUrl}
+              alt={`${seller.full_name || 'Brand'} editorial storefront`}
+              className="block h-auto w-full"
+            />
+            <div className="flex flex-col gap-4 border-t px-6 py-6 text-white sm:flex-row sm:items-center sm:justify-between lg:px-10" style={{ borderColor: `${editorialAccentColor}55` }}>
+              <div>
+                <div className="text-xs font-bold uppercase tracking-[0.28em]" style={{ color: editorialAccentColor }}>{brandKicker}</div>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-white/72">
+                  {products.length > 0
+                    ? `Shop the live ${seller.full_name || 'brand'} collection below.`
+                    : 'This is the brand direction. The shoppable collection will appear here only when real products are published.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {products.length > 0 ? (
+                  <a href="#products" className="rounded-none px-6 py-3 text-sm font-bold text-white" style={{ backgroundColor: editorialAccentColor }}>Shop the collection</a>
+                ) : null}
+                {showContactButton ? (
+                  <button onClick={() => setContactModal(true)} className="border border-white/30 px-6 py-3 text-sm font-bold text-white hover:bg-white/10">Contact</button>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showStoreIntroSection && !hasEditorialBrand && (
         <div className="mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
           <section className="overflow-hidden rounded-[36px] border border-white/40 bg-white shadow-[0_32px_100px_rgba(15,23,42,0.16)]">
             <div
@@ -1192,7 +1249,22 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         {orderedStorefrontSections.map((sectionId) => renderStorefrontSection(sectionId))}
 
         {/* Products Grid */}
-        {filteredProducts.length === 0 ? (
+        {filteredProducts.length === 0 && hasEditorialBrand ? (
+          <section className="border bg-white px-7 py-12 text-center shadow-[0_24px_70px_rgba(0,0,0,0.10)] sm:px-12 lg:py-16" style={{ borderColor: `${editorialAccentColor}66` }}>
+            <div className="mx-auto max-w-3xl">
+              <div className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: editorialAccentColor }}>Collection coming soon</div>
+              <h2 className="mt-4 font-serif text-4xl text-slate-950 sm:text-5xl">{seller.full_name || 'This brand'} is preparing its first release.</h2>
+              <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600">The brand storefront is live and ready. Real products will appear here as they are published—nothing shown in the editorial artwork is presented as available for purchase.</p>
+              {isOwner ? (
+                <div className="mt-8 flex flex-wrap justify-center gap-3">
+                  <Link to="/marketplace" className="px-6 py-3 text-sm font-bold text-white" style={{ backgroundColor: editorialAccentColor }}>Choose marketplace products</Link>
+                  <Link to="/dashboard" className="border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-800">Open brand dashboard</Link>
+                </div>
+              ) : null}
+              <div className="mt-8 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Independent storefront • Powered by Beezio</div>
+            </div>
+          </section>
+        ) : filteredProducts.length === 0 ? (
           <div className="overflow-hidden rounded-[36px] border bg-white shadow-[0_28px_90px_rgba(15,23,42,0.10)]" style={{ borderColor: secondaryColor }}>
             <div className="grid lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
               <div className="p-8 sm:p-12 lg:p-16">
@@ -1279,7 +1351,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               forcePurchaseCtas
               storefrontBrand={{
                 name: seller?.full_name || 'Store',
-                logoUrl: storeLogoUrl || null,
+                logoUrl: effectiveStoreLogoUrl || null,
               }}
               gridLayout={resolvedGridLayout}
               productBasePath={productBasePath}
