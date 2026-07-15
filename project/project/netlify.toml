@@ -84,6 +84,18 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/api/public/store/resolve"
+  to = "/.netlify/functions/public-store-resolve"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/public/store/get"
+  to = "/.netlify/functions/public-store-get"
+  status = 200
+  force = true
+
 # SPA fallback
 [[redirects]]
   from = "/*"
