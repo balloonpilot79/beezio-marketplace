@@ -48,7 +48,7 @@ const CustomDomainHandler: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (domainResult?.isCustomDomain && domainResult.userId && domainResult.storeType) {
-      const scopeId = domainResult.storeSettings?.subdomain || domainResult.userId;
+      const scopeId = domainResult.storefrontId || domainResult.storeSettings?.subdomain || domainResult.userId;
       const scopeKey = `store:${domainResult.storeType}:${scopeId}`;
       localStorage.setItem('beezio-store-scope', scopeKey);
       window.dispatchEvent(new Event('beezio-store-scope-changed'));
@@ -74,7 +74,7 @@ const CustomDomainHandler: React.FC<{ children: React.ReactNode }> = ({ children
     const storeType = domainResult.storeType;
     const storePage =
       storeType === 'seller'
-        ? <SellerStorePage sellerId={domainResult.userId} isCustomDomain={true} />
+        ? <SellerStorePage sellerId={domainResult.userId} storeSlug={domainResult.storeSlug} isCustomDomain={true} />
         : <AffiliateStorePage affiliateId={domainResult.userId} isCustomDomain={true} />;
     const aboutPage =
       storeType === 'seller'

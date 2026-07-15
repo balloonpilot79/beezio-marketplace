@@ -29,6 +29,54 @@ $$;
 revoke all on function public.is_beezio_admin() from public, anon;
 grant execute on function public.is_beezio_admin() to authenticated;
 
+-- Standard accounts receive one storefront per authenticated login. Beezio
+-- admins can temporarily operate several brands (for example MareBelle and
+-- RedTail) and ownership can be transferred to separate accounts later.
+create or replace function public.enforce_standard_storefront_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  -- Migrations and trusted service operations do not have an end-user JWT.
+  if (select auth.uid()) is null then
+    return new;
+  end if;
+
+  if public.is_beezio_admin() then
+    return new;
+  end if;
+
+  if not exists (
+    select 1 from public.profiles p
+    where p.id = new.owner_id
+      and p.user_id = (select auth.uid())
+  ) then
+    raise exception 'You can only create a storefront for your own account';
+  end if;
+
+  if exists (
+    select 1
+    from public.storefronts s
+    join public.profiles p on p.id = s.owner_id
+    where p.user_id = (select auth.uid())
+      and s.id <> new.id
+  ) then
+    raise exception 'Standard Beezio accounts include one brand storefront';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.enforce_standard_storefront_limit() from public, anon, authenticated;
+
+drop trigger if exists enforce_standard_storefront_limit on public.storefronts;
+create trigger enforce_standard_storefront_limit
+before insert or update of owner_id on public.storefronts
+for each row execute function public.enforce_standard_storefront_limit();
+
 alter table if exists public.storefronts
   add column if not exists description text,
   add column if not exists banner_url text,
@@ -45,6 +93,16 @@ alter table if exists public.storefronts
 
 create index if not exists storefronts_owner_active_idx
   on public.storefronts(owner_id, is_active, created_at);
+
+-- A custom domain can point to exactly one brand storefront. Slug access stays
+-- available as the permanent fallback while DNS or HTTPS is being configured.
+update public.storefronts
+set custom_domain = lower(trim(custom_domain))
+where nullif(trim(custom_domain), '') is not null;
+
+create unique index if not exists storefronts_custom_domain_key
+  on public.storefronts(lower(custom_domain))
+  where nullif(trim(custom_domain), '') is not null;
 
 alter table if exists public.storefronts enable row level security;
 alter table if exists public.storefront_products enable row level security;
@@ -405,6 +463,7 @@ do $do$
 declare
   v_profile_id uuid;
   v_marebelle_id uuid;
+  v_redtail_id uuid;
 begin
   select p.id into v_profile_id
   from public.profiles p
@@ -423,61 +482,41 @@ begin
     banner_url, store_theme, product_page_template, layout_config,
     theme_settings, color_scheme, social_links, business_hours,
     shipping_policy, return_policy, custom_css, is_active
-  )
-  select
+  ) values (
     v_profile_id,
     'seller'::public.storefront_type,
-    coalesce(nullif(s.store_name, ''), 'MareBelle'),
+    'MareBelle',
     'marebelle',
-    s.custom_domain,
-    s.store_logo,
-    coalesce(nullif(s.store_description, ''), 'Equestrian beauty, fragrance, and stable essentials chosen with care.'),
-    s.store_banner,
-    coalesce(nullif(s.store_theme, ''), 'elegant'),
-    s.product_page_template,
-    coalesce(s.layout_config, '{}'::jsonb),
+    (select s.custom_domain from public.store_settings s where s.seller_id = v_profile_id limit 1),
+    (select s.store_logo from public.store_settings s where s.seller_id = v_profile_id limit 1),
+    'Equestrian beauty, fragrance, and stable essentials chosen with care.',
+    null,
+    'elegant',
+    'product-detailed',
+    '{"header_style":"full-width","product_grid":"2-col","show_search":true,"show_categories":true,"show_featured":true,"show_about":true,"show_policies":true,"show_contact":true,"storefront_sections":["hero","search","categories","featured","about","policies","contact"]}'::jsonb,
+    '{"brand_personality":"equestrian-luxury","corner_style":"soft","image_treatment":"editorial","eyebrow":"Independent shop"}'::jsonb,
+    '{"primary":"#0f172a","secondary":"#dbe3ef","accent":"#f59e0b","background":"#f8fafc","text":"#0f172a"}'::jsonb,
     '{}'::jsonb,
-    coalesce(s.color_scheme, '{"primary":"#0f172a","secondary":"#e2e8f0","accent":"#f59e0b","background":"#f8fafc","text":"#0f172a"}'::jsonb),
-    coalesce(s.social_links, '{}'::jsonb),
-    s.business_hours,
-    s.shipping_policy,
-    s.return_policy,
-    s.custom_css,
+    null,
+    'Shipping choices and delivery estimates are shown at checkout.',
+    'Returns and order issues are handled through the Beezio Resolution Center.',
+    null,
     true
-  from public.store_settings s
-  where s.seller_id = v_profile_id
-  limit 1
-  on conflict (slug) do update set
+  ) on conflict (slug) do update set
     owner_id = excluded.owner_id,
     name = excluded.name,
     description = excluded.description,
-    logo_url = coalesce(excluded.logo_url, public.storefronts.logo_url),
-    banner_url = coalesce(excluded.banner_url, public.storefronts.banner_url),
+    store_theme = excluded.store_theme,
+    product_page_template = excluded.product_page_template,
+    layout_config = excluded.layout_config,
+    theme_settings = excluded.theme_settings,
+    color_scheme = excluded.color_scheme,
+    shipping_policy = excluded.shipping_policy,
+    return_policy = excluded.return_policy,
+    is_active = true,
     updated_at = now();
 
-  -- If the legacy row is absent, MareBelle still gets a valid storefront shell.
-  insert into public.storefronts (
-    owner_id, type, name, slug, description, store_theme, layout_config,
-    color_scheme, is_active
-  ) values (
-    v_profile_id, 'seller'::public.storefront_type, 'MareBelle', 'marebelle',
-    'Equestrian beauty, fragrance, and stable essentials chosen with care.',
-    'elegant',
-    '{"header_style":"minimal","product_grid":"2-col","show_story":true}'::jsonb,
-    '{"primary":"#0f172a","secondary":"#e2e8f0","accent":"#f59e0b","background":"#f8fafc","text":"#0f172a"}'::jsonb,
-    true
-  ) on conflict (slug) do nothing;
-
   select id into v_marebelle_id from public.storefronts where slug = 'marebelle' limit 1;
-
-  -- Preserve the products already shown in MareBelle.
-  if v_marebelle_id is not null then
-    insert into public.storefront_products (storefront_id, product_id, position)
-    select v_marebelle_id, p.id, row_number() over (order by p.created_at desc)::integer
-    from public.products p
-    where p.seller_id = v_profile_id
-    on conflict (storefront_id, product_id) do nothing;
-  end if;
 
   insert into public.storefronts (
     owner_id, type, name, slug, description, store_theme,
@@ -509,6 +548,13 @@ begin
     return_policy = excluded.return_policy,
     is_active = true,
     updated_at = now();
+
+  select id into v_redtail_id from public.storefronts where slug = 'redtail' limit 1;
+
+  -- Both launch storefronts begin as polished brand shells. Products are added
+  -- deliberately from the product form after the owner chooses a destination.
+  delete from public.storefront_products
+  where storefront_id in (v_marebelle_id, v_redtail_id);
 
   -- The account remains multi-role, but opens in the admin workspace and can
   -- fulfill orders from every owned storefront.

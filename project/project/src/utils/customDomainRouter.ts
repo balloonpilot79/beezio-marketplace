@@ -10,6 +10,8 @@ export interface DomainRouteResult {
   isCustomDomain: boolean;
   storeType?: 'seller' | 'affiliate';
   userId?: string;
+  storefrontId?: string;
+  storeSlug?: string;
   storeSettings?: any;
 }
 
@@ -33,6 +35,30 @@ export async function checkCustomDomain(): Promise<DomainRouteResult> {
   console.log('[CustomDomain] Checking domain:', currentDomain);
 
   try {
+    // Multi-brand storefronts are checked first so one account can point a
+    // different domain at MareBelle, RedTail, or any future brand.
+    const { data: brandStore, error: brandError } = await supabase
+      .from('storefronts')
+      .select('id, owner_id, slug, name, custom_domain, is_active')
+      .eq('custom_domain', currentDomain)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (brandError && brandError.code !== 'PGRST116') {
+      console.error('[CustomDomain] Error checking brand storefronts:', brandError);
+    }
+
+    if (brandStore?.owner_id) {
+      return {
+        isCustomDomain: true,
+        storeType: 'seller',
+        userId: String(brandStore.owner_id),
+        storefrontId: String(brandStore.id),
+        storeSlug: String(brandStore.slug || ''),
+        storeSettings: brandStore,
+      };
+    }
+
     // Check seller stores
     const { data: sellerStore, error: sellerError } = await supabase
       .from('store_settings')
