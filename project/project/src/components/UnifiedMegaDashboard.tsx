@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
 import { resolveProfileIdForUser } from '../utils/resolveProfileId';
 import StoreCustomization from './StoreCustomization';
+import BrandStorefrontManager from './BrandStorefrontManager';
 import StripeSellerDashboard from './StripeSellerDashboard';
 import StripeAffiliateDashboard from './StripeAffiliateDashboard';
 import CJProductImportPage from '../pages/CJProductImportPage';
@@ -174,7 +175,7 @@ const UnifiedMegaDashboard: React.FC = () => {
     if (user) {
       fetchProducts();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [productScope, user?.id, profile?.id, isAdmin]);
 
   useEffect(() => {
@@ -183,7 +184,7 @@ const UnifiedMegaDashboard: React.FC = () => {
     } else {
       setSellingProducts([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [user?.id, profile?.id, derivedRole]);
 
   useEffect(() => {
@@ -1187,6 +1188,7 @@ const UnifiedMegaDashboard: React.FC = () => {
             {/* STORE SETTINGS TAB */}
             {activeTab === 'store' && (canSellProducts || isAffiliate) && user && (
               <div>
+                {profile?.id && <BrandStorefrontManager ownerId={String(profile.id)} />}
                 <StoreCustomization 
                   userId={user.id} 
                   role={String(profile?.primary_role || profile?.role || currentRole || '').toLowerCase() === 'affiliate' || String(profile?.primary_role || profile?.role || currentRole || '').toLowerCase() === 'fundraiser' ? 'affiliate' : 'seller'} 

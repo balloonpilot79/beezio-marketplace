@@ -837,7 +837,7 @@ const SignUpPage: React.FC = () => {
           <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Business account snapshot</h3>
           <ul className="text-sm text-gray-700 space-y-1">
             <li>Your signup creates seller, affiliate, and influencer access together.</li>
-            <li>You get a seller storefront plus an affiliate storefront from the same account.</li>
+            <li>You get one branded storefront for both your own products and the marketplace products you promote.</li>
             <li>Seller payouts, affiliate earnings, and influencer payouts all use the same PayPal email you provide.</li>
             <li>Invite links, recruit attribution, storefront tools, and payout history stay in one dashboard.</li>
             <li>
@@ -1155,4 +1155,3 @@ const SignUpPage: React.FC = () => {
 };
 
 export default SignUpPage;
-

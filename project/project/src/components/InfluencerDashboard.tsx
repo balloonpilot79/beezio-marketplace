@@ -13,6 +13,13 @@ type InfluencerStatsRow = {
   referral_code: string | null;
 };
 
+type RecruitedAccount = {
+  id: string;
+  recruited_profile_id: string;
+  recruited_role: 'seller' | 'affiliate';
+  created_at: string;
+};
+
 const InfluencerDashboard: React.FC = () => {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -21,6 +28,7 @@ const InfluencerDashboard: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [storeSlug, setStoreSlug] = useState<string | null>(null);
   const [storeName, setStoreName] = useState<string | null>(null);
+  const [recruitedAccounts, setRecruitedAccounts] = useState<RecruitedAccount[]>([]);
 
   const slugify = (value: string): string =>
     value
@@ -44,11 +52,18 @@ const InfluencerDashboard: React.FC = () => {
       }
 
       try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, username, referral_code')
-          .eq('id', profileId)
-          .maybeSingle();
+        const [{ data }, { data: referralRows, error: referralError }] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, username, referral_code')
+            .eq('id', profileId)
+            .maybeSingle(),
+          supabase
+            .from('influencer_referrals')
+            .select('id,recruited_profile_id,recruited_role,created_at')
+            .eq('influencer_profile_id', profileId)
+            .order('created_at', { ascending: false }),
+        ]);
 
         if (!alive) return;
         setStats({
@@ -56,6 +71,8 @@ const InfluencerDashboard: React.FC = () => {
           username: (data as any)?.username ?? (profile as any)?.username ?? null,
           referral_code: (data as any)?.referral_code ?? null,
         });
+        if (referralError) throw referralError;
+        setRecruitedAccounts((referralRows as RecruitedAccount[]) || []);
       } catch (e: any) {
         if (!alive) return;
         setError(e?.message || 'Failed to load influencer recruiting tools');
@@ -166,6 +183,51 @@ const InfluencerDashboard: React.FC = () => {
         <div className="mt-4 text-xs text-gray-500">
           Your code: <span className="font-semibold">{codeForLink || '-'}</span>
         </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-purple-200 bg-purple-50 p-5">
+          <div className="text-sm font-semibold text-purple-900">Recruited business accounts</div>
+          <div className="mt-2 text-3xl font-bold text-gray-900">
+            {new Set(recruitedAccounts.map((row) => row.recruited_profile_id)).size}
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+          <div className="text-sm font-semibold text-amber-900">Seller assignments</div>
+          <div className="mt-2 text-3xl font-bold text-gray-900">
+            {recruitedAccounts.filter((row) => row.recruited_role === 'seller').length}
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+          <div className="text-sm font-semibold text-emerald-900">Affiliate assignments</div>
+          <div className="mt-2 text-3xl font-bold text-gray-900">
+            {recruitedAccounts.filter((row) => row.recruited_role === 'affiliate').length}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="border-b border-gray-200 px-5 py-4">
+          <h3 className="font-semibold text-gray-900">Lifetime referral assignments</h3>
+          <p className="mt-1 text-sm text-gray-600">Each business can have a seller assignment and an affiliate assignment under the influencer who recruited it.</p>
+        </div>
+        {recruitedAccounts.length ? (
+          <div className="divide-y divide-gray-100">
+            {recruitedAccounts.slice(0, 20).map((row) => (
+              <div key={row.id} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
+                <div>
+                  <div className="font-medium capitalize text-gray-900">{row.recruited_role} activity</div>
+                  <div className="text-xs text-gray-500">Business …{row.recruited_profile_id.slice(-8)}</div>
+                </div>
+                <div className="text-right text-xs text-gray-500">
+                  Attached {new Date(row.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="px-5 py-8 text-center text-sm text-gray-500">No recruited business accounts yet. Share your invite link to begin.</div>
+        )}
       </div>
 
       <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-6">

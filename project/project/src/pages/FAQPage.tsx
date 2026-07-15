@@ -148,7 +148,7 @@ const FAQPage: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 sm:mb-6">Frequently Asked Questions</h1>
           <p className="text-base sm:text-xl md:text-2xl opacity-90">
-            Everything you need to know about buying, selling, and shopping on Beezio
+            Practical answers for building, promoting, and operating your Beezio business
           </p>
         </div>
       </section>
@@ -156,6 +156,11 @@ const FAQPage: React.FC = () => {
       {/* FAQ Categories */}
       <section className="py-8 sm:py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-10 rounded-3xl border border-amber-200 bg-amber-50 p-6 sm:p-8">
+            <h2 className="text-2xl font-black text-slate-950">Want your storefront to look as polished as MareBelle or RedTail?</h2>
+            <p className="mt-2 text-slate-700">Use the beginner-friendly storefront guide for branding, layouts, product placement, custom domains, social media, and the final launch checklist.</p>
+            <a href="/faq/storefronts" className="mt-5 inline-flex rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-slate-800">Open the storefront setup guide</a>
+          </div>
           {faqSections.map((category, categoryIndex) => (
             <div key={categoryIndex} className="mb-8 sm:mb-12">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">

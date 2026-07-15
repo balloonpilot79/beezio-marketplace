@@ -17,6 +17,17 @@ interface SellerStorePageProps {
   storeSlug?: string;
 }
 
+const safePublicUrl = (value: unknown) => {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+};
+
 const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerId, isCustomDomain = false, storeSlug }) => {
   const { sellerId: paramSellerId } = useParams<{ sellerId: string }>();
   const sellerId = propSellerId || paramSellerId;
@@ -25,11 +36,12 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   const [products, setProducts] = useState<any[]>([]);
   const [insuranceListings, setInsuranceListings] = useState<any[]>([]);
   const [canonicalSellerId, setCanonicalSellerId] = useState<string | null>(null);
+  const [canonicalStorefrontId, setCanonicalStorefrontId] = useState<string | null>(null);
   const [storeStats, setStoreStats] = useState({
     totalProducts: 0,
     totalSales: 0,
-    rating: 4.8,
-    reviewCount: 156,
+    rating: 0,
+    reviewCount: 0,
     memberSince: new Date().getFullYear() - 2
   });
   const [loading, setLoading] = useState(true);
@@ -238,14 +250,28 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           const controller = new AbortController();
           const timeout = window.setTimeout(() => controller.abort(), 4500);
           try {
-            const resp = await fetch(`/api/public/store/get?store=${encodeURIComponent(String(sellerId))}`, {
+            const publicStoreLookup = String(storeSlug || sellerId);
+            const resp = await fetch(`/api/public/store/get?store=${encodeURIComponent(publicStoreLookup)}`, {
               signal: controller.signal,
             });
             if (resp.ok) {
               const payload: any = await resp.json().catch(() => ({}));
               if (payload?.ok && payload?.seller_id) {
+                const requestedBrandSlug = String(storeSlug || '').trim().toLowerCase();
+                const protectedBrandName = requestedBrandSlug === 'redtail'
+                  ? 'RedTail'
+                  : requestedBrandSlug === 'marebelle'
+                    ? 'MareBelle'
+                    : '';
+                const resolvedStorefrontSeller = payload.seller
+                  ? {
+                      ...payload.seller,
+                      full_name: protectedBrandName || payload.seller.full_name,
+                    }
+                  : null;
                 setCanonicalSellerId(String(payload.seller_id));
-                setSeller(payload.seller || null);
+                setCanonicalStorefrontId(payload.storefront_id ? String(payload.storefront_id) : null);
+                setSeller(resolvedStorefrontSeller);
                 setProducts(Array.isArray(payload.products) ? payload.products : []);
                 setInsuranceListings(Array.isArray(payload.insurance_listings) ? payload.insurance_listings : []);
                 setCustomPages(Array.isArray(payload.custom_pages) ? payload.custom_pages : []);
@@ -375,6 +401,10 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             store_banner: storeSettingsData.store_banner,
             store_logo: storeSettingsData.store_logo,
             store_theme: storeSettingsData.store_theme || 'modern',
+            template_id: storeSettingsData.template_id,
+            product_page_template: storeSettingsData.product_page_template,
+            layout_config: storeSettingsData.layout_config || {},
+            color_scheme: storeSettingsData.color_scheme || {},
             subdomain: storeSettingsData.subdomain,
             custom_domain: storeSettingsData.custom_domain,
             social_links: storeSettingsData.social_links || {},
@@ -394,6 +424,10 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             store_banner: storeSettingsData.store_banner,
             store_logo: storeSettingsData.store_logo,
             store_theme: storeSettingsData.store_theme || 'modern',
+            template_id: storeSettingsData.template_id,
+            product_page_template: storeSettingsData.product_page_template,
+            layout_config: storeSettingsData.layout_config || {},
+            color_scheme: storeSettingsData.color_scheme || {},
             subdomain: storeSettingsData.subdomain,
             custom_domain: storeSettingsData.custom_domain,
             social_links: storeSettingsData.social_links || {},
@@ -667,11 +701,27 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   const storeLogoUrl = normalizeStorageImagePath(seller?.store_logo, ['profile-avatars', 'avatars', 'user-avatars']);
   const storeBannerUrl = normalizeStorageImagePath(seller?.store_banner, ['store-banners', 'store-branding']);
   const storeBackgroundUrl = normalizeStorageImagePath(seller?.layout_config?.background_image_url, ['store-banners', 'store-branding']);
-  const showStoreIntroSection = Boolean(storeBannerUrl) || (headerStyle ? headerStyle !== 'minimal' : false);
+  // A strong brand introduction is the default for every storefront. Sellers
+  // may explicitly choose the minimal header, but an omitted setting should
+  // never collapse a desktop storefront into a small utility page.
+  const showStoreIntroSection = headerStyle !== 'minimal';
   const storeHeroImage = storeBannerUrl || storeBackgroundUrl || '';
   const storeTagline = String(seller?.bio || '').trim();
   const featuredProducts = products.filter((product) => Boolean(product?.is_featured)).slice(0, 4);
   const storeColors = seller?.color_scheme || {};
+  const socialIconByKey: Record<string, React.ComponentType<{ className?: string }>> = {
+    facebook: Facebook,
+    instagram: Instagram,
+    twitter: Twitter,
+    x: Twitter,
+    linkedin: Linkedin,
+    website: Globe,
+    tiktok: Globe,
+    youtube: Globe,
+  };
+  const connectedSocialLinks = Object.entries(seller?.social_links || {})
+    .map(([key, value]) => ({ key: key.toLowerCase(), url: safePublicUrl(value) }))
+    .filter((item): item is { key: string; url: string } => Boolean(item.url));
   const primaryColor = String(storeColors?.primary || '#0f172a');
   const secondaryColor = String(storeColors?.secondary || '#e2e8f0');
   const accentColor = String(storeColors?.accent || '#f59e0b');
@@ -717,19 +767,40 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
     : `${window.location.origin}/store/${resolvedSellerId}`;
   const navPages = visibleCustomPages.filter((page) => page.page_slug !== 'about').slice(0, 3);
   const aboutSummary = String(storeTagline || '').trim();
-  const showAboutCard = showAboutSection && Boolean(aboutCustomPage) && Boolean(aboutSummary);
+  const showAboutCard = showAboutSection && Boolean(aboutSummary);
   const heroProductCount = filteredProducts.length || products.length;
+  const brandPersonality = String(seller?.theme_settings?.brand_personality || '').trim().toLowerCase();
+  const isMareBelle = normalizedSlug.toLowerCase() === 'marebelle' || brandPersonality === 'equestrian-luxury';
+  const isRedTail = normalizedSlug.toLowerCase() === 'redtail' || brandPersonality === 'western';
+  const brandKicker = isMareBelle
+    ? 'Equestrian beauty • fragrance • stable essentials'
+    : isRedTail
+      ? 'Horse • ranch • outdoor essentials'
+      : 'An independent brand powered by Beezio';
+  const hasEditorialBrand = isMareBelle || isRedTail;
+  const editorialHeroUrl = isMareBelle
+    ? '/marebelle-editorial-hero.png'
+    : isRedTail
+      ? '/redtail-editorial-hero.png'
+      : '';
+  const editorialLogoUrl = isMareBelle
+    ? '/marebelle-editorial-logo.png'
+    : isRedTail
+      ? '/redtail-editorial-logo.png'
+      : '';
+  const effectiveStoreLogoUrl = storeLogoUrl || editorialLogoUrl;
+  const editorialAccentColor = isMareBelle ? '#c9a462' : isRedTail ? '#b52025' : accentColor;
 
   useEffect(() => {
     if (!storeRouteId) return;
-    const scopeKey = `store:seller:${storeRouteId}`;
+    const scopeKey = `store:seller:${canonicalStorefrontId || storeRouteId}`;
     localStorage.setItem('beezio-store-scope', scopeKey);
     window.dispatchEvent(new Event('beezio-store-scope-changed'));
-  }, [storeRouteId]);
+  }, [canonicalStorefrontId, storeRouteId]);
 
   const renderStorefrontSection = (sectionId: string) => {
     if (sectionId === 'search' || sectionId === 'categories') {
-      if (!showSearchBar && !showCategoryFilters) return null;
+      if (products.length === 0 || (!showSearchBar && !showCategoryFilters)) return null;
       return (
         <div key="browse-controls" className="mb-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -804,7 +875,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
 
     if (sectionId === 'about' && showAboutCard) {
       return (
-        <div key="about" className="mb-4 rounded-[24px] border bg-white p-5 shadow-sm" style={{ borderColor: secondaryColor }}>
+        <div id="about" key="about" className="mb-4 scroll-mt-28 rounded-[24px] border bg-white p-5 shadow-sm" style={{ borderColor: secondaryColor }}>
           <div className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: accentColor }}>Brand story</div>
           <p className="mt-2 text-sm leading-6" style={{ color: textColor }}>
             {aboutSummary}
@@ -853,7 +924,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
     return (
       <div className="min-h-screen bg-slate-50">
         <div className="border-b border-slate-200 bg-white/95">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="mx-auto max-w-[1440px] px-4 py-3 sm:px-6 lg:px-8 flex items-center justify-between">
             <div className="flex items-center gap-2 text-slate-900 font-semibold">
               Storefront
             </div>
@@ -870,7 +941,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
     return (
       <div className="min-h-screen bg-slate-50">
         <div className="border-b border-slate-200 bg-white/95">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="mx-auto max-w-[1440px] px-4 py-3 sm:px-6 lg:px-8 flex items-center justify-between">
             <div className="flex items-center gap-2 text-slate-900 font-semibold">
               Storefront
             </div>
@@ -900,7 +971,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
     return (
       <div className="min-h-screen bg-slate-50">
         <div className="border-b border-slate-200 bg-white/95">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="mx-auto max-w-[1440px] px-4 py-3 sm:px-6 lg:px-8 flex items-center justify-between">
             <div className="flex items-center gap-2 text-slate-900 font-semibold">
               Storefront
             </div>
@@ -930,7 +1001,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         backgroundColor,
         backgroundImage: storeBackgroundImage
           ? `linear-gradient(180deg, rgba(248,250,252,0.84), rgba(255,255,255,0.92)), url(${storeBackgroundImage})`
-          : 'radial-gradient(circle at 10% 0%, rgba(245,158,11,0.12), transparent 35%), radial-gradient(circle at 90% 8%, rgba(14,165,233,0.14), transparent 28%)',
+          : `radial-gradient(circle at 10% 0%, color-mix(in srgb, ${accentColor} 18%, transparent), transparent 35%), radial-gradient(circle at 90% 8%, color-mix(in srgb, ${primaryColor} 14%, transparent), transparent 30%)`,
         backgroundSize: storeBackgroundImage ? 'cover' : undefined,
         backgroundPosition: storeBackgroundImage ? 'center' : undefined,
       }}
@@ -940,40 +1011,55 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         <style>{seller.custom_css}</style>
       )}
       
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 py-3">
+      <header
+        className="sticky top-0 z-40 border-b shadow-sm backdrop-blur"
+        style={hasEditorialBrand
+          ? { backgroundColor: '#070707', borderColor: isMareBelle ? '#4b3a22' : '#4f1719' }
+          : { backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#e2e8f0' }}
+      >
+        <div className="mx-auto max-w-[1440px] px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center gap-4 justify-between">
             <Link to={storeHomePath} className="flex items-center gap-3">
-            {storeLogoUrl ? (
+            {effectiveStoreLogoUrl ? (
               <img
-                src={storeLogoUrl}
+                src={effectiveStoreLogoUrl}
                 alt={`${seller.full_name || 'Store'} logo`}
-                className="w-10 h-10 rounded-xl object-cover border border-slate-200 bg-white"
+                className="h-14 w-14 rounded-xl object-cover border bg-white"
+                style={{ borderColor: hasEditorialBrand ? editorialAccentColor : '#e2e8f0' }}
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}
               />
             ) : (
-              <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-semibold">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl text-lg font-black text-white shadow-sm" style={{ backgroundColor: primaryColor }}>
                 {seller.full_name?.charAt(0) || 'S'}
               </div>
             )}
             <div className="leading-tight">
-              <div className="text-[0.6rem] font-semibold uppercase tracking-[0.28em]" style={{ color: accentColor }}>Independent shop</div>
-              <div className="text-lg font-semibold" style={{ color: textColor }}>{seller.full_name || 'Store'}</div>
+              <div className="text-[0.65rem] font-bold uppercase tracking-[0.3em]" style={{ color: hasEditorialBrand ? editorialAccentColor : accentColor }}>{isMareBelle ? 'Equestrian boutique' : isRedTail ? 'Automotive performance' : 'Independent shop'}</div>
+              <div className={`text-xl tracking-tight ${hasEditorialBrand ? 'font-serif font-semibold' : 'font-black'}`} style={{ color: hasEditorialBrand ? '#ffffff' : textColor }}>{seller.full_name || 'Store'}</div>
             </div>
             </Link>
 
             <div className="hidden lg:flex flex-1 items-center justify-center px-4">
-              <nav className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-semibold text-slate-600">
-                <a href="#products" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">Shop</a>
-              {aboutCustomPage ? (
+              <nav
+                className="flex items-center gap-2 rounded-full border p-1 text-sm font-semibold"
+                style={hasEditorialBrand
+                  ? { borderColor: '#ffffff2b', backgroundColor: '#ffffff0d', color: '#ffffff' }
+                  : { borderColor: '#e2e8f0', backgroundColor: '#f8fafc', color: '#475569' }}
+              >
+                <a href="#products" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">{products.length > 0 ? 'Shop' : 'Collection'}</a>
+              {aboutCustomPage && !hasEditorialBrand ? (
                 <Link
                   to={`${storeHomePath === '/' ? '' : storeHomePath}/${aboutCustomPage.page_slug}`.replace('//', '/')}
                   className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900"
                 >
                   About
                 </Link>
+              ) : hasEditorialBrand ? (
+                <a href="#about" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">
+                  About
+                </a>
               ) : (
                 <Link to={aboutPath} className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">
                   About
@@ -999,15 +1085,20 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             <div className="flex flex-wrap items-center justify-end gap-2">
               <a
                 href="#products"
-                className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
+                style={{
+                  backgroundColor: hasEditorialBrand ? editorialAccentColor : primaryColor,
+                  color: hasEditorialBrand && isMareBelle ? '#080808' : '#ffffff',
+                }}
               >
                 <ShoppingBag className="w-4 h-4" />
-                Start shopping
+                {products.length > 0 ? 'Start shopping' : 'Explore the brand'}
               </a>
               {user ? (
                 <Link
                   to="/account"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 transition-colors"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors"
+                  style={hasEditorialBrand ? { borderColor: '#ffffff55', color: '#ffffff' } : undefined}
                   aria-label="Open account"
                 >
                   <User className="h-4 w-4" />
@@ -1015,7 +1106,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               ) : (
                 <Link
                   to="/account/login"
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:text-slate-900 transition-colors"
+                  className="inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors"
+                  style={hasEditorialBrand ? { borderColor: '#ffffff55', color: '#ffffff' } : undefined}
                 >
                   Sign In
                 </Link>
@@ -1023,7 +1115,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               {!isCustomDomain && (
                 <Link
                   to="/cart"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 transition-colors"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors"
+                  style={hasEditorialBrand ? { borderColor: '#ffffff55', color: '#ffffff' } : undefined}
                   aria-label="Open cart"
                 >
                   <ShoppingBag className="h-4 w-4" />
@@ -1033,13 +1126,17 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           </div>
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:hidden">
             <a href="#products" className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">Products</a>
-            {aboutCustomPage ? (
+            {aboutCustomPage && !hasEditorialBrand ? (
               <Link
                 to={`${storeHomePath === '/' ? '' : storeHomePath}/${aboutCustomPage.page_slug}`.replace('//', '/')}
                 className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700"
               >
                 About
               </Link>
+            ) : hasEditorialBrand ? (
+              <a href="#about" className="shrink-0 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold text-white">
+                About
+              </a>
             ) : (
               <Link to={aboutPath} className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
                 About
@@ -1063,18 +1160,57 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         </div>
       </header>
 
-      {showStoreIntroSection && (
-        <div className="max-w-6xl mx-auto px-4 pt-4">
-          <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
+      {hasEditorialBrand && (
+        <div className="mx-auto max-w-[1440px] px-3 pt-4 sm:px-6 lg:px-8 lg:pt-7">
+          <section
+            className="overflow-hidden border shadow-[0_32px_100px_rgba(0,0,0,0.24)]"
+            style={{ backgroundColor: '#080808', borderColor: `${editorialAccentColor}66` }}
+          >
+            <div className={`relative overflow-hidden ${isMareBelle ? 'h-[260px] sm:h-[340px] lg:h-[420px]' : 'h-[300px] sm:h-[380px] lg:h-[460px]'}`}>
+              <img
+                src={editorialHeroUrl}
+                alt={`${seller.full_name || 'Brand'} editorial storefront direction`}
+                className="absolute left-1/2 top-0 h-auto w-full min-w-[960px] max-w-none"
+                style={{
+                  transform: isMareBelle ? 'translate(-50%, -16.35%)' : 'translate(-50%, 0)',
+                }}
+              />
+            </div>
+            <div className="flex flex-col gap-4 border-t px-6 py-6 text-white sm:flex-row sm:items-center sm:justify-between lg:px-10" style={{ borderColor: `${editorialAccentColor}55` }}>
+              <div>
+                <div className="text-xs font-bold uppercase tracking-[0.28em]" style={{ color: editorialAccentColor }}>{brandKicker}</div>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-white/90">
+                  {products.length > 0
+                    ? `Shop the live ${seller.full_name || 'brand'} collection below.`
+                    : 'This is the brand direction. The shoppable collection will appear here only when real products are published.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {products.length > 0 ? (
+                  <a href="#products" className="rounded-none px-6 py-3 text-sm font-bold text-white" style={{ backgroundColor: editorialAccentColor }}>Shop the collection</a>
+                ) : null}
+                {showContactButton ? (
+                  <button onClick={() => setContactModal(true)} className="border border-white/30 px-6 py-3 text-sm font-bold text-white hover:bg-white/10">Contact</button>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showStoreIntroSection && !hasEditorialBrand && (
+        <div className="mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
+          <section className="overflow-hidden rounded-[36px] border border-white/40 bg-white shadow-[0_32px_100px_rgba(15,23,42,0.16)]">
             <div
-              className="relative min-h-[280px]"
+              className="relative min-h-[380px] lg:min-h-[500px]"
               style={{
                 background: storeHeroImage
                   ? `linear-gradient(135deg, rgba(15,23,42,0.38), rgba(15,23,42,0.12)), url(${storeHeroImage}) center/cover`
                   : `linear-gradient(135deg, ${primaryColor}, ${accentColor} 55%, ${secondaryColor})`,
               }}
             >
-              <div className="grid gap-8 px-6 py-10 md:px-10 md:py-14 lg:grid-cols-[minmax(0,1.5fr)_320px] lg:items-end">
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 18% 24%, white 0 2px, transparent 3px), radial-gradient(circle at 72% 68%, white 0 1px, transparent 2px)', backgroundSize: '48px 48px, 34px 34px' }} />
+              <div className="relative grid min-h-[380px] gap-10 px-7 py-12 sm:px-10 md:py-16 lg:min-h-[500px] lg:grid-cols-[minmax(0,1.6fr)_380px] lg:items-end lg:px-16 lg:py-20">
                 <div className="max-w-3xl">
                   <div className="flex items-center gap-4">
                     {storeLogoUrl ? (
@@ -1089,21 +1225,22 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                       </div>
                     )}
                     <div>
-                      <h1 className="text-3xl font-black tracking-tight text-white md:text-5xl">
+                      <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-7xl">
                         {seller.full_name || 'Store'}
                       </h1>
                       {storeTagline ? (
-                        <p className="mt-2 max-w-2xl text-sm text-white/85 md:text-base">{storeTagline}</p>
+                        <p className="mt-3 max-w-2xl text-base leading-7 text-white/88 md:text-lg">{storeTagline}</p>
                       ) : null}
                     </div>
                   </div>
+                  <div className="mt-7 text-xs font-bold uppercase tracking-[0.24em] text-white/75">{brandKicker}</div>
                   <div className="mt-6 flex flex-wrap gap-3">
                     <a
                       href="#products"
                       className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition"
                       style={{ backgroundColor: primaryColor }}
                     >
-                      Shop collection
+                      {products.length > 0 ? 'Shop collection' : 'Discover the story'}
                     </a>
                     {showContactButton ? (
                       <button
@@ -1116,22 +1253,21 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                     ) : null}
                   </div>
                 </div>
-                <div className="max-w-sm rounded-[28px] border border-white/20 bg-white/12 p-5 text-white backdrop-blur-sm">
-                  <div className="text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-white/75">Shop details</div>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-                    <div>
-                      <div className="text-2xl font-black">{heroProductCount}</div>
-                      <div className="text-sm text-white/78">products live</div>
+                <div className="max-w-sm rounded-[30px] border border-white/25 bg-slate-950/25 p-6 text-white shadow-2xl backdrop-blur-md lg:justify-self-end">
+                  <div className="text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-white/75">{products.length > 0 ? 'Shop details' : 'Brand preview'}</div>
+                  {products.length > 0 ? (
+                    <div className="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+                      <div><div className="text-2xl font-black">{heroProductCount}</div><div className="text-sm text-white/78">products live</div></div>
+                      <div><div className="text-2xl font-black">{storeStats.reviewCount > 0 ? storeStats.rating.toFixed(1) : 'New'}</div><div className="text-sm text-white/78">customer rating</div></div>
+                      <div><div className="text-2xl font-black">{storeStats.reviewCount}</div><div className="text-sm text-white/78">verified reviews</div></div>
                     </div>
-                    <div>
-                      <div className="text-2xl font-black">{storeStats.rating.toFixed(1)}</div>
-                      <div className="text-sm text-white/78">customer rating</div>
+                  ) : (
+                    <div className="mt-4 space-y-3">
+                      <div className="text-2xl font-black">Opening collection</div>
+                      <p className="text-sm leading-6 text-white/80">The branded storefront is live while its first products are being prepared.</p>
+                      <div className="inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold">Built with Beezio</div>
                     </div>
-                    <div>
-                      <div className="text-2xl font-black">{storeStats.reviewCount}</div>
-                      <div className="text-sm text-white/78">reviews</div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1140,24 +1276,50 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
       )}
       
       {/* Products Section */}
-      <div id="products" className="max-w-6xl mx-auto scroll-mt-28 px-4 py-3 md:scroll-mt-32 md:py-4">
+      <div id="products" className="mx-auto max-w-[1440px] scroll-mt-28 px-4 py-6 sm:px-6 md:scroll-mt-32 md:py-8 lg:px-8">
         {orderedStorefrontSections.map((sectionId) => renderStorefrontSection(sectionId))}
 
         {/* Products Grid */}
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-2xl shadow-lg border border-gray-100 p-12">
-            <Package className="w-20 h-20 text-amber-400 mx-auto mb-6" />
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">
-              {isOwner ? "Your store is empty" : "No Products Yet"}
-            </h3>
-            <p className="text-gray-600 mb-2 max-w-md mx-auto">
-              {isOwner
-                ? "Add products to display them here."
-                : "This store is being set up. Check back soon for products."}
-            </p>
-            {isOwner && (
-              <>
-                <div className="max-w-2xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-3 mt-6 mb-8 text-left">
+        {filteredProducts.length === 0 && hasEditorialBrand ? (
+          <section className="border bg-white px-7 py-12 text-center shadow-[0_24px_70px_rgba(0,0,0,0.10)] sm:px-12 lg:py-16" style={{ borderColor: `${editorialAccentColor}66` }}>
+            <div className="mx-auto max-w-3xl">
+              <div className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: editorialAccentColor }}>Collection coming soon</div>
+              <h2 className="mt-4 font-serif text-4xl text-slate-950 sm:text-5xl">{seller.full_name || 'This brand'} is preparing its first release.</h2>
+              <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600">The brand storefront is live and ready. Real products will appear here as they are published—nothing shown in the editorial artwork is presented as available for purchase.</p>
+              {isOwner ? (
+                <div className="mt-8 flex flex-wrap justify-center gap-3">
+                  <Link to="/marketplace" className="px-6 py-3 text-sm font-bold text-white" style={{ backgroundColor: editorialAccentColor }}>Choose marketplace products</Link>
+                  <Link to="/dashboard" className="border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-800">Open brand dashboard</Link>
+                </div>
+              ) : null}
+              <div className="mt-8 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Independent storefront • Powered by Beezio</div>
+            </div>
+          </section>
+        ) : filteredProducts.length === 0 ? (
+          <div className="overflow-hidden rounded-[36px] border bg-white shadow-[0_28px_90px_rgba(15,23,42,0.10)]" style={{ borderColor: secondaryColor }}>
+            <div className="grid lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+              <div className="p-8 sm:p-12 lg:p-16">
+                <div className="mb-7 flex h-20 w-20 items-center justify-center rounded-3xl" style={{ backgroundColor: `${accentColor}20`, color: accentColor }}>
+                  <Package className="h-10 w-10" />
+                </div>
+                <div className="text-xs font-bold uppercase tracking-[0.24em]" style={{ color: accentColor }}>Opening collection</div>
+                <h3 className="mt-3 max-w-3xl text-3xl font-black tracking-tight text-gray-950 sm:text-4xl lg:text-5xl">
+                  {isOwner ? "Your brand is ready for a deliberate first collection." : `${seller.full_name || 'This brand'} is curating something worth waiting for.`}
+                </h3>
+                <p className="mt-5 max-w-2xl text-base leading-7 text-gray-600">
+                  {isOwner
+                    ? "The storefront is already live and fully branded. Add products only when they fit this brand and you are ready to sell them."
+                    : "Explore the story, connect with the brand, and return soon when the first products are released."}
+                </p>
+                {!isOwner && showContactButton && (
+                  <button onClick={() => setContactModal(true)} className="mt-7 inline-flex rounded-full px-5 py-3 text-sm font-bold text-white" style={{ backgroundColor: primaryColor }}>Contact the brand</button>
+                )}
+              </div>
+              <aside className="border-t p-7 sm:p-10 lg:border-l lg:border-t-0" style={{ borderColor: secondaryColor, backgroundColor: `${secondaryColor}35` }}>
+                <div className="text-xs font-bold uppercase tracking-[0.22em]" style={{ color: accentColor }}>{isOwner ? 'Owner launch panel' : 'Brand details'}</div>
+                {isOwner ? (
+                  <>
+                    <div className="grid grid-cols-1 gap-3 mt-5 text-left">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <div className="text-xs uppercase tracking-wide text-slate-500">Step 1</div>
                     <div className="text-sm font-semibold text-slate-900 mt-1">Add products</div>
@@ -1170,8 +1332,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                     <div className="text-xs uppercase tracking-wide text-slate-500">Step 3</div>
                     <div className="text-sm font-semibold text-slate-900 mt-1">Share store link</div>
                   </div>
-                </div>
-                <div className="flex flex-wrap justify-center gap-3">
+                    </div>
+                    <div className="mt-6 flex flex-wrap gap-3">
                   <Link
                     to="/marketplace"
                     className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium"
@@ -1184,9 +1346,17 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                   >
                     Open Dashboard
                   </Link>
-                </div>
-              </>
-            )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-5 space-y-4 text-sm leading-6" style={{ color: textColor }}>
+                    <p>{brandKicker}</p>
+                    <p>Secure checkout, order support, and verified reviews are provided through Beezio.</p>
+                    <div className="inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-bold shadow-sm">Built with Beezio</div>
+                  </div>
+                )}
+              </aside>
+            </div>
           </div>
         ) : (
           <div className="rounded-[32px] border bg-white p-4 shadow-[0_28px_80px_rgba(15,23,42,0.08)] md:p-6" style={{ borderColor: secondaryColor }}>
@@ -1212,7 +1382,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               forcePurchaseCtas
               storefrontBrand={{
                 name: seller?.full_name || 'Store',
-                logoUrl: storeLogoUrl || null,
+                logoUrl: effectiveStoreLogoUrl || null,
               }}
               gridLayout={resolvedGridLayout}
               productBasePath={productBasePath}
@@ -1225,7 +1395,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
       </div>
 
       <footer id="policies" className="border-t border-slate-200 bg-white/95">
-        <div className="max-w-6xl mx-auto px-4 py-10">
+        <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
           <div className="grid gap-6 lg:grid-cols-[1.15fr_1fr_1fr]">
             <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-6">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Store highlights</div>
@@ -1237,13 +1407,20 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                     <div>Fresh inventory curated by the seller.</div>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Star className="w-4 h-4 fill-amber-400 text-amber-400 mt-0.5" />
-                  <div>
-                    <div className="font-semibold text-slate-900">{storeStats.rating} rating</div>
-                    <div>{storeStats.reviewCount} customer reviews</div>
+                {storeStats.reviewCount > 0 ? (
+                  <div className="flex items-start gap-3">
+                    <Star className="w-4 h-4 fill-amber-400 text-amber-400 mt-0.5" />
+                    <div>
+                      <div className="font-semibold text-slate-900">{storeStats.rating} rating</div>
+                      <div>{storeStats.reviewCount} verified customer reviews</div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-start gap-3">
+                    <Award className="mt-0.5 h-4 w-4 text-slate-700" />
+                    <div><div className="font-semibold text-slate-900">Independent brand</div><div>Storefront and checkout powered by Beezio.</div></div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1292,6 +1469,24 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               )}
             </div>
           </div>
+          {connectedSocialLinks.length > 0 && (
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border bg-slate-50 px-5 py-4" style={{ borderColor: secondaryColor }}>
+              <div>
+                <div className="text-sm font-bold" style={{ color: textColor }}>Connect with {seller.full_name || 'this brand'}</div>
+                <div className="text-xs text-slate-500">Official website and social channels selected by the store owner.</div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {connectedSocialLinks.map(({ key, url }) => {
+                  const SocialIcon = socialIconByKey[key] || Globe;
+                  return (
+                    <a key={`${key}-${url}`} href={url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${key}`} className="inline-flex h-10 w-10 items-center justify-center rounded-full border bg-white transition hover:-translate-y-0.5 hover:shadow-md" style={{ borderColor: secondaryColor, color: primaryColor }}>
+                      <SocialIcon className="h-4 w-4" />
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </footer>
 
@@ -1302,6 +1497,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         ownerId={resolvedSellerId}
         ownerType="seller"
         storeName={seller?.full_name}
+        storefrontId={canonicalStorefrontId}
       />
     </div>
   );

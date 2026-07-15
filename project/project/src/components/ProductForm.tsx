@@ -108,41 +108,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     }
   };
 
-  const restoreCjSellability = async (productId: string) => {
-    try {
-      const { data: row, error } = await supabase
-        .from('products')
-        .select('id, source_platform, dropship_provider, lineage, cj_product_id, track_inventory')
-        .eq('id', productId)
-        .maybeSingle();
-      if (error || !row) return;
-
-      const sourcePlatform = String((row as any)?.source_platform || '').trim().toLowerCase();
-      const provider = String((row as any)?.dropship_provider || '').trim().toLowerCase();
-      const lineage = String((row as any)?.lineage || '').trim().toLowerCase();
-      const hasCjProductId = Boolean(String((row as any)?.cj_product_id || '').trim());
-      const isCjProduct =
-        sourcePlatform === 'cj' ||
-        provider === 'cj' ||
-        lineage === 'cj' ||
-        hasCjProductId;
-
-      if (!isCjProduct) return;
-
-      await supabase
-        .from('products')
-        .update({
-          track_inventory: false,
-          in_stock: true,
-          is_active: true,
-          status: 'active',
-        })
-        .eq('id', productId);
-    } catch {
-      // non-fatal
-    }
-  };
-
   const buildSingleShippingOption = (
     shippingPrice: number,
     includeInPrice: boolean = false
@@ -244,10 +209,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     affiliateType: 'percent',
   });
   const [aiLoading, setAiLoading] = useState(false);
-  const [aliExpressUrl, setAliExpressUrl] = useState('');
-  const [aliExpressExternalProductId, setAliExpressExternalProductId] = useState('');
-  const [aliExpressSupplierSku, setAliExpressSupplierSku] = useState('');
-  const [autoFillLoading, setAutoFillLoading] = useState(false);
   const normalizedAccountRoles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role, currentRole);
   const buyerOnlyAccount = Boolean(user && isBuyerOnlyAccount(normalizedAccountRoles));
 
@@ -341,101 +302,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       affiliateType: 'percent',
     });
     setProductImages([]);
-    setAliExpressUrl('');
-    setAliExpressExternalProductId('');
-    setAliExpressSupplierSku('');
-  };
-
-  const parsePositiveNumber = (value: unknown, fallback = 0): number => {
-    const parsed = Number.parseFloat(String(value ?? '').trim());
-    return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
-  };
-
-  const runAliExpressAutofill = async (): Promise<boolean> => {
-    setError(null);
-    setSuccess(null);
-
-    const normalizedUrl = String(aliExpressUrl || '').trim();
-    if (!normalizedUrl) {
-      setError('Paste an AliExpress product URL first.');
-      return false;
-    }
-
-    try {
-      setAutoFillLoading(true);
-      const response = await fetch('/api/aliexpress/autofill', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: normalizedUrl }),
-      });
-
-      const payload = await response.json().catch(() => ({} as any));
-      if (!response.ok || payload?.ok === false) {
-        throw new Error(payload?.error || `AliExpress auto-fill failed (${response.status})`);
-      }
-
-      const data = payload?.data || {};
-      const title = String(data?.title || '').trim();
-      const description = String(data?.description || '').trim();
-      const images = Array.isArray(data?.images) ? data.images.map((item: unknown) => String(item || '').trim()).filter(Boolean) : [];
-      const videos = normalizeProductVideos(data?.videos);
-      const sourcePrice = parsePositiveNumber(data?.sourcePrice, 0);
-      const shippingCost = parsePositiveNumber(data?.shippingCost, 0);
-      const externalProductId = String(data?.externalProductId || '').trim();
-      const supplierSku = String(data?.supplierSku || '').trim();
-
-      setFormData((prev) => {
-        const mergedImages = [...new Set([...images, ...prev.images])].slice(0, MAX_IMAGES);
-        const mergedVideos = [...new Set([...videos, ...prev.videos])];
-        const aliTags = ['AliExpress Imported'];
-        if (externalProductId) aliTags.push(`AliExpress ID: ${externalProductId}`);
-        const mergedTags = [...new Set([...prev.tags, ...aliTags])];
-        const fallbackCategoryId = prev.category_id || categories[0]?.id || '';
-        return {
-          ...prev,
-          title: title || prev.title,
-          description: description || prev.description,
-          images: mergedImages,
-          videos: mergedVideos,
-          tags: mergedTags,
-          category_id: fallbackCategoryId,
-          shipping_price: Number.isFinite(shippingCost) ? shippingCost : prev.shipping_price,
-        };
-      });
-
-      if (externalProductId) setAliExpressExternalProductId(externalProductId);
-      if (supplierSku) setAliExpressSupplierSku(supplierSku);
-
-      if (sourcePrice > 0) {
-        const nextPricing = calculatePricing({
-          sellerDesiredAmount: sourcePrice,
-          affiliateRate: 10,
-          affiliateType: 'percentage',
-          testItem: isTestItemTitle(formData.title || title),
-        });
-        setPricingSeed({
-          sellerAmount: nextPricing.sellerBaseAmount || nextPricing.sellerAmount || sourcePrice,
-          affiliateAmount: nextPricing.affiliateType === 'flat_rate' ? nextPricing.affiliateAmount : nextPricing.affiliateRate,
-          affiliateType: nextPricing.affiliateType === 'flat_rate' ? 'flat' : 'percent',
-        });
-        setPricingBreakdown(nextPricing);
-      }
-
-      setSuccess('AliExpress auto-fill complete. Review details, then save.');
-      return true;
-    } catch (err: any) {
-      setError(err?.message || 'AliExpress auto-fill failed.');
-      return false;
-    } finally {
-      setAutoFillLoading(false);
-    }
-  };
-
-  const handleAutoFillAndSave = async () => {
-    if (loading || autoFillLoading) return;
-    const ok = await runAliExpressAutofill();
-    if (!ok) return;
-    await handleSubmit();
   };
 
   const generateCopyWithAI = async () => {
@@ -595,7 +461,54 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [categoriesLoadedFromDatabase, setCategoriesLoadedFromDatabase] = useState(false);
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
   const [createdMarketplaceStatus, setCreatedMarketplaceStatus] = useState<'marketplace' | 'store_only' | null>(null);
+  const [ownedStorefronts, setOwnedStorefronts] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const [selectedStorefrontIds, setSelectedStorefrontIds] = useState<string[]>([]);
+  const [storefrontsLoading, setStorefrontsLoading] = useState(false);
   const digitalCategoryId = categories.find((category) => isDigitalCategoryOption(category))?.id || DIGITAL_CATEGORY_FALLBACK.id;
+
+  useEffect(() => {
+    let cancelled = false;
+    const ownerId = String(profile?.id || '').trim();
+    if (!ownerId) return;
+
+    setStorefrontsLoading(true);
+    void (async () => {
+      const { data, error: storefrontError } = await supabase
+        .from('storefronts')
+        .select('id,name,slug')
+        .eq('owner_id', ownerId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true });
+      if (cancelled) return;
+      if (storefrontError) {
+        console.warn('[ProductForm] storefront lookup failed:', storefrontError);
+        setOwnedStorefronts([]);
+        return;
+      }
+
+      const rows = ((data as any[]) || [])
+        .map((row) => ({ id: String(row.id), name: String(row.name || 'Storefront'), slug: String(row.slug || '') }))
+        .filter((row) => row.id);
+      setOwnedStorefronts(rows);
+
+      if (editProductId && rows.length > 0) {
+        const { data: assigned } = await supabase
+          .from('storefront_products')
+          .select('storefront_id')
+          .eq('product_id', editProductId)
+          .in('storefront_id', rows.map((row) => row.id));
+        if (!cancelled) setSelectedStorefrontIds(((assigned as any[]) || []).map((row) => String(row.storefront_id)));
+      } else if (rows.length === 1) {
+        setSelectedStorefrontIds([rows[0].id]);
+      }
+    })().finally(() => {
+      if (!cancelled) setStorefrontsLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editProductId, profile?.id]);
 
   useEffect(() => {
     if (error || success) setShowStickyAlert(true);
@@ -1017,6 +930,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
 
+    if (ownedStorefronts.length > 0 && selectedStorefrontIds.length === 0) {
+      abortSubmit('Choose at least one brand storefront for this product.');
+      return;
+    }
+
     if (!pricingBreakdown) {
       abortSubmit('Please configure your pricing first');
       return;
@@ -1157,34 +1075,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             : null;
       const normalizedCategoryName =
         categories.find((c) => String(c.id) === categorySelection)?.name || categorySelection || null;
-      const normalizedAliExpressUrl = String(aliExpressUrl || '').trim();
-      const normalizedExternalProductId = String(aliExpressExternalProductId || '').trim();
-      const normalizedSupplierSku = String(aliExpressSupplierSku || '').trim();
-      const isAliExpressImport = Boolean(normalizedAliExpressUrl);
-      const importTags = isAliExpressImport
-        ? [
-            'AliExpress Imported',
-            ...(normalizedExternalProductId ? [`AliExpress ID: ${normalizedExternalProductId}`] : []),
-          ]
-        : [];
-      const mergedTags = [...new Set([...formData.tags, ...importTags])];
-      const importPayloadFields = isAliExpressImport
-        ? {
-            source_platform: 'aliexpress',
-            external_product_id: normalizedExternalProductId || null,
-            dropship_provider: 'aliexpress',
-            is_dropshipped: true,
-            supplier_name: 'AliExpress',
-            supplier_product_id: normalizedSupplierSku || normalizedExternalProductId || null,
-            supplier_url: normalizedAliExpressUrl,
-            supplier_info: {
-              supplier_name: 'AliExpress',
-              supplier_product_id: normalizedSupplierSku || normalizedExternalProductId || null,
-              supplier_url: normalizedAliExpressUrl,
-              is_dropshipped: true,
-            },
-          }
-        : {};
+      const mergedTags = [...new Set(formData.tags)];
 
       if (editMode) {
         // Update product
@@ -1238,7 +1129,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
              is_promotable: affiliateEnabled && !requiresManualReview,
              is_active: !requiresManualReview,
              has_variants: Boolean(variantConfig.enabled),
-             ...importPayloadFields,
            };
 
         // Schema-tolerant update: drop missing keys and retry (for staged DB rollouts).
@@ -1357,7 +1247,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
              is_promotable: affiliateEnabled && !requiresManualReview,
              is_active: !requiresManualReview,
              has_variants: Boolean(variantConfig.enabled),
-             ...importPayloadFields,
            };
 
         // Schema-tolerant insert: drop missing keys and retry (for staged DB rollouts).
@@ -1459,9 +1348,29 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         }
       }
 
+      if (savedProductId && ownedStorefronts.length > 0) {
+        const ownedIds = ownedStorefronts.map((storefront) => storefront.id);
+        const { error: clearStoreError } = await supabase
+          .from('storefront_products')
+          .delete()
+          .eq('product_id', savedProductId)
+          .in('storefront_id', ownedIds);
+        if (clearStoreError) throw clearStoreError;
+
+        if (selectedStorefrontIds.length > 0) {
+          const { error: assignStoreError } = await supabase
+            .from('storefront_products')
+            .insert(selectedStorefrontIds.map((storefrontId, position) => ({
+              storefront_id: storefrontId,
+              product_id: savedProductId,
+              position,
+            })));
+          if (assignStoreError) throw assignStoreError;
+        }
+      }
+
       if (savedProductId && !requiresManualReview) {
         await forceMarketplaceListing(savedProductId);
-        await restoreCjSellability(savedProductId);
       }
 
       const marketplaceStatus = requiresManualReview ? 'store_only' : 'marketplace';
@@ -1553,14 +1462,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                 <button
                   onClick={() => handleSubmit(undefined, true)}
-                  disabled={loading || autoFillLoading}
+                  disabled={loading}
                   className="w-full bg-white border border-gray-300 text-gray-900 px-5 py-2.5 rounded-lg font-semibold hover:bg-gray-50 disabled:bg-gray-200 transition-all sm:w-auto"
                 >
                   {loading ? 'Saving...' : 'Save & Add Another'}
                 </button>
                 <button
                   onClick={() => handleSubmit()}
-                  disabled={loading || autoFillLoading}
+                  disabled={loading}
                   className="w-full bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200 sm:w-auto"
                 >
                   {loading ? 'Saving...' : editMode ? 'Update Product' : 'Save Product'}
@@ -1692,6 +1601,42 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               <div>3. Open optional sections for variants, shipping, or video only.</div>
             </div>
           </div>
+
+          {ownedStorefronts.length > 0 && (
+            <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <div className="text-sm font-bold text-slate-950">Choose the brand storefront</div>
+              <p className="mt-1 text-sm text-slate-700">
+                This controls which branded store sells the product. Select more than one only when the same product belongs in multiple stores.
+              </p>
+              {storefrontsLoading ? (
+                <p className="mt-3 text-sm text-slate-600">Loading your storefronts...</p>
+              ) : (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {ownedStorefronts.map((storefront) => {
+                    const checked = selectedStorefrontIds.includes(storefront.id);
+                    return (
+                      <label key={storefront.id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${checked ? 'border-amber-500 bg-white' : 'border-amber-200 bg-amber-50/50'}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => setSelectedStorefrontIds((current) =>
+                            current.includes(storefront.id)
+                              ? current.filter((id) => id !== storefront.id)
+                              : [...current, storefront.id]
+                          )}
+                          className="rounded border-slate-300"
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold text-slate-950">{storefront.name}</span>
+                          <span className="block text-xs text-slate-600">beezio.co/store/{storefront.slug}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Product Title */}
           <div>
@@ -1852,58 +1797,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               </div>
             )}
           </div>
-
-          {false && (
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-3">
-              Product Videos
-            </label>
-            <p className="mb-3 text-sm text-gray-600">
-              Upload short videos for this product so sellers and affiliates can promote it with motion as well as photos.
-            </p>
-
-            <ImageUpload
-              bucket="product-images"
-              folder="product-videos"
-              onUploadComplete={handleVideoUploadSuccess}
-              onUploadError={(message) => setError(message || 'Video upload failed')}
-              maxFiles={MAX_VIDEOS}
-              maxFileSize={15}
-              allowedTypes={PRODUCT_VIDEO_TYPES}
-              preview={false}
-              title="Upload Videos"
-              description="Drag & drop videos here, or click to browse"
-            />
-
-            <div className="mt-3 text-xs text-gray-500">
-              Supported formats: MP4, WebM, MOV, and M4V. Keep each video under 15MB.
-            </div>
-
-            {formData.videos.length > 0 && (
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {formData.videos.map((video, idx) => (
-                  <div key={`${video}-${idx}`} className="relative group">
-                    <video
-                      src={video}
-                      className="w-full h-48 rounded-lg border border-gray-200 bg-black object-cover"
-                      controls
-                      playsInline
-                      preload="metadata"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeVideo(idx)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                      aria-label={`Remove video ${idx + 1}`}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          )}
 
           {/* Pricing */}
           <div className="border-t border-gray-200 pt-6">
@@ -2369,7 +2262,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
           <div className="pt-4">
             <button
               type="submit"
-              disabled={loading || autoFillLoading}
+              disabled={loading}
               className="w-full bg-black text-white rounded-lg py-3 font-semibold shadow-md hover:shadow-lg hover:bg-gray-800 disabled:bg-gray-400 transition-all"
             >
               {loading ? 'Saving...' : editMode ? 'Update Product' : 'Add Product'}

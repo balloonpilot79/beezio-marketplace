@@ -6,6 +6,7 @@ type Body = {
   ownerId: string;
   ownerType: 'seller' | 'affiliate' | 'fundraiser';
   storeName?: string | null;
+  storefrontId?: string | null;
 };
 
 export const handler: Handler = async (event) => {
@@ -27,6 +28,7 @@ export const handler: Handler = async (event) => {
     const ownerId = String(body.ownerId || '').trim();
     const ownerType = String(body.ownerType || '').trim().toLowerCase() as Body['ownerType'];
     const storeName = body.storeName == null ? null : String(body.storeName || '').trim() || null;
+    const storefrontId = body.storefrontId == null ? null : String(body.storefrontId || '').trim() || null;
 
     if (!ownerId) return json(400, { error: 'Missing ownerId' });
     if (ownerId === user.id) return json(400, { error: 'Cannot message yourself' });
@@ -37,13 +39,16 @@ export const handler: Handler = async (event) => {
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     // Find existing conversation (best-effort uniqueness).
-    const { data: existing } = await supabaseAdmin
+    let existingQuery = supabaseAdmin
       .from('store_conversations')
       .select('id, owner_id, owner_type, customer_id, store_name, created_at, updated_at')
       .eq('owner_id', ownerId)
       .eq('customer_id', user.id)
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    existingQuery = storefrontId
+      ? existingQuery.eq('storefront_id', storefrontId)
+      : existingQuery.is('storefront_id', null);
+    const { data: existing } = await existingQuery.maybeSingle();
 
     const now = new Date().toISOString();
     const conversation =
@@ -56,6 +61,7 @@ export const handler: Handler = async (event) => {
             owner_type: ownerType,
             customer_id: user.id,
             store_name: storeName,
+            storefront_id: storefrontId,
             created_at: now,
             updated_at: now,
           } as any)
@@ -83,4 +89,3 @@ export const handler: Handler = async (event) => {
     return json(500, { error: 'Unexpected error', details: e instanceof Error ? e.message : String(e) });
   }
 };
-

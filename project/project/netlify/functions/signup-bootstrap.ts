@@ -75,29 +75,56 @@ export const handler: Handler = async (event) => {
     const recentEnough = Number.isFinite(createdAt) && Date.now() - createdAt < 60 * 60 * 1000;
     if (!recentEnough) return json(403, { error: 'Signup bootstrap window expired' });
 
-    const role = safeRole(body.role);
-    const isBuyerSignup = role === 'buyer' && !body.bundleBusinessRoles;
+    const metadata = (authUser.user_metadata || {}) as Record<string, unknown>;
+    const bundleBusinessRoles = Boolean(metadata.bundle_business_roles ?? body.bundleBusinessRoles);
+    const role = safeRole(metadata.role ?? body.role);
+    const isBuyerSignup = role === 'buyer' && !bundleBusinessRoles;
     const primaryRole = isBuyerSignup ? 'buyer' : 'seller';
     const assignedRoles = isBuyerSignup ? ['buyer'] : uniqueRoles(['seller', 'affiliate', 'influencer']);
-    const fullName = String(body.fullName || authUser.user_metadata?.full_name || email.split('@')[0] || 'User').trim();
-    const storeName = String(body.storeName || fullName || email.split('@')[0] || 'My Store').trim();
-    const requestedSlug = cleanSlug(body.storeSlug || storeName || email.split('@')[0]);
+    const fullName = String(metadata.full_name || body.fullName || email.split('@')[0] || 'User').trim();
+    const storeName = String(metadata.store_name || body.storeName || fullName || email.split('@')[0] || 'My Store').trim();
+    const requestedSlug = cleanSlug(metadata.store_slug || body.storeSlug || storeName || email.split('@')[0]);
     const storeSlug = await slugAvailable(supabaseAdmin, requestedSlug, userId);
     const city = String(body.city || '').trim();
     const state = String(body.state || '').trim();
     const location = [city, state].filter(Boolean).join(', ') || null;
-    const paypalEmail = String(body.paypalEmail || '').trim();
-    const paypalConfirmed = Boolean(body.paypalConfirmed) && paypalEmail.includes('@');
-    const referrerProfileId = String(body.referrerProfileId || '').trim();
+    const paypalEmail = String(metadata.paypal_email || body.paypalEmail || '').trim();
+    const paypalConfirmed = Boolean(metadata.paypal_confirmed ?? body.paypalConfirmed) && paypalEmail.includes('@');
+    const requestedReferrerProfileId = String(metadata.referrer_profile_id || body.referrerProfileId || '').trim();
     const independentContractorAcknowledged = Boolean(body.independentContractorAcknowledged);
     const taxDeliveryAcknowledged = Boolean(body.taxDeliveryAcknowledged);
     const taxComplianceVersion = String(body.taxComplianceVersion || authUser.user_metadata?.tax_compliance_version || '2026.03').trim();
 
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
-      .select('id')
+      .select('id,recruited_by_influencer_id')
       .eq('id', userId)
       .maybeSingle();
+
+    let referrerProfileId = '';
+    if (isUuid(requestedReferrerProfileId) && requestedReferrerProfileId !== userId) {
+      const { data: referrerProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('id,user_id,role,primary_role')
+        .eq('id', requestedReferrerProfileId)
+        .maybeSingle();
+      const referrerUserId = String((referrerProfile as any)?.user_id || '').trim();
+      const directInfluencerRole = ['role', 'primary_role'].some(
+        (column) => String((referrerProfile as any)?.[column] || '').toLowerCase() === 'influencer'
+      );
+      const { data: influencerRole } = referrerUserId
+        ? await supabaseAdmin
+            .from('user_roles')
+            .select('user_id')
+            .eq('user_id', referrerUserId)
+            .eq('role', 'influencer')
+            .eq('is_active', true)
+            .maybeSingle()
+        : { data: null };
+      if ((referrerProfile as any)?.id && (directInfluencerRole || (influencerRole as any)?.user_id)) {
+        referrerProfileId = requestedReferrerProfileId;
+      }
+    }
 
     const profilePayload: any = {
       id: userId,
@@ -109,7 +136,9 @@ export const handler: Handler = async (event) => {
       phone: String(body.phone || '').trim() || null,
       location,
       zip_code: String(body.zipCode || body.zip_code || '').trim() || null,
-      ...(isUuid(referrerProfileId) && referrerProfileId !== userId ? { recruited_by_influencer_id: referrerProfileId } : {}),
+      ...(!existingProfile?.recruited_by_influencer_id && referrerProfileId
+        ? { recruited_by_influencer_id: referrerProfileId }
+        : {}),
     };
 
     const { data: profile, error: profileError } = await supabaseAdmin
@@ -141,18 +170,16 @@ export const handler: Handler = async (event) => {
 
     if (!isBuyerSignup && isUuid(referrerProfileId) && referrerProfileId !== profileId) {
       await Promise.all(
-        ['seller', 'affiliate'].map((recruitedRole) =>
-          supabaseAdmin
+        ['seller', 'affiliate'].map(async (recruitedRole) => {
+          const { error } = await supabaseAdmin
             .from('influencer_referrals')
-            .upsert(
-              {
-                recruited_profile_id: profileId,
-                recruited_role: recruitedRole,
-                influencer_profile_id: referrerProfileId,
-              },
-              { onConflict: 'recruited_profile_id,recruited_role' }
-            )
-        )
+            .insert({
+              recruited_profile_id: profileId,
+              recruited_role: recruitedRole,
+              influencer_profile_id: referrerProfileId,
+            });
+          if (error && String(error.code) !== '23505') throw error;
+        })
       );
     }
 

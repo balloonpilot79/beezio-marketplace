@@ -261,9 +261,11 @@ export default function AffiliateSingleProductPromoPage() {
     const params = new URLSearchParams();
     if (ref) params.set('ref', ref);
     if (uid) params.set('uid', uid);
+    params.set('promo', '1');
+    if (owner) params.set('owner', owner);
     const qs = params.toString();
     return `/product/${product.id}${qs ? `?${qs}` : ''}`;
-  }, [product?.id, ref, uid]);
+  }, [owner, product?.id, ref, uid]);
 
   const cleanedDescription = sanitizeDescription(product?.description);
   const salesPoints = buildSalesPoints(cleanedDescription, product?.title || 'this product');

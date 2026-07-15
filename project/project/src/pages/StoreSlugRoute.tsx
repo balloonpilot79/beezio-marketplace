@@ -184,6 +184,33 @@ const StoreSlugRoute: React.FC<StoreSlugRouteProps> = ({ mode = 'store' }) => {
           }
         }
 
+        // Multi-brand storefronts (for example RedTail) live in the storefronts
+        // table instead of the legacy seller/affiliate settings tables.
+        try {
+          const { data: brandStorefront, error: brandStorefrontError } = await withTimeout(
+            supabase
+              .from('storefronts')
+              .select('owner_id')
+              .eq('slug', cleanSlug)
+              .eq('is_active', true)
+              .maybeSingle(),
+            5000,
+            'Brand storefront slug lookup'
+          );
+          if (!isIgnorableLookupError(brandStorefrontError)) {
+            console.warn('[StoreSlugRoute] Brand storefront slug lookup error (non-fatal):', brandStorefrontError);
+          }
+          if (brandStorefront?.owner_id) {
+            setStoreType('seller');
+            setStoreId(String(brandStorefront.owner_id));
+            setLoadError(null);
+            setLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.warn('[StoreSlugRoute] Brand storefront lookup unavailable, using legacy fallbacks:', error);
+        }
+
         let { sellerMatch, affiliateMatch, sellerError, affiliateError } = await loadSlugMatches(cleanSlug, true);
 
         if ((!sellerMatch && isTimeoutError(sellerError)) || (!affiliateMatch && isTimeoutError(affiliateError))) {

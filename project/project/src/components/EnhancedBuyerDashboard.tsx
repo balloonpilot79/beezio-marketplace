@@ -37,7 +37,6 @@ interface Order {
   tracking_number?: string;
   tracking_url?: string;
   shipping_carrier?: string;
-  cj_status?: string;
 }
 
 interface WishlistItem {
@@ -240,7 +239,6 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
         tracking_number: order.tracking_number || undefined,
         tracking_url: order.tracking_url || undefined,
         shipping_carrier: order.shipping_carrier || undefined,
-        cj_status: order.cj_status || undefined,
       };
     });
   };
@@ -342,25 +340,6 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
       }
 
       if (ordersData) {
-        const orderIds = ordersData.map((order) => String(order.id)).filter(Boolean);
-        const cjByOrderId: Record<string, { status?: string; trackingNumber?: string; trackingUrl?: string; carrier?: string }> = {};
-        if (orderIds.length > 0) {
-          const { data: cjRows } = await supabase
-            .from('cj_orders')
-            .select('beezio_order_id,cj_status,cj_tracking_number,cj_tracking_url,cj_logistic_name')
-            .in('beezio_order_id', orderIds);
-          (cjRows || []).forEach((row: any) => {
-            const key = String(row?.beezio_order_id || '').trim();
-            if (!key) return;
-            cjByOrderId[key] = {
-              status: String(row?.cj_status || '').trim() || undefined,
-              trackingNumber: String(row?.cj_tracking_number || '').trim() || undefined,
-              trackingUrl: String(row?.cj_tracking_url || '').trim() || undefined,
-              carrier: String(row?.cj_logistic_name || '').trim() || undefined,
-            };
-          });
-        }
-
         const formattedOrders = ordersData.map(order => {
           const fulfillmentStatus = String(order.fulfillment_status || '').trim().toLowerCase();
           const paymentStatus = String(order.payment_status || order.status || '').trim().toLowerCase();
@@ -384,10 +363,9 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
             payment_status: order.payment_status || null,
             fulfillment_status: order.fulfillment_status || null,
             order_date: order.created_at.split('T')[0],
-            tracking_number: order.tracking_number || cjByOrderId[String(order.id)]?.trackingNumber,
-            tracking_url: order.tracking_url || cjByOrderId[String(order.id)]?.trackingUrl,
-            shipping_carrier: cjByOrderId[String(order.id)]?.carrier,
-            cj_status: cjByOrderId[String(order.id)]?.status,
+            tracking_number: order.tracking_number || order.tracking_numbers?.[0],
+            tracking_url: order.tracking_url,
+            shipping_carrier: order.shipping_carrier || order.carrier,
           };
         });
         const sellerIds = Array.from(

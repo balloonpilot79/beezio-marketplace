@@ -41,7 +41,7 @@ const CustomDomainFAQPage: React.FC = () => {
               <li>1. Open your Custom Site dashboard.</li>
               <li>2. Go to the Domain & Links tab.</li>
               <li>3. Type your domain, such as mystore.com or shop.mystore.com.</li>
-              <li>4. Click Save.</li>
+              <li>4. Click Save. Beezio securely registers the domain with the hosting service.</li>
               <li>5. Open DNS settings at your domain provider.</li>
               <li>6. Add the DNS record shown below.</li>
               <li>7. Wait for DNS to update, then return to Beezio and click Re-check now.</li>
@@ -115,6 +115,10 @@ const CustomDomainFAQPage: React.FC = () => {
               <div>
                 <h3 className="font-semibold text-gray-900">Beezio says DNS is not detected yet</h3>
                 <p>Wait 5-30 minutes and try Re-check now again. Some providers can take up to 48 hours.</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Beezio says domain automation needs setup</h3>
+                <p>Contact Beezio support. An administrator must complete the one-time secure Netlify connection; do not send anyone your password or API token.</p>
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">The domain still opens an old website</h3>

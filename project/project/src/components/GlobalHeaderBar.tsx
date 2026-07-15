@@ -41,7 +41,7 @@ const GlobalHeaderBar: React.FC<GlobalHeaderBarProps> = ({ onOpenAuth, onOpenSig
 
   const navLinks = [
     { label: 'Home', href: '/', description: 'Start here' },
-    { label: 'Marketplace', href: '/marketplace', description: 'Browse products to buy or promote' },
+    { label: 'Product Marketplace', href: '/marketplace', description: 'Find products to add to your storefront and promote' },
     { label: 'How It Works', href: '/how-it-works', description: 'See how selling, partner payouts, and checkout work' },
     ...(user
       ? [{ label: 'Dashboard', href: '/dashboard', description: 'Manage products, orders, payouts, and store setup' }]
@@ -125,7 +125,7 @@ const GlobalHeaderBar: React.FC<GlobalHeaderBarProps> = ({ onOpenAuth, onOpenSig
                 </div>
                 <div className="flex flex-col leading-tight">
                   <span className="text-[13px] sm:text-sm font-semibold uppercase tracking-wide">Beezio</span>
-                  <span className="text-[10px] sm:text-xs text-black/70">Marketplace</span>
+                  <span className="text-[10px] sm:text-xs text-black/70">Business Platform</span>
                 </div>
               </Link>
 

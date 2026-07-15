@@ -700,14 +700,14 @@ export default function InfluencerRecruitPromoStudio({ code, influencerName }: P
       </div>
 
       <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
-        <div className="text-sm font-semibold text-amber-950">Direct signup links</div>
+        <div className="text-sm font-semibold text-amber-950">Audience-focused business signup links</div>
         <p className="mt-1 text-sm text-amber-900">
-          Use these private direct links when you need a role-specific signup path. The recruiter code stays attached.
+          Both links create the same unified seller, affiliate, and influencer account. The wording only matches the audience you are inviting, and your lifetime recruiter code stays attached.
         </p>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           {[
-            { key: 'seller-signup', label: 'Seller signup', value: links.sellerSignup },
-            { key: 'affiliate-signup', label: 'Affiliate signup', value: links.affiliateSignup },
+            { key: 'seller-signup', label: 'Seller-focused signup', value: links.sellerSignup },
+            { key: 'affiliate-signup', label: 'Affiliate-focused signup', value: links.affiliateSignup },
           ].map((item) => (
             <div key={item.key} className="rounded-lg border border-amber-100 bg-white p-3">
               <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">{item.label}</div>
@@ -802,7 +802,7 @@ export default function InfluencerRecruitPromoStudio({ code, influencerName }: P
                       <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">{template.target}</span>
                     </div>
                     <div className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                      Attached link: {template.linkKey === 'sellerSignup' ? 'Direct seller signup' : template.linkKey === 'affiliateSignup' ? 'Direct affiliate signup' : 'Invite link'}
+                      Attached link: {template.linkKey === 'sellerSignup' ? 'Seller-focused business signup' : template.linkKey === 'affiliateSignup' ? 'Affiliate-focused business signup' : 'Unified business invite'}
                     </div>
                     <div className="mt-3 flex gap-2">
                       <button
