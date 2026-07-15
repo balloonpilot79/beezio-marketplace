@@ -257,9 +257,21 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             if (resp.ok) {
               const payload: any = await resp.json().catch(() => ({}));
               if (payload?.ok && payload?.seller_id) {
+                const requestedBrandSlug = String(storeSlug || '').trim().toLowerCase();
+                const protectedBrandName = requestedBrandSlug === 'redtail'
+                  ? 'RedTail'
+                  : requestedBrandSlug === 'marebelle'
+                    ? 'MareBelle'
+                    : '';
+                const resolvedStorefrontSeller = payload.seller
+                  ? {
+                      ...payload.seller,
+                      full_name: protectedBrandName || payload.seller.full_name,
+                    }
+                  : null;
                 setCanonicalSellerId(String(payload.seller_id));
                 setCanonicalStorefrontId(payload.storefront_id ? String(payload.storefront_id) : null);
-                setSeller(payload.seller || null);
+                setSeller(resolvedStorefrontSeller);
                 setProducts(Array.isArray(payload.products) ? payload.products : []);
                 setInsuranceListings(Array.isArray(payload.insurance_listings) ? payload.insurance_listings : []);
                 setCustomPages(Array.isArray(payload.custom_pages) ? payload.custom_pages : []);
