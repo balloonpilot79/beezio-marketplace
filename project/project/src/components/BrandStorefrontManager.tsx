@@ -214,7 +214,7 @@ const BrandStorefrontManager: React.FC<{ ownerId: string }> = ({ ownerId }) => {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-xl font-bold text-slate-950"><Store className="h-5 w-5" /> Brand storefronts</h2>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">Standard accounts receive one complete brand storefront. Beezio administrators can switch between approved brands such as MareBelle and RedTail while each keeps separate products, design, messages, and orders.</p>
+          <p className="mt-1 max-w-2xl text-sm text-slate-600">Standard accounts receive one complete brand storefront. Beezio administrators can switch between approved brands such as MareBelle, RedTail, and Loving Nutrition while each keeps separate products, design, messages, and orders.</p>
         </div>
         {selected && (
           <div className="flex flex-wrap gap-2">

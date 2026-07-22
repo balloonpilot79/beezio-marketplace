@@ -29,7 +29,10 @@ const getDatePartsInTimeZone = (date: Date, timeZone = DEFAULT_PAYOUT_TIMEZONE) 
 const getTimeZoneOffsetMs = (date: Date, timeZone = DEFAULT_PAYOUT_TIMEZONE) => {
   const parts = getDatePartsInTimeZone(date, timeZone);
   const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second, 0);
-  return asUtc - date.getTime();
+  // Intl.DateTimeFormat exposes whole seconds. Remove the input milliseconds
+  // before comparing so a 23:59:59.999 cutoff remains exact.
+  const wholeSecondEpoch = Math.trunc(date.getTime() / 1000) * 1000;
+  return asUtc - wholeSecondEpoch;
 };
 
 const zonedDateTimeToUtc = (

@@ -42,6 +42,7 @@ type PaypalAccountRow = {
   user_id: string;
   role: 'SELLER' | 'PARTNER' | 'INFLUENCER';
   paypal_email: string;
+  is_verified: boolean;
 };
 
 type PayeeSummary = {
@@ -77,7 +78,7 @@ export const handler: Handler = async (event) => {
 
     const payoutsPaused = getEnvBool('PAYOUTS_PAUSED', false);
     const payoutsEnabled = getEnvBool('PAYOUTS_ENABLED', getEnvBool('PAYPAL_PAYOUTS_API_ENABLED', false));
-    const minimumPayout = getEnvNumber('PAYOUTS_MINIMUM', getEnvNumber('PAYPAL_MIN_PAYOUT', 25));
+    const minimumPayout = getEnvNumber('PAYOUTS_MINIMUM', getEnvNumber('PAYPAL_MIN_PAYOUT', 0.01));
     const scheduledEnabled = getEnvBool('PAYOUTS_SCHEDULED_ENABLED', false);
 
     const { data: snapshotRows, error: snapshotError } = await supabaseAdmin
@@ -117,14 +118,16 @@ export const handler: Handler = async (event) => {
 
       const { data: accounts, error: accountError } = await supabaseAdmin
         .from('paypal_accounts')
-        .select('user_id, role, paypal_email')
+        .select('user_id, role, paypal_email, is_verified')
         .in('user_id', Array.from(userIds));
 
       if (accountError) return json(500, { error: accountError.message });
 
       const accountMap = new Map<string, PaypalAccountRow>();
       for (const a of (accounts as any[]) || []) {
-        accountMap.set(`${a.user_id}::${a.role}`, a as PaypalAccountRow);
+        if (a?.is_verified === true) {
+          accountMap.set(`${a.user_id}::${a.role}`, a as PaypalAccountRow);
+        }
       }
 
       const profileMap = new Map<string, { name: string; contact_email: string }>();

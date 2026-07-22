@@ -115,37 +115,14 @@ async function selectOrdersResilient(supabaseAdmin: any, sellerIds: string[], sc
     'total_charged',
     'seller_id',
     'affiliate_id',
-      'billing_name',
-      'billing_email',
-      'customer_email',
-      'shipping_address',
+    'storefront_id',
+    'billing_name',
+    'billing_email',
+    'customer_email',
+    'shipping_address',
     'tracking_number',
     'carrier',
     'shipped_at',
-    `order_items (
-      id,
-      order_id,
-      product_id,
-      quantity,
-      price,
-      final_sale_price_per_unit,
-      seller_ask_price_per_unit,
-      sku,
-      cj_product_id,
-      cj_variant_id,
-      variant_id,
-      source_platform,
-      shipping_cost,
-      products (
-        id,
-        title,
-        description,
-        images,
-        image_url,
-        sku,
-        source_url
-      )
-    )`,
   ];
 
   let selectedFields = [...baseFields];
@@ -232,8 +209,47 @@ async function loadQueue(profileId: string, scope: QueueScope) {
   const orders = (ordersRows as any[]) || [];
   const orderIds = orders.map((row) => String(row?.id || '').trim()).filter(Boolean);
   const affiliateIds = Array.from(new Set(orders.map((row) => String(row?.affiliate_id || '').trim()).filter(Boolean)));
+  const storefrontIds = Array.from(new Set(orders.map((row) => String(row?.storefront_id || '').trim()).filter(Boolean)));
 
-  const [vendorResult, cjResult, affiliateResult] = await Promise.all([
+  const orderItemResult = orderIds.length
+    ? await selectRowsResilient(
+        supabaseAdmin,
+        'order_items',
+        [
+          'id',
+          'order_id',
+          'product_id',
+          'quantity',
+          'price',
+          'final_sale_price_per_unit',
+          'seller_ask_price_per_unit',
+          'sku',
+          'cj_product_id',
+          'cj_variant_id',
+          'variant_id',
+          'source_platform',
+          'shipping_cost',
+          'product_title_snapshot',
+          'product_description_snapshot',
+          'product_sku_snapshot',
+          'brand_name_snapshot',
+          'storefront_id_snapshot',
+          'image_url_snapshot',
+          'source_url_snapshot',
+        ],
+        (query) => query.in('order_id', orderIds)
+      )
+    : { data: [], error: null } as any;
+
+  if (orderItemResult.error) throw new Error(orderItemResult.error.message);
+  const orderItemRows = (orderItemResult.data as any[]) || [];
+  const productIds = Array.from(new Set(orderItemRows.map((row) => String(row?.product_id || '').trim()).filter(Boolean)));
+  orderItemRows.forEach((row) => {
+    const snapshotStorefrontId = String(row?.storefront_id_snapshot || '').trim();
+    if (snapshotStorefrontId && !storefrontIds.includes(snapshotStorefrontId)) storefrontIds.push(snapshotStorefrontId);
+  });
+
+  const [vendorResult, cjResult, affiliateResult, productResult, storefrontResult] = await Promise.all([
     orderIds.length
       ? selectRowsResilient(
           supabaseAdmin,
@@ -258,11 +274,29 @@ async function loadQueue(profileId: string, scope: QueueScope) {
           (query) => query.in('id', affiliateIds)
         )
       : Promise.resolve({ data: [], error: null } as any),
+    productIds.length
+      ? selectRowsResilient(
+          supabaseAdmin,
+          'products',
+          ['id', 'title', 'description', 'images', 'primary_image_url', 'vendor_sku', 'source_url'],
+          (query) => query.in('id', productIds)
+        )
+      : Promise.resolve({ data: [], error: null } as any),
+    storefrontIds.length
+      ? selectRowsResilient(
+          supabaseAdmin,
+          'storefronts',
+          ['id', 'name', 'slug'],
+          (query) => query.in('id', storefrontIds)
+        )
+      : Promise.resolve({ data: [], error: null } as any),
   ]);
 
   if (vendorResult.error) throw new Error(vendorResult.error.message);
   if (cjResult.error) throw new Error(cjResult.error.message);
   if (affiliateResult.error) throw new Error(affiliateResult.error.message);
+  if (productResult.error) throw new Error(productResult.error.message);
+  if (storefrontResult.error) throw new Error(storefrontResult.error.message);
 
   const manualVendorByOrderId = new Map<string, any>();
   ((vendorResult.data as any[]) || []).forEach((row) => {
@@ -284,6 +318,27 @@ async function loadQueue(profileId: string, scope: QueueScope) {
     if (id) affiliateById.set(id, row);
   });
 
+  const productById = new Map<string, any>();
+  ((productResult.data as any[]) || []).forEach((row) => {
+    const id = String(row?.id || '').trim();
+    if (id) productById.set(id, row);
+  });
+
+  const storefrontById = new Map<string, any>();
+  ((storefrontResult.data as any[]) || []).forEach((row) => {
+    const id = String(row?.id || '').trim();
+    if (id) storefrontById.set(id, row);
+  });
+
+  const itemsByOrderId = new Map<string, any[]>();
+  orderItemRows.forEach((row) => {
+    const orderId = String(row?.order_id || '').trim();
+    if (!orderId) return;
+    const current = itemsByOrderId.get(orderId) || [];
+    current.push(row);
+    itemsByOrderId.set(orderId, current);
+  });
+
   const items = orders.map((order) => {
     const orderId = String(order?.id || '').trim();
     const vendorRow = manualVendorByOrderId.get(orderId) || null;
@@ -291,28 +346,36 @@ async function loadQueue(profileId: string, scope: QueueScope) {
     const affiliateRow = affiliateById.get(String(order?.affiliate_id || '').trim()) || null;
     const vendorResponse = vendorRow?.vendor_response && typeof vendorRow.vendor_response === 'object' ? vendorRow.vendor_response : {};
 
-    const orderItems = Array.isArray(order?.order_items) ? order.order_items : [];
+    const orderItems = itemsByOrderId.get(orderId) || [];
     const normalizedItems = orderItems.map((item: any) => {
-      const product = item?.products || {};
+      const product = productById.get(String(item?.product_id || '').trim()) || {};
       const images = parseImages(product?.images);
+      const snapshotStorefrontId = toSafeString(item?.storefront_id_snapshot) || toSafeString(order?.storefront_id);
+      const storefront = snapshotStorefrontId ? storefrontById.get(snapshotStorefrontId) : null;
       return {
         id: String(item?.id || ''),
         productId: toSafeString(item?.product_id),
-        title: String(product?.title || 'Product'),
-        description: toSafeString(product?.description),
+        title: String(item?.product_title_snapshot || product?.title || 'Product'),
+        description: toSafeString(item?.product_description_snapshot || product?.description),
         quantity: Math.max(1, Number(item?.quantity || 1)),
         unitPrice: toMoney(item?.final_sale_price_per_unit ?? item?.price) || 0,
         totalPrice: (toMoney(item?.final_sale_price_per_unit ?? item?.price) || 0) * Math.max(1, Number(item?.quantity || 1)),
-        sku: toSafeString(item?.sku || product?.sku),
+        sku: toSafeString(item?.product_sku_snapshot || item?.sku || product?.vendor_sku),
         cjProductId: toSafeString(item?.cj_product_id),
         cjVariantId: toSafeString(item?.cj_variant_id),
         cjProductSku: null,
         cjSpu: null,
         sourcePlatform: toSafeString(item?.source_platform),
-        imageUrl: toSafeString(images[0] || product?.image_url),
-        sourceUrl: toSafeString(product?.source_url),
+        imageUrl: toSafeString(item?.image_url_snapshot || images[0] || product?.primary_image_url),
+        sourceUrl: toSafeString(item?.source_url_snapshot || product?.source_url),
+        brandName: toSafeString(item?.brand_name_snapshot || storefront?.name),
       };
     });
+
+    const orderStorefront = storefrontById.get(String(order?.storefront_id || '').trim()) || null;
+    const brandName = toSafeString(orderStorefront?.name)
+      || normalizedItems.map((item) => toSafeString(item?.brandName)).find(Boolean)
+      || 'Unassigned storefront';
 
     return {
       orderId,
@@ -323,6 +386,8 @@ async function loadQueue(profileId: string, scope: QueueScope) {
       createdAt: toSafeString(order?.created_at),
       paidAt: toSafeString(order?.paid_at),
       totalCharged: toMoney(order?.total_charged ?? order?.total_amount),
+      storefrontId: toSafeString(order?.storefront_id),
+      brandName,
       customerName: toSafeString(order?.billing_name) || toSafeString(order?.shipping_address?.name),
       customerEmail: toSafeString(order?.billing_email) || toSafeString(order?.customer_email),
       customerPhone: toSafeString(order?.shipping_address?.phone),

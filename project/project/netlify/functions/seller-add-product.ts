@@ -145,6 +145,10 @@ const handler: Handler = async (event) => {
       authHeader,
     });
     if (!user) return json(401, { error: 'Unauthorized', details: authErr });
+    const emailConfirmedAt = String((user as any)?.email_confirmed_at || (user as any)?.confirmed_at || '').trim();
+    if (!String((user as any)?.email || '').trim() || !emailConfirmedAt) {
+      return json(403, { error: 'Confirm your email before adding marketplace products.', code: 'EMAIL_NOT_VERIFIED' });
+    }
 
     const productId = String(body?.product_id || '').trim();
     if (!productId) return json(400, { error: 'Missing product_id' });
@@ -155,13 +159,13 @@ const handler: Handler = async (event) => {
 
     const { data: product, error: productError } = await supabaseAdmin
       .from('products')
-      .select('id, is_active, is_promotable, status')
+      .select('id, is_active, is_promotable, status, affiliate_enabled')
       .eq('id', productId)
       .maybeSingle();
 
     if (productError) return json(500, { error: 'Failed to load product', details: productError.message });
     if (!product?.id) return json(404, { error: 'Product not found' });
-    const productVisible = isSelectableProduct(product);
+    const productVisible = isSelectableProduct(product) && product?.affiliate_enabled !== false;
     if (!productVisible) return json(400, { error: 'Product is inactive' });
 
     const { data: existingRows, error: existingError } = await supabaseAdmin

@@ -76,6 +76,11 @@ const PRODUCT_SELECT_COLUMNS = [
   'seller_id',
   'title',
   'name',
+  'description',
+  'images',
+  'primary_image_url',
+  'vendor_sku',
+  'source_url',
   'affiliate_enabled',
   'price',
   'seller_ask',
@@ -125,6 +130,7 @@ const VARIANT_SELECT_COLUMNS = [
   'inventory_source',
   'inventory_policy',
   'is_active',
+  'image_url',
 ];
 
 const extractMissingColumnName = (message: string): string | null => {
@@ -241,36 +247,6 @@ const fetchProductsByField = async (
   return { rows: [], errorMessage: String((lastError as any)?.message || 'query failed') };
 };
 
-const resolveSingleAffiliateFallback = async (
-  supabaseAdmin: any,
-  productIds: string[]
-): Promise<string | null> => {
-  const canonicalProductIds = Array.from(new Set(productIds.map((value) => String(value || '').trim()).filter(Boolean)));
-  if (!canonicalProductIds.length) return null;
-
-  const { data: linkRows, error: linkError } = await supabaseAdmin
-    .from('affiliate_links')
-    .select('product_id, affiliate_id')
-    .in('product_id', canonicalProductIds);
-
-  if (linkError) return null;
-
-  const { data: promotedRows } = await supabaseAdmin
-    .from('affiliate_products')
-    .select('product_id, affiliate_id')
-    .in('product_id', canonicalProductIds);
-
-  const affiliateIds = Array.from(
-    new Set(
-      [ ...((linkRows as any[]) || []), ...((promotedRows as any[]) || []) ]
-        .map((row) => String(row?.affiliate_id || '').trim())
-        .filter(Boolean)
-    )
-  );
-
-  return affiliateIds.length === 1 ? affiliateIds[0] : null;
-};
-
 const fetchVariantsByField = async (
   supabaseAdmin: any,
   field: 'id' | 'product_id',
@@ -331,37 +307,91 @@ const resolveProfileId = async (supabaseAdmin: any, rawProfileOrUserId: string |
 };
 
 const resolveAffiliateProfileId = async (supabaseAdmin: any, rawProfileOrUserId: string | null): Promise<string | null> => {
-  const profileId = await resolveProfileId(supabaseAdmin, rawProfileOrUserId);
-  if (!profileId) {
-    const slug = String(rawProfileOrUserId || '').trim().toLowerCase();
-    if (!slug) return null;
+  const rawToken = String(rawProfileOrUserId || '').trim();
+  if (!rawToken) return null;
+  const normalizedToken = rawToken.toLowerCase();
+  let profileId = await resolveProfileId(supabaseAdmin, rawToken);
 
+  if (!profileId) {
+    for (const field of ['referral_code', 'username'] as const) {
+      try {
+        const { data: profileRow } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .ilike(field, rawToken)
+          .maybeSingle();
+        profileId = String((profileRow as any)?.id || '').trim() || null;
+        if (profileId) break;
+      } catch {
+        // Older schemas may not contain both public-code columns.
+      }
+    }
+  }
+
+  if (!profileId) {
     try {
       const { data: affiliateSettingsRow } = await supabaseAdmin
         .from('affiliate_store_settings')
         .select('affiliate_id')
-        .eq('subdomain', slug)
+        .eq('subdomain', normalizedToken)
         .maybeSingle();
-      const affiliateId = String((affiliateSettingsRow as any)?.affiliate_id || '').trim();
-      if (affiliateId) return affiliateId;
+      profileId = String((affiliateSettingsRow as any)?.affiliate_id || '').trim() || null;
     } catch {
-      return null;
+      // Continue through remaining compatibility resolvers.
     }
-
-    return null;
   }
 
+  if (!profileId) {
+    try {
+      const { data: storefrontRow } = await supabaseAdmin
+        .from('storefronts')
+        .select('owner_id')
+        .eq('slug', normalizedToken)
+        .eq('is_active', true)
+        .maybeSingle();
+      profileId = String((storefrontRow as any)?.owner_id || '').trim() || null;
+    } catch {
+      // Continue through link-code compatibility resolver.
+    }
+  }
+
+  if (!profileId) {
+    for (const field of ['link_code', 'referral_code'] as const) {
+      try {
+        const { data: linkRow } = await supabaseAdmin
+          .from('affiliate_links')
+          .select('affiliate_id,is_active')
+          .eq(field, rawToken)
+          .maybeSingle();
+        if ((linkRow as any)?.is_active !== false) {
+          profileId = String((linkRow as any)?.affiliate_id || '').trim() || null;
+        }
+        if (profileId) break;
+      } catch {
+        // Older schemas may not contain both code columns.
+      }
+    }
+  }
+
+  if (!profileId) return null;
+
   try {
-    const [{ data: profileRow }, { data: affiliateSettingsRow }] = await Promise.all([
+    const [{ data: profileRow }, { data: affiliateSettingsRow }, { data: selectedProduct }] = await Promise.all([
       supabaseAdmin
         .from('profiles')
-        .select('id, role, primary_role')
+        .select('id, user_id, role, primary_role')
         .eq('id', profileId)
         .maybeSingle(),
       supabaseAdmin
         .from('affiliate_store_settings')
         .select('affiliate_id')
         .eq('affiliate_id', profileId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from('affiliate_products')
+        .select('id')
+        .eq('affiliate_id', profileId)
+        .limit(1)
         .maybeSingle(),
     ]);
 
@@ -373,7 +403,31 @@ const resolveAffiliateProfileId = async (supabaseAdmin: any, rawProfileOrUserId:
       primaryRole === 'affiliate' ||
       primaryRole === 'partner';
 
-    if (hasAffiliateRole || String((affiliateSettingsRow as any)?.affiliate_id || '').trim()) {
+    let hasActiveAffiliateRole = false;
+    try {
+      const roleUserIds = Array.from(new Set([
+        profileId,
+        String((profileRow as any)?.user_id || '').trim(),
+      ].filter(Boolean)));
+      const { data: activeRole } = await supabaseAdmin
+        .from('user_roles')
+        .select('user_id')
+        .in('user_id', roleUserIds)
+        .in('role', ['affiliate', 'partner'])
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      hasActiveAffiliateRole = Boolean((activeRole as any)?.user_id);
+    } catch {
+      // Older schemas may not have the multi-role table.
+    }
+
+    if (
+      hasAffiliateRole ||
+      String((affiliateSettingsRow as any)?.affiliate_id || '').trim() ||
+      String((selectedProduct as any)?.id || '').trim() ||
+      hasActiveAffiliateRole
+    ) {
       return profileId;
     }
   } catch {
@@ -645,7 +699,7 @@ export const handler: Handler = async (event) => {
     const resolvedStorefrontProfileId = storefrontContext.storefrontProfileId;
     const resolvedOrderSource = storefrontContext.source || orderSource;
     const requestedPartnerProfileId = await resolveAffiliateProfileId(supabaseAdmin, requestedPartnerId);
-    const explicitReferrerProfileId = await resolveProfileId(supabaseAdmin, explicitReferrerId);
+    const explicitReferrerCandidateId = await resolveProfileId(supabaseAdmin, explicitReferrerId);
     let rawPartnerId =
       requestedPartnerProfileId ||
       (resolvedOrderSource === 'affiliate_storefront'
@@ -657,14 +711,31 @@ export const handler: Handler = async (event) => {
 
       const { data: profileRow } = await supabaseAdmin
         .from('profiles')
-        .select('role,primary_role')
+        .select('user_id,role,primary_role')
         .eq('id', profileId)
         .maybeSingle();
 
       const role = String((profileRow as any)?.role || '').toLowerCase();
       const primaryRole = String((profileRow as any)?.primary_role || '').toLowerCase();
-      return role === 'influencer' || primaryRole === 'influencer';
+      if (role === 'influencer' || primaryRole === 'influencer') return true;
+
+      const roleUserIds = Array.from(new Set([
+        profileId,
+        String((profileRow as any)?.user_id || '').trim(),
+      ].filter(Boolean)));
+      const { data: influencerRole } = await supabaseAdmin
+        .from('user_roles')
+        .select('user_id')
+        .in('user_id', roleUserIds)
+        .eq('role', 'influencer')
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      return Boolean((influencerRole as any)?.user_id);
     };
+    const explicitReferrerProfileId = await isInfluencerProfile(explicitReferrerCandidateId)
+      ? explicitReferrerCandidateId
+      : null;
 
     // Fetch product names + commission percents (best-effort)
     const productTokens = Array.from(new Set(lineItems.map((li) => normalizeProductToken(li.product_id)).filter(Boolean)));
@@ -741,10 +812,6 @@ export const handler: Handler = async (event) => {
     }
     if (requestedSellerId && requestedSellerId !== sellerId) {
       return json(400, { error: 'Seller mismatch for cart items.' });
-    }
-
-    if (!rawPartnerId) {
-      rawPartnerId = await resolveSingleAffiliateFallback(supabaseAdmin, sellerIds.length ? productTokens.map((token) => String(tokenToProduct.get(token)?.id || '').trim()).filter(Boolean) : []);
     }
 
     const partnerId = sameProfileId(rawPartnerId, buyerId) ? null : rawPartnerId;
@@ -1449,6 +1516,14 @@ export const handler: Handler = async (event) => {
         source_platform: sourcePlatform,
         external_product_id: externalProductId,
         external_variant_id: externalVariantId,
+        product_title_snapshot: String(product?.title || product?.name || 'Product').trim(),
+        product_description_snapshot: String(product?.description || '').trim() || null,
+        product_sku_snapshot: String(variant?.sku || product?.vendor_sku || '').trim() || null,
+        storefront_id_snapshot: resolvedStorefrontId,
+        image_url_snapshot: String(
+          variant?.image_url || product?.primary_image_url || (Array.isArray(product?.images) ? product.images[0] : '') || ''
+        ).trim() || null,
+        source_url_snapshot: String(product?.source_url || '').trim() || null,
       };
     });
 

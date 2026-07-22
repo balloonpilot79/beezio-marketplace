@@ -40,6 +40,37 @@ interface ProductFormProps {
   };
 }
 
+type AdminUrlImportSeed = {
+  version: number;
+  importedAt: string;
+  sourceUrl: string;
+  sourcePlatform: string;
+  title: string;
+  description: string;
+  brand: string | null;
+  sku: string | null;
+  currency: string;
+  images: string[];
+  wholesalePrice: number;
+  markupType: 'percent' | 'flat';
+  markupValue: number;
+  sellerAmount: number;
+  affiliateType: 'percentage' | 'flat_rate';
+  affiliateValue: number;
+  storefrontId: string;
+  storefrontName: string;
+  variants: Array<{
+    name: string;
+    sku: string | null;
+    wholesalePrice: number | null;
+    available: boolean | null;
+    inventory: number | null;
+    image: string | null;
+    options: Record<string, string>;
+  }>;
+  warnings: string[];
+};
+
 const normalizeCategoryToken = (value: unknown) =>
   String(value || '')
     .trim()
@@ -241,6 +272,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     digital_download_instructions: (product as any)?.digital_download_instructions || '',
     digital_return_policy_notice: (product as any)?.digital_return_policy_notice || DIGITAL_RETURN_POLICY_DEFAULT,
   });
+  const [adminUrlImport, setAdminUrlImport] = useState<AdminUrlImportSeed | null>(null);
 
   useEffect(() => {
     if (pricingSeed.sellerAmount <= 0) {
@@ -302,6 +334,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       affiliateType: 'percent',
     });
     setProductImages([]);
+    setAdminUrlImport(null);
   };
 
   const generateCopyWithAI = async () => {
@@ -528,6 +561,41 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     customColor: '',
   });
 
+  useEffect(() => {
+    if (editMode) return;
+    const raw = sessionStorage.getItem('beezio-admin-url-import');
+    if (!raw) return;
+    try {
+      const seed = JSON.parse(raw) as AdminUrlImportSeed;
+      if (seed?.version !== 1 || !seed?.sourceUrl || !seed?.title) return;
+      const images = Array.isArray(seed.images) ? seed.images.map(String).filter(Boolean).slice(0, MAX_IMAGES) : [];
+      const stockFromVariants = (seed.variants || []).reduce((total, variant) => total + Math.max(0, Number(variant.inventory || 0)), 0);
+      setAdminUrlImport(seed);
+      setFormData((current) => ({
+        ...current,
+        title: String(seed.title || ''),
+        description: String(seed.description || ''),
+        images,
+        tags: Array.from(new Set([...current.tags, seed.brand, seed.sourcePlatform, 'Admin URL import'].map((value) => String(value || '').trim()).filter(Boolean))),
+        category_id: /nutrition|supplement|vitamin|wellness/i.test(`${seed.title} ${seed.description}`) ? 'health-wellness' : current.category_id,
+        stock_quantity: stockFromVariants > 0 ? stockFromVariants : 1,
+        affiliate_enabled: true,
+      }));
+      setProductImages(images.map((imageUrl, index) => ({ id: `url-import-${index}`, image_url: imageUrl, display_order: index, is_primary: index === 0 })));
+      setPricingSeed({
+        sellerAmount: Math.max(0, Number(seed.sellerAmount || 0)),
+        affiliateAmount: Math.max(0, Number(seed.affiliateValue || 0)),
+        affiliateType: seed.affiliateType === 'flat_rate' ? 'flat' : 'percent',
+      });
+      setSelectedStorefrontIds(seed.storefrontId ? [String(seed.storefrontId)] : []);
+      setVariantConfig((current) => ({ ...current, enabled: Array.isArray(seed.variants) && seed.variants.length > 0 }));
+      sessionStorage.removeItem('beezio-admin-url-import');
+    } catch (seedError) {
+      console.warn('[ProductForm] Invalid admin URL import seed:', seedError);
+      sessionStorage.removeItem('beezio-admin-url-import');
+    }
+  }, [editMode]);
+
   const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size', '5', '6', '7', '8', '9', '10', '11', '12', '13'];
   const COLOR_OPTIONS = ['Black', 'White', 'Gray', 'Red', 'Blue', 'Green', 'Yellow', 'Orange', 'Purple', 'Pink', 'Brown', 'Navy', 'Beige'];
   const visibleSizeOptions = [...SIZE_OPTIONS, ...variantConfig.sizes.filter((size) => !SIZE_OPTIONS.includes(size))];
@@ -623,12 +691,67 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
     return combos.map((c) => {
       const inventory = baseQty + (remainder-- > 0 ? 1 : 0);
+      const optionValues = Object.values(c).filter(Boolean);
+      const suffix = optionValues.join('-').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'default';
       return {
         product_id: params.productId,
+        provider: 'manual',
+        cj_product_id: `manual:${params.productId}`,
+        cj_variant_id: `manual:${params.productId}:${suffix}`,
+        sku: `BZO-${params.productId.slice(0, 8)}-${suffix}`.toUpperCase(),
         price: params.basePrice,
+        retail_price_cents: Math.round(params.basePrice * 100),
+        cost_cents: 0,
         inventory,
+        in_stock: inventory > 0,
         is_active: true,
         attributes: c,
+        option1_name: c.size ? 'Size' : c.color ? 'Color' : null,
+        option1_value: c.size || c.color || null,
+        option2_name: c.size && c.color ? 'Color' : null,
+        option2_value: c.size && c.color ? c.color : null,
+      };
+    });
+  };
+
+  const generateImportedVariantRows = (productId: string) => {
+    if (!adminUrlImport?.variants?.length) return [];
+    return adminUrlImport.variants.map((variant, index) => {
+      const wholesale = Math.max(0, Number(variant.wholesalePrice ?? adminUrlImport.wholesalePrice) || 0);
+      const markup = Math.max(0, Number(adminUrlImport.markupValue || 0));
+      const sellerDesiredAmount = adminUrlImport.markupType === 'percent'
+        ? wholesale * (1 + markup / 100)
+        : wholesale + markup;
+      const variantPricing = calculatePricing({
+        sellerDesiredAmount,
+        affiliateRate: Math.max(0, Number(adminUrlImport.affiliateValue || 0)),
+        affiliateType: adminUrlImport.affiliateType,
+      });
+      const options = Object.entries(variant.options || {}).slice(0, 3);
+      const sku = String(variant.sku || `${adminUrlImport.sku || `BZO-${productId.slice(0, 8)}`}-${index + 1}`).trim();
+      const inventory = variant.inventory === null || variant.inventory === undefined
+        ? (variant.available === false ? 0 : 1)
+        : Math.max(0, Math.floor(Number(variant.inventory) || 0));
+      return {
+        product_id: productId,
+        provider: 'manual',
+        cj_product_id: `manual:${productId}`,
+        cj_variant_id: `manual:${productId}:${index + 1}`,
+        sku,
+        price: variantPricing.listingPrice,
+        retail_price_cents: Math.round(variantPricing.listingPrice * 100),
+        cost_cents: Math.round(wholesale * 100),
+        image_url: variant.image || formData.images[0] || null,
+        inventory,
+        in_stock: variant.available !== false && inventory > 0,
+        is_active: variant.available !== false,
+        attributes: variant.options || {},
+        option1_name: options[0]?.[0] || null,
+        option1_value: options[0]?.[1] || null,
+        option2_name: options[1]?.[0] || null,
+        option2_value: options[1]?.[1] || null,
+        option3_name: options[2]?.[0] || null,
+        option3_value: options[2]?.[1] || null,
       };
     });
   };
@@ -1076,6 +1199,30 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       const normalizedCategoryName =
         categories.find((c) => String(c.id) === categorySelection)?.name || categorySelection || null;
       const mergedTags = [...new Set(formData.tags)];
+      const hasVariants = Boolean(adminUrlImport?.variants?.length || variantConfig.enabled);
+      const importedSourcePayload = adminUrlImport ? {
+        source_platform: adminUrlImport.sourcePlatform,
+        source_url: adminUrlImport.sourceUrl,
+        vendor_sku: adminUrlImport.sku,
+        supplier_info: {
+          source_url: adminUrlImport.sourceUrl,
+          source_platform: adminUrlImport.sourcePlatform,
+          brand: adminUrlImport.brand,
+          wholesale_price: adminUrlImport.wholesalePrice,
+          markup_type: adminUrlImport.markupType,
+          markup_value: adminUrlImport.markupValue,
+          imported_at: adminUrlImport.importedAt,
+          reviewed_via: 'admin_url_import',
+        },
+        currency: adminUrlImport.currency || 'USD',
+        primary_image_url: formData.images[0] || null,
+        base_cost_cents: Math.round(Math.max(0, Number(adminUrlImport.wholesalePrice || 0)) * 100),
+        retail_price_cents: Math.round(Math.max(0, Number(pricingBreakdown.listingPrice || 0)) * 100),
+        markup_type: adminUrlImport.markupType,
+        markup_value: adminUrlImport.markupType === 'percent'
+          ? Math.round(Math.max(0, Number(adminUrlImport.markupValue || 0)))
+          : Math.round(Math.max(0, Number(adminUrlImport.markupValue || 0)) * 100),
+      } : {};
 
       if (editMode) {
         // Update product
@@ -1128,7 +1275,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
              status: requiresManualReview ? 'draft' : affiliateEnabled ? 'active' : 'store_only',
              is_promotable: affiliateEnabled && !requiresManualReview,
              is_active: !requiresManualReview,
-             has_variants: Boolean(variantConfig.enabled),
+             has_variants: hasVariants,
+             ...importedSourcePayload,
            };
 
         // Schema-tolerant update: drop missing keys and retry (for staged DB rollouts).
@@ -1156,13 +1304,15 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         savedProductId = productId;
 
         // Optional: create/update variants for this product (best-effort).
-        if (variantConfig.enabled) {
+        if (hasVariants) {
           try {
-            const variantRows = generateVariantRows({
-              productId,
-              basePrice: Number(pricingBreakdown.listingPrice || 0),
-              totalStock: Number(formData.stock_quantity || 0),
-            });
+            const variantRows = adminUrlImport?.variants?.length
+              ? generateImportedVariantRows(productId)
+              : generateVariantRows({
+                  productId,
+                  basePrice: Number(pricingBreakdown.listingPrice || 0),
+                  totalStock: Number(formData.stock_quantity || 0),
+                });
             if (variantRows.length) {
               // Clear existing variants first (best effort; ignore if table/RLS differs)
               try {
@@ -1172,9 +1322,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               }
 
               let payloadRows: any[] = variantRows.map((r) => ({ ...r }));
-              for (let attempt = 0; attempt < 6; attempt++) {
+              let variantInsertError: any = null;
+              for (let attempt = 0; attempt < 12; attempt++) {
                 const res = await supabase.from('product_variants').insert(payloadRows).select('id').limit(1);
-                if (!res.error) break;
+                if (!res.error) {
+                  variantInsertError = null;
+                  break;
+                }
+                variantInsertError = res.error;
                 const message = String((res.error as any)?.message || '');
                 const missing = extractMissingColumnName(message);
                 if (missing) {
@@ -1187,6 +1342,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 }
                 break;
               }
+              if (variantInsertError) throw variantInsertError;
 
               // Mark product as having variants when supported.
               try {
@@ -1196,6 +1352,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               }
             }
           } catch (e) {
+            if (adminUrlImport) throw e;
             console.warn('[ProductForm] variant generation failed (non-fatal):', e);
           }
         }
@@ -1246,7 +1403,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
              status: requiresManualReview ? 'draft' : affiliateEnabled ? 'active' : 'store_only',
              is_promotable: affiliateEnabled && !requiresManualReview,
              is_active: !requiresManualReview,
-             has_variants: Boolean(variantConfig.enabled),
+             has_variants: hasVariants,
+             ...importedSourcePayload,
            };
 
         // Schema-tolerant insert: drop missing keys and retry (for staged DB rollouts).
@@ -1309,18 +1467,25 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
           await ensureSellerProductInOrder({ sellerId: sellerProfileId, productId: newProduct.id });
 
           // Optional: create variants for this product (best-effort).
-          if (variantConfig.enabled) {
+          if (hasVariants) {
             try {
-              const variantRows = generateVariantRows({
-                productId: newProduct.id,
-                basePrice: Number(pricingBreakdown.listingPrice || 0),
-                totalStock: Number(formData.stock_quantity || 0),
-              });
+              const variantRows = adminUrlImport?.variants?.length
+                ? generateImportedVariantRows(newProduct.id)
+                : generateVariantRows({
+                    productId: newProduct.id,
+                    basePrice: Number(pricingBreakdown.listingPrice || 0),
+                    totalStock: Number(formData.stock_quantity || 0),
+                  });
               if (variantRows.length) {
                 let payloadRows: any[] = variantRows.map((r) => ({ ...r }));
-                for (let attempt = 0; attempt < 6; attempt++) {
+                let variantInsertError: any = null;
+                for (let attempt = 0; attempt < 12; attempt++) {
                   const res = await supabase.from('product_variants').insert(payloadRows).select('id').limit(1);
-                  if (!res.error) break;
+                  if (!res.error) {
+                    variantInsertError = null;
+                    break;
+                  }
+                  variantInsertError = res.error;
                   const message = String((res.error as any)?.message || '');
                   const missing = extractMissingColumnName(message);
                   if (missing) {
@@ -1333,6 +1498,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   }
                   break;
                 }
+                if (variantInsertError) throw variantInsertError;
 
                 // Mark product as having variants when supported.
                 try {
@@ -1342,6 +1508,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 }
               }
             } catch (e) {
+              if (adminUrlImport) throw e;
               console.warn('[ProductForm] variant generation failed (non-fatal):', e);
             }
           }
@@ -1369,11 +1536,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         }
       }
 
-      if (savedProductId && !requiresManualReview) {
+      if (savedProductId && !requiresManualReview && affiliateEnabled) {
         await forceMarketplaceListing(savedProductId);
       }
 
-      const marketplaceStatus = requiresManualReview ? 'store_only' : 'marketplace';
+      const marketplaceStatus = requiresManualReview || !affiliateEnabled ? 'store_only' : 'marketplace';
       setCreatedMarketplaceStatus(marketplaceStatus);
       setSuccess(
         requiresManualReview
@@ -1593,6 +1760,15 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       {/* Main Form - Single Column */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-24 sm:py-8 sm:pb-28">
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-8 space-y-6">
+          {adminUrlImport ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+              <div className="text-sm font-black text-emerald-950">Admin URL import ready for final review</div>
+              <p className="mt-1 text-sm leading-6 text-emerald-900">
+                Source: {adminUrlImport.sourcePlatform} · Brand storefront: {adminUrlImport.storefrontName || 'selected brand'} · Wholesale: ${Number(adminUrlImport.wholesalePrice || 0).toFixed(2)} · Variants: {adminUrlImport.variants.length}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-emerald-800">Confirm the title, description, images, pricing, affiliate terms, shipping, inventory, claims, labels, and destination brand below. Saving will preserve the supplier URL and reviewed variant data.</p>
+            </div>
+          ) : null}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-sm font-semibold text-slate-900">Fast phone flow</div>
             <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-3">
@@ -1872,20 +2048,23 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               <div>
                 <div className="font-bold text-gray-900">Variants</div>
                 <div className="text-sm text-gray-600">
-                  Check this if the product has sizes, colors, or other options.
+                  {adminUrlImport?.variants?.length
+                    ? `${adminUrlImport.variants.length} supplier variant${adminUrlImport.variants.length === 1 ? '' : 's'} will be saved with SKU, cost, stock, options, and matching images.`
+                    : 'Check this if the product has sizes, colors, or other options.'}
                 </div>
               </div>
               <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900">
                 <input
                   type="checkbox"
                   checked={variantConfig.enabled}
+                  disabled={Boolean(adminUrlImport?.variants?.length)}
                   onChange={(e) => setVariantConfig((prev) => ({ ...prev, enabled: e.target.checked }))}
                 />
                 This product has variants
               </label>
             </div>
 
-            {variantConfig.enabled && (
+            {variantConfig.enabled && !adminUrlImport?.variants?.length && (
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white border border-gray-200 rounded-lg p-4">
                   <div className="font-semibold text-gray-900 mb-2">Sizes</div>
