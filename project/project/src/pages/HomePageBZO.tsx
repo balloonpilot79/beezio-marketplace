@@ -37,18 +37,27 @@ const storefronts = [
 const roleCards = [
   {
     icon: Store,
-    title: 'Sell your products',
-    detail: 'Build a branded storefront, control pricing, and manage orders and fulfillment.',
+    audience: 'For product owners',
+    title: 'Seller',
+    detail: 'Add your own products, build a branded storefront, set your pricing, and manage itemized orders and fulfillment.',
+    action: 'Learn about selling',
+    to: '/sellers',
   },
   {
     icon: BadgeDollarSign,
-    title: 'Promote the marketplace',
-    detail: 'Choose products, add them to your store, and share tracked single-item promotions.',
+    audience: 'For product promoters',
+    title: 'Affiliate',
+    detail: 'Choose eligible marketplace products, add them to your storefront, and earn the listed commission from tracked sales.',
+    action: 'Learn about affiliates',
+    to: '/affiliates',
   },
   {
     icon: Users,
-    title: 'Grow a business network',
-    detail: 'Invite sellers and affiliates with lifetime influencer attribution on eligible sales.',
+    audience: 'For network builders',
+    title: 'Influencer',
+    detail: 'Share your recruiting link and receive lifetime influencer attribution on eligible sales from businesses you introduce.',
+    action: 'Explore earning paths',
+    to: '/start-earning',
   },
 ];
 
@@ -80,13 +89,13 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
           <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#ffcb05]/30 bg-[#ffcb05]/10 px-3 py-1.5 text-[0.68rem] font-black uppercase tracking-[0.24em] text-[#ffda45]">
-                One account. Three ways to grow.
+                Sellers • Affiliates • Influencers
               </div>
               <h1 className="mt-5 max-w-4xl text-4xl font-black leading-[1.02] tracking-[-0.045em] text-white sm:text-5xl lg:text-7xl">
                 Build your brand. Sell your products. Promote others.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                Beezio gives independent businesses a polished storefront, a product marketplace, tracked promotion tools, and one clear earnings dashboard—without monthly or listing fees.
+                Sell your own products, earn as an affiliate, or grow a network as an influencer. Beezio connects branded storefronts, tracked promotions, and itemized earnings—without monthly or listing fees.
               </p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
                 {signupLink}
@@ -155,16 +164,24 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
 
         <section className="rounded-[28px] border border-slate-200 bg-white px-5 py-9 text-[#101820] shadow-xl sm:px-8 sm:py-12">
           <div className="max-w-3xl">
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-700">Everything connects</p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">One account can sell, promote, and recruit.</h2>
-            <p className="mt-3 text-base leading-7 text-slate-600">Use the tools you need today and add another income path whenever your business is ready.</p>
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-700">Choose how you participate</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Three clear ways to build and earn with Beezio.</h2>
+            <p className="mt-3 text-base leading-7 text-slate-600">Seller, affiliate, and influencer tools are built into one account. Each role has its own tracked activity, earnings, and payout records.</p>
           </div>
           <div className="mt-7 grid gap-4 md:grid-cols-3">
-            {roleCards.map(({ icon: Icon, title, detail }) => (
-              <div key={title} className="rounded-[22px] border border-slate-200 bg-slate-50 p-5">
+            {roleCards.map(({ icon: Icon, audience, title, detail, action, to }) => (
+              <div key={title} className={`flex flex-col rounded-[22px] border p-5 ${to ? 'border-slate-200 bg-slate-50' : 'border-dashed border-slate-300 bg-white'}`}>
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#101820] text-[#ffcb05]"><Icon className="h-5 w-5" /></div>
-                <h3 className="mt-5 text-lg font-black">{title}</h3>
+                <p className="mt-5 text-[0.65rem] font-black uppercase tracking-[0.2em] text-emerald-700">{audience}</p>
+                <h3 className="mt-2 text-xl font-black">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{detail}</p>
+                {to ? (
+                  <Link to={to} className="mt-5 inline-flex items-center gap-2 text-sm font-black text-[#0b6b50] hover:text-[#074936]">
+                    {action} <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : (
+                  <span className="mt-5 inline-flex text-sm font-black text-slate-500">{action}</span>
+                )}
               </div>
             ))}
           </div>
