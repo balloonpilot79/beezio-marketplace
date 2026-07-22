@@ -10,6 +10,7 @@ import { Star, MapPin, Clock, Package, Award, Facebook, Instagram, Twitter, Link
 import { applyThemeToDocument, getThemeStyles, normalizeThemeName, type ThemeName } from '../utils/themes';
 import { buildSellerStorefrontProducts } from '../utils/storefrontProducts';
 import { normalizeStorageImagePath } from '../utils/imageHelpers';
+import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 
 interface SellerStorePageProps {
   sellerId?: string;
@@ -243,6 +244,9 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           return;
         }
 
+        const requestedStoreSlug = String(storeSlug || sellerId || '').trim().toLowerCase();
+        const isProtectedBrandRequest = ['marebelle', 'redtail', 'loving-nutrition'].includes(requestedStoreSlug);
+
         // Prefer the public API (Netlify Function w/ service role) for storefront loading.
         // This avoids RLS misconfigurations preventing products from appearing on public store pages.
         // But: don't allow it to hang the entire page on cold starts / missing env.
@@ -257,7 +261,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             if (resp.ok) {
               const payload: any = await resp.json().catch(() => ({}));
               if (payload?.ok && payload?.seller_id) {
-                const requestedBrandSlug = String(storeSlug || '').trim().toLowerCase();
+                const requestedBrandSlug = requestedStoreSlug;
                 const protectedBrandName = requestedBrandSlug === 'redtail'
                   ? 'RedTail'
                   : requestedBrandSlug === 'marebelle'
@@ -291,8 +295,20 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             window.clearTimeout(timeout);
           }
         } catch (e) {
+          if (isProtectedBrandRequest) {
+            console.warn('[SellerStorePage] Protected storefront API unavailable; refusing shared-profile fallback:', e);
+            setLoadError('This storefront is temporarily unavailable. Please try again.');
+            setLoading(false);
+            return;
+          }
           // Non-fatal: fall back to direct Supabase client calls.
           console.warn('[SellerStorePage] Public store API unavailable, falling back to Supabase client:', e);
+        }
+
+        if (isProtectedBrandRequest) {
+          setLoadError('This storefront is temporarily unavailable. Please try again.');
+          setLoading(false);
+          return;
         }
 
         // Allow friendly slug from store_settings.subdomain
@@ -698,6 +714,12 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
     }
   })();
   const normalizedSlug = storeSlug?.trim() ? storeSlug.trim() : '';
+  const brandPersonality = String(seller?.theme_settings?.brand_personality || '').trim().toLowerCase();
+  const houseBrandIdentity = resolveHouseBrandIdentity(normalizedSlug, brandPersonality);
+  const isMareBelle = houseBrandIdentity?.slug === 'marebelle';
+  const isRedTail = houseBrandIdentity?.slug === 'redtail';
+  const isLovingNutrition = houseBrandIdentity?.slug === 'loving-nutrition';
+  const protectedBrandName = houseBrandIdentity?.name || '';
   const storeRouteId = normalizedSlug || seller?.subdomain || resolvedSellerId || sellerId || '';
   const headerStyle = String((seller?.layout_config as any)?.header_style || '').trim().toLowerCase();
   const storeLogoUrl = normalizeStorageImagePath(seller?.store_logo, ['profile-avatars', 'avatars', 'user-avatars']);
@@ -708,7 +730,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   // never collapse a desktop storefront into a small utility page.
   const showStoreIntroSection = headerStyle !== 'minimal';
   const storeHeroImage = storeBannerUrl || storeBackgroundUrl || '';
-  const storeTagline = String(seller?.bio || '').trim();
+  const storeTagline = String(houseBrandIdentity?.about || seller?.bio || '').trim();
   const featuredProducts = products.filter((product) => Boolean(product?.is_featured)).slice(0, 4);
   const storeColors = seller?.color_scheme || {};
   const socialIconByKey: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -771,45 +793,16 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   const aboutSummary = String(storeTagline || '').trim();
   const showAboutCard = showAboutSection && Boolean(aboutSummary);
   const heroProductCount = filteredProducts.length || products.length;
-  const brandPersonality = String(seller?.theme_settings?.brand_personality || '').trim().toLowerCase();
-  const isMareBelle = normalizedSlug.toLowerCase() === 'marebelle' || brandPersonality === 'equestrian-luxury';
-  const isRedTail = normalizedSlug.toLowerCase() === 'redtail' || brandPersonality === 'western';
-  const isLovingNutrition = normalizedSlug.toLowerCase() === 'loving-nutrition' || brandPersonality === 'nutrition-wellness';
-  const protectedBrandName = isMareBelle
-    ? 'MareBelle'
-    : isRedTail
-      ? 'RedTail'
-      : isLovingNutrition
-        ? 'Loving Nutrition'
-        : '';
   // The three house brands temporarily share one admin profile. Keep the final
   // rendered identity tied to the storefront slug so owner-profile fallbacks,
   // stale API caches, or legacy store settings can never cross-brand a page.
   const displayStoreName = protectedBrandName || String(seller?.full_name || 'Store');
-  const brandKicker = isMareBelle
-    ? 'Equestrian beauty • fragrance • stable essentials'
-    : isRedTail
-      ? 'Automotive detailing • protection • performance'
-      : isLovingNutrition
-        ? 'Everyday nutrition • wellness • healthy living'
-        : 'An independent brand powered by Beezio';
+  const brandKicker = houseBrandIdentity?.kicker || 'An independent brand powered by Beezio';
   const hasEditorialBrand = isMareBelle || isRedTail || isLovingNutrition;
-  const editorialHeroUrl = isMareBelle
-    ? '/marebelle-editorial-hero.png'
-    : isRedTail
-      ? '/redtail-editorial-hero.png'
-      : isLovingNutrition
-        ? '/loving-nutrition-logo.png'
-        : '';
-  const editorialLogoUrl = isMareBelle
-    ? '/marebelle-editorial-logo.png'
-    : isRedTail
-      ? '/redtail-editorial-logo.png'
-      : isLovingNutrition
-        ? '/loving-nutrition-logo.png'
-        : '';
+  const editorialHeroUrl = houseBrandIdentity?.heroUrl || '';
+  const editorialLogoUrl = houseBrandIdentity?.logoUrl || '';
   const effectiveStoreLogoUrl = storeLogoUrl || editorialLogoUrl;
-  const editorialAccentColor = isMareBelle ? '#c9a462' : isRedTail ? '#b52025' : isLovingNutrition ? '#c7a34a' : accentColor;
+  const editorialAccentColor = houseBrandIdentity?.accentColor || accentColor;
 
   useEffect(() => {
     if (!storeRouteId) return;
@@ -930,8 +923,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   const handleShare = async () => {
     if (navigator.share) {
       await navigator.share({
-        title: `${seller?.full_name}'s Store`,
-        text: `Check out amazing products from ${seller?.full_name}!`,
+        title: `${displayStoreName} Store`,
+        text: `Check out products from ${displayStoreName}.`,
         url: storeUrl
       });
     } else {
@@ -1056,7 +1049,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               </div>
             )}
             <div className="leading-tight">
-              <div className="text-[0.65rem] font-bold uppercase tracking-[0.3em]" style={{ color: hasEditorialBrand ? editorialAccentColor : accentColor }}>{isMareBelle ? 'Equestrian boutique' : isRedTail ? 'Automotive performance' : isLovingNutrition ? 'Nutrition & wellness' : 'Independent shop'}</div>
+              <div className="text-[0.65rem] font-bold uppercase tracking-[0.3em]" style={{ color: hasEditorialBrand ? editorialAccentColor : accentColor }}>{houseBrandIdentity?.headerLabel || 'Independent shop'}</div>
               <div className={`text-xl tracking-tight ${hasEditorialBrand ? 'font-serif font-semibold' : 'font-black'}`} style={{ color: hasEditorialBrand ? '#ffffff' : textColor }}>{displayStoreName}</div>
             </div>
             </Link>

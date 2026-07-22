@@ -122,7 +122,7 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
                 <div className="flex items-center justify-between gap-4 px-2 pb-1 pt-4">
                   <div>
                     <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffda45]">Powered by Beezio</div>
-                    <div className="mt-1 text-lg font-black">Your brand can look like a real business.</div>
+                    <div className="mt-1 text-lg font-black">Your business deserves a storefront as polished as what you sell.</div>
                   </div>
                   <img src="/bzobee.png" alt="Beezio bee" className="h-16 w-16 object-contain" />
                 </div>
