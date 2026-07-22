@@ -539,7 +539,10 @@ const handler: Handler = async (event) => {
 
     return json(200, responseBody);
   } catch (e) {
-    return json(500, { ok: false, error: 'Unexpected error', details: e instanceof Error ? e.message : String(e) });
+    const details = e instanceof Error
+      ? e.message
+      : String((e as any)?.message || (e as any)?.details || (e as any)?.code || e || 'Unknown error');
+    return json(500, { ok: false, error: 'Unexpected error', details });
   }
 };
 

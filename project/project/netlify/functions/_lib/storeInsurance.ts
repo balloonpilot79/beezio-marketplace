@@ -95,7 +95,18 @@ const normalizeUsStateList = (values: unknown): string[] => {
 
 export async function buildStoreInsuranceListings(supabaseAdmin: any, location: unknown, limit = 6) {
   const viewerState = extractUsStateFromLocation(location);
-  const listings = await buildInsuranceMarketplaceRows(supabaseAdmin, false);
+  let listings: any[] = [];
+  try {
+    listings = await buildInsuranceMarketplaceRows(supabaseAdmin, false);
+  } catch (error: any) {
+    // Insurance is an optional storefront enhancement. A replacement or
+    // partially migrated database must not make the core storefront fail.
+    console.warn(
+      '[storeInsurance] Optional insurance listings unavailable:',
+      String(error?.message || error?.details || error?.code || error || 'Unknown error')
+    );
+    return [];
+  }
 
   const scored = listings
     .map((listing) => {
