@@ -1,6 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
-import { extractAuthHeader, getAuthedUser, resolveProfileId } from './_lib/auth';
+import { assertEmailVerified, extractAuthHeader, getAuthedUser, resolveProfileId } from './_lib/auth';
 
 const json = (statusCode: number, body: unknown) => ({
   statusCode,
@@ -18,6 +18,7 @@ const handler: Handler = async (event) => {
 
     const { user, error: authError } = await getAuthedUser(authHeader);
     if (!user) return json(401, { error: 'Unauthorized', details: authError });
+    assertEmailVerified(user as any);
 
     let body: any = {};
     try {
@@ -65,4 +66,3 @@ const handler: Handler = async (event) => {
 };
 
 export { handler };
-

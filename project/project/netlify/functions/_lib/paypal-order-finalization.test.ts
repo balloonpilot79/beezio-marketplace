@@ -3,11 +3,13 @@ import { finalizePayPalOrderPayment } from './paypal-order-finalization';
 
 class MockQuery {
   private filters: Record<string, unknown> = {};
+  private inFilters: Record<string, unknown[]> = {};
   private pendingInsert: any[] | null = null;
   private pendingUpdate: Record<string, any> | null = null;
   constructor(private table: string, private store: Record<string, any[]>) {}
   select() { return this; }
   eq(column: string, value: unknown) { this.filters[column] = value; return this; }
+  in(column: string, values: unknown[]) { this.inFilters[column] = values; return this; }
   limit() { return this; }
   order() { return this; }
   insert(payload: any) {
@@ -19,8 +21,30 @@ class MockQuery {
     this.store[this.table] = [...(this.store[this.table] || []), ...this.pendingInsert];
     return this;
   }
-  upsert(payload: any) {
-    return this.insert(payload);
+  upsert(payload: any, options?: { onConflict?: string }) {
+    const rows = Array.isArray(payload) ? payload : [payload];
+    const conflictKeys = String(options?.onConflict || '').split(',').map((key) => key.trim()).filter(Boolean);
+    const affected: any[] = [];
+    for (const row of rows) {
+      const existing = conflictKeys.length
+        ? (this.store[this.table] || []).find((candidate) =>
+            conflictKeys.every((key) => String(candidate?.[key] ?? '') === String(row?.[key] ?? ''))
+          )
+        : null;
+      if (existing) {
+        Object.assign(existing, row);
+        affected.push(existing);
+      } else {
+        const inserted = {
+          id: row?.id || `${this.table}-${(this.store[this.table] || []).length + 1}`,
+          ...row,
+        };
+        this.store[this.table] = [...(this.store[this.table] || []), inserted];
+        affected.push(inserted);
+      }
+    }
+    this.pendingInsert = affected;
+    return this;
   }
   update(payload: Record<string, any>) {
     this.pendingUpdate = payload;
@@ -50,6 +74,9 @@ class MockQuery {
   private matchRows() {
     return (this.store[this.table] || []).filter((row) =>
       Object.entries(this.filters).every(([key, value]) => String((row as any)?.[key] ?? '') === String(value ?? ''))
+      && Object.entries(this.inFilters).every(([key, values]) =>
+        values.some((value) => String((row as any)?.[key] ?? '') === String(value ?? ''))
+      )
     );
   }
 }
@@ -63,6 +90,7 @@ function createSupabaseMock(seed?: Partial<Record<string, any[]>>) {
     orders: [],
     order_items: [],
     profiles: [],
+    user_roles: [],
     ...(seed || {}),
   };
   const rpcCalls: Array<{ fn: string; payload: any }> = [];
@@ -97,10 +125,43 @@ function createSupabaseMock(seed?: Partial<Record<string, any[]>>) {
 }
 
 describe('finalizePayPalOrderPayment', () => {
-  it('is idempotent for duplicate webhook or refresh-after-payment calls', async () => {
+  it('reconciles the complete ledger for a duplicate webhook instead of returning a false success', async () => {
     const supabase = createSupabaseMock({
+      orders: [
+        {
+          id: 'order-1',
+          seller_id: 'seller-1',
+          partner_id: null,
+          influencer_id: null,
+          currency: 'USD',
+          subtotal_listing: 100,
+          shipping_amount: 0,
+          tax_amount: 0,
+          total_charged: 100,
+        },
+      ],
+      order_items: [
+        {
+          id: 'item-1',
+          order_id: 'order-1',
+          quantity: 1,
+          product_id: 'product-1',
+          variant_id: null,
+          seller_ask_amount: 100,
+          partner_rate: 0,
+          computed_listing_price: 100,
+          product_title_snapshot: 'Frozen product',
+          products: { title: 'Edited product' },
+        },
+      ],
+      profiles: [
+        { id: 'seller-1', role: 'seller', primary_role: 'seller' },
+      ],
+      payout_ledger: [
+        { id: 'ledger-1', order_id: 'order-1', status: 'PENDING_HOLD', hold_release_at: '2026-04-10T12:00:00.000Z' },
+      ],
       payout_snapshots: [
-        { id: 'snap-1', order_id: 'order-1', payee_user_id: 'seller-1', payee_role: 'SELLER', amount: 100, status: 'PENDING_HOLD', hold_release_at: '2026-04-10T12:00:00.000Z' },
+        { id: 'snap-1', order_id: 'order-1', ledger_id: 'ledger-1', payee_user_id: 'seller-1', payee_role: 'SELLER', amount: 100, status: 'PENDING_HOLD', hold_release_at: '2026-04-10T12:00:00.000Z' },
       ],
       order_money_ledger: [
         { id: 'money-1', order_id: 'order-1' },
@@ -116,7 +177,11 @@ describe('finalizePayPalOrderPayment', () => {
     });
 
     expect(result.idempotent).toBe(true);
+    expect(result.repaired).toBe(true);
     expect(supabase.rpcCalls).toHaveLength(0);
+    expect(supabase.store.orders[0].status).toBe('completed');
+    expect(supabase.store.payout_snapshots).toHaveLength(1);
+    expect(supabase.store.order_money_ledger.length).toBeGreaterThan(1);
   });
 
   it('builds frozen payee snapshots and sends them through the RPC payload', async () => {

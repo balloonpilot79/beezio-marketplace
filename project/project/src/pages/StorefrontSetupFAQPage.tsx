@@ -3,7 +3,7 @@ import { CheckCircle2, ExternalLink, Globe2, Image, LayoutTemplate, PackagePlus,
 import { Link } from 'react-router-dom';
 
 const steps = [
-  { icon: Store, title: 'Create your brand storefront', body: 'Open Brand storefronts in your dashboard. A standard account receives one complete brand storefront. Approved Beezio administrators can switch between brands such as MareBelle and RedTail. Every brand keeps its own slug, design, products, domain, and social links.' },
+  { icon: Store, title: 'Create your brand storefront', body: 'Open Brand storefronts in your dashboard. A standard account receives one complete brand storefront. Approved Beezio administrators can switch between brands such as MareBelle, RedTail, and Loving Nutrition. Every brand keeps its own slug, design, products, domain, and social links.' },
   { icon: Palette, title: 'Choose a clear visual direction', body: 'Pick two main colors and one accent color. Use a dark color for headings and buttons, a light background, and the accent for small highlights. High contrast keeps the storefront easy to read.' },
   { icon: Image, title: 'Add a logo and banner', body: 'Use a square logo and a wide, uncluttered banner. Choose images that belong to the same brand and color family. Preview the mobile storefront before publishing.' },
   { icon: LayoutTemplate, title: 'Write the brand story', body: 'In two or three sentences, explain who the brand serves, what it offers, and why it is different. Add shipping and return information so shoppers know what to expect.' },

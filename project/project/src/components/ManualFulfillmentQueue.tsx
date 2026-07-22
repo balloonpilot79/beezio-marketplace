@@ -14,6 +14,8 @@ type QueueItem = {
   createdAt: string | null;
   paidAt: string | null;
   totalCharged: number | null;
+  storefrontId: string | null;
+  brandName: string;
   customerName: string | null;
   customerEmail: string | null;
   customerPhone: string | null;
@@ -52,6 +54,7 @@ type QueueItem = {
     sourcePlatform: string | null;
     imageUrl: string | null;
     sourceUrl: string | null;
+    brandName: string | null;
   }>;
 };
 
@@ -114,6 +117,7 @@ const buildFulfillmentSheet = (item: QueueItem) => {
   const lines = [
     `ORDER FULFILLMENT SHEET`,
     `Order: #${item.orderNumber}`,
+    `Brand: ${item.brandName}`,
     `Created: ${formatDateTime(item.createdAt)}`,
     `Paid: ${formatDateTime(item.paidAt)}`,
     `Customer: ${item.customerName || 'N/A'}`,
@@ -129,6 +133,7 @@ const buildFulfillmentSheet = (item: QueueItem) => {
       `${index + 1}. ${orderItem.title}`,
       `   Qty: ${orderItem.quantity}`,
       `   SKU: ${orderItem.sku || 'N/A'}`,
+      `   Description: ${orderItem.description || 'N/A'}`,
       `   CJ SKU: ${orderItem.cjProductSku || 'N/A'}`,
       `   Variant ID: ${orderItem.cjVariantId || 'N/A'}`,
       `   Unit: ${formatMoney(orderItem.unitPrice)} | Line: ${formatMoney(orderItem.totalPrice)}`,
@@ -154,6 +159,7 @@ const buildShippingLabel = (item: QueueItem) => {
     ...addressLines(item.shippingAddress),
     ``,
     `ORDER #${item.orderNumber}`,
+    `Brand: ${item.brandName}`,
     item.customerEmail ? `Customer email: ${item.customerEmail}` : '',
     item.carrier || item.trackingNumber ? `Carrier/Tracking: ${[item.carrier, item.trackingNumber].filter(Boolean).join(' ')}` : '',
   ].filter((line) => line !== '');
@@ -278,6 +284,7 @@ export default function ManualFulfillmentQueue({
     shipped: 0,
   });
   const [activeBucket, setActiveBucket] = useState<QueueBucket>('needs_ordering');
+  const [selectedBrand, setSelectedBrand] = useState('all');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [orderRefs, setOrderRefs] = useState<Record<string, string>>({});
   const [orderNotes, setOrderNotes] = useState<Record<string, string>>({});
@@ -357,9 +364,17 @@ export default function ManualFulfillmentQueue({
     void loadQueue('initial');
   }, [scope]);
 
+  const brandOptions = useMemo(
+    () => Array.from(new Set(items.map((item) => String(item.brandName || '').trim()).filter(Boolean))).sort(),
+    [items]
+  );
+
   const filteredItems = useMemo(
-    () => items.filter((item) => normalizeBucketForScope(queueBucket(item)) === activeBucket),
-    [activeBucket, items, scope]
+    () => items.filter((item) =>
+      normalizeBucketForScope(queueBucket(item)) === activeBucket
+      && (selectedBrand === 'all' || item.brandName === selectedBrand)
+    ),
+    [activeBucket, items, scope, selectedBrand]
   );
 
   const sellerReadyToShipCount = summary.needsOrdering + summary.ordered;
@@ -479,7 +494,7 @@ export default function ManualFulfillmentQueue({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={() => setActiveBucket('needs_ordering')}
@@ -509,6 +524,19 @@ export default function ManualFulfillmentQueue({
         >
           Shipped
         </button>
+        {scope === 'admin' && brandOptions.length ? (
+          <label className="ml-auto flex items-center gap-2 text-sm font-medium text-gray-700">
+            Brand
+            <select
+              value={selectedBrand}
+              onChange={(event) => setSelectedBrand(event.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            >
+              <option value="all">All brands</option>
+              {brandOptions.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
+            </select>
+          </label>
+        ) : null}
       </div>
 
       {filteredItems.length === 0 ? (
@@ -539,6 +567,7 @@ export default function ManualFulfillmentQueue({
                         <span className="truncate">Order #{item.orderNumber}</span>
                       </div>
                       <div className="mt-1 text-sm text-gray-600">
+                        <span className="mr-2 inline-flex rounded-full bg-gray-900 px-2 py-0.5 text-xs font-semibold text-white">{item.brandName}</span>
                         {item.customerName || 'Customer unavailable'}
                         {item.customerEmail ? ` | ${item.customerEmail}` : ''}
                       </div>
@@ -643,6 +672,9 @@ export default function ManualFulfillmentQueue({
                                 )}
                                 <div className="min-w-0 flex-1">
                                   <div className="font-medium text-gray-900">{orderItem.title}</div>
+                                  <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                                    {orderItem.brandName || item.brandName}
+                                  </div>
                                   {orderItem.description ? (
                                     <div className="mt-1 text-xs text-gray-600">{orderItem.description}</div>
                                   ) : null}

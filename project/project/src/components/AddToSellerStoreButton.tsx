@@ -35,6 +35,7 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
   const [isAdded, setIsAdded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isOwnerProduct, setIsOwnerProduct] = useState(false);
+  const [productSellerId, setProductSellerId] = useState<string | null>(null);
   const [payoutReady, setPayoutReady] = useState(false);
   const [payoutChecked, setPayoutChecked] = useState(false);
   const [showPlacementModal, setShowPlacementModal] = useState(false);
@@ -78,6 +79,7 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
         if (!mounted) return;
         if (productError) throw productError;
         const productSellerId = String(productRow?.seller_id || '').trim();
+        setProductSellerId(productSellerId || null);
         const isOwner = Boolean(productSellerId && productSellerId === resolvedSellerId);
         setIsOwnerProduct(isOwner);
         if (isOwner) {
@@ -206,8 +208,13 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
 
       const linkCode = await generateLinkCode();
       const shareBase = await resolveSellerShareBase();
-      const promoterUserId = user?.id || resolvedSellerId;
-      const fullUrl = `${shareBase.origin}${shareBase.pathPrefix}/product/${productId}`;      // Best-effort insert; handle missing columns or unique constraints gracefully.
+      const params = new URLSearchParams({ promo: '1', owner: resolvedSellerId, code: linkCode });
+      if (productSellerId && productSellerId !== resolvedSellerId) {
+        params.set('ref', resolvedSellerId);
+        params.set('uid', resolvedSellerId);
+      }
+      const fullUrl = `${shareBase.origin}${shareBase.pathPrefix}/product/${productId}?${params.toString()}`;
+      // Best-effort insert; handle missing columns or unique constraints gracefully.
       await insertAffiliateLink({
         affiliate_id: resolvedSellerId,
         product_id: productId,

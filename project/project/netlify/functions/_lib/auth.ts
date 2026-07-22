@@ -29,6 +29,17 @@ export async function getAuthedUser(authHeader: string) {
   return { user: data.user, error: null, supabaseUrl };
 }
 
+export function assertEmailVerified(user: { email?: string | null; email_confirmed_at?: string | null; confirmed_at?: string | null }) {
+  const email = String(user?.email || '').trim();
+  const confirmedAt = String(user?.email_confirmed_at || user?.confirmed_at || '').trim();
+  if (!email || !confirmedAt) {
+    const err: any = new Error('Confirm your email before using seller, affiliate, or promotional product tools.');
+    err.statusCode = 403;
+    err.code = 'EMAIL_NOT_VERIFIED';
+    throw err;
+  }
+}
+
 async function tryResolveProfileId(supabaseAdmin: any, userId: string, mode: 'user_id' | 'id' | 'or') {
   let query = supabaseAdmin.from('profiles').select('id');
   if (mode === 'user_id') query = query.eq('user_id', userId);

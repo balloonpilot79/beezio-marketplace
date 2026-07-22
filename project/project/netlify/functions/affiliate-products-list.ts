@@ -69,15 +69,12 @@ async function resolveProfileAliases(supabaseAdmin: any, userId: string) {
 
 const isVisibleProduct = (product: any): boolean => {
   const status = String(product?.status || '').trim().toLowerCase();
-  if (status === 'archived') return false;
-  const isActive = product?.is_active === true;
-  const isPromotable = product?.is_promotable === true;
-  if (status === 'active' || isActive || isPromotable) return true;
-  const hasExplicitState =
-    Object.prototype.hasOwnProperty.call(product || {}, 'is_active') ||
-    Object.prototype.hasOwnProperty.call(product || {}, 'is_promotable') ||
-    status.length > 0;
-  return !hasExplicitState;
+  return (
+    status === 'active' &&
+    product?.is_active === true &&
+    product?.is_promotable === true &&
+    product?.affiliate_enabled === true
+  );
 };
 
 const normalizeAffiliateProduct = (product: any) => {
@@ -145,12 +142,8 @@ const handler: Handler = async (event) => {
     const userId = String(user.id || '').trim();
     const aliases = new Set(await resolveProfileAliases(supabaseAdmin, userId));
 
-    const requestedAffiliateId = String(body?.affiliate_id || '').trim();
-    const requestedIds = Array.isArray(body?.affiliate_ids) ? body.affiliate_ids : [];
-    [requestedAffiliateId, ...requestedIds].slice(0, 10).forEach((value) => {
-      const id = String(value || '').trim();
-      if (id) aliases.add(id);
-    });
+    // Never trust affiliate ids supplied by the browser. This endpoint uses the
+    // service role and must remain scoped to aliases resolved from the JWT.
 
     const affiliateIds = Array.from(aliases).filter(Boolean);
     if (!affiliateIds.length) return json(200, { ok: true, rows: [], affiliate_ids: [] });
@@ -201,7 +194,7 @@ const handler: Handler = async (event) => {
 
     if (productIds.length) {
       let selectFields =
-        'id,title,name,description,price,seller_ask,seller_amount,seller_ask_price,seller_id,commission_rate,affiliate_commission_rate,commission_type,affiliate_commission_type,flat_commission_amount,affiliate_commission_value,category,image_url,images,is_active,is_promotable,status,created_at';
+        'id,title,name,description,price,seller_ask,seller_amount,seller_ask_price,seller_id,commission_rate,affiliate_commission_rate,commission_type,affiliate_commission_type,flat_commission_amount,affiliate_commission_value,category,image_url,images,is_active,is_promotable,affiliate_enabled,status,created_at';
       let productRows: any[] = [];
 
       for (let attempt = 0; attempt < 16; attempt++) {

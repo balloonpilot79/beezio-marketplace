@@ -62,7 +62,7 @@ export const handler: Handler = async (event) => {
     if (!batch) return json(404, { error: 'Payout batch not found' });
 
     const batchStatus = String((batch as any)?.status || '').trim().toUpperCase();
-    if (batchStatus !== 'PREPARED') {
+    if (batchStatus !== 'PREPARED' && batchStatus !== 'RECONCILIATION_REQUIRED') {
       return json(409, { error: `Batch ${batchId} is not awaiting approval. Current status: ${batchStatus || 'UNKNOWN'}` });
     }
 
@@ -92,25 +92,53 @@ export const handler: Handler = async (event) => {
       sender_item_id: String(row.id),
     }));
 
-    const res = await fetch(`${baseUrl}/v1/payments/payouts`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'PayPal-Request-Id': paypalRequestId(`bzo_payout_${batchId}`),
-      },
-      body: JSON.stringify({
-        sender_batch_header: {
-          sender_batch_id: `BZO_${batchId}`,
-          email_subject: 'Your Beezio payout has been approved',
-          email_message: 'Your approved Beezio payout is being processed.',
+    let res: Response;
+    try {
+      res = await fetch(`${baseUrl}/v1/payments/payouts`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'PayPal-Request-Id': paypalRequestId(`bzo_payout_${batchId}`),
         },
-        items: payPalItems,
-      }),
-    });
+        body: JSON.stringify({
+          sender_batch_header: {
+            sender_batch_id: `BZO_${batchId}`,
+            email_subject: 'Your Beezio payout has been approved',
+            email_message: 'Your approved Beezio payout is being processed.',
+          },
+          items: payPalItems,
+        }),
+      });
+    } catch (error: any) {
+      await supabaseAdmin
+        .from('payout_batches')
+        .update({ status: 'RECONCILIATION_REQUIRED', updated_at: new Date().toISOString() } as any)
+        .eq('id', batchId);
+      return json(502, {
+        error: 'PayPal did not return a definitive response. This batch is locked for reconciliation.',
+        code: 'PAYOUT_RECONCILIATION_REQUIRED',
+        batch_id: batchId,
+        details: error instanceof Error ? error.message : 'Network error',
+      });
+    }
 
     const apiData = await res.json().catch(() => ({}));
     if (!res.ok) {
+      const paypalName = String((apiData as any)?.name || '').toUpperCase();
+      const ambiguous = res.status >= 500 || res.status === 429 || paypalName.includes('DUPLICATE');
+      if (ambiguous) {
+        await supabaseAdmin
+          .from('payout_batches')
+          .update({ status: 'RECONCILIATION_REQUIRED', updated_at: new Date().toISOString() } as any)
+          .eq('id', batchId);
+        return json(502, {
+          error: 'PayPal returned an ambiguous payout response. This batch is locked for reconciliation.',
+          code: 'PAYOUT_RECONCILIATION_REQUIRED',
+          batch_id: batchId,
+          paypal_response: apiData,
+        });
+      }
       return json(400, {
         error: 'PayPal payout batch failed during approval',
         details: describePayPalPayoutFailure(apiData),
@@ -137,7 +165,7 @@ export const handler: Handler = async (event) => {
         submitted_at: new Date().toISOString(),
       } as any)
       .eq('id', batchId)
-      .eq('status', 'PREPARED');
+      .in('status', ['PREPARED', 'RECONCILIATION_REQUIRED']);
 
     return json(200, {
       ok: true,

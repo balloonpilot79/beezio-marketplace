@@ -39,19 +39,7 @@ function isMarketplaceVisible(product: any) {
     return false;
   }
 
-  const promotable = product?.is_promotable === true;
-  const active = product?.is_active === true;
-  const sourcePlatform = String(product?.source_platform || '').trim().toLowerCase();
-  const lineage = String(product?.lineage || '').trim().toUpperCase();
-  const isImportedCjProduct = sourcePlatform === 'cj' || lineage === 'CJ';
-  const hasExplicitVisibilityState =
-    Object.prototype.hasOwnProperty.call(product || {}, 'is_active') ||
-    Object.prototype.hasOwnProperty.call(product || {}, 'is_promotable') ||
-    status.length > 0;
-  if (status === 'active' || promotable || active || isImportedCjProduct) {
-    return true;
-  }
-  return !hasExplicitVisibilityState;
+  return product?.affiliate_enabled === true && product?.is_promotable === true && product?.is_active === true && status === 'active';
 }
 
 function looksLikeCjProduct(product: any): boolean {
@@ -156,18 +144,18 @@ const handler: Handler = async (event) => {
 
     // Keep this intentionally conservative (public fields only).
     let selectFields =
-      'id,title,description,price,stock_quantity,total_inventory,in_stock,track_inventory,inventory_source,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status,lineage,dropship_provider,source_platform,source,cj_product_id,cj_pid,cj_product_code,cj_product_sku,cj_spu,display_search_code,import_status,seller_ask,seller_amount,seller_ask_price,calculated_customer_price';
-
-    let filterActive = false;
-    let filterPromotable = false;
-    let filterStatusActive = false;
+      'id,title,description,price,stock_quantity,total_inventory,in_stock,track_inventory,inventory_source,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,seller_id,average_rating,review_count,created_at,is_active,is_promotable,affiliate_enabled,status,lineage,dropship_provider,source_platform,source,cj_product_id,cj_pid,cj_product_code,cj_product_sku,cj_spu,display_search_code,import_status,seller_ask,seller_amount,seller_ask_price,calculated_customer_price';
 
     for (let attempt = 0; attempt < 16; attempt++) {
-        let query = supabaseAdmin.from('products').select(selectFields).order('created_at', { ascending: false }).limit(queryLimit);
-
-      if (filterActive) query = query.eq('is_active', true as any);
-      if (filterPromotable) query = query.eq('is_promotable', true as any);
-      if (filterStatusActive) query = query.eq('status', 'active' as any);
+      const query = supabaseAdmin
+        .from('products')
+        .select(selectFields)
+        .eq('is_active', true)
+        .eq('is_promotable', true)
+        .eq('affiliate_enabled', true)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(queryLimit);
 
       const { data, error } = await query;
       if (!error) {
@@ -234,19 +222,6 @@ const handler: Handler = async (event) => {
       }
 
       const missing = extractMissingColumnName(String((error as any)?.message || ''));
-      if (missing === 'is_promotable') {
-        filterPromotable = false;
-        continue;
-      }
-      if (missing === 'status') {
-        filterStatusActive = false;
-        continue;
-      }
-      if (missing === 'is_active') {
-        filterActive = false;
-        continue;
-      }
-
       // If the error is about selecting columns that don't exist, drop them and retry.
       if (missing && selectFields.includes(missing)) {
         selectFields = selectFields

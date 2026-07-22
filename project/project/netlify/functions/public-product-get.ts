@@ -139,6 +139,11 @@ const normalizeLegacyProduct = (product: any) => {
   return normalized;
 };
 
+const isPublicProduct = (product: any) => {
+  const status = String(product?.status || '').trim().toLowerCase();
+  return product?.is_active === true && status !== 'draft' && status !== 'archived';
+};
+
 const handler: Handler = async (event) => {
   try {
     const productIdRaw = String(event.queryStringParameters?.id || event.queryStringParameters?.productId || '').trim();
@@ -229,6 +234,9 @@ const handler: Handler = async (event) => {
     }
 
     if (!product) {
+      return json(404, { ok: false, error: 'Product not found' });
+    }
+    if (!isPublicProduct(product)) {
       return json(404, { ok: false, error: 'Product not found' });
     }
 

@@ -158,6 +158,8 @@ export const handler: Handler = async (event) => {
       return json(503, { error: 'Payouts are temporarily paused.', code: 'PAYOUTS_PAUSED' });
     }
 
+    const usePaypalApi = getEnvBool('PAYOUTS_ENABLED', getEnvBool('PAYPAL_PAYOUTS_API_ENABLED', false));
+
     const supabaseAdmin = createSupabaseAdmin();
 
     const nowIso = cutoffIso;
@@ -234,7 +236,7 @@ export const handler: Handler = async (event) => {
     const eligibleRows = rows.filter((row) => eligibleLedgerIds.has(String(row.id)));
     if (!eligibleRows.length) return json(200, { ok: true, message: 'No payouts eligible after insurance/order checks' });
 
-    const minimumPayout = getEnvNumber('PAYOUTS_MINIMUM', getEnvNumber('PAYPAL_MIN_PAYOUT', 25));
+    const minimumPayout = getEnvNumber('PAYOUTS_MINIMUM', getEnvNumber('PAYPAL_MIN_PAYOUT', 0.01));
 
     const legacyLedgerIdByOrderId = new Map<string, string>();
     for (const row of eligibleRows) {
@@ -294,29 +296,35 @@ export const handler: Handler = async (event) => {
     const userIds = Array.from(new Set(entries.map((e) => e.userId)));
     const { data: paypalAccounts, error: paypalError } = await supabaseAdmin
       .from('paypal_accounts')
-      .select('user_id, role, paypal_email')
+      .select('user_id, role, paypal_email, is_verified')
       .in('user_id', userIds);
 
     if (paypalError) return json(500, { error: paypalError.message });
 
-    const accountMap = new Map<string, { email: string }>();
+    const accountMap = new Map<string, { email: string; verified: boolean }>();
     for (const row of (paypalAccounts as any[]) || []) {
       const key = `${row.user_id}::${row.role}`;
-      accountMap.set(key, { email: String(row.paypal_email || '') });
+      accountMap.set(key, {
+        email: String(row.paypal_email || ''),
+        verified: row.is_verified === true,
+      });
     }
 
     const missingPayPalAccounts = Array.from(
       new Set(
         entries
-          .filter((entry) => !String(accountMap.get(`${entry.userId}::${entry.role}`)?.email || '').trim())
+          .filter((entry) => {
+            const account = accountMap.get(`${entry.userId}::${entry.role}`);
+            return !String(account?.email || '').trim() || account?.verified !== true;
+          })
           .map((entry) => `${entry.role}:${entry.userId}`)
       )
     );
 
     if (missingPayPalAccounts.length) {
       return json(400, {
-        error: 'One or more payout recipients are missing a PayPal email.',
-        code: 'MISSING_PAYPAL_EMAILS',
+        error: 'Every payout role requires its own connected and verified PayPal account.',
+        code: 'PAYPAL_ACCOUNT_NOT_VERIFIED',
         details: missingPayPalAccounts,
       });
     }
@@ -326,7 +334,7 @@ export const handler: Handler = async (event) => {
     for (const entry of entries) {
       const key = `${entry.userId}::${entry.role}`;
       const account = accountMap.get(key);
-      if (!account?.email) continue;
+      if (!account?.email || !account.verified) continue;
       const t = totals.get(key) || 0;
       totals.set(key, round2(t + entry.amount));
     }
@@ -393,7 +401,7 @@ export const handler: Handler = async (event) => {
     const previewItems = payoutEntries
       .map((entry) => {
         const account = accountMap.get(`${entry.userId}::${entry.role}`);
-        if (!account?.email) return null;
+        if (!account?.email || !account.verified) return null;
         return {
           recipient_type: 'EMAIL',
           receiver: account.email.toLowerCase(),
@@ -428,18 +436,21 @@ export const handler: Handler = async (event) => {
       .from('payout_batches')
       .insert({
         id: batchId,
+        batch_number: `BZO_${batchId}`,
         provider: 'paypal',
         status: 'PREPARED',
         total_amount: previewTotal,
+        recipient_count: previewItems.length,
         item_count: previewItems.length,
-      } as any)
+        payout_date: payoutDate,
+      } as any);
 
     if (batchError) return json(500, { error: batchError.message });
 
     const payoutItemRows: any[] = [];
     for (const entry of payoutEntries) {
       const account = accountMap.get(`${entry.userId}::${entry.role}`);
-      if (!account?.email) continue;
+      if (!account?.email || !account.verified) continue;
       payoutItemRows.push({
         payout_batch_id: batchId,
         ledger_id: entry.ledgerId,

@@ -2994,7 +2994,7 @@ export default function AdminPayoutsQueuePage() {
               <p>There are two lifetime influencer referral paths: one for a recruited seller and one for a recruited affiliate.</p>
               <p>If a seller signed up through an influencer, that influencer keeps earning on that seller&apos;s sales.</p>
               <p>If an affiliate signed up through an influencer, that influencer keeps earning on that affiliate&apos;s sales.</p>
-              <p>Each qualifying influencer payout is $0.50 for products under $20 and $1.00 for products at $20 and above.</p>
+              <p>Each qualifying influencer payout is $0.50 for products under $25 and $1.00 for products at $25 and above.</p>
               <p>If one influencer slot is missing, Beezio keeps that unused slot amount as profit. If both slots are missing, Beezio keeps both unused slot amounts.</p>
             </div>
           </div>

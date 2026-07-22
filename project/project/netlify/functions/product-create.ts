@@ -52,6 +52,10 @@ export const handler: Handler = async (event) => {
 
     const { user, error: authErr } = await getAuthedUser({ supabaseUrl, anonKey, authHeader });
     if (!user) return json(401, { error: 'Unauthorized', details: authErr });
+    const emailConfirmedAt = String((user as any)?.email_confirmed_at || (user as any)?.confirmed_at || '').trim();
+    if (!String((user as any)?.email || '').trim() || !emailConfirmedAt) {
+      return json(403, { error: 'Confirm your email before creating products.', code: 'EMAIL_NOT_VERIFIED' });
+    }
 
     const payload = (event.body ? JSON.parse(event.body) : {}) as Partial<CreateProductBody>;
     const title = String(payload.title || '').trim();
@@ -86,7 +90,7 @@ export const handler: Handler = async (event) => {
       category_id: payload.category_id ? String(payload.category_id) : null,
       seller_id: sellerProfileId,
       affiliate_enabled: Boolean(payload.affiliate_enabled ?? true),
-      status: payload.affiliate_enabled ?? true ? 'active' : 'store_only',
+      status: (payload.affiliate_enabled ?? true) ? 'active' : 'store_only',
       is_promotable: Boolean(payload.affiliate_enabled ?? true),
       is_active: true,
       commission_rate: 20,
@@ -110,4 +114,3 @@ export const handler: Handler = async (event) => {
     return json(500, { error: 'Unexpected error', details: e instanceof Error ? e.message : String(e) });
   }
 };
-

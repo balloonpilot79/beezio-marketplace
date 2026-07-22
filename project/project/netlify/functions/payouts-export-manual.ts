@@ -228,7 +228,7 @@ export const handler: Handler = async (event) => {
     const { data: accountRows } = userIds.length
       ? await supabaseAdmin
           .from('paypal_accounts')
-          .select('user_id, role, paypal_email')
+          .select('user_id, role, paypal_email, is_verified')
           .in('user_id', userIds)
       : { data: [] as any[] };
 
@@ -241,6 +241,7 @@ export const handler: Handler = async (event) => {
 
     const accountMap = new Map<string, string>();
     for (const account of (accountRows as any[]) || []) {
+      if (account?.is_verified !== true) continue;
       const userId = String(account?.user_id || '').trim();
       const role = String(account?.role || '').trim().toUpperCase();
       const email = String(account?.paypal_email || '').trim().toLowerCase();

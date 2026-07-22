@@ -358,7 +358,7 @@ export async function buildAdminSalesLedgerReport(request: LedgerRequest) {
 
   const [profilesRes, paypalRes] = await Promise.all([
     profileIds.size ? supabaseAdmin.from('profiles').select('id, full_name, email').in('id', Array.from(profileIds)) : Promise.resolve({ data: [], error: null }),
-    profileIds.size ? supabaseAdmin.from('paypal_accounts').select('user_id, role, paypal_email').in('user_id', Array.from(profileIds)) : Promise.resolve({ data: [], error: null }),
+    profileIds.size ? supabaseAdmin.from('paypal_accounts').select('user_id, role, paypal_email, is_verified').in('user_id', Array.from(profileIds)) : Promise.resolve({ data: [], error: null }),
   ]);
   if ((profilesRes as any).error) throw new Error((profilesRes as any).error.message);
   if ((paypalRes as any).error) throw new Error((paypalRes as any).error.message);
@@ -373,6 +373,7 @@ export async function buildAdminSalesLedgerReport(request: LedgerRequest) {
   const paypalByRoleMap = new Map<string, string>();
   const paypalMap = new Map<string, string>();
   for (const row of ((paypalRes as any).data as any[]) || []) {
+    if (row?.is_verified !== true) continue;
     const userId = asText(row?.user_id);
     const role = asText(row?.role).toUpperCase();
     const email = asText(row?.paypal_email);

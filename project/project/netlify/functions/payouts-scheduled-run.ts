@@ -268,7 +268,7 @@ export const handler: Handler = async () => {
     };
   }
 
-  const minimumPayout = getEnvNumber('PAYOUTS_MINIMUM', getEnvNumber('PAYPAL_MIN_PAYOUT', 25));
+  const minimumPayout = getEnvNumber('PAYOUTS_MINIMUM', getEnvNumber('PAYPAL_MIN_PAYOUT', 0.01));
 
   const legacyLedgerIdByOrderId = new Map<string, string>();
   for (const row of eligibleRows) {
@@ -334,7 +334,7 @@ export const handler: Handler = async () => {
   const userIds = Array.from(new Set(entries.map((e) => e.userId)));
   const { data: paypalAccounts, error: paypalError } = await supabaseAdmin
     .from('paypal_accounts')
-    .select('user_id, role, paypal_email')
+    .select('user_id, role, paypal_email, is_verified')
     .in('user_id', userIds);
 
   if (paypalError) {
@@ -345,10 +345,32 @@ export const handler: Handler = async () => {
     };
   }
 
-  const accountMap = new Map<string, { email: string }>();
+  const accountMap = new Map<string, { email: string; verified: boolean }>();
   for (const row of (paypalAccounts as any[]) || []) {
     const key = `${row.user_id}::${row.role}`;
-    accountMap.set(key, { email: String(row.paypal_email || '') });
+    accountMap.set(key, {
+      email: String(row.paypal_email || ''),
+      verified: row.is_verified === true,
+    });
+  }
+
+  const missingPayPalAccounts = Array.from(new Set(entries
+    .filter((entry) => {
+      const account = accountMap.get(`${entry.userId}::${entry.role}`);
+      return !String(account?.email || '').trim() || account?.verified !== true;
+    })
+    .map((entry) => `${entry.role}:${entry.userId}`)));
+
+  if (missingPayPalAccounts.length) {
+    return {
+      statusCode: 409,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        error: 'Every payout role requires its own connected and verified PayPal account.',
+        code: 'PAYPAL_ACCOUNT_NOT_VERIFIED',
+        details: missingPayPalAccounts,
+      }),
+    };
   }
 
   // Totals per payee (enforce minimum payout)
@@ -356,7 +378,7 @@ export const handler: Handler = async () => {
   for (const entry of entries) {
     const key = `${entry.userId}::${entry.role}`;
     const account = accountMap.get(key);
-    if (!account?.email) continue;
+    if (!account?.email || !account.verified) continue;
     totals.set(key, round2((totals.get(key) || 0) + entry.amount));
   }
 
@@ -428,7 +450,7 @@ export const handler: Handler = async () => {
   const payoutItemRows: any[] = [];
   for (const entry of payoutEntries) {
     const account = accountMap.get(`${entry.userId}::${entry.role}`);
-    if (!account?.email) continue;
+    if (!account?.email || !account.verified) continue;
     payoutItemRows.push({
       payout_batch_id: batchId,
       ledger_id: entry.ledgerId,
@@ -446,10 +468,13 @@ export const handler: Handler = async () => {
     .from('payout_batches')
     .insert({
       id: batchId,
+      batch_number: `BZO_${batchId}`,
       provider: 'paypal',
       status: 'CREATED',
       total_amount: round2(payoutItemRows.reduce((acc, e) => acc + Number(e.amount || 0), 0)),
+      recipient_count: payoutItemRows.length,
       item_count: payoutItemRows.length,
+      payout_date: payoutDate,
     } as any);
 
   if (batchError) {
@@ -501,25 +526,61 @@ export const handler: Handler = async () => {
   const token = await getPayPalAccessToken();
   const baseUrl = await getPayPalBaseUrl();
 
-  const res = await fetch(`${baseUrl}/v1/payments/payouts`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'PayPal-Request-Id': paypalRequestId(`bzo_payout_${batchId}`),
-    },
-    body: JSON.stringify({
-      sender_batch_header: {
-        sender_batch_id: `BZO_${batchId}`,
-        email_subject: `Your Beezio payout for ${payoutDate}`,
-        email_message: `Your Beezio payout for ${payoutDate} has been issued.`,
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl}/v1/payments/payouts`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'PayPal-Request-Id': paypalRequestId(`bzo_payout_${batchId}`),
       },
-      items: payPalItems,
-    }),
-  });
+      body: JSON.stringify({
+        sender_batch_header: {
+          sender_batch_id: `BZO_${batchId}`,
+          email_subject: `Your Beezio payout for ${payoutDate}`,
+          email_message: `Your Beezio payout for ${payoutDate} has been issued.`,
+        },
+        items: payPalItems,
+      }),
+    });
+  } catch (error: any) {
+    await supabaseAdmin
+      .from('payout_batches')
+      .update({ status: 'RECONCILIATION_REQUIRED', updated_at: new Date().toISOString() } as any)
+      .eq('id', batchId);
+    return {
+      statusCode: 502,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        error: 'PayPal did not return a definitive response. This batch is locked for reconciliation.',
+        code: 'PAYOUT_RECONCILIATION_REQUIRED',
+        batch_id: batchId,
+        details: error instanceof Error ? error.message : 'Network error',
+      }),
+    };
+  }
 
   const apiData = await res.json().catch(() => ({}));
   if (!res.ok) {
+    const paypalName = String((apiData as any)?.name || '').toUpperCase();
+    const ambiguous = res.status >= 500 || res.status === 429 || paypalName.includes('DUPLICATE');
+    if (ambiguous) {
+      await supabaseAdmin
+        .from('payout_batches')
+        .update({ status: 'RECONCILIATION_REQUIRED', updated_at: new Date().toISOString() } as any)
+        .eq('id', batchId);
+      return {
+        statusCode: 502,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'PayPal returned an ambiguous payout response. This batch is locked for reconciliation.',
+          code: 'PAYOUT_RECONCILIATION_REQUIRED',
+          batch_id: batchId,
+          paypal_response: apiData,
+        }),
+      };
+    }
     // Allow retry: mark items FAILED (unique index only blocks CREATED/SENT)
     await supabaseAdmin
       .from('payout_items')

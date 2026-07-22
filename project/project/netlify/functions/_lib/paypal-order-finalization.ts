@@ -112,6 +112,7 @@ async function selectOrderItems(supabaseAdmin: any, orderId: string) {
     'seller_ask_amount',
     'partner_rate',
     'computed_listing_price',
+    'product_title_snapshot',
     'products:product_id(title)',
   ];
 
@@ -135,13 +136,27 @@ async function isInfluencerProfile(supabaseAdmin: any, profileId: string | null)
   if (!profileId) return false;
   const { data: profileRow } = await supabaseAdmin
     .from('profiles')
-    .select('role,primary_role')
+    .select('user_id,role,primary_role')
     .eq('id', profileId)
     .maybeSingle();
 
   const role = String((profileRow as any)?.role || '').toLowerCase();
   const primaryRole = String((profileRow as any)?.primary_role || '').toLowerCase();
-  return role === 'influencer' || primaryRole === 'influencer';
+  if (role === 'influencer' || primaryRole === 'influencer') return true;
+
+  const roleUserIds = Array.from(new Set([
+    profileId,
+    String((profileRow as any)?.user_id || '').trim(),
+  ].filter(Boolean)));
+  const { data: influencerRole } = await supabaseAdmin
+    .from('user_roles')
+    .select('user_id')
+    .in('user_id', roleUserIds)
+    .eq('role', 'influencer')
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
+  return Boolean((influencerRole as any)?.user_id);
 }
 
 async function selectMaybeSingleWithFallback(
@@ -677,46 +692,6 @@ export async function finalizePayPalOrderPayment(params: {
     .eq('order_id', orderId)
     .limit(10);
 
-  if (!params.forceRepair && Array.isArray(existingSnapshots) && existingSnapshots.length > 0) {
-    try {
-      const { data: existingMoneyRows } = await supabaseAdmin
-        .from('order_money_ledger')
-        .select('id')
-        .eq('order_id', orderId)
-        .limit(1);
-
-      if (Array.isArray(existingMoneyRows) && existingMoneyRows.length > 0) {
-        const existingPaidAt = params.paidAt || new Date().toISOString();
-        const existingHoldReleaseAt = ensureMinimumHoldReleaseAt(
-          existingPaidAt,
-          String((existingSnapshots[0] as any)?.hold_release_at || ''),
-          14
-        );
-        if (String((existingSnapshots[0] as any)?.hold_release_at || '') !== existingHoldReleaseAt) {
-          throw new Error('Existing payout snapshots have an invalid hold_release_at and require repair');
-        }
-
-        return {
-          ok: true,
-          idempotent: true,
-          order_id: orderId,
-          provider_order_id: providerOrderId,
-          provider_capture_id: providerCaptureId,
-          snapshots: existingSnapshots,
-        };
-      }
-    } catch {
-      return {
-        ok: true,
-        idempotent: true,
-        order_id: orderId,
-        provider_order_id: providerOrderId,
-        provider_capture_id: providerCaptureId,
-        snapshots: existingSnapshots,
-      };
-    }
-  }
-
   const { data: orderRow, error: orderError } = await selectMaybeSingleWithFallback(
     supabaseAdmin,
     'orders',
@@ -766,15 +741,16 @@ export async function finalizePayPalOrderPayment(params: {
   let sellerInfluencerId: string | null = null;
   let partnerInfluencerId: string | null = null;
 
+  // Lifetime recruiter attribution is authoritative. A click-level referrer may
+  // fill an empty slot, but must never replace either frozen recruiter slot.
+  sellerInfluencerId = sellerRecruiterInfluencerId || null;
+  partnerInfluencerId = partnerRecruiterInfluencerId || (partnerIsInfluencer ? partnerId : null) || null;
   if (explicitInfluencerId) {
-    if (partnerId) {
+    if (partnerId && !partnerInfluencerId) {
       partnerInfluencerId = explicitInfluencerId;
-    } else {
+    } else if (!sellerInfluencerId) {
       sellerInfluencerId = explicitInfluencerId;
     }
-  } else {
-    sellerInfluencerId = sellerRecruiterInfluencerId || null;
-    partnerInfluencerId = partnerRecruiterInfluencerId || (partnerIsInfluencer ? partnerId : null) || null;
   }
 
   const paidAt = params.paidAt || String((orderRow as any)?.paid_at || '').trim() || new Date().toISOString();
@@ -810,7 +786,7 @@ export async function finalizePayPalOrderPayment(params: {
         seller_ask_amount: Number(row?.seller_ask_amount || 0),
         partner_rate: Number(row?.partner_rate || 0),
         computed_listing_price: Number(row?.computed_listing_price || 0),
-        product_title: String(row?.products?.title || '').trim() || null,
+        product_title: String(row?.product_title_snapshot || row?.products?.title || '').trim() || null,
         product_id: row?.product_id ? String(row.product_id) : null,
         variant_id: row?.variant_id ? String(row.variant_id) : null,
       })),

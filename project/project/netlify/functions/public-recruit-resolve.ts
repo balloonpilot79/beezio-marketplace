@@ -74,6 +74,35 @@ const normalizeRecruitCode = (input: string): string => {
     .replace(/\/$/, '');
 };
 
+async function loadActiveInfluencerProfile(supabaseAdmin: any, profileId: string) {
+  const id = String(profileId || '').trim();
+  if (!id) return null;
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('id,user_id,full_name,role,primary_role')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!(profile as any)?.id) return null;
+  const directInfluencer = ['role', 'primary_role'].some(
+    (column) => String((profile as any)?.[column] || '').trim().toLowerCase() === 'influencer'
+  );
+  if (directInfluencer) return profile as any;
+
+  const userId = String((profile as any)?.user_id || '').trim();
+  if (!userId) return null;
+  const { data: roleRow } = await supabaseAdmin
+    .from('user_roles')
+    .select('user_id')
+    .eq('user_id', userId)
+    .eq('role', 'influencer')
+    .eq('is_active', true)
+    .maybeSingle();
+
+  return (roleRow as any)?.user_id ? profile as any : null;
+}
+
 const handler: Handler = async (event) => {
   try {
     const codeRaw = String(
@@ -110,12 +139,15 @@ const handler: Handler = async (event) => {
 
     if (!profileError && Array.isArray(profileRows) && profileRows[0]?.id) {
       const row = profileRows[0] as any;
-      return json(200, {
-        ok: true,
-        valid: true,
-        referrerProfileId: String(row.id),
-        referrerName: String(row.full_name || 'this influencer'),
-      });
+      const influencer = await loadActiveInfluencerProfile(supabaseAdmin, String(row.id));
+      if (influencer) {
+        return json(200, {
+          ok: true,
+          valid: true,
+          referrerProfileId: String(influencer.id),
+          referrerName: String(influencer.full_name || 'this influencer'),
+        });
+      }
     }
 
     // Compatibility fallback: older schemas include `profiles.username`.
@@ -129,12 +161,15 @@ const handler: Handler = async (event) => {
 
       if (!usernameError && Array.isArray(byUsername) && byUsername[0]?.id) {
         const row = byUsername[0] as any;
-        return json(200, {
-          ok: true,
-          valid: true,
-          referrerProfileId: String(row.id),
-          referrerName: String(row.full_name || row.username || 'this influencer'),
-        });
+        const influencer = await loadActiveInfluencerProfile(supabaseAdmin, String(row.id));
+        if (influencer) {
+          return json(200, {
+            ok: true,
+            valid: true,
+            referrerProfileId: String(influencer.id),
+            referrerName: String(influencer.full_name || row.username || 'this influencer'),
+          });
+        }
       }
     } catch {
       // Ignore missing-column errors on deployments without profiles.username.
@@ -156,26 +191,33 @@ const handler: Handler = async (event) => {
 
     const storeProfileId = String((affiliateStoreRes.data as any)?.profile_id || '').trim();
     if (storeProfileId) {
-      return json(200, {
-        ok: true,
-        valid: true,
-        referrerProfileId: storeProfileId,
-        referrerName: String(
-          (affiliateStoreRes.data as any)?.store_name ||
-          (affiliateStoreRes.data as any)?.store_slug ||
-          'this influencer'
-        ),
-      });
+      const influencer = await loadActiveInfluencerProfile(supabaseAdmin, storeProfileId);
+      if (influencer) {
+        return json(200, {
+          ok: true,
+          valid: true,
+          referrerProfileId: storeProfileId,
+          referrerName: String(
+            influencer.full_name ||
+            (affiliateStoreRes.data as any)?.store_name ||
+            (affiliateStoreRes.data as any)?.store_slug ||
+            'this influencer'
+          ),
+        });
+      }
     }
 
     const settingsProfileId = String((affiliateSettingsRes.data as any)?.affiliate_id || '').trim();
     if (settingsProfileId) {
-      return json(200, {
-        ok: true,
-        valid: true,
-        referrerProfileId: settingsProfileId,
-        referrerName: String((affiliateSettingsRes.data as any)?.subdomain || 'this influencer'),
-      });
+      const influencer = await loadActiveInfluencerProfile(supabaseAdmin, settingsProfileId);
+      if (influencer) {
+        return json(200, {
+          ok: true,
+          valid: true,
+          referrerProfileId: settingsProfileId,
+          referrerName: String(influencer.full_name || (affiliateSettingsRes.data as any)?.subdomain || 'this influencer'),
+        });
+      }
     }
 
     // Backward-compatibility fallback:
@@ -194,16 +236,20 @@ const handler: Handler = async (event) => {
 
     const slugMatchedProfileId = String((slugMatchedRow as any)?.profile_id || '').trim();
     if (slugMatchedProfileId) {
-      return json(200, {
-        ok: true,
-        valid: true,
-        referrerProfileId: slugMatchedProfileId,
-        referrerName: String(
-          (slugMatchedRow as any)?.store_name ||
-          (slugMatchedRow as any)?.store_slug ||
-          'this influencer'
-        ),
-      });
+      const influencer = await loadActiveInfluencerProfile(supabaseAdmin, slugMatchedProfileId);
+      if (influencer) {
+        return json(200, {
+          ok: true,
+          valid: true,
+          referrerProfileId: slugMatchedProfileId,
+          referrerName: String(
+            influencer.full_name ||
+            (slugMatchedRow as any)?.store_name ||
+            (slugMatchedRow as any)?.store_slug ||
+            'this influencer'
+          ),
+        });
+      }
     }
 
     return json(200, { ok: true, valid: false });

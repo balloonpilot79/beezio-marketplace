@@ -12,6 +12,7 @@ import {
   TEST_ITEM_SELLER_AMOUNT,
   TEST_ITEM_TITLE,
 } from '../../shared/testItemPricing';
+import AdminUrlProductImporter from '../components/AdminUrlProductImporter';
 
 type AdminProductRow = {
   id: string;
@@ -287,6 +288,8 @@ const AdminProductHubPage: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+        <AdminUrlProductImporter />
+
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -514,7 +517,7 @@ const AdminProductHubPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Approved Product Sources</h2>
           <p className="text-gray-700">
-            Printful has a dedicated admin import flow, Printify remains available in integrations, and EggRacks uses a draft-first URL import flow. New sources should be reviewed before being enabled.
+            The admin URL importer supports public supplier pages with structured product data and always requires review. Printful has a dedicated import flow, Printify remains available in integrations, and EggRacks keeps its source-specific draft flow. Confirm supplier permission, costs, variants, images, claims, labels, shipping, and fulfillment before publishing.
           </p>
         </div>
       </div>

@@ -3,29 +3,10 @@ import { createSupabaseAdmin } from './_lib/supabase';
 import { json, assertPost, parseJson } from './_lib/http';
 import { requireAdmin } from './_lib/auth';
 import { getPayPalAccessToken, getPayPalBaseUrl } from './_lib/paypal';
+import { fetchPayPalPayoutBatchDetails, normalizePayoutItemStatus } from './_lib/paypalPayoutReconciliation';
 
 type Body = {
   batch_id?: string;
-};
-
-const normalizePayoutItemStatus = (transactionStatus: string) => {
-  const txStatus = String(transactionStatus || '').trim().toUpperCase();
-  if (txStatus === 'SUCCESS') {
-    return { status: 'SENT', errorMessage: null as string | null };
-  }
-
-  if (
-    txStatus === 'FAILED' ||
-    txStatus === 'BLOCKED' ||
-    txStatus === 'DENIED' ||
-    txStatus === 'RETURNED' ||
-    txStatus === 'REFUNDED' ||
-    txStatus === 'UNCLAIMED'
-  ) {
-    return { status: 'FAILED', errorMessage: txStatus || 'FAILED' };
-  }
-
-  return { status: 'CREATED', errorMessage: null as string | null };
 };
 
 export const handler: Handler = async (event) => {
@@ -47,7 +28,7 @@ export const handler: Handler = async (event) => {
       : await supabaseAdmin
           .from('payout_batches')
           .select('id, provider_batch_id, status')
-          .in('status', ['SUBMITTED', 'PARTIAL'])
+          .in('status', ['SUBMITTED', 'PARTIAL', 'RECONCILIATION_REQUIRED'])
           .limit(20);
 
     if (batchError) return json(500, { error: batchError.message });
@@ -64,16 +45,13 @@ export const handler: Handler = async (event) => {
       const providerBatchId = String(b.provider_batch_id || '').trim();
       if (!providerBatchId) continue;
 
-      const res = await fetch(`${baseUrl}/v1/payments/payouts/${encodeURIComponent(providerBatchId)}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      const payoutBatchResult = await fetchPayPalPayoutBatchDetails({
+        baseUrl,
+        providerBatchId,
+        token,
       });
-
-      const apiData = await res.json().catch(() => ({}));
-      if (!res.ok) {
+      const apiData = payoutBatchResult.data;
+      if (!payoutBatchResult.ok) {
         results.push({ id: b.id, provider_batch_id: providerBatchId, ok: false, error: apiData });
         continue;
       }
@@ -212,10 +190,16 @@ export const handler: Handler = async (event) => {
       );
 
       if (ledgerIdsTouched.length) {
-        const { data: ledgers } = await supabaseAdmin
+        const [{ data: ledgers }, { data: expectedSnapshots }] = await Promise.all([
+          supabaseAdmin
           .from('payout_ledger')
           .select('id, status, seller_id, partner_id, influencer_id, seller_earnings, partner_earnings, influencer_earnings')
-          .in('id', ledgerIdsTouched);
+          .in('id', ledgerIdsTouched),
+          supabaseAdmin
+            .from('payout_snapshots')
+            .select('ledger_id, payee_user_id, payee_role, amount')
+            .in('ledger_id', ledgerIdsTouched),
+        ]);
 
         const { data: sentItems } = await supabaseAdmin
           .from('payout_items')
@@ -234,15 +218,29 @@ export const handler: Handler = async (event) => {
           sentByLedger.set(ledgerId, set);
         }
 
+        const expectedByLedger = new Map<string, Set<string>>();
+        for (const snapshot of (expectedSnapshots as any[]) || []) {
+          const ledgerId = String(snapshot?.ledger_id || '').trim();
+          const payeeUserId = String(snapshot?.payee_user_id || '').trim();
+          const payeeRole = String(snapshot?.payee_role || '').trim().toUpperCase();
+          if (!ledgerId || !payeeUserId || !payeeRole || Number(snapshot?.amount || 0) <= 0) continue;
+          const set = expectedByLedger.get(ledgerId) || new Set<string>();
+          set.add(`${payeeUserId}::${payeeRole}`);
+          expectedByLedger.set(ledgerId, set);
+        }
+
         for (const l of (ledgers as any[]) || []) {
           const ledgerId = String(l?.id || '').trim();
           if (!ledgerId) continue;
           if (String(l?.status || '') !== 'READY_TO_PAY') continue;
 
-          const expected: string[] = [];
-          if (l?.seller_id && Number(l?.seller_earnings || 0) > 0) expected.push(`${String(l.seller_id)}::SELLER`);
-          if (l?.partner_id && Number(l?.partner_earnings || 0) > 0) expected.push(`${String(l.partner_id)}::PARTNER`);
-          if (l?.influencer_id && Number(l?.influencer_earnings || 0) > 0) expected.push(`${String(l.influencer_id)}::INFLUENCER`);
+          const frozenExpected = expectedByLedger.get(ledgerId);
+          const expected: string[] = frozenExpected ? Array.from(frozenExpected) : [];
+          if (!expected.length) {
+            if (l?.seller_id && Number(l?.seller_earnings || 0) > 0) expected.push(`${String(l.seller_id)}::SELLER`);
+            if (l?.partner_id && Number(l?.partner_earnings || 0) > 0) expected.push(`${String(l.partner_id)}::PARTNER`);
+            if (l?.influencer_id && Number(l?.influencer_earnings || 0) > 0) expected.push(`${String(l.influencer_id)}::INFLUENCER`);
+          }
 
           if (!expected.length) continue;
           const sentSet = sentByLedger.get(ledgerId) || new Set<string>();
