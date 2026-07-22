@@ -2,6 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import { buildStoreInsuranceListings } from './_lib/storeInsurance';
 import { applyCanonicalProductPricing } from '../../shared/productPricing';
+import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 
 type CacheEntry = { expiresAt: number; value: any };
 const memCache = new Map<string, CacheEntry>();
@@ -277,27 +278,32 @@ const handler: Handler = async (event) => {
       console.warn('[public-store-get] store settings lookup error (non-fatal):', (storeSettingsError as any)?.message || String(storeSettingsError));
     }
 
+    const hasDedicatedStorefront = Boolean(brandStorefront?.id);
+    const houseBrandIdentity = resolveHouseBrandIdentity(
+      brandStorefront?.slug || storeSlug,
+      brandStorefront?.theme_settings?.brand_personality
+    );
     const mergedSeller: any = {
       id: sellerId,
       storefront_id: brandStorefront?.id || null,
-      full_name: brandStorefront?.name ?? (profile as any)?.full_name ?? (storeSettings as any)?.store_name ?? 'Store',
-      bio: brandStorefront?.description ?? (profile as any)?.bio ?? (storeSettings as any)?.store_description ?? '',
-      store_theme: brandStorefront?.store_theme ?? (storeSettings as any)?.store_theme ?? (profile as any)?.store_theme ?? 'modern',
-      store_banner: brandStorefront?.banner_url ?? (storeSettings as any)?.store_banner ?? (profile as any)?.store_banner ?? null,
-      store_logo: brandStorefront?.logo_url ?? (storeSettings as any)?.store_logo ?? (profile as any)?.store_logo ?? null,
+      full_name: houseBrandIdentity?.name ?? brandStorefront?.name ?? (profile as any)?.full_name ?? (storeSettings as any)?.store_name ?? 'Store',
+      bio: houseBrandIdentity?.about ?? (hasDedicatedStorefront ? brandStorefront?.description ?? '' : (profile as any)?.bio ?? (storeSettings as any)?.store_description ?? ''),
+      store_theme: hasDedicatedStorefront ? brandStorefront?.store_theme ?? 'modern' : (storeSettings as any)?.store_theme ?? (profile as any)?.store_theme ?? 'modern',
+      store_banner: hasDedicatedStorefront ? brandStorefront?.banner_url ?? null : (storeSettings as any)?.store_banner ?? (profile as any)?.store_banner ?? null,
+      store_logo: hasDedicatedStorefront ? brandStorefront?.logo_url ?? houseBrandIdentity?.logoUrl ?? null : (storeSettings as any)?.store_logo ?? (profile as any)?.store_logo ?? null,
       subdomain: (brandStorefront?.slug ?? (storeSettings as any)?.subdomain ?? (profile as any)?.subdomain ?? storeSlug) || null,
-      custom_domain: brandStorefront?.custom_domain ?? (storeSettings as any)?.custom_domain ?? (profile as any)?.custom_domain ?? null,
-      location: (profile as any)?.location ?? null,
-      social_links: brandStorefront?.social_links ?? (storeSettings as any)?.social_links ?? (profile as any)?.social_links ?? {},
-      business_hours: brandStorefront?.business_hours ?? (storeSettings as any)?.business_hours ?? (profile as any)?.business_hours ?? null,
-      shipping_policy: brandStorefront?.shipping_policy ?? (storeSettings as any)?.shipping_policy ?? (profile as any)?.shipping_policy ?? null,
-      return_policy: brandStorefront?.return_policy ?? (storeSettings as any)?.return_policy ?? (profile as any)?.return_policy ?? null,
-      template_id: (storeSettings as any)?.template_id ?? (profile as any)?.template_id ?? null,
-      product_page_template: brandStorefront?.product_page_template ?? (storeSettings as any)?.product_page_template ?? (profile as any)?.product_page_template ?? null,
-      layout_config: brandStorefront?.layout_config ?? (storeSettings as any)?.layout_config ?? (profile as any)?.layout_config ?? null,
-      theme_settings: brandStorefront?.theme_settings ?? (storeSettings as any)?.theme_settings ?? (profile as any)?.theme_settings ?? null,
-      custom_css: brandStorefront?.custom_css ?? (storeSettings as any)?.custom_css ?? (profile as any)?.custom_css ?? null,
-      color_scheme: brandStorefront?.color_scheme ?? (storeSettings as any)?.color_scheme ?? (profile as any)?.color_scheme ?? null,
+      custom_domain: hasDedicatedStorefront ? brandStorefront?.custom_domain ?? null : (storeSettings as any)?.custom_domain ?? (profile as any)?.custom_domain ?? null,
+      location: hasDedicatedStorefront ? null : (profile as any)?.location ?? null,
+      social_links: hasDedicatedStorefront ? brandStorefront?.social_links ?? {} : (storeSettings as any)?.social_links ?? (profile as any)?.social_links ?? {},
+      business_hours: hasDedicatedStorefront ? brandStorefront?.business_hours ?? null : (storeSettings as any)?.business_hours ?? (profile as any)?.business_hours ?? null,
+      shipping_policy: hasDedicatedStorefront ? brandStorefront?.shipping_policy ?? null : (storeSettings as any)?.shipping_policy ?? (profile as any)?.shipping_policy ?? null,
+      return_policy: hasDedicatedStorefront ? brandStorefront?.return_policy ?? null : (storeSettings as any)?.return_policy ?? (profile as any)?.return_policy ?? null,
+      template_id: hasDedicatedStorefront ? null : (storeSettings as any)?.template_id ?? (profile as any)?.template_id ?? null,
+      product_page_template: hasDedicatedStorefront ? brandStorefront?.product_page_template ?? null : (storeSettings as any)?.product_page_template ?? (profile as any)?.product_page_template ?? null,
+      layout_config: hasDedicatedStorefront ? brandStorefront?.layout_config ?? null : (storeSettings as any)?.layout_config ?? (profile as any)?.layout_config ?? null,
+      theme_settings: hasDedicatedStorefront ? brandStorefront?.theme_settings ?? null : (storeSettings as any)?.theme_settings ?? (profile as any)?.theme_settings ?? null,
+      custom_css: hasDedicatedStorefront ? brandStorefront?.custom_css ?? null : (storeSettings as any)?.custom_css ?? (profile as any)?.custom_css ?? null,
+      color_scheme: hasDedicatedStorefront ? brandStorefront?.color_scheme ?? null : (storeSettings as any)?.color_scheme ?? (profile as any)?.color_scheme ?? null,
     };
 
     const sellerAliases = Array.from(
