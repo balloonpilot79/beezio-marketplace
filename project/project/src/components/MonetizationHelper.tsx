@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HelpCircle, ExternalLink, DollarSign, Zap, TrendingUp, Users } from 'lucide-react';
+import { HelpCircle, DollarSign, Zap, TrendingUp, Users } from 'lucide-react';
 
 const MonetizationHelper: React.FC = () => {
   const [activeStrategy, setActiveStrategy] = useState<string | null>(null);
@@ -9,13 +9,13 @@ const MonetizationHelper: React.FC = () => {
       id: 'print-on-demand',
       title: '🎨 Print-on-Demand Empire',
       subtitle: 'Design once, earn over time',
-      description: 'Create t-shirts on Printify, connect via API, let partners sell your designs',
+      description: 'Create branded products with an approved supplier, then let partners sell your designs',
       potential: '$1,000+ monthly commissions',
       difficulty: 'Easy',
       timeToProfit: '2-4 weeks',
       steps: [
-        'Design 10 t-shirts on Printify',
-        'Connect Printify API in Integrations tab',
+        'Create 10 strong branded designs',
+        'Import them through an approved supplier or Printful',
         'Set retail price: $25, partner commission: $7',
         'Invite partners to promote your designs',
         'You earn $5.50 per partner sale + $13 per direct sale'
@@ -72,7 +72,6 @@ const MonetizationHelper: React.FC = () => {
   ];
 
   const apiConnections = [
-    { name: 'Printify', description: 'Print-on-demand products', difficulty: 'Easy', setup: '5 minutes' },
     { name: 'Printful', description: 'Premium print-on-demand', difficulty: 'Easy', setup: '5 minutes' },
     { name: 'Shopify', description: 'Import existing store', difficulty: 'Medium', setup: '15 minutes' },
     { name: 'Custom API', description: 'Any REST API', difficulty: 'Advanced', setup: '30+ minutes' }
@@ -203,17 +202,9 @@ const MonetizationHelper: React.FC = () => {
           <div>
             <h5 className="font-semibold text-gray-900">Ready to Start Earning?</h5>
             <p className="text-sm text-gray-700 mt-1">
-              The fastest way is the Print-on-Demand strategy. Create 5 t-shirt designs and connect Printify today!
+              Start with five focused products, confirm the margins, then publish them for affiliates to promote.
             </p>
             <div className="mt-3 space-x-3">
-              <a
-                href="https://printify.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center text-sm text-orange-600 hover:text-orange-700 font-medium"
-              >
-                Go to Printify <ExternalLink className="w-3 h-3 ml-1" />
-              </a>
               <button className="text-sm text-gray-600 hover:text-gray-800 font-medium">
                 Watch Tutorial
               </button>

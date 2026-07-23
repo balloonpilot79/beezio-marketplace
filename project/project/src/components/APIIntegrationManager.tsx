@@ -5,7 +5,7 @@ import { ExternalLink, Key, Settings, CheckCircle, AlertCircle, RefreshCw } from
 
 interface APIConnection {
   id: string;
-  provider: 'printful' | 'printify' | 'shopify' | 'custom';
+  provider: 'printful' | 'shopify' | 'custom';
   api_key: string;
   store_id?: string;
   webhook_url?: string;
@@ -20,7 +20,7 @@ const APIIntegrationManager: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showAddConnection, setShowAddConnection] = useState(false);
   const [newConnection, setNewConnection] = useState({
-    provider: 'printful' as 'printful' | 'printify' | 'shopify' | 'custom',
+    provider: 'printful' as 'printful' | 'shopify' | 'custom',
     api_key: '',
     store_id: '',
     webhook_url: ''
@@ -140,12 +140,6 @@ const APIIntegrationManager: React.FC = () => {
         description: 'Print-on-demand products and fulfillment',
         docs: 'https://developers.printful.com/',
         fields: ['API Key']
-      },
-      printify: {
-        name: 'Printify',
-        description: 'Print-on-demand marketplace',
-        docs: 'https://developers.printify.com/',
-        fields: ['API Key', 'Store ID']
       },
       shopify: {
         name: 'Shopify',
@@ -299,7 +293,6 @@ const APIIntegrationManager: React.FC = () => {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
                 >
                   <option value="printful">Printful</option>
-                  <option value="printify">Printify</option>
                   <option value="shopify">Shopify</option>
                   <option value="custom">Custom API</option>
                 </select>
@@ -324,7 +317,7 @@ const APIIntegrationManager: React.FC = () => {
                 />
               </div>
 
-              {(newConnection.provider === 'printify' || newConnection.provider === 'shopify') && (
+              {newConnection.provider === 'shopify' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Store ID

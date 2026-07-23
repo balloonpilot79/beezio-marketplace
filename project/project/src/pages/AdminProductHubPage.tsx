@@ -294,7 +294,28 @@ const AdminProductHubPage: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-        <AdminUrlProductImporter />
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="text-xl font-black text-slate-950">Add products</h2>
+          <p className="mt-1 text-sm text-slate-600">Choose a house-brand supplier, paste a public product URL, add one manually, or upload a spreadsheet.</p>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {[
+              { label: 'Blanka', to: '/admin/suppliers/blanka' },
+              { label: 'Roastify', to: '/admin/suppliers/roastify' },
+              { label: 'Supliful', to: '/admin/suppliers/supliful' },
+              { label: 'Manual', to: '/add-product' },
+              { label: 'Spreadsheet', to: '/admin/bulk-products' },
+              { label: 'Printful', to: '/admin/printful' },
+            ].map((action) => (
+              <Link key={action.label} to={action.to} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-4 text-center text-sm font-black text-slate-900 hover:border-amber-300 hover:bg-amber-50">
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div id="url-importer">
+          <AdminUrlProductImporter />
+        </div>
 
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -519,7 +540,7 @@ const AdminProductHubPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Approved Product Sources</h2>
           <p className="text-gray-700">
-            Blanka, Roastify, and Supliful now have dedicated admin-only import centers tied to MareBelle, RedTail, and Loving Nutrition. The importer reads public product data when available and falls back to reviewed manual entry for authenticated supplier portals. Printful keeps its dedicated connection, and Printify remains available in integrations. Confirm supplier permission, costs, variants, images, claims, labels, shipping, and fulfillment before publishing.
+            Blanka, Roastify, and Supliful have dedicated admin-only import centers tied to MareBelle, RedTail, and Loving Nutrition. The importer reads public product data when available and falls back to reviewed manual entry for authenticated supplier portals. Printful keeps its dedicated connection. Confirm supplier permission, costs, variants, images, claims, labels, shipping, and fulfillment before publishing.
           </p>
         </div>
       </div>

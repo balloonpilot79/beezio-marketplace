@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 
 const apiOptions = [
-  { name: 'Printify', keyName: 'printifyApiKey', docs: 'https://developers.printify.com/' },
+  { name: 'Printful', keyName: 'printfulApiKey', docs: 'https://developers.printful.com/' },
   { name: 'Shopify', keyName: 'shopifyApiKey', docs: 'https://shopify.dev/docs/api' },
   { name: 'Etsy', keyName: 'etsyApiKey', docs: 'https://developers.etsy.com/' },
   // Add more APIs as needed

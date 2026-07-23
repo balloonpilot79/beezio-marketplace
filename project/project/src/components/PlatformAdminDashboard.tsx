@@ -1613,6 +1613,17 @@ export default function PlatformAdminDashboard() {
     : 0;
   const monthlyReserveLoad = financeBuckets.monthly.paypalFees + financeBuckets.monthly.salesTax;
   const yearlyReserveLoad = financeBuckets.yearly.paypalFees + financeBuckets.yearly.salesTax;
+  const adminTabs: Array<{ id: AdminTab; label: string; detail: string; icon: typeof TrendingUp }> = [
+    { id: 'overview', label: 'Overview', detail: 'Platform snapshot', icon: TrendingUp },
+    { id: 'orders', label: 'Orders', detail: 'Sales and ledger', icon: Store },
+    { id: 'fulfillment', label: 'Fulfillment', detail: 'Pack and ship', icon: Package },
+    { id: 'payouts', label: 'Payouts', detail: 'Payday queue', icon: DollarSign },
+    { id: 'analytics', label: 'Analytics', detail: 'Performance', icon: BarChart3 },
+    { id: 'moderation', label: 'Moderation', detail: 'Marketplace review', icon: ShieldAlert },
+    { id: 'support', label: 'Support', detail: 'Customer issues', icon: MessageSquare },
+    { id: 'printful', label: 'Printful', detail: 'Product sync', icon: Store },
+    { id: 'tools', label: 'Tools', detail: 'Settings and tests', icon: Settings },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100">
@@ -1730,103 +1741,36 @@ export default function PlatformAdminDashboard() {
             )}
           </div>
 
-          <div className="flex justify-center mb-8">
-            <div className="bg-white rounded-lg p-1 shadow-sm">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`px-6 py-2 rounded-md transition-colors ${
-                  activeTab === 'overview'
-                    ? 'bg-amber-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+          <div className="mb-8 rounded-2xl border border-amber-200 bg-white p-4 shadow-sm sm:p-6">
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Admin workspace</h2>
+              <p className="mt-1 text-sm text-gray-600">Choose the job you need instead of scrolling through one long dashboard.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <Link
+                to="/admin/products"
+                className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-amber-300 hover:bg-amber-50"
               >
-                Overview
-              </button>
-              <button
-                onClick={() => setActiveTab('orders')}
-                className={`px-6 py-2 rounded-md transition-colors ${
-                  activeTab === 'orders'
-                    ? 'bg-amber-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Orders
-              </button>
-              <button
-                onClick={() => setActiveTab('payouts')}
-                className={`px-6 py-2 rounded-md transition-colors ${
-                  activeTab === 'payouts'
-                    ? 'bg-amber-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Payouts
-              </button>
-              <button
-                onClick={() => setActiveTab('analytics')}
-                className={`px-6 py-2 rounded-md transition-colors ${
-                  activeTab === 'analytics'
-                    ? 'bg-amber-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Analytics
-              </button>
-              <button
-                onClick={() => setActiveTab('printful')}
-                className={`px-6 py-2 rounded-md transition-colors flex items-center gap-2 ${
-                  activeTab === 'printful'
-                    ? 'bg-amber-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Store className="w-4 h-4" />
-                Printful
-              </button>
-              <button
-                onClick={() => setActiveTab('fulfillment')}
-                className={`px-6 py-2 rounded-md transition-colors flex items-center gap-2 ${
-                  activeTab === 'fulfillment'
-                    ? 'bg-amber-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Package className="w-4 h-4" />
-                Fulfillment
-              </button>
-              <button
-                onClick={() => setActiveTab('moderation')}
-                className={`px-6 py-2 rounded-md transition-colors flex items-center gap-2 ${
-                  activeTab === 'moderation'
-                    ? 'bg-amber-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <ShieldAlert className="w-4 h-4" />
-                Moderation
-              </button>
-              <button
-                onClick={() => setActiveTab('support')}
-                className={`px-6 py-2 rounded-md transition-colors flex items-center gap-2 ${
-                  activeTab === 'support'
-                    ? 'bg-amber-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <MessageSquare className="w-4 h-4" />
-                Support
-              </button>
-              <button
-                onClick={() => setActiveTab('tools')}
-                className={`px-6 py-2 rounded-md transition-colors flex items-center gap-2 ${
-                  activeTab === 'tools'
-                    ? 'bg-amber-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Settings className="w-4 h-4" />
-                Tools
-              </button>
+                <Package className="mb-2 h-5 w-5 text-amber-700" />
+                <div className="font-bold text-gray-900">Products</div>
+                <div className="mt-1 text-xs text-gray-600">Add and manage</div>
+              </Link>
+              {adminTabs.map(({ id, label, detail, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveTab(id)}
+                  className={`rounded-xl border p-3 text-left transition ${
+                    activeTab === id
+                      ? 'border-amber-500 bg-amber-500 text-white shadow-sm'
+                      : 'border-slate-200 bg-slate-50 text-gray-900 hover:border-amber-300 hover:bg-amber-50'
+                  }`}
+                >
+                  <Icon className={`mb-2 h-5 w-5 ${activeTab === id ? 'text-white' : 'text-amber-700'}`} />
+                  <div className="font-bold">{label}</div>
+                  <div className={`mt-1 text-xs ${activeTab === id ? 'text-amber-50' : 'text-gray-600'}`}>{detail}</div>
+                </button>
+              ))}
             </div>
           </div>
 
