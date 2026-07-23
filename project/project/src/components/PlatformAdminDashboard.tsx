@@ -298,7 +298,7 @@ type PayPalAdminConfig = {
   };
 };
 
-type AdminTab = 'overview' | 'orders' | 'payouts' | 'analytics' | 'eggracks' | 'printful' | 'fulfillment' | 'moderation' | 'support' | 'tools';
+type AdminTab = 'overview' | 'orders' | 'payouts' | 'analytics' | 'printful' | 'fulfillment' | 'moderation' | 'support' | 'tools';
 type TimeFilter = 'day' | 'week' | 'month' | '3mo' | '6mo' | 'year';
 
 type DateRange = {
@@ -1773,17 +1773,6 @@ export default function PlatformAdminDashboard() {
                 Analytics
               </button>
               <button
-                onClick={() => setActiveTab('eggracks')}
-                className={`px-6 py-2 rounded-md transition-colors flex items-center gap-2 ${
-                  activeTab === 'eggracks'
-                    ? 'bg-amber-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Store className="w-4 h-4" />
-                EggRacks
-              </button>
-              <button
                 onClick={() => setActiveTab('printful')}
                 className={`px-6 py-2 rounded-md transition-colors flex items-center gap-2 ${
                   activeTab === 'printful'
@@ -2425,33 +2414,6 @@ export default function PlatformAdminDashboard() {
 
           {activeTab === 'moderation' && <ContentModerationDashboard />}
 
-          {activeTab === 'eggracks' && (
-            <div className="mt-4 rounded-lg bg-white shadow-sm p-6">
-              <div className="max-w-3xl space-y-4">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900">EggRacks Import</h3>
-                  <p className="mt-2 text-gray-600">
-                    Open the dedicated EggRacks importer to pull in product descriptions, item codes, images, and variants, then save the result as a draft marketplace product for admin pricing review.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <Link
-                    to="/admin/eggracks-import"
-                    className="inline-flex items-center px-5 py-3 rounded-lg bg-gray-900 text-white font-semibold hover:bg-black transition-colors"
-                  >
-                    Open EggRacks Importer
-                  </Link>
-                  <Link
-                    to="/admin/products"
-                    className="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 text-gray-900 font-semibold hover:bg-gray-50 transition-colors"
-                  >
-                    Open Product Hub
-                  </Link>
-                </div>
-              </div>
-            </div>
-          )}
-
           {activeTab === 'printful' && (
             <div className="mt-4">
               <AdminPrintfulImportPage embedded />
@@ -2930,12 +2892,6 @@ export default function PlatformAdminDashboard() {
                     className="inline-flex items-center px-5 py-2 rounded-lg bg-gray-900 text-amber-200 font-semibold hover:bg-black transition-colors"
                   >
                     Admin Product Hub
-                  </Link>
-                  <Link
-                    to="/admin/eggracks-import"
-                    className="inline-flex items-center px-5 py-2 rounded-lg bg-slate-800 text-white font-semibold hover:bg-slate-900 transition-colors"
-                  >
-                    EggRacks Import
                   </Link>
                   <Link
                     to="/admin/payouts"

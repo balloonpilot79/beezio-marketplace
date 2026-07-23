@@ -472,27 +472,6 @@ const AdminProductHubPage: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">EggRacks URL Import</h2>
-            <p className="text-gray-700 mb-4">
-              Paste an EggRacks product URL to pull over the title, description, item code, images, and variant options, then save it as a draft marketplace item for pricing review.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to="/admin/eggracks-import"
-                className="inline-flex items-center px-5 py-3 rounded-lg bg-[#101820] text-white font-semibold hover:bg-black transition-colors"
-              >
-                Open EggRacks Import
-              </Link>
-              <Link
-                to="/admin/products"
-                className="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 text-gray-900 font-semibold hover:bg-gray-50 transition-colors"
-              >
-                Stay In Product Hub
-              </Link>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Bulk Add Products (Spreadsheet)</h2>
             <p className="text-gray-700 mb-4">
               Upload many products at once and set affiliate commission per item. Use this for seller-managed or approved supplier products.
@@ -517,7 +496,7 @@ const AdminProductHubPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Approved Product Sources</h2>
           <p className="text-gray-700">
-            The admin URL importer supports public supplier pages with structured product data and always requires review. Printful has a dedicated import flow, Printify remains available in integrations, and EggRacks keeps its source-specific draft flow. Confirm supplier permission, costs, variants, images, claims, labels, shipping, and fulfillment before publishing.
+            The admin URL importer supports public supplier pages with structured product data and always requires review. Printful has a dedicated import flow, and Printify remains available in integrations. Confirm supplier permission, costs, variants, images, claims, labels, shipping, and fulfillment before publishing.
           </p>
         </div>
       </div>

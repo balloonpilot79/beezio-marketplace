@@ -42,6 +42,7 @@ interface ProductFormProps {
 
 type AdminUrlImportSeed = {
   version: number;
+  manualEntry?: boolean;
   importedAt: string;
   sourceUrl: string;
   sourcePlatform: string;
@@ -567,7 +568,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     if (!raw) return;
     try {
       const seed = JSON.parse(raw) as AdminUrlImportSeed;
-      if (seed?.version !== 1 || !seed?.sourceUrl || !seed?.title) return;
+      if (seed?.version !== 1 || !seed?.sourceUrl || (!seed?.manualEntry && !seed?.title)) return;
       const images = Array.isArray(seed.images) ? seed.images.map(String).filter(Boolean).slice(0, MAX_IMAGES) : [];
       const stockFromVariants = (seed.variants || []).reduce((total, variant) => total + Math.max(0, Number(variant.inventory || 0)), 0);
       setAdminUrlImport(seed);

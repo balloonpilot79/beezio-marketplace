@@ -298,10 +298,11 @@ export function parseProductHtml(html: string, sourceUrl: string): ImportedProdu
 
 export async function importProductUrl(rawUrl: string): Promise<ImportedProductPreview> {
   let currentUrl = await assertSafeProductUrl(rawUrl);
-  for (let redirect = 0; redirect <= 4; redirect += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12_000);
-    try {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  try {
+    for (let redirect = 0; redirect <= 4; redirect += 1) {
+      try {
       const response = await fetch(currentUrl, {
         redirect: 'manual',
         signal: controller.signal,
@@ -327,9 +328,15 @@ export async function importProductUrl(rawUrl: string): Promise<ImportedProductP
       if (buffer.byteLength > 3_000_000) throw new Error('The supplier page is too large to import safely.');
       const html = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
       return parseProductHtml(html, currentUrl.toString());
-    } finally {
-      clearTimeout(timeout);
+      } catch (error: any) {
+        if (error?.name === 'AbortError') {
+          throw new Error('The supplier page took too long to read. It may require a supplier login. Continue with manual entry.');
+        }
+        throw error;
+      }
     }
+    throw new Error('The supplier page redirected too many times.');
+  } finally {
+    clearTimeout(timeout);
   }
-  throw new Error('The supplier page redirected too many times.');
 }

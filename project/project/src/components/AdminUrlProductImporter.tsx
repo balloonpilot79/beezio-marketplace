@@ -87,6 +87,8 @@ const AdminUrlProductImporter = () => {
   }), [affiliateType, affiliateValue, sellerAmount]);
 
   const runImport = async () => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 18_000);
     try {
       setLoading(true);
       setError(null);
@@ -96,6 +98,7 @@ const AdminUrlProductImporter = () => {
       if (!token) throw new Error('Sign in with the Beezio admin account before importing.');
       const response = await fetch('/.netlify/functions/admin-import-product-url', {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ url: url.trim() }),
       });
@@ -107,10 +110,52 @@ const AdminUrlProductImporter = () => {
       setWholesalePrice(Number(next.wholesalePrice || 0));
       setVariants((next.variants || []).map((variant) => ({ ...variant })));
     } catch (importError: any) {
-      setError(importError?.message || 'The supplier page could not be imported.');
+      setError(importError?.name === 'AbortError'
+        ? 'The supplier page took too long to read. It may require a supplier login. Continue with manual entry and Beezio will keep the source URL for you.'
+        : importError?.message || 'The supplier page could not be imported.');
     } finally {
+      window.clearTimeout(timeout);
       setLoading(false);
     }
+  };
+
+  const continueManually = () => {
+    const sourceUrl = url.trim();
+    if (!sourceUrl) {
+      setError('Paste the supplier product URL first.');
+      return;
+    }
+    let sourcePlatform = 'supplier';
+    try {
+      sourcePlatform = new URL(sourceUrl).hostname.replace(/^www\./, '') || sourcePlatform;
+    } catch {
+      setError('Enter a complete supplier URL beginning with https://');
+      return;
+    }
+    sessionStorage.setItem('beezio-admin-url-import', JSON.stringify({
+      version: 1,
+      manualEntry: true,
+      importedAt: new Date().toISOString(),
+      sourceUrl,
+      sourcePlatform,
+      title: '',
+      description: '',
+      brand: null,
+      sku: null,
+      currency: 'USD',
+      images: [],
+      wholesalePrice: 0,
+      markupType: 'percent',
+      markupValue: 40,
+      sellerAmount: 0,
+      affiliateType: 'percentage',
+      affiliateValue: 20,
+      storefrontId: '',
+      storefrontName: '',
+      variants: [],
+      warnings: ['The supplier page could not be read automatically. Verify every product detail before publishing.'],
+    }));
+    navigate('/add-product?source=admin-url-import');
   };
 
   const toggleImage = (image: string) => {
@@ -189,7 +234,15 @@ const AdminUrlProductImporter = () => {
         </button>
       </div>
 
-      {error ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div> : null}
+      {error ? (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <p>{error}</p>
+          <button type="button" onClick={continueManually} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#101820] px-4 py-2 font-black text-[#ffcb05]">
+            Continue with manual entry <ArrowRight className="h-4 w-4" />
+          </button>
+          <p className="mt-2 text-xs leading-5 text-red-700">Supplier portals that require a login cannot always be read by Beezio. Manual entry keeps this source URL and lets you add the title, wholesale cost, variants, images, markup, fees, and destination storefront yourself.</p>
+        </div>
+      ) : null}
 
       {preview ? (
         <div className="mt-6 space-y-6">

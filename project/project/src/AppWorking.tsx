@@ -84,7 +84,6 @@ const AuthPage = lazy(() => import('./pages/AuthPage'));
 const AuthConfirmPage = lazy(() => import('./pages/AuthConfirmPage'));
 const StorefrontAuthPage = lazy(() => import('./pages/StorefrontAuthPage'));
 const StorefrontBuyerAccountPage = lazy(() => import('./pages/StorefrontBuyerAccountPage'));
-const EggRacksImportPage = lazy(() => import('./pages/EggRacksImportPage'));
 const BulkProductUploadPage = lazy(() => import('./pages/BulkProductUploadPage'));
 const AdminProductHubPage = lazy(() => import('./pages/AdminProductHubPage'));
 const AdminPayoutsQueuePage = lazy(() => import('./pages/AdminPayoutsQueuePage'));
@@ -854,7 +853,6 @@ const AppWorking: React.FC = () => {
                     <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
                     <Route path="/admin/settings" element={<AdminRoute><PlatformSettings /></AdminRoute>} />
                     <Route path="/admin/messaging-smoke" element={<AdminRoute><MessagingSmokeTestPage /></AdminRoute>} />
-                    <Route path="/admin/eggracks-import" element={<AdminRoute><EggRacksImportPage /></AdminRoute>} />
                     <Route path="/support/ops" element={<SupportRoute><SupportOperationsPage /></SupportRoute>} />
                     <Route path="/support" element={<ContactSupport />} />
                     <Route path="/support/disputes" element={<ContactSupport />} />
