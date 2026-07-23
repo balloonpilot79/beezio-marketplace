@@ -71,24 +71,30 @@ const AdminProductHubPage: React.FC = () => {
 
       const { data, error: fetchError } = await supabase
         .from('products')
-        .select(`
-          id,
-          title,
-          seller_id,
-          source_platform,
-          cj_product_id,
-          sku,
-          price,
-          is_active,
-          created_at,
-          seller_profile:profiles!products_seller_id_fkey(full_name,email)
-        `)
+        .select('id,title,seller_id,source_platform,cj_product_id,sku,price,is_active,created_at')
         .order('created_at', { ascending: false })
         .limit(250);
 
       if (fetchError) throw fetchError;
-
-      setProducts((data || []) as AdminProductRow[]);
+      const baseProducts = (data || []) as AdminProductRow[];
+      const sellerIds = Array.from(new Set(baseProducts.map((product) => String(product.seller_id || '').trim()).filter(Boolean)));
+      let profileById = new Map<string, { full_name?: string | null; email?: string | null }>();
+      if (sellerIds.length) {
+        const { data: profileRows, error: profileError } = await supabase
+          .from('profiles')
+          .select('id,full_name,email')
+          .in('id', sellerIds);
+        if (!profileError) {
+          profileById = new Map(((profileRows as any[]) || []).map((profile) => [String(profile.id), {
+            full_name: profile.full_name ?? null,
+            email: profile.email ?? null,
+          }]));
+        }
+      }
+      setProducts(baseProducts.map((product) => ({
+        ...product,
+        seller_profile: product.seller_id ? profileById.get(String(product.seller_id)) || null : null,
+      })));
     } catch (err: any) {
       setError(err?.message || 'Failed to load products.');
     } finally {
@@ -288,7 +294,28 @@ const AdminProductHubPage: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-        <AdminUrlProductImporter />
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="text-xl font-black text-slate-950">Add products</h2>
+          <p className="mt-1 text-sm text-slate-600">Choose a house-brand supplier, paste a public product URL, add one manually, or upload a spreadsheet.</p>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {[
+              { label: 'Blanka', to: '/admin/suppliers/blanka' },
+              { label: 'Roastify', to: '/admin/suppliers/roastify' },
+              { label: 'Supliful', to: '/admin/suppliers/supliful' },
+              { label: 'Manual', to: '/add-product' },
+              { label: 'Spreadsheet', to: '/admin/bulk-products' },
+              { label: 'Printful', to: '/admin/printful' },
+            ].map((action) => (
+              <Link key={action.label} to={action.to} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-4 text-center text-sm font-black text-slate-900 hover:border-amber-300 hover:bg-amber-50">
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div id="url-importer">
+          <AdminUrlProductImporter />
+        </div>
 
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -449,6 +476,23 @@ const AdminProductHubPage: React.FC = () => {
           )}
         </div>
 
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {[
+            { id: 'blanka', name: 'Blanka', brand: 'MareBelle', detail: 'Beauty and personal-care products with brand-specific URL, manual, or spreadsheet review.' },
+            { id: 'roastify', name: 'Roastify', brand: 'RedTail', detail: 'Coffee products with grind variants, protected Roastify SKUs, costs, markup, and commissions.' },
+            { id: 'supliful', name: 'Supliful', brand: 'Loving Nutrition', detail: 'Wellness products with ingredients, label images, warnings, costs, and fulfillment review.' },
+          ].map((supplier) => (
+            <div key={supplier.id} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">{supplier.brand}</div>
+              <h2 className="mt-2 text-xl font-black text-slate-950">{supplier.name} Import</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-700">{supplier.detail}</p>
+              <Link to={`/admin/suppliers/${supplier.id}`} className="mt-5 inline-flex rounded-xl bg-[#101820] px-5 py-3 text-sm font-black text-[#ffcb05] hover:bg-black">
+                Open {supplier.name} Import
+              </Link>
+            </div>
+          ))}
+        </div>
+
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Printful Store Import</h2>
@@ -467,27 +511,6 @@ const AdminProductHubPage: React.FC = () => {
                 className="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 text-gray-900 font-semibold hover:bg-gray-50 transition-colors"
               >
                 Open Admin Dashboard
-              </Link>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">EggRacks URL Import</h2>
-            <p className="text-gray-700 mb-4">
-              Paste an EggRacks product URL to pull over the title, description, item code, images, and variant options, then save it as a draft marketplace item for pricing review.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to="/admin/eggracks-import"
-                className="inline-flex items-center px-5 py-3 rounded-lg bg-[#101820] text-white font-semibold hover:bg-black transition-colors"
-              >
-                Open EggRacks Import
-              </Link>
-              <Link
-                to="/admin/products"
-                className="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 text-gray-900 font-semibold hover:bg-gray-50 transition-colors"
-              >
-                Stay In Product Hub
               </Link>
             </div>
           </div>
@@ -517,7 +540,7 @@ const AdminProductHubPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Approved Product Sources</h2>
           <p className="text-gray-700">
-            The admin URL importer supports public supplier pages with structured product data and always requires review. Printful has a dedicated import flow, Printify remains available in integrations, and EggRacks keeps its source-specific draft flow. Confirm supplier permission, costs, variants, images, claims, labels, shipping, and fulfillment before publishing.
+            Blanka, Roastify, and Supliful have dedicated admin-only import centers tied to MareBelle, RedTail, and Loving Nutrition. The importer reads public product data when available and falls back to reviewed manual entry for authenticated supplier portals. Printful keeps its dedicated connection. Confirm supplier permission, costs, variants, images, claims, labels, shipping, and fulfillment before publishing.
           </p>
         </div>
       </div>

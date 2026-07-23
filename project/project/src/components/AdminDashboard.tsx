@@ -102,12 +102,6 @@ const AdminDashboard: React.FC = () => {
             Open Admin Product Hub
           </Link>
           <Link
-            to="/admin/eggracks-import"
-            className="inline-flex items-center px-5 py-3 rounded-lg bg-slate-800 text-white font-semibold hover:bg-slate-900 transition-colors"
-          >
-            Open EggRacks Import
-          </Link>
-          <Link
             to="/admin/payouts"
             className="inline-flex items-center px-5 py-3 rounded-lg bg-blue-700 text-white font-semibold hover:bg-blue-800 transition-colors"
           >

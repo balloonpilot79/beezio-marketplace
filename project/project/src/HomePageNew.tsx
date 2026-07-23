@@ -196,7 +196,7 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenAuthModal }) => {
               <div className="space-y-4 mb-6">
                 <div className="flex items-start">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Printful & Printify Integration:</strong> Seamlessly connect your print-on-demand business</span>
+                  <span className="text-gray-700"><strong>Printful Integration:</strong> Seamlessly connect your print-on-demand business</span>
                 </div>
                 <div className="flex items-start">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></div>

@@ -25,4 +25,10 @@ describe('house brand identity boundaries', () => {
     expect(HOUSE_BRAND_IDENTITIES.redtail.about.toLowerCase()).not.toContain('equestrian');
     expect(HOUSE_BRAND_IDENTITIES['loving-nutrition'].about.toLowerCase()).not.toContain('equestrian');
   });
+
+  it('keeps RedTail exclusively positioned as a coffee brand', () => {
+    const redtail = `${HOUSE_BRAND_IDENTITIES.redtail.headerLabel} ${HOUSE_BRAND_IDENTITIES.redtail.kicker} ${HOUSE_BRAND_IDENTITIES.redtail.about}`.toLowerCase();
+    expect(redtail).toContain('coffee');
+    expect(redtail).not.toMatch(/automotive|detailing|car care|vehicle/);
+  });
 });

@@ -13,15 +13,6 @@ interface Integration {
 
 const IntegrationsPage: React.FC = () => {
   const [integrations, setIntegrations] = useState<Integration[]>([
-
-    {
-      id: 'printify',
-      name: 'Printify',
-      description: 'Connect your Printify store to import products automatically',
-      logo: 'PFY',
-      isConnected: false,
-      status: 'inactive'
-    },
     {
       id: 'printful',
       name: 'Printful',
@@ -85,11 +76,7 @@ const IntegrationsPage: React.FC = () => {
         {displayedIntegrations.map((integration) => (
           <div
             key={integration.id}
-            className={
-              integration.id === 'printify'
-                ? 'bg-gradient-to-br from-amber-50 to-white rounded-lg shadow-md border border-amber-200 p-6'
-                : 'bg-white rounded-lg shadow-md border border-gray-200 p-6'
-            }
+            className="bg-white rounded-lg shadow-md border border-gray-200 p-6"
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center space-x-3">

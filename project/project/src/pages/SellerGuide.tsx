@@ -229,7 +229,7 @@ const SellerGuide: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
             {[
               'Shopify', 'Etsy', 'Amazon', 'eBay', 'WooCommerce',
-              'Printify', 'Printful', 'Square', 'BigCommerce', 'CSV Import'
+              'Printful', 'Shopify', 'Square', 'BigCommerce', 'CSV Import'
             ].map((platform) => (
               <div key={platform} className="bg-gray-50 rounded-lg p-4 text-center">
                 <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center mx-auto mb-3 shadow-sm">

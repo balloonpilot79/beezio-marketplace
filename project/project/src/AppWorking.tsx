@@ -84,12 +84,12 @@ const AuthPage = lazy(() => import('./pages/AuthPage'));
 const AuthConfirmPage = lazy(() => import('./pages/AuthConfirmPage'));
 const StorefrontAuthPage = lazy(() => import('./pages/StorefrontAuthPage'));
 const StorefrontBuyerAccountPage = lazy(() => import('./pages/StorefrontBuyerAccountPage'));
-const EggRacksImportPage = lazy(() => import('./pages/EggRacksImportPage'));
 const BulkProductUploadPage = lazy(() => import('./pages/BulkProductUploadPage'));
 const AdminProductHubPage = lazy(() => import('./pages/AdminProductHubPage'));
 const AdminPayoutsQueuePage = lazy(() => import('./pages/AdminPayoutsQueuePage'));
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
 const AdminPrintfulImportPage = lazy(() => import('./pages/AdminPrintfulImportPage'));
+const AdminHouseSupplierImportPage = lazy(() => import('./pages/AdminHouseSupplierImportPage'));
 const SupportOperationsPage = lazy(() => import('./pages/SupportOperationsPage'));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'));
 const PayPalConnectCallbackPage = lazy(() => import('./pages/PayPalConnectCallbackPage'));
@@ -848,13 +848,13 @@ const AppWorking: React.FC = () => {
                     <Route path="/admin" element={<AdminRoute><Navigate to="/dashboard/admin" replace /></AdminRoute>} />
                     <Route path="/admin/products" element={<AdminRoute><AdminProductHubPage /></AdminRoute>} />
                     <Route path="/admin/printful" element={<AdminRoute><AdminPrintfulImportPage /></AdminRoute>} />
+                    <Route path="/admin/suppliers/:supplierId" element={<AdminRoute><AdminHouseSupplierImportPage /></AdminRoute>} />
                     <Route path="/admin/bulk-products" element={<AdminRoute><BulkProductUploadPage /></AdminRoute>} />
                     <Route path="/admin/platform" element={<AdminRoute><PlatformAdminDashboard /></AdminRoute>} />
                     <Route path="/admin/payouts" element={<AdminRoute><AdminPayoutsQueuePage /></AdminRoute>} />
                     <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
                     <Route path="/admin/settings" element={<AdminRoute><PlatformSettings /></AdminRoute>} />
                     <Route path="/admin/messaging-smoke" element={<AdminRoute><MessagingSmokeTestPage /></AdminRoute>} />
-                    <Route path="/admin/eggracks-import" element={<AdminRoute><EggRacksImportPage /></AdminRoute>} />
                     <Route path="/support/ops" element={<SupportRoute><SupportOperationsPage /></SupportRoute>} />
                     <Route path="/support" element={<ContactSupport />} />
                     <Route path="/support/disputes" element={<ContactSupport />} />

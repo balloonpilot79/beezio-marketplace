@@ -19,8 +19,8 @@ const storefronts = [
   {
     name: 'RedTail',
     slug: 'redtail',
-    label: 'Automotive care & performance',
-    image: '/redtail-editorial-hero.png',
+    label: 'Fresh-roasted coffee & bold blends',
+    image: '/redtail-coffee-hero.png',
     imageClass: 'object-cover object-top',
     surface: 'from-[#17090b] to-[#3a1115]',
   },

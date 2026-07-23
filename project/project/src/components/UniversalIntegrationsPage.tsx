@@ -34,7 +34,7 @@ const UniversalIntegrationsPage: React.FC = () => {
     title: string;
     image?: string | null;
     status: 'created' | 'updated' | 'skipped';
-    platform: 'printify' | 'printful';
+    platform: 'printful';
   }>>([]);
   const [connectionData, setConnectionData] = useState({
     apiKey: '',
@@ -71,18 +71,6 @@ const UniversalIntegrationsPage: React.FC = () => {
 
     const availableIntegrations: Integration[] = [
 
-      {
-        id: 'printify',
-        name: 'Printify',
-        description: 'Connect your Print-on-Demand products',
-        logo: 'PFY',
-        isConnected: false,
-        status: 'inactive',
-        isAvailable: true,
-        isVisible: true,
-        supportedRoles: ['seller', 'affiliate'],
-        features: ['Product Import', 'Design Sync', 'Order Fulfillment', 'Shipping Integration']
-      },
       {
         id: 'printful',
         name: 'Printful',
@@ -257,8 +245,7 @@ const UniversalIntegrationsPage: React.FC = () => {
     integration.isVisible || integration.isConnected
   );
 
-  const featuredIntegration = visibleIntegrations.find(i => i.id === 'printify') || null;
-  const otherIntegrations = visibleIntegrations.filter(i => i.id !== 'printify');
+  const otherIntegrations = visibleIntegrations;
 
   return (
     <div className="max-w-6xl mx-auto px-2 py-4">
@@ -280,92 +267,7 @@ const UniversalIntegrationsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Featured Integration (Printify) */}
-      {featuredIntegration && (
-        <div className="mb-6 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="text-4xl">{featuredIntegration.logo}</div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-gray-900">{featuredIntegration.name}</h2>
-                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
-                    Recommended
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-gray-700">Fastest way to start selling print-on-demand products.</p>
-                <p className="mt-2 text-sm text-gray-600">{featuredIntegration.description}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <a
-                href="https://printify.com/app/account/api"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-50"
-              >
-                <ExternalLink className="h-4 w-4" />
-                Get API Token
-              </a>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {featuredIntegration.isConnected ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
-                <Check className="h-4 w-4" /> Connected
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
-                <AlertCircle className="h-4 w-4" /> Not connected
-              </span>
-            )}
-
-            {featuredIntegration.isConnected && (
-              <span className="text-sm text-gray-600">Products: <span className="font-semibold">{featuredIntegration.productCount || 0}</span></span>
-            )}
-
-            {featuredIntegration.isConnected && (
-              <span className="text-sm text-gray-600">Last sync: <span className="font-semibold">{featuredIntegration.lastSync ? new Date(featuredIntegration.lastSync).toLocaleDateString() : 'Never'}</span></span>
-            )}
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            {!featuredIntegration.isConnected ? (
-              <button
-                onClick={() => {
-                  setSelectedIntegration(featuredIntegration);
-                  setShowConnectionModal(true);
-                }}
-                className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600"
-              >
-                <Plus className="h-4 w-4" /> Connect Printify
-              </button>
-            ) : (
-              <>
-                <button
-                  onClick={() => {
-                    setSelectedIntegration(featuredIntegration);
-                    setShowImportModal(true);
-                  }}
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-                >
-                  <Download className="h-4 w-4" /> Import products
-                </button>
-                <button
-                  onClick={() => handleDisconnect(featuredIntegration.id)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                >
-                  Disconnect
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Integration Grid (everything except featured Printify) */}
+      {/* Integration Grid */}
       {otherIntegrations.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {otherIntegrations.map((integration) => (
@@ -469,7 +371,7 @@ const UniversalIntegrationsPage: React.FC = () => {
       {otherIntegrations.length === 0 && (
         <div className="mt-2 rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center">
           <h3 className="text-base font-semibold text-gray-900">More integrations are coming</h3>
-          <p className="mt-1 text-sm text-gray-600">We’re focusing on a clean, reliable Printify flow first.</p>
+          <p className="mt-1 text-sm text-gray-600">Approved supplier and storefront connections will appear here when enabled.</p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             {['Shopify', 'Etsy', 'WooCommerce', 'CSV import'].map((name) => (
               <span key={name} className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
@@ -523,15 +425,6 @@ const UniversalIntegrationsPage: React.FC = () => {
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <p className="text-sm text-blue-900 font-semibold mb-2">📖 Setup Instructions for {selectedIntegration.name}:</p>
                 <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-                  {selectedIntegration.id === 'printify' && (
-                    <>
-                      <li>Go to <a href="https://printify.com/app/account/api" target="_blank" rel="noopener noreferrer" className="underline font-medium">Printify API Settings</a></li>
-                      <li>Click "Generate New Token"</li>
-                      <li>Copy the Personal Access Token</li>
-                      <li>Paste it in the API Key field above</li>
-                      <li>We connect the first Printify shop on this token (disconnect + reconnect to change).</li>
-                    </>
-                  )}
                   {selectedIntegration.id === 'printful' && (
                     <>
                       <li>Visit <a href="https://www.printful.com/dashboard/store" target="_blank" rel="noopener noreferrer" className="underline font-medium">Printful Store Settings</a></li>
@@ -557,7 +450,7 @@ const UniversalIntegrationsPage: React.FC = () => {
                       <li>Paste it above</li>
                     </>
                   )}
-                  {!['printify', 'printful', 'shopify', 'etsy'].includes(selectedIntegration.id) && (
+                  {!['printful', 'shopify', 'etsy'].includes(selectedIntegration.id) && (
                     <>
                       <li>Log into your {selectedIntegration.name} account</li>
                       <li>Navigate to API settings or developer section</li>
@@ -719,5 +612,4 @@ const UniversalIntegrationsPage: React.FC = () => {
 };
 
 export default UniversalIntegrationsPage;
-
 
