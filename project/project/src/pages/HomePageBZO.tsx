@@ -28,8 +28,8 @@ const storefronts = [
     name: 'Loving Nutrition',
     slug: 'loving-nutrition',
     label: 'Nutrition & everyday wellness',
-    image: '/loving-nutrition-logo.png',
-    imageClass: 'object-contain p-5',
+    image: '/loving-nutrition-logo.png?v=20260723',
+    imageClass: 'object-contain p-1 scale-[1.08]',
     surface: 'from-[#063c2f] to-[#0b5b43]',
   },
 ];
@@ -117,7 +117,11 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
               <div className="absolute -inset-5 rounded-[38px] bg-gradient-to-br from-[#ffcb05]/20 via-transparent to-emerald-400/15 blur-2xl" />
               <div className="relative overflow-hidden rounded-[30px] border border-white/15 bg-white/[0.06] p-3 shadow-2xl backdrop-blur">
                 <div className="overflow-hidden rounded-[22px] border border-white/10 bg-gradient-to-br from-[#063c2f] to-[#0b5b43]">
-                  <img src="/loving-nutrition-logo.png" alt="Loving Nutrition storefront logo" className="aspect-square w-full object-contain p-5" />
+                  <img
+                    src="/loving-nutrition-logo.png?v=20260723"
+                    alt="Loving Nutrition storefront logo"
+                    className="aspect-square w-full scale-[1.08] object-contain p-2"
+                  />
                 </div>
                 <div className="flex items-center justify-between gap-4 px-2 pb-1 pt-4">
                   <div>
