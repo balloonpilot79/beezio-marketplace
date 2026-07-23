@@ -42,8 +42,8 @@ export const HOUSE_BRAND_IDENTITIES: Record<HouseBrandSlug, HouseBrandIdentity> 
     headerLabel: 'Nutrition & wellness',
     kicker: 'Everyday nutrition • wellness • healthy living',
     about: 'Loving Nutrition is an independent wellness brand focused on thoughtful nutrition and healthier everyday routines.',
-    heroUrl: '/loving-nutrition-logo.png',
-    logoUrl: '/loving-nutrition-logo.png',
+    heroUrl: '/loving-nutrition-logo.png?v=20260723',
+    logoUrl: '/loving-nutrition-logo.png?v=20260723',
     accentColor: '#c7a34a',
   },
 };
