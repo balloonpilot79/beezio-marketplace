@@ -1630,6 +1630,15 @@ const ProductDetailPage: React.FC = () => {
 
         {showListingManagement && (
           <div className="flex items-center gap-2">
+            {(isSellerRole || isAdminRole) && (
+              <Link
+                to={`/dashboard/products/edit/${product.id}`}
+                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 font-semibold text-blue-700 hover:bg-blue-100"
+                title="Edit product"
+              >
+                Edit
+              </Link>
+            )}
             <button
               type="button"
               onClick={handleToggleListing}

@@ -1654,7 +1654,6 @@ const ProductList = ({
         {products.map((product) => (
           <div
             key={product.id}
-            onClick={() => window.location.assign(`/product/${product.id}`)}
             className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
           >
             <div className="flex items-start gap-3">
@@ -1700,8 +1699,13 @@ const ProductList = ({
             </div>
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               <Link
+                to={`/product/${product.id}`}
+                className="inline-flex flex-1 items-center justify-center rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                View
+              </Link>
+              <Link
                 to={`/dashboard/products/edit/${product.id}`}
-                onClick={(event) => event.stopPropagation()}
                 className="inline-flex flex-1 items-center justify-center rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
               >
                 Edit
@@ -1743,8 +1747,7 @@ const ProductList = ({
           {products.map((product) => (
             <tr
               key={product.id}
-              onClick={() => window.location.assign(`/product/${product.id}`)}
-              className="h-20 cursor-pointer border-t transition hover:bg-orange-50/60"
+              className="h-20 border-t transition hover:bg-orange-50/60"
             >
               <td className="px-3 py-3">
                 <div className="flex items-center gap-3">
@@ -1785,8 +1788,13 @@ const ProductList = ({
               <td className="px-3 py-3 text-right">
                 <div className="flex justify-end gap-2">
                   <Link
+                    to={`/product/${product.id}`}
+                    className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    View
+                  </Link>
+                  <Link
                     to={`/dashboard/products/edit/${product.id}`}
-                    onClick={(event) => event.stopPropagation()}
                     className="rounded-md border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                   >
                     Edit
