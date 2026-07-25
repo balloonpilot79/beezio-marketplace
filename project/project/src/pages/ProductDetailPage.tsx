@@ -1520,17 +1520,22 @@ const ProductDetailPage: React.FC = () => {
       return;
     }
 
-    if (!confirm('Remove this product from your active dashboard and marketplace listings? Promoter links and payout history will be kept.')) return;
+    const confirmed = isAdminRole
+      ? confirm('Permanently delete this product if it has no order history? Products with order history will be safely archived instead.')
+      : confirm('Remove this product from your active dashboard and marketplace listings? Promoter links and payout history will be kept.');
+    if (!confirmed) return;
 
     try {
       setDeleteUpdating(true);
       const sellerId = canManageListing ? product.seller_id : undefined;
-      if (canManageListing) {
-        await archiveProductById({ productId: product.id, sellerId });
-      } else {
-        await deleteProductById({ productId: product.id, sellerId });
-      }
-      alert(canManageListing ? 'Product removed from active listings.' : 'Listing removed by admin.');
+      const result = isAdminRole
+        ? await deleteProductById({ productId: product.id, sellerId })
+        : (await archiveProductById({ productId: product.id, sellerId }), { mode: 'archived' as const });
+      alert(
+        result.mode === 'deleted'
+          ? 'Product permanently deleted.'
+          : 'Product removed from active listings and safely archived.'
+      );
       navigate(isAdminRole ? '/dashboard?section=admin' : '/dashboard/products');
     } catch (e) {
       console.error('[ProductDetailPage] delete failed', e);
