@@ -20,8 +20,8 @@ const storefronts = [
     name: 'RedTail',
     slug: 'redtail',
     label: 'Fresh-roasted coffee & bold blends',
-    image: '/redtail-coffee-hero.png',
-    imageClass: 'object-cover object-top',
+    image: '/redtail-ridgeline-homepage.webp?v=20260725',
+    imageClass: 'object-contain p-2',
     surface: 'from-[#17090b] to-[#3a1115]',
   },
   {

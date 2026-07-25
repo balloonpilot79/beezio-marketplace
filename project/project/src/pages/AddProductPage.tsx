@@ -13,7 +13,10 @@ type UploadMode = 'single' | 'bulk';
 const AddProductPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const [mode, setMode] = useState<UploadMode | null>(null);
+  const [mode, setMode] = useState<UploadMode | null>(() => {
+    const source = new URLSearchParams(window.location.search).get('source');
+    return source === 'admin-url-import' || source === 'admin-quick-add' ? 'single' : null;
+  });
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -423,4 +426,3 @@ const AddProductPage: React.FC = () => {
 };
 
 export default AddProductPage;
-
