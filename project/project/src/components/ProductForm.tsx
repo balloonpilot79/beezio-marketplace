@@ -43,6 +43,7 @@ interface ProductFormProps {
 type AdminUrlImportSeed = {
   version: number;
   manualEntry?: boolean;
+  supplierName?: string;
   importedAt: string;
   sourceUrl: string;
   sourcePlatform: string;
@@ -297,6 +298,20 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   // Use hard navigation from success CTAs to avoid rare router state stalls after save.
   const goTo = (path: string) => {
     window.location.assign(path);
+  };
+
+  const updateManualImportPricing = (patch: Partial<Pick<AdminUrlImportSeed, 'wholesalePrice' | 'markupType' | 'markupValue'>>) => {
+    if (!adminUrlImport?.manualEntry) return;
+    const next = { ...adminUrlImport, ...patch };
+    const wholesale = Math.max(0, Number(next.wholesalePrice || 0));
+    const markup = Math.max(0, Number(next.markupValue || 0));
+    const sellerAmount = Math.round((
+      next.markupType === 'percent'
+        ? wholesale * (1 + markup / 100)
+        : wholesale + markup
+    ) * 100) / 100;
+    setAdminUrlImport({ ...next, sellerAmount });
+    setPricingSeed((current) => ({ ...current, sellerAmount }));
   };
   const resetForm = () => {
     setFormData({
@@ -1763,12 +1778,72 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-8 space-y-6">
           {adminUrlImport ? (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-              <div className="text-sm font-black text-emerald-950">Admin URL import ready for final review</div>
+              <div className="text-sm font-black text-emerald-950">
+                {adminUrlImport.manualEntry ? 'Phone Quick Add' : 'Admin URL import ready for final review'}
+              </div>
               <p className="mt-1 text-sm leading-6 text-emerald-900">
-                Source: {adminUrlImport.sourcePlatform} · Brand storefront: {adminUrlImport.storefrontName || 'selected brand'} · Wholesale: ${Number(adminUrlImport.wholesalePrice || 0).toFixed(2)} · Variants: {adminUrlImport.variants.length}
+                Source: {adminUrlImport.supplierName || adminUrlImport.sourcePlatform} · Brand storefront: {adminUrlImport.storefrontName || 'choose below'}
+                {!adminUrlImport.manualEntry ? ` · Wholesale: $${Number(adminUrlImport.wholesalePrice || 0).toFixed(2)} · Variants: ${adminUrlImport.variants.length}` : ''}
               </p>
-              <p className="mt-2 text-xs leading-5 text-emerald-800">Confirm the title, description, images, pricing, affiliate terms, shipping, inventory, claims, labels, and destination brand below. Saving will preserve the supplier URL and reviewed variant data.</p>
+              <p className="mt-2 text-xs leading-5 text-emerald-800">
+                {adminUrlImport.manualEntry
+                  ? 'Add the title, category, at least one photo, your payout amount, and the affiliate amount. The supplier URL is already saved; optional variants and shipping can stay closed.'
+                  : 'Confirm the title, description, images, pricing, affiliate terms, shipping, inventory, claims, labels, and destination brand below. Saving will preserve the supplier URL and reviewed variant data.'}
+              </p>
             </div>
+          ) : null}
+          {adminUrlImport?.manualEntry ? (
+            <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <div className="text-sm font-black text-slate-950">Wholesale cost and your markup</div>
+              <p className="mt-1 text-xs leading-5 text-slate-700">Enter what the supplier charges and what you want to add. Beezio will carry the resulting seller payout into the pricing section below.</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <label className="text-xs font-bold uppercase tracking-wide text-slate-700">
+                  Wholesale cost
+                  <span className="relative mt-1 block">
+                    <span className="absolute left-3 top-3 text-slate-500">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={adminUrlImport.wholesalePrice}
+                      onChange={(event) => updateManualImportPricing({ wholesalePrice: Math.max(0, Number(event.target.value) || 0) })}
+                      className="w-full rounded-lg border border-amber-300 bg-white py-3 pl-8 pr-3 text-base text-slate-950"
+                    />
+                  </span>
+                </label>
+                <label className="text-xs font-bold uppercase tracking-wide text-slate-700">
+                  Markup type
+                  <select
+                    value={adminUrlImport.markupType}
+                    onChange={(event) => updateManualImportPricing({ markupType: event.target.value === 'flat' ? 'flat' : 'percent' })}
+                    className="mt-1 w-full rounded-lg border border-amber-300 bg-white px-3 py-3 text-base normal-case text-slate-950"
+                  >
+                    <option value="percent">Percentage</option>
+                    <option value="flat">Flat dollars</option>
+                  </select>
+                </label>
+                <label className="text-xs font-bold uppercase tracking-wide text-slate-700">
+                  Markup
+                  <span className="relative mt-1 block">
+                    {adminUrlImport.markupType === 'flat' ? <span className="absolute left-3 top-3 text-slate-500">$</span> : null}
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={adminUrlImport.markupValue}
+                      onChange={(event) => updateManualImportPricing({ markupValue: Math.max(0, Number(event.target.value) || 0) })}
+                      className={`w-full rounded-lg border border-amber-300 bg-white py-3 text-base text-slate-950 ${adminUrlImport.markupType === 'flat' ? 'pl-8 pr-3' : 'px-3 pr-8'}`}
+                    />
+                    {adminUrlImport.markupType === 'percent' ? <span className="absolute right-3 top-3 text-slate-500">%</span> : null}
+                  </span>
+                </label>
+              </div>
+              <div className="mt-3 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-900">
+                Your seller payout: ${Number(pricingSeed.sellerAmount || 0).toFixed(2)}
+              </div>
+            </section>
           ) : null}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-sm font-semibold text-slate-900">Fast phone flow</div>

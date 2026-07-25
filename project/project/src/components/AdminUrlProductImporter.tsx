@@ -154,6 +154,7 @@ const AdminUrlProductImporter = ({
     sessionStorage.setItem('beezio-admin-url-import', JSON.stringify({
       version: 1,
       manualEntry: true,
+      supplierName: supplierName || '',
       importedAt: new Date().toISOString(),
       sourceUrl,
       sourcePlatform,
@@ -174,7 +175,7 @@ const AdminUrlProductImporter = ({
       variants: [],
       warnings: ['The supplier page could not be read automatically. Verify every product detail before publishing.'],
     }));
-    navigate('/add-product?source=admin-url-import');
+    navigate('/add-product?source=admin-quick-add');
   };
 
   const toggleImage = (image: string) => {
@@ -206,6 +207,7 @@ const AdminUrlProductImporter = ({
     const selectedStorefront = storefronts.find((storefront) => storefront.id === storefrontId);
     const seed = {
       version: 1,
+      supplierName: supplierName || '',
       importedAt: new Date().toISOString(),
       sourceUrl: preview.sourceUrl,
       sourcePlatform: preview.sourcePlatform,
@@ -258,9 +260,9 @@ const AdminUrlProductImporter = ({
         <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           <p>{error}</p>
           <button type="button" onClick={continueManually} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#101820] px-4 py-2 font-black text-[#ffcb05]">
-            Continue with manual entry <ArrowRight className="h-4 w-4" />
+            Quick add from phone <ArrowRight className="h-4 w-4" />
           </button>
-          <p className="mt-2 text-xs leading-5 text-red-700">Supplier portals that require a login cannot always be read by Beezio. Manual entry keeps this source URL and lets you add the title, wholesale cost, variants, images, markup, fees, and destination storefront yourself.</p>
+          <p className="mt-2 text-xs leading-5 text-red-700">Supplier portals that require a login cannot always be read by Beezio. Quick Add keeps this source URL and selected brand, then takes you directly to the short phone form for the title, photo, category, price, and affiliate amount. Variants and shipping stay optional.</p>
         </div>
       ) : null}
 
