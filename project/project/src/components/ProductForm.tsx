@@ -15,6 +15,7 @@ import { isTestItemTitle } from '../../shared/testItemPricing';
 import { getNormalizedAccountRoles, isBuyerOnlyAccount } from '../utils/accountRoles';
 import { normalizeProductVideos } from '../utils/imageHelpers';
 import { evaluateListingGuardrails } from '../utils/listingGuardrails';
+import { resolveStableProductSubmissionId } from '../utils/productSubmissionId';
 
 interface ProductFormProps {
   onSuccess?: () => void;
@@ -351,6 +352,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     });
     setProductImages([]);
     setAdminUrlImport(null);
+    setCurrentProductId(null);
+    setCreatedProductId(null);
+    setCreatedMarketplaceStatus(null);
+    createProductIdRef.current = null;
   };
 
   const generateCopyWithAI = async () => {
@@ -379,6 +384,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [productImages, setProductImages] = useState<any[]>([]);
   const [currentProductId, setCurrentProductId] = useState<string | null>(null);
   const submitLockRef = useRef(false);
+  // Keep one client-generated ID for the lifetime of this create form. If the
+  // product insert succeeds but a later storefront-placement request fails,
+  // retrying Save updates the same row instead of creating a duplicate.
+  const createProductIdRef = useRef<string | null>(null);
   const editProductId = editMode && looksLikeUuid(routeProductId) ? routeProductId.trim() : null;
 
   // Load product for editing
@@ -1374,7 +1383,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         }
       } else {
         // Create product
+        createProductIdRef.current = resolveStableProductSubmissionId(createProductIdRef.current);
         let insertPayload: any = {
+            id: createProductIdRef.current,
             title: formData.title,
             description: formData.description,
             price: pricingBreakdown.listingPrice,
@@ -1431,7 +1442,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
           let data: any = null;
           let error: any = null;
           for (let attempt = 0; attempt < 8; attempt++) {
-            const res = await supabase.from('products').insert([working]).select().single();
+            const res = await supabase
+              .from('products')
+              .upsert([working], { onConflict: 'id' })
+              .select()
+              .single();
             if (!res.error) {
               data = res.data;
               error = null;

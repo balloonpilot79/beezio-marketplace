@@ -20,7 +20,8 @@ type AdminProductRow = {
   seller_id: string | null;
   source_platform: string | null;
   cj_product_id: string | null;
-  sku: string | null;
+  vendor_sku: string | null;
+  status: string | null;
   price: number | null;
   is_active: boolean | null;
   created_at: string | null;
@@ -56,7 +57,7 @@ const AdminProductHubPage: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sourceFilter, setSourceFilter] = useState<'current' | 'all' | 'retired'>('current');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [savingTestProduct, setSavingTestProduct] = useState(false);
 
@@ -71,7 +72,7 @@ const AdminProductHubPage: React.FC = () => {
 
       const { data, error: fetchError } = await supabase
         .from('products')
-        .select('id,title,seller_id,source_platform,cj_product_id,sku,price,is_active,created_at')
+        .select('id,title,seller_id,source_platform,cj_product_id,vendor_sku,price,is_active,status,created_at')
         .order('created_at', { ascending: false })
         .limit(250);
 
@@ -235,7 +236,7 @@ const AdminProductHubPage: React.FC = () => {
 
     const haystack = [
       product.title,
-      product.sku,
+      product.vendor_sku,
       product.id,
       product.seller_id,
       product.source_platform,
@@ -425,7 +426,7 @@ const AdminProductHubPage: React.FC = () => {
                         <div className="font-semibold text-gray-900">{product.title || 'Untitled product'}</div>
                         <div className="mt-1 text-xs text-gray-500">ID: {product.id}</div>
                         <div className="mt-1 text-xs text-gray-500">
-                          SKU: {product.sku || 'n/a'}
+                          SKU: {product.vendor_sku || 'n/a'}
                           {product.cj_product_id ? ` | Legacy source ID: ${product.cj_product_id}` : ''}
                         </div>
                       </td>

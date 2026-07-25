@@ -21,89 +21,6 @@ const cleanupProductRelations = async (supabaseAdmin: any, productId: string) =>
   await Promise.allSettled(cleanupTasks);
 };
 
-const forceDeleteOrders = async (supabaseAdmin: any, orderIds: string[]) => {
-  if (!orderIds.length) return;
-
-  const nowIso = new Date().toISOString();
-  const cleanupTasks = [
-    supabaseAdmin.from('account_refund_history').delete().in('order_id', orderIds),
-    supabaseAdmin.from('order_money_ledger').delete().in('order_id', orderIds),
-    supabaseAdmin.from('payout_snapshots').delete().in('order_id', orderIds),
-    supabaseAdmin.from('payout_ledger').delete().in('order_id', orderIds),
-    supabaseAdmin.from('payment_distributions').delete().in('order_id', orderIds),
-    supabaseAdmin.from('email_notifications').delete().in('order_id', orderIds),
-    supabaseAdmin.from('delivery_tracking').delete().in('order_id', orderIds),
-    supabaseAdmin.from('shipping_labels').delete().in('order_id', orderIds),
-    supabaseAdmin.from('vendor_orders').delete().in('order_id', orderIds),
-    supabaseAdmin.from('disputes').delete().in('order_id', orderIds),
-  ];
-
-  await Promise.allSettled(cleanupTasks);
-
-  await supabaseAdmin
-    .from('orders')
-    .update({
-      paid_at: null,
-      status: 'canceled',
-      payment_status: 'canceled',
-      updated_at: nowIso,
-    } as any)
-    .in('id', orderIds);
-
-  const { error } = await supabaseAdmin.from('orders').delete().in('id', orderIds);
-  if (error) throw error;
-};
-
-const forceDeleteProductOrderHistory = async (supabaseAdmin: any, productId: string) => {
-  const { data: linkedOrderItems, error: orderItemsError } = await supabaseAdmin
-    .from('order_items')
-    .select('id, order_id')
-    .eq('product_id', productId);
-
-  if (orderItemsError) throw orderItemsError;
-
-  const orderIds = Array.from(
-    new Set(
-      ((linkedOrderItems as any[]) || [])
-        .map((row) => String((row as any)?.order_id || '').trim())
-        .filter(Boolean)
-    )
-  );
-
-  if (orderIds.length) {
-    const { error: deleteOrderItemsError } = await supabaseAdmin
-      .from('order_items')
-      .delete()
-      .eq('product_id', productId);
-
-    if (deleteOrderItemsError) throw deleteOrderItemsError;
-  }
-
-  let orphanOrderIds: string[] = [];
-  if (orderIds.length) {
-    const { data: remainingItems, error: remainingItemsError } = await supabaseAdmin
-      .from('order_items')
-      .select('order_id')
-      .in('order_id', orderIds);
-
-    if (remainingItemsError) throw remainingItemsError;
-
-    const remainingOrderIdSet = new Set(
-      ((remainingItems as any[]) || [])
-        .map((row) => String((row as any)?.order_id || '').trim())
-        .filter(Boolean)
-    );
-
-    orphanOrderIds = orderIds.filter((orderId) => !remainingOrderIdSet.has(orderId));
-    await forceDeleteOrders(supabaseAdmin, orphanOrderIds);
-  }
-
-  return {
-    deletedOrderItemCount: Array.isArray(linkedOrderItems) ? linkedOrderItems.length : 0,
-    deletedOrderCount: orphanOrderIds.length,
-  };
-};
-
 export const handler: Handler = async (event) => {
   try {
     assertPost(event.httpMethod);
@@ -184,14 +101,8 @@ export const handler: Handler = async (event) => {
     }
 
     const guard = await checkOrderItemReferences({ supabaseAdmin, productId });
-    let purgeSummary: { deletedOrderItemCount: number; deletedOrderCount: number } | null = null;
-
-    await cleanupProductRelations(supabaseAdmin, productId);
 
     if (!guard.ok) {
-      if (isAdmin) {
-        purgeSummary = await forceDeleteProductOrderHistory(supabaseAdmin, productId);
-      } else {
       const { error: archiveError } = await supabaseAdmin
         .from('products')
         .update({
@@ -218,35 +129,30 @@ export const handler: Handler = async (event) => {
         archived: true,
         warning: guard.reason || 'Product has order history and was archived instead of deleted',
       });
-      }
     }
+
+    await cleanupProductRelations(supabaseAdmin, productId);
 
     const { error } = await supabaseAdmin.from('products').delete().eq('id', productId);
     if (error) return json(500, { error: error.message });
 
     await writeAuditLog({
       supabaseAdmin,
-        actor_user_id: user.id,
-        action: purgeSummary ? 'FORCE_DELETE_PRODUCT' : 'DELETE_PRODUCT',
+      actor_user_id: user.id,
+        action: 'DELETE_PRODUCT',
         entity_type: 'product',
         entity_id: productId,
         details: {
           ...(guard.warning ? { warning: guard.warning } : {}),
-          ...(purgeSummary
-            ? {
-                deleted_order_items: purgeSummary.deletedOrderItemCount,
-                deleted_orders: purgeSummary.deletedOrderCount,
-              }
-            : {}),
         },
       });
 
     return json(200, {
       ok: true,
       warning: guard.warning || null,
-      forceDeleted: Boolean(purgeSummary),
-      deletedOrderItems: purgeSummary?.deletedOrderItemCount || 0,
-      deletedOrders: purgeSummary?.deletedOrderCount || 0,
+      forceDeleted: false,
+      deletedOrderItems: 0,
+      deletedOrders: 0,
     });
   } catch (e: any) {
     const statusCode = Number(e?.statusCode) || 500;
