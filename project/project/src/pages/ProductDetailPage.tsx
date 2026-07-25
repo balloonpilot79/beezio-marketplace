@@ -30,6 +30,7 @@ import { archiveProductById } from '../utils/archiveProduct';
 import { fetchAccountOwnedProducts } from '../utils/accountOwnedProducts';
 import { formatMoneyDisplay, formatShippingDisplay, formatShippingLineItem } from '../utils/moneyDisplay';
 import { normalizeProductVideos } from '../utils/imageHelpers';
+import { resolveProductRefreshFailure } from '../utils/productRefreshState';
 import {
   fetchProductReviews as fetchProductReviewsFromService,
   getUserProductReviewStatus,
@@ -998,8 +999,13 @@ const ProductDetailPage: React.FC = () => {
   };
 
   const fetchProduct = async () => {
+    // Storefront and marketplace links can prefill a valid product so the page
+    // renders immediately. A slower background refresh must never erase that
+    // usable product if Supabase or the public endpoint times out afterward.
+    let hasRenderedProduct = Boolean(product);
+
     try {
-      const hadPrefill = Boolean(product);
+      const hadPrefill = hasRenderedProduct;
       if (!hadPrefill) {
         setLoading(true);
       }
@@ -1089,6 +1095,7 @@ const ProductDetailPage: React.FC = () => {
               ...(normalized as any),
               affiliate_id: String((normalized as any)?.affiliate_id || (prev as any)?.affiliate_id || '').trim() || undefined,
             }));
+            hasRenderedProduct = true;
             setLoading(false);
           }
         } catch (publicApiError) {
@@ -1105,6 +1112,7 @@ const ProductDetailPage: React.FC = () => {
             ...(normalized as any),
             affiliate_id: String((normalized as any)?.affiliate_id || (prev as any)?.affiliate_id || '').trim() || undefined,
           }));
+          hasRenderedProduct = true;
           minimalLoaded = true;
           if (!hadPrefill) {
             setLoading(false);
@@ -1166,6 +1174,7 @@ const ProductDetailPage: React.FC = () => {
           ...(normalized as any),
           affiliate_id: String((normalized as any)?.affiliate_id || (prev as any)?.affiliate_id || '').trim() || undefined,
         }));
+        hasRenderedProduct = true;
       } else if (!minimalLoaded) {
         throw new Error('Product not found');
       }
@@ -1186,9 +1195,16 @@ const ProductDetailPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching product:', error);
-      setProduct(null);
-      setError(error instanceof Error ? error.message : 'Unable to load product.');
-      setSellerStoreSettings(null);
+      const failureState = resolveProductRefreshFailure(hasRenderedProduct, error);
+      if (failureState.keepCurrentProduct) {
+        // The visible product is still valid. Treat this only as a failed
+        // background enrichment and keep the buyer on the product page.
+        setError(null);
+      } else {
+        setProduct(null);
+        setError(failureState.errorMessage);
+        setSellerStoreSettings(null);
+      }
     } finally {
       setLoading(false);
     }
