@@ -392,13 +392,27 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
   // Load product for editing
   React.useEffect(() => {
-    if (!editProductId) return;
+    if (!editProductId || authLoading) return;
+
+    if (!user) {
+      setError('Please sign in before editing this product.');
+      return;
+    }
 
     setCurrentProductId(editProductId);
+    let cancelled = false;
     (async () => {
       try {
-        const { data } = await supabase.from('products').select('*').eq('id', editProductId).single();
-        if (data) {
+        setLoading(true);
+        setError(null);
+        const { data, error: loadError } = await supabase
+          .from('products')
+          .select('*')
+          .eq('id', editProductId)
+          .maybeSingle();
+        if (loadError) throw loadError;
+        if (!data) throw new Error('This product could not be loaded for editing.');
+        if (!cancelled) {
           const shippingIncludedInPrice = getShippingIncludedState(data.shipping_options);
           const shippingPrice = getStoredShippingAmount(
             data.shipping_options,
@@ -477,9 +491,17 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         }
       } catch (error) {
         console.error('Error loading product data:', error);
+        if (!cancelled) {
+          setError(error instanceof Error ? error.message : 'Unable to load this product for editing.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, [editProductId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, editProductId, user?.id]);
 
   const [newTag, setNewTag] = useState('');
 
@@ -2134,6 +2156,65 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               </div>
           </div>
 
+          {(formData as any).is_digital !== true && (
+            <section className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
+              <div className="font-bold text-gray-950">Shipping charged to the customer</div>
+              <p className="mt-1 text-sm leading-6 text-gray-700">
+                Enter the shipping amount for this product. Beezio will add it at checkout unless you choose to include it in the product price.
+              </p>
+              <div className="mt-4 max-w-xs">
+                <label className="mb-2 block text-sm font-semibold text-gray-900" htmlFor="main-shipping-price">
+                  Shipping price
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-3 text-gray-500">$</span>
+                  <input
+                    id="main-shipping-price"
+                    type="number"
+                    name="shipping_price"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={formData.shipping_price}
+                    onChange={handleInputChange}
+                    onBlur={(event) =>
+                      setFormData((previous) => ({
+                        ...previous,
+                        shipping_price: parseFloat(normalizeMoneyInput(event.target.value)) || 0,
+                      }))
+                    }
+                    placeholder="4.99"
+                    className="w-full rounded-lg border border-gray-300 py-3 pl-8 pr-3 focus:border-[#ffcc00] focus:outline-none focus:ring-2 focus:ring-[#ffcc00]/20"
+                  />
+                </div>
+              </div>
+              <label className="mt-4 flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={Boolean((formData as any).shipping_included_in_price)}
+                  onChange={(event) =>
+                    setFormData((previous) => ({
+                      ...previous,
+                      shipping_included_in_price: event.target.checked,
+                      shipping_options: normalizeShippingOptions(
+                        (previous as any).shipping_options,
+                        Number(previous.shipping_price) || 0,
+                        event.target.checked
+                      ),
+                    }))
+                  }
+                  className="mt-1 h-5 w-5 rounded border-gray-300 text-[#ffcc00] focus:ring-[#ffcc00]"
+                />
+                <div>
+                  <div className="font-semibold text-gray-900">Include shipping in the product price</div>
+                  <div className="text-sm text-gray-600">
+                    The customer will see free shipping because this amount is folded into the listed price.
+                  </div>
+                </div>
+              </label>
+            </section>
+          )}
+
           <div className="border border-gray-200 rounded-xl bg-white p-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
@@ -2390,32 +2471,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               {(formData as any).is_digital !== true && (
                 <div className="border-t border-gray-200 pt-6">
                   <label className="block text-sm font-bold text-gray-900 mb-2">
-                    Shipping Setup
+                    Advanced shipping details (optional)
                   </label>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold text-gray-900">Built-in shipping amount</label>
-                      <input
-                        type="number"
-                        name="shipping_price"
-                        min="0"
-                        step="0.01"
-                        value={formData.shipping_price}
-                        onChange={handleInputChange}
-                        onBlur={(e) =>
-                          setFormData(prev => ({
-                            ...prev,
-                            shipping_price: parseFloat(normalizeMoneyInput(e.target.value)) || 0
-                          }))
-                        }
-                        placeholder="4.99"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
-                      />
-                      <p className="mt-2 text-xs text-gray-600">
-                        This is the shipping amount the seller wants charged at checkout unless free shipping is turned on.
-                      </p>
-                    </div>
-
                     <div>
                       <label className="mb-2 block text-sm font-semibold text-gray-900">Package weight (oz)</label>
                       <input
@@ -2476,32 +2534,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                     </div>
                   </div>
                   <p className="mt-3 text-xs text-gray-600">
-                    If free shipping is off, buyers will be charged the seller shipping amount entered here.
+                    The customer shipping price is entered in the main pricing section above.
                   </p>
-                  <label className="mt-3 flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={Boolean((formData as any).shipping_included_in_price)}
-                      onChange={(e) =>
-                        setFormData(prev => ({
-                          ...prev,
-                          shipping_included_in_price: e.target.checked,
-                          shipping_options: normalizeShippingOptions(
-                            (prev as any).shipping_options,
-                            Number(prev.shipping_price) || 0,
-                            e.target.checked
-                          ),
-                        }))
-                      }
-                      className="mt-1 w-5 h-5 text-[#ffcc00] border-gray-300 rounded focus:ring-[#ffcc00]"
-                    />
-                    <div>
-                      <div className="font-semibold text-gray-900">Include shipping in product price</div>
-                      <div className="text-sm text-gray-600">
-                        Checkout will show free shipping and the shipping amount will be folded into the product price.
-                      </div>
-                    </div>
-                  </label>
                 </div>
               )}
 
