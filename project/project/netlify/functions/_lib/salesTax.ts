@@ -47,7 +47,7 @@ export function resolveLocationTaxRate(params: {
   }
 
   return {
-    rate: validRate(params.fallbackRate) ?? 0,
+    rate: validRate(params.fallbackRate) ?? 0.07,
     source: 'configured_fallback',
   };
 }

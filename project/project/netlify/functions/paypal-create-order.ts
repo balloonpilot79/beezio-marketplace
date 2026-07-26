@@ -1266,7 +1266,7 @@ export const handler: Handler = async (event) => {
           ? configuredFallbackTaxRate
           : taxAmountClient > 0 && subtotalListing > 0
             ? taxAmountClient / subtotalListing
-            : 0;
+            : 0.07;
     const taxResolution = resolveLocationTaxRate({
       country: shippingAddress?.country,
       state: shippingAddress?.state,

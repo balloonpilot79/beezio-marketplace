@@ -23,12 +23,12 @@ describe('resolveLocationTaxRate', () => {
     })).toEqual({ rate: 0.0625, source: 'location:US-IL' });
   });
 
-  it('fails safely to a configured rate or zero', () => {
+  it('uses the configured fallback or the seven-percent default', () => {
     expect(resolveLocationTaxRate({ fallbackRate: 0.07 })).toEqual({
       rate: 0.07,
       source: 'configured_fallback',
     });
-    expect(resolveLocationTaxRate({ configuredRatesJson: 'invalid' }).rate).toBe(0);
+    expect(resolveLocationTaxRate({ configuredRatesJson: 'invalid' }).rate).toBe(0.07);
     expect(resolveLocationTaxRate({ disabled: true, fallbackRate: 0.07 }).rate).toBe(0);
   });
 });
