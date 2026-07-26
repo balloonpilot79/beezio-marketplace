@@ -1,5 +1,5 @@
 import { ceil2 } from './money';
-import { computeCustomerListingPrice } from '../../../shared/customerPrice';
+import { computeFixedTierPricing } from '../../../shared/customerPrice';
 
 /**
  * Compute listing price L (pre tax/shipping) so the seller can receive ask A,
@@ -22,19 +22,18 @@ export function computeListingPrice(params: {
   paypalPct: number; // decimal, e.g. 0.0399
   paypalFixed: number; // dollars
   payoutBuffer: number; // dollars
+  shippingIncluded?: number; // supplier shipping reserve baked into price
 }): number {
   const A = Number(params.ask) || 0;
   const partnerRate = Math.max(0, Number(params.partnerRate) || 0);
-  const affiliatePercent = partnerRate * 100;
   return ceil2(
-    computeCustomerListingPrice({
-      sellerAsk: A,
-      affiliateType: 'percent',
-      affiliateValue: affiliatePercent,
-      beezioRate: Math.max(0, Number(params.beezioRate) || 0),
+    computeFixedTierPricing({
+      sellerPayout: A,
+      affiliatePayout: A * partnerRate,
+      shippingIncluded: Math.max(0, Number(params.shippingIncluded) || 0),
       paypalPercent: Math.max(0, Number(params.paypalPct) || 0),
       paypalFixed: Math.max(0, Number(params.paypalFixed) || 0),
       payoutBuffer: Math.max(0, Number(params.payoutBuffer) || 0),
-    })
+    }).finalAdvertisedPrice
   );
 }

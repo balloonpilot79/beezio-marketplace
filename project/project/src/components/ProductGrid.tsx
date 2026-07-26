@@ -181,7 +181,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
         .limit(20);
 
       if (filter === 'affiliate') {
-        query = query.gt('commission_rate', 0);
+        query = query.or('affiliate_payout_amount.gt.0,flat_commission_amount.gt.0');
       }
 
       const { data, error } = await query;
@@ -376,7 +376,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
             affiliateType,
           });
           const commissionDisplayLabel = affiliateType === 'flat'
-            ? `$${Number(commissionConfig.value || 0).toFixed(2)} affiliate commission`
+            ? `Affiliate earns $${Number(commissionConfig.value || 0).toFixed(2)} per completed sale.`
             : `${Number(commissionConfig.value || 0)}% affiliate commission`;
 
           const primaryColor = colorScheme?.primary || '#f59e0b';

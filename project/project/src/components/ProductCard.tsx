@@ -99,7 +99,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     ? `Earn $${flatCommission.toFixed(2)}`
     : `Earn ${commissionRate}%`;
   const commissionDisplayLabel = commissionType === 'flat_rate'
-    ? `$${flatCommission.toFixed(2)} affiliate commission`
+    ? `Affiliate earns $${flatCommission.toFixed(2)} per completed sale.`
     : `${commissionRate}% affiliate commission`;
   const hasCommission =
     commissionType === 'flat_rate'

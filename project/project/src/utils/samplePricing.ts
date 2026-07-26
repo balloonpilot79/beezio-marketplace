@@ -1,4 +1,4 @@
-import { PLATFORM_FEE_PERCENT } from '../config/beezioConfig';
+import { computeFixedTierPricing } from '../../shared/customerPrice';
 
 const SAMPLE_MARKUP_BASE = 2;
 const SAMPLE_MARKUP_OVER_50 = 3;
@@ -16,9 +16,10 @@ export const calculateSamplePriceFromCost = (baseCost: number): number => {
     const steps = Math.floor((clean - SAMPLE_STEP_THRESHOLD) / SAMPLE_STEP_THRESHOLD) + 1;
     markup = SAMPLE_MARKUP_OVER_50 + SAMPLE_MARKUP_STEP_OVER_50 * steps;
   }
-  const base = clean + markup;
-  const platformFee = base * (PLATFORM_FEE_PERCENT / 100);
-  return roundToTwo(base + platformFee);
+  return roundToTwo(computeFixedTierPricing({
+    sellerPayout: clean + markup,
+    affiliatePayout: 0,
+  }).finalAdvertisedPrice);
 };
 
 type SamplePriceInput = {

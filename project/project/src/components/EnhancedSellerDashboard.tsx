@@ -200,7 +200,9 @@ const getSellerAskValue = (product: Product) => {
 
 const getAffiliateCommissionSummary = (product: Product) => {
   const commission = resolveAffiliateCommission(product as any);
-  return commission.type === 'flat' ? money(commission.value) : `${Number(commission.value || 0)}%`;
+  return commission.type === 'flat'
+    ? `Affiliate earns ${money(commission.value)} per completed sale`
+    : `${Number(commission.value || 0)}%`;
 };
 
 const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({

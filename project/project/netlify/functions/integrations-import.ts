@@ -207,7 +207,7 @@ const handler: Handler = async (event) => {
               ? Math.min(...normalizedVariants.map((v) => v.price || 0))
               : normalizeMoney((detail as any)?.price);
             const sellerAsk = round2(minSellerAsk || 0);
-            const listingPrice = round2(calculateCustomerProductPrice(sellerAsk, 'percent', commissionRate));
+            const listingPrice = round2(calculateCustomerProductPrice(sellerAsk, 'flat', commissionRate));
 
             const existing = await supabaseAdmin
               .from('products')
@@ -243,11 +243,12 @@ const handler: Handler = async (event) => {
               tags,
               stock_quantity: 1,
               is_active: true,
-              commission_rate: commissionRate,
-              commission_type: 'percentage',
-              flat_commission_amount: 0,
-              affiliate_commission_type: 'percent',
+              commission_rate: 0,
+              commission_type: 'flat_rate',
+              flat_commission_amount: commissionRate,
+              affiliate_commission_type: 'flat',
               affiliate_commission_value: commissionRate,
+              affiliate_payout_amount: commissionRate,
               shipping_cost: 0,
               category: 'Other',
               seller_id: profileId,
@@ -310,7 +311,7 @@ const handler: Handler = async (event) => {
                 external_product_id: String((detail as any)?.id || ''),
                 external_variant_id: variant.external_variant_id,
                 sku: variant.sku,
-                price: round2(calculateCustomerProductPrice(round2(variant.price || sellerAsk), 'percent', commissionRate)),
+                price: round2(calculateCustomerProductPrice(round2(variant.price || sellerAsk), 'flat', commissionRate)),
                 compare_at_price: null,
                 currency: 'USD',
                 image_url: images[0] || null,
@@ -325,7 +326,7 @@ const handler: Handler = async (event) => {
                 option3_value: variant.option_pairs?.[2]?.value || null,
                 inventory_source: 'printify',
                 cost_cents: variant.cost_cents || 0,
-                retail_price_cents: Math.round(calculateCustomerProductPrice(round2(variant.price || sellerAsk), 'percent', commissionRate) * 100),
+                retail_price_cents: Math.round(calculateCustomerProductPrice(round2(variant.price || sellerAsk), 'flat', commissionRate) * 100),
                 external_data: {
                   print_provider_id: variant.print_provider_id,
                   blueprint_id: variant.blueprint_id,
@@ -395,7 +396,7 @@ const handler: Handler = async (event) => {
               ? Math.min(...normalizedVariants.map((v) => v.price || 0))
               : 0;
             const sellerAsk = round2(minSellerAsk || 0);
-            const listingPrice = round2(calculateCustomerProductPrice(sellerAsk, 'percent', commissionRate));
+            const listingPrice = round2(calculateCustomerProductPrice(sellerAsk, 'flat', commissionRate));
 
             const existing = await supabaseAdmin
               .from('products')
@@ -431,11 +432,12 @@ const handler: Handler = async (event) => {
               tags: [],
               stock_quantity: 1,
               is_active: true,
-              commission_rate: commissionRate,
-              commission_type: 'percentage',
-              flat_commission_amount: 0,
-              affiliate_commission_type: 'percent',
+              commission_rate: 0,
+              commission_type: 'flat_rate',
+              flat_commission_amount: commissionRate,
+              affiliate_commission_type: 'flat',
               affiliate_commission_value: commissionRate,
+              affiliate_payout_amount: commissionRate,
               shipping_cost: 0,
               category: 'Other',
               seller_id: profileId,
@@ -498,7 +500,7 @@ const handler: Handler = async (event) => {
                 external_product_id: String(syncProduct?.id || product?.id || ''),
                 external_variant_id: variant.external_variant_id,
                 sku: variant.sku,
-                price: round2(calculateCustomerProductPrice(round2(variant.price || sellerAsk), 'percent', commissionRate)),
+                price: round2(calculateCustomerProductPrice(round2(variant.price || sellerAsk), 'flat', commissionRate)),
                 compare_at_price: null,
                 currency: 'USD',
                 image_url: images[0] || null,
@@ -513,7 +515,7 @@ const handler: Handler = async (event) => {
                 option3_value: Object.values(variant.attributes || {})[2] as string | null,
                 inventory_source: 'printful',
                 cost_cents: 0,
-                retail_price_cents: Math.round(calculateCustomerProductPrice(round2(variant.price || sellerAsk), 'percent', commissionRate) * 100),
+                retail_price_cents: Math.round(calculateCustomerProductPrice(round2(variant.price || sellerAsk), 'flat', commissionRate) * 100),
                 external_data: {},
                 cj_product_id: null,
                 cj_variant_id: null,

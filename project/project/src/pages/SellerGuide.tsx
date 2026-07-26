@@ -17,22 +17,21 @@ import {
   PieChart
 } from 'lucide-react';
 
-import { PLATFORM_FEE_PERCENT } from '../config/beezioConfig';
 import { calculateFinalPrice, computePayoutBreakdown } from '../utils/pricingEngine';
 
 const SellerGuide: React.FC = () => {
   const exampleSellerAsk = 100;
-  const examplePartnerPercent = 30;
+  const exampleAffiliatePayout = 30;
   const exampleFinalPrice = calculateFinalPrice(exampleSellerAsk, {
-    affiliatePercent: examplePartnerPercent,
-    platformPercent: PLATFORM_FEE_PERCENT,
+    affiliatePercent: exampleAffiliatePayout,
+    platformPercent: 0,
   });
   const exampleBreakdown = computePayoutBreakdown(
     exampleFinalPrice,
     exampleSellerAsk,
     {
-      affiliatePercent: examplePartnerPercent,
-      platformPercent: PLATFORM_FEE_PERCENT,
+      affiliatePercent: exampleAffiliatePayout,
+      platformPercent: 0,
     },
     { referralOverrideEnabled: false }
   );
@@ -146,11 +145,11 @@ const SellerGuide: React.FC = () => {
                     <span className="font-bold text-green-600">$100.00</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-700">Partner Commission (30%):</span>
+                    <span className="text-gray-700">Affiliate payout per sale:</span>
                     <span className="font-bold text-purple-600">$30.00</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-700">Platform Fee ({PLATFORM_FEE_PERCENT}%):</span>
+                    <span className="text-gray-700">Fixed Beezio platform fee:</span>
                     <span className="font-bold text-gray-600">${exampleBreakdown.platformGrossAmount.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">

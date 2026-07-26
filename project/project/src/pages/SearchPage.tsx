@@ -215,7 +215,7 @@ const SearchPage: React.FC = () => {
         countQuery = countQuery.gte('average_rating', parseFloat(searchFilters.rating));
       }
       if (searchFilters.hasCommission) {
-        countQuery = countQuery.gt('commission_rate', 0);
+        countQuery = countQuery.or('affiliate_payout_amount.gt.0,flat_commission_amount.gt.0');
       }
       if (searchFilters.isSubscription !== null) {
         countQuery = countQuery.eq('is_subscription', searchFilters.isSubscription);
@@ -261,6 +261,7 @@ const SearchPage: React.FC = () => {
             commission_rate,
             commission_type,
             flat_commission_amount,
+            affiliate_payout_amount,
             average_rating,
             review_count,
             profiles!products_seller_id_fkey(full_name, location),
@@ -285,7 +286,7 @@ const SearchPage: React.FC = () => {
           query = query.gte('average_rating', parseFloat(searchFilters.rating));
         }
         if (searchFilters.hasCommission) {
-          query = query.gt('commission_rate', 0);
+          query = query.or('affiliate_payout_amount.gt.0,flat_commission_amount.gt.0');
         }
         if (searchFilters.isSubscription !== null) {
           query = query.eq('is_subscription', searchFilters.isSubscription);

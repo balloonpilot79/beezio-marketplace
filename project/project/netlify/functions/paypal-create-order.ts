@@ -1,7 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { json, assertPost, parseJson } from './_lib/http';
-import { computeListingPrice } from './_lib/pricing';
 import { round2, toAmountString } from './_lib/money';
 import { getPayPalEnv, isPayPalEnabled, paypalRequestId } from './_lib/paypal';
 import { getEnvNumber } from './_lib/env';
@@ -21,6 +20,8 @@ import {
 } from '../../shared/beezioFee';
 import { isTestItemTitle, TEST_ITEM_PLATFORM_GROSS, TEST_ITEM_PRICE } from '../../shared/testItemPricing';
 import { getLowPriceFlatFeeTotal, isLowPriceAmount } from '../../shared/lowPriceFeePolicy';
+import { computeFixedTierPricing } from '../../shared/customerPrice';
+import { resolveLocationTaxRate } from './_lib/salesTax';
 
 const LOCKED_PLATFORM_RATE = DEFAULT_BEEZIO_PLATFORM_RATE;
 const LOCKED_PAYPAL_PERCENT = 0.0399;
@@ -60,15 +61,6 @@ const sameProfileId = (left: string | null | undefined, right: string | null | u
   return Boolean(normalizedLeft && normalizedRight && normalizedLeft === normalizedRight);
 };
 
-const getPlatformFeeForAsk = (ask: number) =>
-  computeBeezioPlatformFee(ask, {
-    rate: getEnvNumber('BEEZIO_RATE', LOCKED_PLATFORM_RATE),
-    minimum: getEnvNumber('BEEZIO_PLATFORM_FEE_MIN', LOCKED_PLATFORM_FEE_MIN_PER_ITEM),
-    cap: getEnvNumber('BEEZIO_PLATFORM_FEE_CAP', LOCKED_PLATFORM_FEE_CAP),
-    largeOrderThreshold: getEnvNumber('BEEZIO_PLATFORM_FEE_LARGE_ORDER_THRESHOLD', LOCKED_LARGE_ORDER_THRESHOLD),
-    largeOrderFlatFee: getEnvNumber('BEEZIO_PLATFORM_FEE_LARGE_ORDER_FLAT', LOCKED_LARGE_ORDER_FEE),
-  });
-
 const roundRate = (value: number) => Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000;
 
 const PRODUCT_SELECT_COLUMNS = [
@@ -93,6 +85,12 @@ const PRODUCT_SELECT_COLUMNS = [
   'affiliate_commission_rate',
   'affiliate_commission_type',
   'affiliate_commission_value',
+  'affiliate_payout_amount',
+  'supplier_cost_amount',
+  'seller_markup_amount',
+  'shipping_reserve_amount',
+  'influencer_allocation_amount',
+  'paypal_processing_allowance',
   'source_platform',
   'external_id',
   'shipping_cost',
@@ -149,7 +147,11 @@ const resolveAffiliateCommissionRate = (
   sellerAsk: number,
   defaultPartnerPercent: number
 ): number => {
-  const zeroCommissionFallbackPercent = 0.30;
+  const directPayout = Number(product?.affiliate_payout_amount);
+  if (Number.isFinite(directPayout) && directPayout >= 0 && sellerAsk > 0) {
+    return roundRate(directPayout / sellerAsk);
+  }
+  const zeroCommissionFallbackPercent = 0;
   const pickPositiveNumber = (...values: unknown[]) => {
     for (const value of values) {
       const num = Number(value);
@@ -933,6 +935,10 @@ export const handler: Handler = async (event) => {
       variantId?: string | null;
       platformFeeGrossUnit?: number | null;
       platformFeeNetUnit?: number | null;
+      affiliatePayoutUnit: number;
+      shippingReserveUnit: number;
+      influencerAllocationUnit: number;
+      paypalProcessingAllowanceUnit: number;
       cjCostUnit?: number | null;
       beezioCjProfitUnit?: number | null;
     }> = [];
@@ -985,30 +991,36 @@ export const handler: Handler = async (event) => {
       const partnerRate = partnerId ? configuredAffiliateRate : 0;
       const pricingPartnerRate = configuredAffiliateRate;
       const influencerRate = 0;
+      const affiliatePayoutUnit = round2(ask * pricingPartnerRate);
+      const shippingReserveUnit = round2(Math.max(
+        0,
+        Number(
+          prod?.shipping_reserve_amount ??
+          prod?.shipping_price ??
+          prod?.shipping_cost ??
+          0
+        )
+      ));
 
       if (!(askTotal > 0)) return json(400, { error: 'Invalid cart subtotal' });
-      const lineAskTotal = ask * qty;
-      const fixedShare = (paypalFixed * lineAskTotal) / askTotal;
-      const bufferShare = (payoutBuffer * lineAskTotal) / askTotal;
-      const lineListingTotal = isTestItemTitle(title)
-        ? round2(TEST_ITEM_PRICE * qty)
-        : computeListingPrice({
-            ask: lineAskTotal,
-            partnerRate: pricingPartnerRate,
-            influencerActive: hasInfluencerSlot,
-            beezioRate,
-            beezioMinimum: getEnvNumber('BEEZIO_PLATFORM_FEE_MIN', LOCKED_PLATFORM_FEE_MIN_PER_ITEM),
-            beezioCap: getEnvNumber('BEEZIO_PLATFORM_FEE_CAP', LOCKED_PLATFORM_FEE_CAP),
-            beezioLargeOrderThreshold: getEnvNumber('BEEZIO_PLATFORM_FEE_LARGE_ORDER_THRESHOLD', LOCKED_LARGE_ORDER_THRESHOLD),
-            beezioLargeOrderFlatFee: getEnvNumber('BEEZIO_PLATFORM_FEE_LARGE_ORDER_FLAT', LOCKED_LARGE_ORDER_FEE),
-            paypalPct,
-            paypalFixed: fixedShare,
-            payoutBuffer: bufferShare,
+      const unitPricing = isTestItemTitle(title)
+        ? null
+        : computeFixedTierPricing({
+            sellerPayout: ask,
+            affiliatePayout: affiliatePayoutUnit,
+            shippingIncluded: shippingReserveUnit,
+            paypalPercent: paypalPct,
+            paypalFixed,
+            payoutBuffer,
           });
-      const listingUnit = round2(lineListingTotal / qty);
+      const listingUnit = isTestItemTitle(title)
+        ? round2(TEST_ITEM_PRICE)
+        : round2(unitPricing!.finalAdvertisedPrice);
       subtotalListing += listingUnit * qty;
 
-      const platformFeeGrossUnit = round2(getPlatformFeeForAsk(ask));
+      const platformFeeGrossUnit = round2(
+        unitPricing?.platformFee ?? computeBeezioPlatformFee(listingUnit)
+      );
       const platformFeeNetUnit = platformFeeGrossUnit;
       const cjMapping = cjCostMap.get(productId);
       const cjCost = Number(cjMapping?.cj_cost ?? cjMapping?.price_breakdown?.cjCost ?? NaN);
@@ -1030,6 +1042,10 @@ export const handler: Handler = async (event) => {
         variantId,
         platformFeeGrossUnit,
         platformFeeNetUnit,
+        affiliatePayoutUnit,
+        shippingReserveUnit,
+        influencerAllocationUnit: round2(unitPricing?.influencerAllocation || 0),
+        paypalProcessingAllowanceUnit: round2(unitPricing?.paypalProcessingAllowance || 0),
         cjCostUnit,
         beezioCjProfitUnit,
       });
@@ -1242,16 +1258,24 @@ export const handler: Handler = async (event) => {
     const taxCollectionDisabled = String(process.env.DISABLE_TAX_COLLECTION || '').trim().toLowerCase() === 'true';
     const configuredPaymentTaxRate = Number(String(process.env.PAYMENT_TAX_RATE || '').trim());
     const configuredFallbackTaxRate = Number(String(process.env.TAX_RATE || '').trim());
-    const effectiveTaxRate = taxCollectionDisabled
-      ? 0
-      : Number.isFinite(configuredPaymentTaxRate) && configuredPaymentTaxRate > 0
+    const shippingAddress = body?.shipping_info || {};
+    const fallbackTaxRate =
+      Number.isFinite(configuredPaymentTaxRate) && configuredPaymentTaxRate >= 0
         ? configuredPaymentTaxRate
-        : Number.isFinite(configuredFallbackTaxRate) && configuredFallbackTaxRate > 0
+        : Number.isFinite(configuredFallbackTaxRate) && configuredFallbackTaxRate >= 0
           ? configuredFallbackTaxRate
-          : null;
-    const taxAmount = effectiveTaxRate !== null
-      ? round2(subtotalListing * effectiveTaxRate)
-      : round2(Math.max(0, taxAmountClient));
+          : taxAmountClient > 0 && subtotalListing > 0
+            ? taxAmountClient / subtotalListing
+            : 0;
+    const taxResolution = resolveLocationTaxRate({
+      country: shippingAddress?.country,
+      state: shippingAddress?.state,
+      postalCode: shippingAddress?.zip || shippingAddress?.postal_code,
+      configuredRatesJson: process.env.PAYMENT_TAX_RATES_JSON,
+      fallbackRate: fallbackTaxRate,
+      disabled: taxCollectionDisabled,
+    });
+    const taxAmount = round2(subtotalListing * taxResolution.rate);
 
     // Shipping is included in every physical product's listing price. We still
     // validate supplier-specific fulfillment requirements, but never add a
@@ -1502,6 +1526,15 @@ export const handler: Handler = async (event) => {
         affiliate_commission_percent_at_purchase: affiliateCommissionRate,
         platform_percent_at_purchase: platformPercentAtPurchase,
         seller_ask_amount: it.ask,
+        supplier_cost_amount: round2(Math.max(0, Number(
+          product?.supplier_cost_amount ?? (Number(product?.base_cost_cents || 0) / 100)
+        ))),
+        seller_markup_amount: round2(Math.max(0, Number(product?.seller_markup_amount ?? 0))),
+        affiliate_payout_amount: partnerId ? it.affiliatePayoutUnit : 0,
+        shipping_reserve_amount: it.shippingReserveUnit,
+        influencer_allocation_amount: it.influencerAllocationUnit,
+        platform_fee_amount: it.platformFeeGrossUnit,
+        paypal_processing_allowance: it.paypalProcessingAllowanceUnit,
         partner_rate: it.partnerRate,
         influencer_rate: it.influencerRate,
         beezio_rate: it.beezioRate,

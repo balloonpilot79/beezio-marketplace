@@ -74,6 +74,14 @@ const looksLikeCjProduct = (product: any): boolean => {
 
 const normalizeLegacyProduct = (product: any) => {
   const normalized = { ...(product || {}) };
+  const fixedAffiliatePayout = Number(normalized?.affiliate_payout_amount || 0);
+  if (fixedAffiliatePayout >= 0 && normalized?.affiliate_payout_amount != null) {
+    normalized.commission_type = 'flat_rate';
+    normalized.affiliate_commission_type = 'flat';
+    normalized.flat_commission_amount = fixedAffiliatePayout;
+    normalized.affiliate_commission_value = fixedAffiliatePayout;
+    normalized.commission_rate = 0;
+  }
   const commissionType = String(normalized?.commission_type || '').trim().toLowerCase();
   const affiliateCommissionType = String(normalized?.affiliate_commission_type || '').trim().toLowerCase();
   const hasExplicitFlatType =
@@ -112,11 +120,11 @@ const normalizeLegacyProduct = (product: any) => {
   const hasAnyCommission = normalizedPercent > 0 || normalizedAffiliateRate > 0 || normalizedAffiliateValue > 0 || normalizedFlatAmount > 0;
 
   if (!hasAnyCommission) {
-    normalized.commission_type = 'percentage';
-    normalized.affiliate_commission_type = 'percent';
-    normalized.commission_rate = 30;
-    normalized.affiliate_commission_rate = 30;
-    normalized.affiliate_commission_value = 30;
+    normalized.commission_type = 'flat_rate';
+    normalized.affiliate_commission_type = 'flat';
+    normalized.commission_rate = 0;
+    normalized.affiliate_commission_rate = 0;
+    normalized.affiliate_commission_value = 0;
   } else if (
     (String(normalized?.affiliate_commission_type || '').trim().toLowerCase() === 'flat' ||
       String(normalized?.commission_type || '').trim().toLowerCase() === 'flat_rate' ||
@@ -183,6 +191,12 @@ const handler: Handler = async (event) => {
       'flat_commission_amount',
       'affiliate_commission_type',
       'affiliate_commission_value',
+      'affiliate_payout_amount',
+      'supplier_cost_amount',
+      'seller_markup_amount',
+      'shipping_reserve_amount',
+      'influencer_allocation_amount',
+      'paypal_processing_allowance',
       'seller_id',
       'average_rating',
       'review_count',

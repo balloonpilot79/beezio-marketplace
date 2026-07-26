@@ -38,6 +38,7 @@ const normalizeCategoryLabel = (value: unknown) => {
 };
 
 const normalizeCommissionType = (product: any): 'percentage' | 'flat_rate' => {
+  if (product?.affiliate_payout_amount != null) return 'flat_rate';
   const raw = String(
     product?.commission_type ||
     product?.affiliate_commission_type ||
@@ -53,6 +54,7 @@ const getCommissionValue = (product: any): number => {
   if (commissionType === 'flat_rate') {
     return Number(
       product?.flat_commission_amount ??
+      product?.affiliate_payout_amount ??
       product?.affiliate_commission_value ??
       product?.commission_rate ??
       0
@@ -72,7 +74,7 @@ const formatCommissionLabel = (product: any) => {
 
   return commissionType === 'percentage'
     ? `${commissionValue}% Commission`
-    : `$${commissionValue.toFixed(2)} Commission`;
+    : `Affiliate earns $${commissionValue.toFixed(2)} per completed sale.`;
 };
 
 const calculateCommissionEarnings = (product: any, quantity: number = 1) => {
@@ -194,7 +196,8 @@ const AffiliateProductsPage: React.FC = () => {
           console.warn('Error fetching real products, using sample data:', error);
           setRealProducts(products.map(product => ({
             ...product,
-            commission_rate: 20 // Default commission rate
+            commission_rate: 0,
+            commission_type: 'flat_rate' as const,
           })));
           setLoading(false);
           return;
@@ -240,9 +243,9 @@ const AffiliateProductsPage: React.FC = () => {
           description: product.description || 'No description available',
           seller: 'Marketplace Seller',
           reviews: 0, // New products start with 0 reviews
-          commission_rate: product.commission_rate || 20, // Use commission_rate field or default to 20%
-          commission_type: normalizeCommissionType(product),
-          flat_commission_amount: Number(product.flat_commission_amount || product.affiliate_commission_value || 0) || 0,
+          commission_rate: getCommissionValue(product),
+          commission_type: 'flat_rate',
+          flat_commission_amount: getCommissionValue(product),
           sample_enabled: sampleEnabled,
           sample_price: samplePrice ?? undefined,
           created_at: product.created_at
@@ -254,7 +257,8 @@ const AffiliateProductsPage: React.FC = () => {
         console.log('No real products found, using sample data');
         setRealProducts(products.map(product => ({
           ...product,
-          commission_rate: 20 // Default commission rate
+          commission_rate: 0,
+          commission_type: 'flat_rate' as const,
         })));
       } else {
         setRealProducts(transformedProducts);
@@ -264,7 +268,8 @@ const AffiliateProductsPage: React.FC = () => {
       // Fallback to sample products on any error
       setRealProducts(products.map(product => ({
         ...product,
-        commission_rate: 20 // Default commission rate
+        commission_rate: 0,
+        commission_type: 'flat_rate' as const,
       })));
     } finally {
       setLoading(false);
@@ -300,10 +305,6 @@ const AffiliateProductsPage: React.FC = () => {
     const link = generateAffiliateLink(productId);
     const message = `Check this out on Beezio: ${link}`;
     window.location.href = `sms:?&body=${encodeURIComponent(message)}`;
-  };
-
-  const calculateEarnings = (price: number, commissionRate: number, quantity: number = 1) => {
-    return (price * (commissionRate / 100) * quantity).toFixed(2);
   };
 
   // Combine sample products and real products

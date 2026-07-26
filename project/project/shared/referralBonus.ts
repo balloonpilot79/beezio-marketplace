@@ -1,7 +1,7 @@
 // Each sale reserves two lifetime influencer slots: one for the seller's
-// recruiter and one for the affiliate's recruiter.  The slot value changes at
-// the same $25 boundary as Beezio's platform-fee policy.
-export const REFERRER_BONUS_THRESHOLD = 25;
+// recruiter and one for the affiliate's recruiter. Slot values are based on
+// the final advertised product price before sales tax.
+export const REFERRER_BONUS_THRESHOLD = 20;
 export const REFERRER_BONUS_UNDER_THRESHOLD = 0.5;
 export const REFERRER_BONUS_AT_OR_ABOVE_THRESHOLD = 1;
 export const INFLUENCER_BONUS_SLOT_COUNT = 2;
@@ -9,36 +9,57 @@ export const INFLUENCER_BONUS_SLOT_COUNT = 2;
 const roundToCurrency = (value: number): number =>
   Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
-export function getReferrerBonusPerItem(amount: number): number {
-  const normalizedAmount = Number.isFinite(amount) ? Math.max(0, amount) : 0;
-  return normalizedAmount < REFERRER_BONUS_THRESHOLD
+export function getReferrerBonusPerItem(finalAdvertisedPrice: number): number {
+  const price = Number.isFinite(finalAdvertisedPrice)
+    ? Math.max(0, finalAdvertisedPrice)
+    : 0;
+  return price < REFERRER_BONUS_THRESHOLD
     ? REFERRER_BONUS_UNDER_THRESHOLD
     : REFERRER_BONUS_AT_OR_ABOVE_THRESHOLD;
 }
 
-export function getReferrerBonusTotal(amount: number, quantity: number): number {
+export function getReferrerBonusTotal(finalAdvertisedPrice: number, quantity: number): number {
   const normalizedQuantity = Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
-  return roundToCurrency(getReferrerBonusPerItem(amount) * normalizedQuantity);
+  return roundToCurrency(getReferrerBonusPerItem(finalAdvertisedPrice) * normalizedQuantity);
 }
 
-export function getInfluencerBonusPerSlot(amount: number): number {
-  return getReferrerBonusPerItem(amount);
+export function getInfluencerBonusPerSlot(finalAdvertisedPrice: number): number {
+  return getReferrerBonusPerItem(finalAdvertisedPrice);
 }
 
-export function getInfluencerReserveTotal(amount: number, quantity = 1): number {
+export function getInfluencerReserveTotal(finalAdvertisedPrice: number, quantity = 1): number {
   const normalizedQuantity = Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
-  return roundToCurrency(getInfluencerBonusPerSlot(amount) * INFLUENCER_BONUS_SLOT_COUNT * normalizedQuantity);
-}
-
-export function getAssignedInfluencerPayoutTotal(amount: number, assignedInfluencerCount: number, quantity = 1): number {
-  const normalizedCount = Math.min(INFLUENCER_BONUS_SLOT_COUNT, Math.max(0, Math.floor(Number(assignedInfluencerCount || 0))));
-  const normalizedQuantity = Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
-  return roundToCurrency(getInfluencerBonusPerSlot(amount) * normalizedCount * normalizedQuantity);
-}
-
-export function getUnassignedInfluencerReserveTotal(amount: number, assignedInfluencerCount: number, quantity = 1): number {
   return roundToCurrency(
-    getInfluencerReserveTotal(amount, quantity) -
-      getAssignedInfluencerPayoutTotal(amount, assignedInfluencerCount, quantity)
+    getInfluencerBonusPerSlot(finalAdvertisedPrice) *
+      INFLUENCER_BONUS_SLOT_COUNT *
+      normalizedQuantity
+  );
+}
+
+export function getAssignedInfluencerPayoutTotal(
+  finalAdvertisedPrice: number,
+  assignedInfluencerCount: number,
+  quantity = 1
+): number {
+  const normalizedCount = Math.min(
+    INFLUENCER_BONUS_SLOT_COUNT,
+    Math.max(0, Math.floor(Number(assignedInfluencerCount || 0)))
+  );
+  const normalizedQuantity = Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
+  return roundToCurrency(
+    getInfluencerBonusPerSlot(finalAdvertisedPrice) *
+      normalizedCount *
+      normalizedQuantity
+  );
+}
+
+export function getUnassignedInfluencerReserveTotal(
+  finalAdvertisedPrice: number,
+  assignedInfluencerCount: number,
+  quantity = 1
+): number {
+  return roundToCurrency(
+    getInfluencerReserveTotal(finalAdvertisedPrice, quantity) -
+      getAssignedInfluencerPayoutTotal(finalAdvertisedPrice, assignedInfluencerCount, quantity)
   );
 }

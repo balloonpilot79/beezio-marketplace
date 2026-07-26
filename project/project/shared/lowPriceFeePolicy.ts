@@ -2,7 +2,7 @@ const round2 = (value: number): number =>
   Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
 export const LOW_PRICE_THRESHOLD = 25;
-export const LOW_PRICE_TOTAL_FEE = 2;
+export const LOW_PRICE_TOTAL_FEE = 1;
 
 export const isLowPriceAmount = (amount: number): boolean =>
   Number.isFinite(amount) && Number(amount) > 0 && Number(amount) < LOW_PRICE_THRESHOLD;

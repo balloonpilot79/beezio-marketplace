@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Settings, DollarSign, Percent, Save, Calculator } from 'lucide-react';
+import { Settings, DollarSign, Save, Calculator } from 'lucide-react';
 import { PLATFORM_CONFIG, calculateFees } from '../utils/platformConfig';
 
 const PlatformSettings: React.FC = () => {
   const [config, setConfig] = useState({
-    platformFeePercentage: PLATFORM_CONFIG.PLATFORM_FEE_PERCENTAGE,
     defaultAffiliateCommission: PLATFORM_CONFIG.DEFAULT_AFFILIATE_COMMISSION,
     minimumPayoutAmount: PLATFORM_CONFIG.MINIMUM_PAYOUT_AMOUNT
   });
@@ -37,26 +36,17 @@ const PlatformSettings: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Platform Fee (Beezio's Revenue)
               </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={config.platformFeePercentage}
-                  onChange={(e) => setConfig({...config, platformFeePercentage: Number(e.target.value)})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  min="0"
-                  max="50"
-                  step="0.1"
-                />
-                <Percent className="absolute right-2 top-2.5 h-4 w-4 text-gray-400" />
+              <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-3 text-sm text-gray-800">
+                $1 under $25; $2 from $25–$99.99; then $2 more for each additional $100 tier.
               </div>
               <p className="text-sm text-gray-500 mt-1">
-                Platform fee percentage on all sales (currently {config.platformFeePercentage}%)
+                Beezio uses fixed platform-fee tiers based on the final advertised price.
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Default Partner Commission
+                Default Affiliate Payout
               </label>
               <div className="relative">
                 <input
@@ -65,13 +55,12 @@ const PlatformSettings: React.FC = () => {
                   onChange={(e) => setConfig({...config, defaultAffiliateCommission: Number(e.target.value)})}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min="0"
-                  max="50"
-                  step="0.1"
+                  step="0.01"
                 />
-                <Percent className="absolute right-2 top-2.5 h-4 w-4 text-gray-400" />
+                <DollarSign className="absolute right-2 top-2.5 h-4 w-4 text-gray-400" />
               </div>
               <p className="text-sm text-gray-500 mt-1">
-                Default commission rate for new affiliate products
+                Fixed dollars earned per completed sale.
               </p>
             </div>
 
@@ -188,8 +177,8 @@ const PlatformSettings: React.FC = () => {
                   <span className="font-medium text-blue-900">${testCalculation.platformFee}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-blue-700">Revenue Rate:</span>
-                  <span className="font-medium text-blue-900">{config.platformFeePercentage}% of all sales</span>
+                  <span className="text-blue-700">Revenue Rule:</span>
+                  <span className="font-medium text-blue-900">Fixed price tiers</span>
                 </div>
               </div>
             </div>

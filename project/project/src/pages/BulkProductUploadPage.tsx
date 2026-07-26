@@ -4,12 +4,14 @@ import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Package } 
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import Papa from 'papaparse';
-import { calculateCustomerProductPrice } from '../utils/pricing';
+import { computeFixedTierPricing } from '../../shared/customerPrice';
 
 interface ProductRow {
   title: string;
   description: string;
   price: number;
+  supplier_cost: number;
+  seller_markup: number;
   category: string;
   sku?: string;
   stock_quantity?: number;
@@ -23,7 +25,7 @@ interface ProductRow {
   image_url_3?: string;
   image_url_4?: string;
   image_url_5?: string;
-  affiliate_commission_rate: number;
+  affiliate_payout: number;
 }
 
 const BulkProductUploadPage: React.FC = () => {
@@ -43,7 +45,8 @@ const BulkProductUploadPage: React.FC = () => {
       {
         title: 'Example Product Name',
         description: 'Detailed product description here',
-        price: 29.99,
+        supplier_cost: 18,
+        seller_markup: 11.99,
         category: 'Electronics',
         sku: 'PROD-001',
         stock_quantity: 100,
@@ -57,7 +60,7 @@ const BulkProductUploadPage: React.FC = () => {
         image_url_3: '',
         image_url_4: '',
         image_url_5: '',
-        affiliate_commission_rate: 0.10
+        affiliate_payout: 5
       }
     ];
 
@@ -98,7 +101,9 @@ const BulkProductUploadPage: React.FC = () => {
       const products: ProductRow[] = (parsed.data || []).map(row => ({
         title: row.title || '',
         description: row.description || '',
-        price: parseFloat(row.price) || 0,
+        supplier_cost: parseNonNegativeNumber(row.supplier_cost, 0),
+        seller_markup: parseNonNegativeNumber(row.seller_markup, 0),
+        price: parseNonNegativeNumber(row.price, 0),
         category: row.category || '',
         sku: row.sku || '',
         stock_quantity: parseInt(row.stock_quantity) || 0,
@@ -112,7 +117,7 @@ const BulkProductUploadPage: React.FC = () => {
         image_url_3: row.image_url_3 || '',
         image_url_4: row.image_url_4 || '',
         image_url_5: row.image_url_5 || '',
-        affiliate_commission_rate: parseNonNegativeNumber(row.affiliate_commission_rate, 0)
+        affiliate_payout: parseNonNegativeNumber(row.affiliate_payout, 0)
       }));
 
       setPreviewData(products);
@@ -151,33 +156,52 @@ const BulkProductUploadPage: React.FC = () => {
           .ilike('name', product.category)
           .single();
 
-        const sellerAsk = product.price;
-        const affiliateRatePercent = Number.isFinite(product.affiliate_commission_rate)
-          ? product.affiliate_commission_rate > 1
-            ? product.affiliate_commission_rate
-            : product.affiliate_commission_rate * 100
-          : 0;
-        const listingPrice = calculateCustomerProductPrice(sellerAsk, 'percent', affiliateRatePercent);
+        const supplierCost = product.supplier_cost || 0;
+        const sellerMarkup = product.seller_markup || Math.max(0, product.price - supplierCost);
+        const sellerPayout = supplierCost + sellerMarkup;
+        if (sellerPayout <= 0) throw new Error('Supplier cost plus seller markup must be greater than zero.');
+        const pricing = computeFixedTierPricing({
+          supplierCost,
+          sellerMarkup,
+          affiliatePayout: product.affiliate_payout || 0,
+          shippingIncluded: product.shipping_cost || 0,
+        });
 
         const productData = {
           seller_id: profile.id,
           title: product.title,
           description: product.description,
-          price: listingPrice,
-          calculated_customer_price: listingPrice,
-          seller_ask: sellerAsk,
-          seller_amount: sellerAsk,
-          seller_ask_price: sellerAsk,
+          price: pricing.finalAdvertisedPrice,
+          calculated_customer_price: pricing.finalAdvertisedPrice,
+          seller_ask: pricing.sellerPayout,
+          seller_amount: pricing.sellerPayout,
+          seller_ask_price: pricing.sellerPayout,
+          supplier_cost_amount: pricing.supplierCost,
+          seller_markup_amount: pricing.sellerMarkup,
           category_id: categoryData?.id || null,
           sku: product.sku || null,
           stock_quantity: product.stock_quantity || 0,
           images: images,
-          commission_rate: affiliateRatePercent,
-          commission_type: 'percentage',
-          affiliate_commission_rate: affiliateRatePercent,
-          affiliate_commission_type: 'percent',
-          affiliate_commission_value: affiliateRatePercent,
-          shipping_cost: product.shipping_cost || 0,
+          commission_rate: 0,
+          commission_type: 'flat_rate',
+          affiliate_commission_rate: 0,
+          affiliate_commission_type: 'flat',
+          affiliate_commission_value: pricing.affiliatePayout,
+          flat_commission_amount: pricing.affiliatePayout,
+          affiliate_payout_amount: pricing.affiliatePayout,
+          shipping_cost: pricing.shippingIncluded,
+          shipping_price: pricing.shippingIncluded,
+          shipping_reserve_amount: pricing.shippingIncluded,
+          influencer_allocation_amount: pricing.influencerAllocation,
+          platform_fee: pricing.platformFee,
+          paypal_processing_allowance: pricing.paypalProcessingAllowance,
+          shipping_options: [{
+            name: 'Free Shipping',
+            cost: 0,
+            estimated_days: '3-5 business days',
+            included_in_price: true,
+            seller_shipping_cost: pricing.shippingIncluded,
+          }],
           is_active: true,
           sales_count: 0,
           created_at: new Date().toISOString(),

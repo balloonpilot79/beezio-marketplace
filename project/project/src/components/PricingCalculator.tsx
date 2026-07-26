@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Calculator, DollarSign, Percent, TrendingUp } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp } from 'lucide-react';
 import {
   calculatePricing,
   formatPricingBreakdown,
@@ -22,7 +22,7 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
   onPricingChange,
   initialSellerAmount = 100,
   initialAffiliateAmount = 10,
-  initialAffiliateType = 'percent',
+  initialAffiliateType = 'flat',
   shippingAmount = 0,
   includeShippingInPrice = false,
   currency = 'USD',
@@ -31,7 +31,7 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
   const [input, setInput] = useState({
     sellerAmount: initialSellerAmount,
     affiliateAmount: initialAffiliateAmount,
-    affiliateType: initialAffiliateType,
+    affiliateType: 'flat' as const,
   });
   const [breakdown, setBreakdown] = useState<PricingBreakdown | null>(null);
 
@@ -39,7 +39,7 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
     setInput({
       sellerAmount: initialSellerAmount,
       affiliateAmount: initialAffiliateAmount,
-      affiliateType: initialAffiliateType,
+      affiliateType: 'flat',
     });
   }, [initialAffiliateAmount, initialAffiliateType, initialSellerAmount]);
 
@@ -48,8 +48,8 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
       const calculated = calculatePricing({
         sellerDesiredAmount: input.sellerAmount,
         affiliateRate: input.affiliateAmount,
-        affiliateType: input.affiliateType === 'percent' ? 'percentage' : 'flat_rate',
-        shippingIncludedAmount: includeShippingInPrice ? shippingAmount : 0,
+        affiliateType: 'flat_rate',
+        shippingIncludedAmount: shippingAmount,
         referralRate: 0,
         platformFeeRate: undefined,
         testItem,
@@ -84,9 +84,7 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
         <p className="font-semibold">Set your payout and optional affiliate commission.</p>
         <p className="mt-1">
           Enter the amount you want to receive from the sale. The customer price updates automatically.
-          {includeShippingInPrice && shippingAmount > 0
-            ? ` Shipping is included at ${new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(shippingAmount)}.`
-            : ' Shipping stays separate unless you include it in the item price.'}
+          {` Shipping is included at ${new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(shippingAmount)} and checkout displays Free Shipping.`}
         </p>
         <p className="mt-1">
           Use the preview below to confirm the seller amount, affiliate amount, and customer total before saving.
@@ -112,8 +110,8 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
             />
           </div>
           <p className="text-xs text-gray-600">This is the amount you want to receive from the sale.</p>
-          {includeShippingInPrice && shippingAmount > 0 ? (
-            <p className="text-xs text-amber-700">Shipping is included in the item price.</p>
+          {shippingAmount > 0 ? (
+            <p className="text-xs text-amber-700">The shipping reserve is added on top and does not reduce this payout.</p>
           ) : null}
         </div>
 
@@ -122,26 +120,11 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
             <TrendingUp className="h-4 w-4 text-amber-600" />
             Affiliate commission
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
             <div>
-              <label className="text-xs text-gray-500 flex items-center gap-1 mb-1">
-                <Percent className="h-3 w-3" /> Type
-              </label>
-              <select
-                value={input.affiliateType}
-                onChange={(e) => setInput((prev) => ({ ...prev, affiliateType: e.target.value as 'percent' | 'flat' }))}
-                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm font-semibold"
-              >
-                <option value="percent">Percent of ask</option>
-                <option value="flat">Flat per sale</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Value</label>
+              <label className="text-xs text-gray-500 mb-1 block">Fixed dollars per completed sale</label>
               <div className="relative">
-                <span className="absolute left-3 top-2.5 text-gray-500">
-                  {input.affiliateType === 'percent' ? '%' : '$'}
-                </span>
+                <span className="absolute left-3 top-2.5 text-gray-500">$</span>
                 <input
                   type="number"
                   min="0"
@@ -150,21 +133,14 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
                   onChange={(e) => handleNumberChange('affiliateAmount', parseFloat(e.target.value))}
                   onBlur={(e) => handleNumberChange('affiliateAmount', parseFloat(normalizeMoneyInput(e.target.value)))}
                   className="w-full pl-8 pr-3 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-lg font-semibold"
-                  placeholder={input.affiliateType === 'percent' ? '10' : '5'}
+                  placeholder="5.00"
                 />
               </div>
             </div>
           </div>
           <p className="text-xs text-gray-600">
-            {input.affiliateType === 'percent'
-              ? 'Enter 10 for 10% of your ask.'
-              : 'Flat is in dollars. Enter 0.11 for 11 cents.'}
+            Affiliate earns ${Math.max(0, input.affiliateAmount || 0).toFixed(2)} per completed sale.
           </p>
-          {input.affiliateType === 'flat' && input.affiliateAmount >= 1 && input.sellerAmount <= 1 ? (
-            <p className="text-xs text-amber-700">
-              Heads up: this flat commission is interpreted as ${input.affiliateAmount.toFixed(2)} per sale.
-            </p>
-          ) : null}
         </div>
       </div>
 
@@ -172,7 +148,7 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
         <div className="bg-slate-900 text-white rounded-xl p-6 shadow-lg">
           <div className="grid sm:grid-cols-3 gap-4 items-center text-center">
             <div>
-              <p className="text-sm text-slate-200">{includeShippingInPrice && shippingAmount > 0 ? 'Seller gets incl. shipping' : 'Seller keeps'}</p>
+              <p className="text-sm text-slate-200">Seller payout</p>
               <p className="text-2xl font-bold text-amber-300">{formatted.seller}</p>
             </div>
             <div>

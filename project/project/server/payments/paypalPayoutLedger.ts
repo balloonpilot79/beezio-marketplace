@@ -1,18 +1,12 @@
 import { getInfluencerReserveTotal, getReferrerBonusTotal } from '../../shared/referralBonus';
 import {
-  computeBeezioPlatformFee,
-  DEFAULT_BEEZIO_LARGE_ORDER_FLAT_FEE,
-  DEFAULT_BEEZIO_LARGE_ORDER_THRESHOLD,
-  DEFAULT_BEEZIO_PLATFORM_FEE_CAP,
-  DEFAULT_BEEZIO_PLATFORM_FEE_MIN,
-  DEFAULT_BEEZIO_PLATFORM_RATE,
+  computeFixedBeezioPlatformFee,
 } from '../../shared/beezioFee';
 import {
   isTestItemTitle,
   TEST_ITEM_BEEZIO_FEE,
   TEST_ITEM_INFLUENCER_FEE,
 } from '../../shared/testItemPricing';
-import { allocatePayPalFeeToLowPrice, getLowPriceFlatFeeTotal, isLowPriceAmount } from '../../shared/lowPriceFeePolicy';
 
 export type PayeeRole = 'SELLER' | 'PARTNER' | 'INFLUENCER';
 export type LedgerStatus = 'PENDING_HOLD' | 'READY_TO_PAY' | 'PAID' | 'ON_HOLD_DISPUTE' | 'CANCELED';
@@ -22,6 +16,13 @@ export type PayPalOrderItemForLedger = {
   seller_ask_amount: number;
   partner_rate: number;
   computed_listing_price: number;
+  supplier_cost_amount?: number;
+  seller_markup_amount?: number;
+  affiliate_payout_amount?: number;
+  shipping_reserve_amount?: number;
+  influencer_allocation_amount?: number;
+  platform_fee_amount?: number;
+  paypal_processing_allowance?: number;
   product_title?: string | null;
   product_id?: string | null;
   variant_id?: string | null;
@@ -139,20 +140,13 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
   const items = Array.isArray(input.items) ? input.items : [];
   const paypalPercent = Math.max(0, Number(input.paypalPercent ?? 0.0399) || 0.0399);
   const paypalFixed = Math.max(0, Number(input.paypalFixed ?? 0.6) || 0.6);
-  const platformRate = Math.max(0, Number(input.platformRate ?? DEFAULT_BEEZIO_PLATFORM_RATE) || DEFAULT_BEEZIO_PLATFORM_RATE);
-  const platformFeeMin = Math.max(0, Number(input.platformFeeMin ?? DEFAULT_BEEZIO_PLATFORM_FEE_MIN) || DEFAULT_BEEZIO_PLATFORM_FEE_MIN);
-  const platformFeeCap = Math.max(0, Number(input.platformFeeCap ?? DEFAULT_BEEZIO_PLATFORM_FEE_CAP) || DEFAULT_BEEZIO_PLATFORM_FEE_CAP);
-  const largeOrderThreshold = Math.max(0, Number(input.largeOrderThreshold ?? DEFAULT_BEEZIO_LARGE_ORDER_THRESHOLD) || DEFAULT_BEEZIO_LARGE_ORDER_THRESHOLD);
-  const largeOrderFlatFee = Math.max(0, Number(input.largeOrderFlatFee ?? DEFAULT_BEEZIO_LARGE_ORDER_FLAT_FEE) || DEFAULT_BEEZIO_LARGE_ORDER_FLAT_FEE);
-
   let askTotal = 0;
+  let shippingReserveTotal = 0;
   let listingSubtotal = 0;
   let partnerTotal = 0;
   let platformFeeGrossTotal = 0;
   let influencerBonusPoolPerSlot = 0;
-  let lowPriceListingSubtotal = 0;
-  let lowPriceFlatFeeTotal = 0;
-  let lowPriceInfluencerBonusPoolPerSlot = 0;
+  let paypalAllowanceTotal = 0;
 
   const lineSnapshots = items.map((item) => {
     const quantity = Math.max(1, Math.floor(Number(item.quantity || 0) || 1));
@@ -161,40 +155,46 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     const partnerRate = Math.max(0, Number(item.partner_rate || 0));
     const title = String(item.product_title || '').trim();
     const isTestItem = isTestItemTitle(title);
-    const isLowPriceItem = !isTestItem && isLowPriceAmount(ask);
+    const shippingReserveUnit = round2(Math.max(0, Number(item.shipping_reserve_amount || 0)));
+    const explicitAffiliatePayout = Number(item.affiliate_payout_amount);
+    const explicitPlatformFee = Number(item.platform_fee_amount);
+    const explicitPayPalAllowance = Number(item.paypal_processing_allowance);
+    const explicitInfluencerAllocation = Number(item.influencer_allocation_amount);
 
-    const sellerLine = round2(ask * quantity);
-    const partnerLine = round2(ask * quantity * partnerRate);
+    const sellerProductLine = round2(ask * quantity);
+    const shippingReserveLine = round2(shippingReserveUnit * quantity);
+    const sellerLine = round2(sellerProductLine + shippingReserveLine);
+    const partnerLine = round2(
+      (Number.isFinite(explicitAffiliatePayout)
+        ? Math.max(0, explicitAffiliatePayout)
+        : ask * partnerRate) * quantity
+    );
     const beezioFeeGrossLine = round2(
       isTestItem
         ? TEST_ITEM_BEEZIO_FEE * quantity
-        : computeBeezioPlatformFee(sellerLine, {
-            rate: platformRate,
-            minimum: platformFeeMin,
-            cap: platformFeeCap,
-            largeOrderThreshold,
-            largeOrderFlatFee,
-          })
+        : (Number.isFinite(explicitPlatformFee)
+            ? Math.max(0, explicitPlatformFee) * quantity
+            : computeFixedBeezioPlatformFee(listingUnit) * quantity)
     );
     const influencerPerSlotLine = round2(
       isTestItem
         ? TEST_ITEM_INFLUENCER_FEE * quantity
-        : getReferrerBonusTotal(ask, quantity)
+        : (Number.isFinite(explicitInfluencerAllocation)
+            ? Math.max(0, explicitInfluencerAllocation) * quantity / 2
+            : getReferrerBonusTotal(listingUnit, quantity))
     );
-    askTotal = round2(askTotal + sellerLine);
+    const paypalAllowanceLine = round2(
+      (Number.isFinite(explicitPayPalAllowance)
+        ? Math.max(0, explicitPayPalAllowance)
+        : listingUnit * paypalPercent + paypalFixed) * quantity
+    );
+    askTotal = round2(askTotal + sellerProductLine);
+    shippingReserveTotal = round2(shippingReserveTotal + shippingReserveLine);
     listingSubtotal = round2(listingSubtotal + listingUnit * quantity);
     partnerTotal = round2(partnerTotal + partnerLine);
-    // Low-price items use the single $2 flat Beezio fee tracked below. Do not
-    // also add that fee to the regular platform bucket or it is counted twice.
-    if (!isLowPriceItem) {
-      platformFeeGrossTotal = round2(platformFeeGrossTotal + beezioFeeGrossLine);
-    }
+    platformFeeGrossTotal = round2(platformFeeGrossTotal + beezioFeeGrossLine);
     influencerBonusPoolPerSlot = round2(influencerBonusPoolPerSlot + influencerPerSlotLine);
-    if (isLowPriceItem) {
-      lowPriceListingSubtotal = round2(lowPriceListingSubtotal + (listingUnit * quantity));
-      lowPriceFlatFeeTotal = round2(lowPriceFlatFeeTotal + getLowPriceFlatFeeTotal(quantity));
-      lowPriceInfluencerBonusPoolPerSlot = round2(lowPriceInfluencerBonusPoolPerSlot + influencerPerSlotLine);
-    }
+    paypalAllowanceTotal = round2(paypalAllowanceTotal + paypalAllowanceLine);
 
     return {
       order_item_id: item.id || null,
@@ -203,14 +203,20 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       product_title: title || null,
       quantity,
       seller_ask_amount: ask,
+      supplier_cost_amount: round2(Math.max(0, Number(item.supplier_cost_amount || 0))),
+      seller_markup_amount: round2(Math.max(0, Number(item.seller_markup_amount || 0))),
+      shipping_reserve_amount: shippingReserveUnit,
       computed_listing_price: listingUnit,
+      seller_product_line_total: sellerProductLine,
+      shipping_reserve_line_total: shippingReserveLine,
       seller_line_total: sellerLine,
       partner_line_total: partnerLine,
       beezio_fee_gross_line_total: beezioFeeGrossLine,
+      paypal_processing_allowance_line_total: paypalAllowanceLine,
       influencer_bonus_per_slot_line_total: influencerPerSlotLine,
       influencer_bonus_line_total: isTestItem
         ? round2(TEST_ITEM_INFLUENCER_FEE * quantity * 2)
-        : getInfluencerReserveTotal(ask, quantity),
+        : getInfluencerReserveTotal(listingUnit, quantity),
     };
   });
 
@@ -244,21 +250,29 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       : partnerInfluencerEligible
         ? partnerInfluencerId
         : null;
-  const actualPayPalFee = Number(input.paypalFeeAmount);
+  const totalCharged = round2(listingSubtotal + Number(input.shippingAmount || 0) + Number(input.taxAmount || 0));
+  const hasActualPayPalFee = input.paypalFeeAmount !== null && input.paypalFeeAmount !== undefined;
+  const actualPayPalFee = hasActualPayPalFee ? Number(input.paypalFeeAmount) : Number.NaN;
   const paypalFeeEstimate = Number.isFinite(actualPayPalFee) && actualPayPalFee >= 0
     ? round2(actualPayPalFee)
-    : round2(listingSubtotal * paypalPercent + paypalFixed);
-  const totalCharged = round2(listingSubtotal + Number(input.shippingAmount || 0) + Number(input.taxAmount || 0));
-  const lowPricePayPalAllocated = allocatePayPalFeeToLowPrice(paypalFeeEstimate, lowPriceListingSubtotal, listingSubtotal);
-  const regularPayPalAllocated = round2(Math.max(paypalFeeEstimate - lowPricePayPalAllocated, 0));
-  const lowPriceBeezioFeeGrossTotal = round2(lowPriceFlatFeeTotal);
-  const regularBeezioFeeGrossTotal = round2(platformFeeGrossTotal);
-  const lowPriceBeezioFeeNetTotal = round2(lowPriceBeezioFeeGrossTotal);
-  const regularBeezioFeeNetTotal = round2(Math.max(regularBeezioFeeGrossTotal - regularPayPalAllocated, 0));
-  const beezioFeeGrossTotal = round2(lowPriceBeezioFeeGrossTotal + regularBeezioFeeGrossTotal);
-  const beezioProfitTotal = round2(lowPriceBeezioFeeNetTotal + regularBeezioFeeNetTotal);
+    : round2(totalCharged * paypalPercent + paypalFixed);
+  const beezioFeeGrossTotal = round2(platformFeeGrossTotal);
+  const beezioFeeNetTotal = beezioFeeGrossTotal;
+  const processorAllowanceRemainder = round2(paypalAllowanceTotal - paypalFeeEstimate);
   const pricingRoundingRemainder = round2(
-    listingSubtotal - askTotal - partnerTotal - influencerTotal - paypalFeeEstimate - unusedInfluencerReserveTotal - beezioProfitTotal
+    listingSubtotal -
+      askTotal -
+      shippingReserveTotal -
+      partnerTotal -
+      influencerReserveTotal -
+      platformFeeGrossTotal -
+      paypalAllowanceTotal
+  );
+  const beezioProfitTotal = round2(
+    beezioFeeGrossTotal +
+      unusedInfluencerReserveTotal +
+      Math.max(0, processorAllowanceRemainder) +
+      pricingRoundingRemainder
   );
 
   const payees: PayeeSnapshotPlan[] = [];
@@ -266,6 +280,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     if (!payeeUserId || amount <= 0) return;
     const payeeBreakdown = {
       seller_amount: round2(askTotal),
+      shipping_reserve_amount: round2(shippingReserveTotal),
+      seller_payable_amount: round2(askTotal + shippingReserveTotal),
       partner_amount: round2(partnerTotal),
       influencer_amount:
         payeeRole === 'INFLUENCER'
@@ -274,7 +290,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
             ? round2(sellerInfluencerTotal)
             : round2(partnerInfluencerTotal),
       beezio_fee_gross: beezioFeeGrossTotal,
-      beezio_fee_net: beezioProfitTotal,
+      beezio_fee_net: beezioFeeNetTotal,
       beezio_operating_profit: beezioProfitTotal,
       paypal_fee_estimate: paypalFeeEstimate,
       shipping_amount: round2(Number(input.shippingAmount || 0)),
@@ -306,7 +322,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         shipping_amount: round2(Number(input.shippingAmount || 0)),
         tax_amount: round2(Number(input.taxAmount || 0)),
         beezio_fee_gross_total: beezioFeeGrossTotal,
-        beezio_fee_net_total: beezioProfitTotal,
+        beezio_fee_net_total: beezioFeeNetTotal,
         beezio_operating_profit: beezioProfitTotal,
         paypal_fee_estimate: paypalFeeEstimate,
         payee_breakdown: payeeBreakdown,
@@ -315,9 +331,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         influencer_bonus_retained_total: unusedInfluencerReserveTotal,
         platform_fee_gross_total: platformFeeGrossTotal,
         pricing_rounding_remainder: pricingRoundingRemainder,
-        low_price_flat_fee_total: lowPriceFlatFeeTotal,
-        low_price_paypal_allocated: lowPricePayPalAllocated,
-        regular_paypal_allocated: regularPayPalAllocated,
+        paypal_processing_allowance_total: paypalAllowanceTotal,
+        paypal_processing_allowance_remainder: processorAllowanceRemainder,
         selected_influencer_source: selectedInfluencerSource === 'none' ? null : selectedInfluencerSource,
         selected_influencer_id: selectedInfluencerId,
         seller_influencer_id: sellerInfluencerId,
@@ -327,7 +342,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     });
   };
 
-  pushPayee(input.sellerId, 'SELLER', askTotal);
+  pushPayee(input.sellerId, 'SELLER', round2(askTotal + shippingReserveTotal));
   pushPayee(input.partnerId, 'PARTNER', partnerTotal);
 
   const influencerAmounts = new Map<string, number>();
@@ -376,6 +391,9 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         product_title: line.product_title,
         quantity: line.quantity,
         seller_ask_amount: line.seller_ask_amount,
+        supplier_cost_amount: line.supplier_cost_amount,
+        seller_markup_amount: line.seller_markup_amount,
+        shipping_reserve_amount: line.shipping_reserve_amount,
       },
     });
 
@@ -393,7 +411,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         variant_id: line.variant_id,
         product_title: line.product_title,
         quantity: line.quantity,
-        commission_basis: 'seller_ask_times_partner_rate',
+        commission_basis: 'fixed_affiliate_payout_per_completed_sale',
       },
     });
 
@@ -456,7 +474,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       influencer_bonus_retained_total: unusedInfluencerReserveTotal,
       pricing_rounding_remainder: pricingRoundingRemainder,
       paypal_fee_estimate: paypalFeeEstimate,
-      regular_paypal_allocated: regularPayPalAllocated,
+      paypal_processing_allowance_total: paypalAllowanceTotal,
+      paypal_processing_allowance_remainder: processorAllowanceRemainder,
     },
   });
 
@@ -477,11 +496,11 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     orderItemId: null,
     payeeType: 'shipping',
     payeeId: input.sellerId,
-    grossAmount: round2(Number(input.shippingAmount || 0)),
-    netAmount: round2(Number(input.shippingAmount || 0)),
+    grossAmount: shippingReserveTotal,
+    netAmount: shippingReserveTotal,
     status: 'tracked',
     holdUntil: null,
-    metadata: { basis: 'order_shipping_amount' },
+    metadata: { basis: 'product_shipping_reserve_baked_into_advertised_price' },
   });
 
   pushMoneyEntry({
@@ -497,7 +516,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       processor: 'paypal',
       paypal_percent: paypalPercent,
       paypal_fixed: paypalFixed,
-      low_price_paypal_allocated: lowPricePayPalAllocated,
+      paypal_processing_allowance_total: paypalAllowanceTotal,
     },
   });
 
@@ -508,11 +527,11 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       partnerId: input.partnerId,
       influencerId: selectedInfluencerId,
       grossAmount: listingSubtotal,
-      sellerEarnings: askTotal,
+      sellerEarnings: round2(askTotal + shippingReserveTotal),
       partnerEarnings: partnerTotal,
       influencerEarnings: round2(influencerTotal),
       beezioFeeGross: beezioFeeGrossTotal,
-      beezioFeeNet: beezioProfitTotal,
+      beezioFeeNet: beezioFeeNetTotal,
       beezioProfit: beezioProfitTotal,
       paypalFeeEstimate,
       status: 'PENDING_HOLD',
@@ -527,9 +546,9 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         `influencer_bonus_paid_total=${influencerTotal.toFixed(2)}`,
         `influencer_bonus_retained_total=${unusedInfluencerReserveTotal.toFixed(2)}`,
         `pricing_rounding_remainder=${pricingRoundingRemainder.toFixed(2)}`,
-        `low_price_flat_fee_total=${lowPriceFlatFeeTotal.toFixed(2)}`,
-        `low_price_paypal_allocated=${lowPricePayPalAllocated.toFixed(2)}`,
-        `regular_paypal_allocated=${regularPayPalAllocated.toFixed(2)}`,
+        `shipping_reserve_total=${shippingReserveTotal.toFixed(2)}`,
+        `paypal_processing_allowance_total=${paypalAllowanceTotal.toFixed(2)}`,
+        `paypal_processing_allowance_remainder=${processorAllowanceRemainder.toFixed(2)}`,
       ].filter(Boolean).join(' | '),
     },
     payees,

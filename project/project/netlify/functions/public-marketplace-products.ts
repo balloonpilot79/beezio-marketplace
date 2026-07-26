@@ -63,6 +63,14 @@ function looksLikeCjProduct(product: any): boolean {
 
 function normalizeLegacyMarketplaceProduct(product: any) {
   const normalized = { ...(product || {}) };
+  const fixedAffiliatePayout = Number(normalized?.affiliate_payout_amount || 0);
+  if (fixedAffiliatePayout >= 0 && normalized?.affiliate_payout_amount != null) {
+    normalized.commission_type = 'flat_rate';
+    normalized.affiliate_commission_type = 'flat';
+    normalized.flat_commission_amount = fixedAffiliatePayout;
+    normalized.affiliate_commission_value = fixedAffiliatePayout;
+    normalized.commission_rate = 0;
+  }
   const commissionType = String(normalized?.commission_type || '').trim().toLowerCase();
   const affiliateCommissionType = String(normalized?.affiliate_commission_type || '').trim().toLowerCase();
   const hasExplicitFlatType =
@@ -103,11 +111,11 @@ function normalizeLegacyMarketplaceProduct(product: any) {
   const hasAnyCommission = normalizedPercent > 0 || normalizedAffiliateRate > 0 || normalizedAffiliateValue > 0 || normalizedFlatAmount > 0;
 
   if (!hasAnyCommission) {
-    normalized.commission_type = 'percentage';
-    normalized.affiliate_commission_type = 'percent';
-    normalized.commission_rate = 30;
-    normalized.affiliate_commission_rate = 30;
-    normalized.affiliate_commission_value = 30;
+    normalized.commission_type = 'flat_rate';
+    normalized.affiliate_commission_type = 'flat';
+    normalized.commission_rate = 0;
+    normalized.affiliate_commission_rate = 0;
+    normalized.affiliate_commission_value = 0;
   } else if (
     (String(normalized?.affiliate_commission_type || '').trim().toLowerCase() === 'flat' ||
       String(normalized?.commission_type || '').trim().toLowerCase() === 'flat_rate' ||
@@ -145,7 +153,7 @@ const handler: Handler = async (event) => {
 
     // Keep this intentionally conservative (public fields only).
     let selectFields =
-      'id,title,description,price,stock_quantity,total_inventory,in_stock,track_inventory,inventory_source,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,seller_id,average_rating,review_count,created_at,is_active,is_promotable,affiliate_enabled,status,lineage,dropship_provider,source_platform,source,cj_product_id,cj_pid,cj_product_code,cj_product_sku,cj_spu,display_search_code,import_status,seller_ask,seller_amount,seller_ask_price,calculated_customer_price';
+      'id,title,description,price,stock_quantity,total_inventory,in_stock,track_inventory,inventory_source,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,supplier_cost_amount,seller_markup_amount,shipping_reserve_amount,influencer_allocation_amount,paypal_processing_allowance,seller_id,average_rating,review_count,created_at,is_active,is_promotable,affiliate_enabled,status,lineage,dropship_provider,source_platform,source,cj_product_id,cj_pid,cj_product_code,cj_product_sku,cj_spu,display_search_code,import_status,seller_ask,seller_amount,seller_ask_price,calculated_customer_price';
 
     for (let attempt = 0; attempt < 16; attempt++) {
       const query = supabaseAdmin
