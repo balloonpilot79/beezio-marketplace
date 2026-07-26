@@ -1,59 +1,58 @@
-import {
-  AffiliateCommissionType,
-  REFERRAL_PERCENT,
-  calculateCustomerProductPrice,
-  formatCurrency as formatCurrencyUtil,
-  getAffiliateAmount,
-  getPlatformRate,
-  roundToCurrency,
-} from '../utils/pricing';
-import { MIN_PLATFORM_FEE } from '../config/beezioConfig';
-import { DEFAULT_BEEZIO_PLATFORM_RATE, computeBeezioPlatformFee } from '../../shared/beezioFee';
-import { getInfluencerReserveTotal } from '../../shared/referralBonus';
+import { formatCurrency as formatCurrencyUtil, roundToCurrency } from '../utils/pricing';
+import { computeFixedTierPricing } from '../../shared/customerPrice';
 import {
   TEST_ITEM_BEEZIO_FEE,
   TEST_ITEM_INFLUENCER_FEE,
   TEST_ITEM_PRICE,
   TEST_ITEM_PROCESSING_FEE,
 } from '../../shared/testItemPricing';
-import { isLowPriceAmount } from '../../shared/lowPriceFeePolicy';
 
 export interface PricingBreakdown {
+  supplierCost: number;
+  sellerMarkup: number;
   sellerBaseAmount: number;
   shippingIncludedAmount: number;
   sellerAmount: number;
+  sellerPayableAmount: number;
   affiliateAmount: number;
   referralAmount: number;
+  influencerPerSlot: number;
   platformFee: number;
   processingFee: number;
   listingPrice: number;
-  taxAmount?: number;
+  taxAmount: number;
+  estimatedCheckoutTotal: number;
   affiliateRate: number;
-  affiliateType: 'percentage' | 'flat_rate';
+  affiliateType: 'flat_rate';
   referralRate: number;
   platformFeeRate: number;
+  pricingIterations: number;
 }
 
 export interface PricingInput {
-  sellerDesiredAmount: number;
+  supplierCost?: number;
+  sellerMarkup?: number;
+  sellerDesiredAmount?: number;
   affiliateRate: number;
-  affiliateType: 'percentage' | 'flat_rate';
+  affiliateType?: 'percentage' | 'flat_rate';
   shippingIncludedAmount?: number;
   referralRate?: number;
   platformFeeRate?: number;
+  estimatedTaxRate?: number;
   testItem?: boolean;
 }
 
-// Constants (align with unified pricing helper)
-export const DEFAULT_PLATFORM_FEE_RATE = DEFAULT_BEEZIO_PLATFORM_RATE;
-export const MIN_PLATFORM_FEE_RATE = DEFAULT_BEEZIO_PLATFORM_RATE;
-export const MAX_PLATFORM_FEE_RATE = DEFAULT_BEEZIO_PLATFORM_RATE;
+export const DEFAULT_PLATFORM_FEE_RATE = 0;
+export const MIN_PLATFORM_FEE_RATE = 0;
+export const MAX_PLATFORM_FEE_RATE = 0;
 export const PROCESSING_FEE_RATE = 0.0399;
 export const PROCESSING_FEE_FIXED = 0.6;
-export const DEFAULT_REFERRAL_RATE = REFERRAL_PERCENT;
-export const MIN_REFERRAL_RATE = REFERRAL_PERCENT;
-export const MAX_REFERRAL_RATE = REFERRAL_PERCENT;
-// Sales tax rate (decimal). Configure with VITE_TAX_RATE for live.
+export const DEFAULT_REFERRAL_RATE = 0;
+export const MIN_REFERRAL_RATE = 0;
+export const MAX_REFERRAL_RATE = 0;
+
+// This is a preview only. Checkout uses the configured location-based tax
+// calculation and persists the actual tax separately from every earnings pool.
 export const TAX_RATE = (() => {
   const raw = (import.meta as any)?.env?.VITE_TAX_RATE;
   const parsed = Number(raw);
@@ -62,66 +61,85 @@ export const TAX_RATE = (() => {
 })();
 
 export const calculatePricing = (input: PricingInput): PricingBreakdown => {
-  const {
-    sellerDesiredAmount,
-    affiliateRate,
-    affiliateType,
-    shippingIncludedAmount = 0,
-    platformFeeRate,
-    testItem = false,
-  } = input;
+  const supplierCost = roundToCurrency(Math.max(0, Number(input.supplierCost || 0)));
+  const explicitMarkup = Number(input.sellerMarkup);
+  const explicitSellerPayout = Number(input.sellerDesiredAmount);
+  const sellerMarkup = roundToCurrency(
+    Number.isFinite(explicitMarkup)
+      ? Math.max(0, explicitMarkup)
+      : Math.max(0, (Number.isFinite(explicitSellerPayout) ? explicitSellerPayout : 0) - supplierCost)
+  );
+  const sellerAmount = roundToCurrency(
+    Number.isFinite(explicitSellerPayout)
+      ? Math.max(0, explicitSellerPayout)
+      : supplierCost + sellerMarkup
+  );
+  const shippingIncludedAmount = roundToCurrency(
+    Math.max(0, Number(input.shippingIncludedAmount || 0))
+  );
+  const affiliateAmount = roundToCurrency(Math.max(0, Number(input.affiliateRate || 0)));
 
-  const sellerBaseAmount = roundToCurrency(Math.max(0, Number(sellerDesiredAmount) || 0));
-  const includedShipping = roundToCurrency(Math.max(0, Number(shippingIncludedAmount) || 0));
-  const sellerAmount = roundToCurrency(sellerBaseAmount + includedShipping);
-  const normalizedAffiliateType: AffiliateCommissionType = affiliateType === 'flat_rate' ? 'flat' : 'percent';
-  const platformRate = platformFeeRate ?? getPlatformRate(sellerAmount);
-  const affiliateAmount = roundToCurrency(
-    getAffiliateAmount(sellerAmount, normalizedAffiliateType, affiliateRate)
-  );
-  const platformFee = testItem
-    ? TEST_ITEM_BEEZIO_FEE
-    : roundToCurrency(
-        computeBeezioPlatformFee(sellerAmount, {
-          rate: platformRate,
-          minimum: MIN_PLATFORM_FEE,
-        })
-      );
-  const referralAmount = testItem
-    ? roundToCurrency(TEST_ITEM_INFLUENCER_FEE * 2)
-    : roundToCurrency(getInfluencerReserveTotal(sellerAmount));
-  const targetNetAfterProcessing = sellerAmount + affiliateAmount + platformFee + referralAmount;
-  const listingPrice = roundToCurrency(
-    testItem
-      ? TEST_ITEM_PRICE
-      : calculateCustomerProductPrice(sellerAmount, normalizedAffiliateType, affiliateRate)
-  );
-  const processingFee = roundToCurrency(
-    testItem
-      ? TEST_ITEM_PROCESSING_FEE
-      : isLowPriceAmount(sellerAmount)
-      ? (listingPrice - targetNetAfterProcessing)
-      : 0
-  );
+  if (input.testItem) {
+    const taxAmount = roundToCurrency(TEST_ITEM_PRICE * (input.estimatedTaxRate ?? TAX_RATE));
+    return {
+      supplierCost,
+      sellerMarkup,
+      sellerBaseAmount: sellerAmount,
+      shippingIncludedAmount,
+      sellerAmount,
+      sellerPayableAmount: roundToCurrency(sellerAmount + shippingIncludedAmount),
+      affiliateAmount,
+      referralAmount: roundToCurrency(TEST_ITEM_INFLUENCER_FEE * 2),
+      influencerPerSlot: TEST_ITEM_INFLUENCER_FEE,
+      platformFee: TEST_ITEM_BEEZIO_FEE,
+      processingFee: TEST_ITEM_PROCESSING_FEE,
+      listingPrice: TEST_ITEM_PRICE,
+      taxAmount,
+      estimatedCheckoutTotal: roundToCurrency(TEST_ITEM_PRICE + taxAmount),
+      affiliateRate: affiliateAmount,
+      affiliateType: 'flat_rate',
+      referralRate: 0,
+      platformFeeRate: 0,
+      pricingIterations: 1,
+    };
+  }
+
+  const calculated = computeFixedTierPricing({
+    supplierCost,
+    sellerMarkup,
+    sellerPayout: sellerAmount,
+    affiliatePayout: affiliateAmount,
+    shippingIncluded: shippingIncludedAmount,
+    paypalPercent: PROCESSING_FEE_RATE,
+    paypalFixed: PROCESSING_FEE_FIXED,
+    estimatedTaxRate: input.estimatedTaxRate ?? TAX_RATE,
+  });
 
   return {
-    sellerBaseAmount,
-    shippingIncludedAmount: includedShipping,
+    supplierCost,
+    sellerMarkup,
+    sellerBaseAmount: sellerAmount,
+    shippingIncludedAmount,
     sellerAmount,
-    affiliateAmount,
-    referralAmount,
-    platformFee,
-    processingFee,
-    listingPrice,
-    taxAmount: 0,
-    affiliateRate,
-    affiliateType,
-    referralRate: DEFAULT_REFERRAL_RATE,
-    platformFeeRate: platformRate,
+    sellerPayableAmount: roundToCurrency(sellerAmount + shippingIncludedAmount),
+    affiliateAmount: calculated.affiliatePayout,
+    referralAmount: calculated.influencerAllocation,
+    influencerPerSlot: calculated.influencerPerSlot,
+    platformFee: calculated.platformFee,
+    processingFee: calculated.paypalProcessingAllowance,
+    listingPrice: calculated.finalAdvertisedPrice,
+    taxAmount: calculated.estimatedSalesTax,
+    estimatedCheckoutTotal: calculated.estimatedCheckoutTotal,
+    affiliateRate: calculated.affiliatePayout,
+    affiliateType: 'flat_rate',
+    referralRate: 0,
+    platformFeeRate: 0,
+    pricingIterations: calculated.iterations,
   };
 };
 
-export const calculateSellerPayout = (breakdown: PricingBreakdown): number => breakdown.sellerAmount;
+export const calculateSellerPayout = (breakdown: PricingBreakdown): number =>
+  breakdown.sellerPayableAmount;
 
 export const calculateAffiliatePayout = (breakdown: PricingBreakdown): number =>
   breakdown.affiliateAmount;
@@ -132,51 +150,43 @@ export const calculatePlatformRevenue = (breakdown: PricingBreakdown): number =>
 export const reverseCalculateFromListingPrice = (
   listingPrice: number,
   affiliateRate: number,
-  affiliateType: 'percentage' | 'flat_rate',
+  _affiliateType: 'percentage' | 'flat_rate',
   referralRate: number = DEFAULT_REFERRAL_RATE,
-  platformFeeRate: number = DEFAULT_PLATFORM_FEE_RATE
+  _platformFeeRate: number = DEFAULT_PLATFORM_FEE_RATE
 ): PricingBreakdown => {
-  // Iteratively derive seller ask to match the given listing price
   let low = 0;
   let high = Math.max(listingPrice, 1000);
-  let sellerAsk = 0;
+  let sellerPayout = 0;
 
-  const normalizedAffiliateType: AffiliateCommissionType =
-    affiliateType === 'flat_rate' ? 'flat' : 'percent';
-
-  for (let i = 0; i < 18; i++) {
+  for (let index = 0; index < 40; index += 1) {
     const mid = (low + high) / 2;
-    const computedPrice = calculateCustomerProductPrice(mid, normalizedAffiliateType, affiliateRate);
-    if (computedPrice > listingPrice) {
-      high = mid;
-    } else {
-      low = mid;
-    }
-    sellerAsk = mid;
+    const computed = calculatePricing({
+      sellerDesiredAmount: mid,
+      affiliateRate,
+      affiliateType: 'flat_rate',
+      shippingIncludedAmount: 0,
+      estimatedTaxRate: 0,
+    });
+    if (computed.listingPrice > listingPrice) high = mid;
+    else low = mid;
+    sellerPayout = mid;
   }
 
   return calculatePricing({
-    sellerDesiredAmount: roundToCurrency(sellerAsk),
+    supplierCost: 0,
+    sellerMarkup: roundToCurrency(sellerPayout),
+    sellerDesiredAmount: roundToCurrency(sellerPayout),
     affiliateRate,
-    affiliateType,
+    affiliateType: 'flat_rate',
     shippingIncludedAmount: 0,
     referralRate,
-    platformFeeRate,
   });
 };
 
 export const formatPricingBreakdown = (
   breakdown: PricingBreakdown,
   currency: string = 'USD'
-): {
-  seller: string;
-  affiliate: string;
-  referral: string;
-  platform: string;
-  processing: string;
-  tax: string;
-  total: string;
-} => {
+) => {
   const formatter = (value: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(value);
 
@@ -186,42 +196,29 @@ export const formatPricingBreakdown = (
     referral: formatter(breakdown.referralAmount),
     platform: formatter(breakdown.platformFee),
     processing: formatter(breakdown.processingFee),
-    tax: formatter(breakdown.taxAmount || 0),
+    tax: formatter(breakdown.taxAmount),
     total: formatter(breakdown.listingPrice),
   };
 };
 
 export const validatePricingInput = (input: PricingInput): string[] => {
   const errors: string[] = [];
-
-  if (input.sellerDesiredAmount <= 0) {
-    errors.push('Seller desired amount must be greater than 0');
+  const sellerPayout = Number(input.sellerDesiredAmount ?? 0);
+  if (sellerPayout <= 0 && Number(input.supplierCost || 0) + Number(input.sellerMarkup || 0) <= 0) {
+    errors.push('Supplier cost plus seller markup must be greater than 0');
   }
-
-  if (input.affiliateRate < 0) {
-    errors.push('Affiliate rate cannot be negative');
+  if (input.affiliateRate < 0) errors.push('Affiliate payout cannot be negative');
+  if (input.shippingIncludedAmount && input.shippingIncludedAmount < 0) {
+    errors.push('Shipping cannot be negative');
   }
-
-  if (input.affiliateType === 'percentage' && input.affiliateRate > 100) {
-    errors.push('Affiliate percentage cannot exceed 100%');
-  }
-
   return errors;
 };
 
-export const getRecommendedAffiliateRates = (sellerAmount: number): {
-  low: number;
-  medium: number;
-  high: number;
-} => {
-  if (sellerAmount < 50) {
-    return { low: 10, medium: 15, high: 25 };
-  }
-  if (sellerAmount < 200) {
-    return { low: 8, medium: 12, high: 20 };
-  }
-  return { low: 5, medium: 10, high: 15 };
+// Retained for older calculator UI; values are fixed-dollar suggestions.
+export const getRecommendedAffiliateRates = (sellerAmount: number) => {
+  if (sellerAmount < 50) return { low: 3, medium: 5, high: 8 };
+  if (sellerAmount < 200) return { low: 5, medium: 10, high: 20 };
+  return { low: 10, medium: 20, high: 35 };
 };
 
-// Re-export helper so callers can align formatting
 export const formatCurrency = formatCurrencyUtil;

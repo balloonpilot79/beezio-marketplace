@@ -208,6 +208,24 @@ export const handler: Handler = async (event) => {
 
     const providerCaptureId = normalize(order?.provider_capture_id);
     if (!providerCaptureId) return json(400, { error: 'Order is missing a PayPal capture reference' });
+    const totalCharged = roundMoney(Number(order?.total_charged || 0));
+    if (Number.isFinite(refundAmount) && refundAmount > 0) {
+      if (!(totalCharged > 0)) {
+        return json(409, {
+          error: 'The frozen order total is unavailable, so this refund cannot be calculated safely.',
+          code: 'REFUND_TOTAL_UNAVAILABLE',
+        });
+      }
+      if (refundAmount > totalCharged + 0.01) {
+        return json(400, { error: 'Refund amount cannot exceed the captured customer total.' });
+      }
+      if (refundAmount < totalCharged - 0.01) {
+        return json(409, {
+          error: 'Partial refunds are paused until proportional payout reversals are enabled. Issue a full refund or resolve this order manually.',
+          code: 'PARTIAL_REFUND_REQUIRES_PROPORTIONAL_REVERSAL',
+        });
+      }
+    }
 
     const refund = await refundPayPalCapture({
       captureId: providerCaptureId,

@@ -31,7 +31,7 @@ type ImportPreviewItem = {
   platform: 'printful' | 'printify';
 };
 
-const DEFAULT_COMMISSION_RATE = 25;
+const DEFAULT_AFFILIATE_PAYOUT = 5;
 
 interface AdminPrintfulImportPageProps {
   embedded?: boolean;
@@ -47,7 +47,7 @@ const AdminPrintfulImportPage: React.FC<AdminPrintfulImportPageProps> = ({ embed
   const [importing, setImporting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [apiKey, setApiKey] = useState('');
-  const [commissionRate, setCommissionRate] = useState(DEFAULT_COMMISSION_RATE);
+  const [affiliatePayout, setAffiliatePayout] = useState(DEFAULT_AFFILIATE_PAYOUT);
   const [autoSync, setAutoSync] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -195,7 +195,7 @@ const AdminPrintfulImportPage: React.FC<AdminPrintfulImportPageProps> = ({ embed
         },
         body: JSON.stringify({
           platform: 'printful',
-          commissionRate,
+          commissionRate: affiliatePayout,
           autoSync,
           markAsAffiliate: false,
         }),
@@ -454,22 +454,28 @@ const AdminPrintfulImportPage: React.FC<AdminPrintfulImportPageProps> = ({ embed
           <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[0.8fr_1.2fr]">
             <div className="space-y-4">
               <div>
-                <label htmlFor="commission-rate" className="block text-sm font-semibold text-gray-800">
-                  Affiliate commission rate (%)
+                <label htmlFor="affiliate-payout" className="block text-sm font-semibold text-gray-800">
+                  Affiliate payout per completed sale
                 </label>
-                <input
-                  id="commission-rate"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={commissionRate}
-                  onChange={(event) => setCommissionRate(Number(event.target.value || DEFAULT_COMMISSION_RATE))}
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#ffcb05] focus:ring-4 focus:ring-[#ffcb05]/20"
-                />
+                <div className="relative mt-2">
+                  <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center font-semibold text-gray-500">$</span>
+                  <input
+                    id="affiliate-payout"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={affiliatePayout}
+                    onChange={(event) => setAffiliatePayout(Math.max(0, Number(event.target.value || 0)))}
+                    className="w-full rounded-xl border border-gray-300 bg-white py-3 pl-8 pr-4 text-sm text-gray-900 outline-none transition focus:border-[#ffcb05] focus:ring-4 focus:ring-[#ffcb05]/20"
+                  />
+                </div>
+                <p className="mt-2 text-sm text-gray-600">
+                  Affiliate earns ${affiliatePayout.toFixed(2)} per completed sale.
+                </p>
               </div>
 
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                Imported POD products currently default to `shipping_cost = 0` in the integration backend. Adjust shipping on listings afterward if Beezio should charge it separately.
+                Imported POD products start with $0.00 shipping. Enter the supplier shipping cost during review; Beezio includes it in the advertised price and customers see Free Shipping.
               </div>
 
               <div className="flex flex-wrap gap-3">

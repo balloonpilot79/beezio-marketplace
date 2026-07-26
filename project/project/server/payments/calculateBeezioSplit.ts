@@ -36,22 +36,18 @@ function fromCents(cents: number): number {
   return Math.round((cents + Number.EPSILON)) / 100;
 }
 
-function normalizeRate(input: number): number {
-  if (!Number.isFinite(input) || input <= 0) return 0;
-  const asFraction = input > 1 ? input / 100 : input;
-  return Math.max(0, Math.min(1, asFraction));
-}
-
 export function calculateBeezioSplit(input: BeezioSplitInput): BeezioSplitResult {
   const itemsSubtotalCents = toCents(input.items_subtotal);
   const shippingCents = toCents(input.shipping_amount);
   const taxCents = toCents(input.tax_amount);
 
-  const affiliateRate = normalizeRate(input.affiliate_rate);
+  // `affiliate_rate` is retained as the legacy transport key, but its value is
+  // now fixed dollars per completed sale.
+  const affiliatePayoutCents = toCents(Math.max(0, Number(input.affiliate_rate || 0)));
   const hasAffiliate = Boolean(input.affiliate_id);
   const hasReferrer = Boolean(input.referrer_id && input.affiliate_id);
 
-  const affiliateCommissionCents = hasAffiliate ? Math.round(itemsSubtotalCents * affiliateRate) : 0;
+  const affiliateCommissionCents = hasAffiliate ? affiliatePayoutCents : 0;
   const platformBaseCents = toCents(computeBeezioPlatformFee(input.items_subtotal));
   const influencerReservePoolCents = toCents(getInfluencerReserveTotal(input.items_subtotal));
   const platformGrossCents = platformBaseCents + influencerReservePoolCents;

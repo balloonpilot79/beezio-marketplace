@@ -232,6 +232,13 @@ export const handler: Handler = async (event) => {
         'affiliate_commission_percent_at_purchase',
         'platform_percent_at_purchase',
         'partner_rate',
+        'supplier_cost_amount',
+        'seller_markup_amount',
+        'affiliate_payout_amount',
+        'shipping_reserve_amount',
+        'influencer_allocation_amount',
+        'platform_fee_amount',
+        'paypal_processing_allowance',
       ],
       'order_id',
       String(orderRow.id)
@@ -304,6 +311,7 @@ export const handler: Handler = async (event) => {
       const sellerAskAmount = Number(item?.seller_ask_amount || 0) || 0;
       const configuredAffiliatePercent = Math.max(0, Number(item?.affiliate_commission_percent_at_purchase || 0) || 0);
       const appliedAffiliateRate = Math.max(0, Number(item?.partner_rate || 0) || 0);
+      const fixedAffiliatePayout = Math.max(0, Number(item?.affiliate_payout_amount || 0) || 0);
       const lineTotal = price * quantity;
       const sellerAskLineTotal = sellerAskAmount * quantity;
       const productId = String(item?.product_id || '').trim();
@@ -344,11 +352,21 @@ export const handler: Handler = async (event) => {
           String(item?.cj_variant_id || variantRow?.cj_vid || variantRow?.cj_variant_id || '').trim() || null,
         external_variant_id:
           String(item?.external_variant_id || '').trim() || null,
-        applied_affiliate_commission_basis: 'seller_ask_amount',
+        supplier_cost_amount: Number(item?.supplier_cost_amount || 0) || 0,
+        seller_markup_amount: Number(item?.seller_markup_amount || 0) || 0,
+        shipping_reserve_amount: Number(item?.shipping_reserve_amount || 0) || 0,
+        influencer_allocation_amount: Number(item?.influencer_allocation_amount || 0) || 0,
+        platform_fee_amount: Number(item?.platform_fee_amount || 0) || 0,
+        paypal_processing_allowance: Number(item?.paypal_processing_allowance || 0) || 0,
+        applied_affiliate_commission_basis: 'fixed_affiliate_payout_per_completed_sale',
         configured_affiliate_commission_percent: configuredAffiliatePercent,
-        configured_affiliate_commission_amount: Number(((lineTotal * configuredAffiliatePercent) / 100).toFixed(2)),
+        configured_affiliate_commission_amount: Number(
+          ((fixedAffiliatePayout || (lineTotal * configuredAffiliatePercent) / 100) * quantity).toFixed(2)
+        ),
         applied_affiliate_rate: appliedAffiliateRate,
-        applied_affiliate_commission_amount: Number((sellerAskLineTotal * appliedAffiliateRate).toFixed(2)),
+        applied_affiliate_commission_amount: Number(
+          ((fixedAffiliatePayout || sellerAskAmount * appliedAffiliateRate) * quantity).toFixed(2)
+        ),
         platform_percent_at_purchase: Math.max(0, Number(item?.platform_percent_at_purchase || 0) || 0),
       };
     });

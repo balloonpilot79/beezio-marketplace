@@ -239,18 +239,10 @@ const CartPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-4 text-sm text-gray-600">
-              {shippingOption ? (
-                <p>
-                  Selected shipping: <span className="font-semibold text-gray-900">{shippingOption.name}</span>
-                  {shippingOption.destinationCountry ? ` · ${shippingOption.destinationCountry}` : ''}
-                  {shippingOption.cost !== undefined ? ` · ${formatShippingDisplay(shippingOption.cost)}` : ''}
-                </p>
-              ) : (
-                <p className="text-gray-500">
-                  Shipping is finalized during checkout.
-                </p>
-              )}
+            <div className="mt-4 text-sm text-emerald-700">
+              <p className="font-medium">
+                Free shipping is already included in each physical product price.
+              </p>
             </div>
 
             <button

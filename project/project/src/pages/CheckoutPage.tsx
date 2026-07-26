@@ -185,7 +185,7 @@ const CheckoutPage: React.FC = () => {
                   <span>{formatMoneyDisplay(total)}</span>
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
-                  Final total updates after shipping is quoted from your address.
+                  Shipping is free. The final total changes only if the verified tax amount changes.
                 </div>
               </div>
             </div>

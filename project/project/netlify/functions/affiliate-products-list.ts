@@ -79,20 +79,34 @@ const isVisibleProduct = (product: any): boolean => {
 
 const normalizeAffiliateProduct = (product: any) => {
   const normalized = { ...(product || {}) };
+  const hasFixedPayout = normalized?.affiliate_payout_amount !== null &&
+    normalized?.affiliate_payout_amount !== undefined;
+  const fixedPayout = Number(normalized?.affiliate_payout_amount || 0);
   const normalizedPercent = Number(normalized?.commission_rate || 0);
   const normalizedAffiliateRate = Number(normalized?.affiliate_commission_rate || 0);
   const normalizedAffiliateValue = Number(normalized?.affiliate_commission_value || 0);
   const normalizedFlatAmount = Number(normalized?.flat_commission_amount || 0);
   const commissionType = String(normalized?.commission_type || '').trim().toLowerCase();
   const affiliateCommissionType = String(normalized?.affiliate_commission_type || '').trim().toLowerCase();
-  const hasAnyCommission = normalizedPercent > 0 || normalizedAffiliateRate > 0 || normalizedAffiliateValue > 0 || normalizedFlatAmount > 0;
+  const hasAnyCommission = fixedPayout > 0 || normalizedPercent > 0 || normalizedAffiliateRate > 0 || normalizedAffiliateValue > 0 || normalizedFlatAmount > 0;
 
   if (!hasAnyCommission) {
-    normalized.commission_type = 'percentage';
-    normalized.affiliate_commission_type = 'percent';
-    normalized.commission_rate = 30;
-    normalized.affiliate_commission_rate = 30;
-    normalized.affiliate_commission_value = 30;
+    normalized.commission_type = 'flat_rate';
+    normalized.affiliate_commission_type = 'flat';
+    normalized.commission_rate = 0;
+    normalized.affiliate_commission_rate = 0;
+    normalized.affiliate_commission_value = 0;
+    normalized.flat_commission_amount = 0;
+    return normalized;
+  }
+
+  if (hasFixedPayout && fixedPayout >= 0) {
+    normalized.commission_type = 'flat_rate';
+    normalized.affiliate_commission_type = 'flat';
+    normalized.commission_rate = fixedPayout;
+    normalized.affiliate_commission_rate = fixedPayout;
+    normalized.affiliate_commission_value = fixedPayout;
+    normalized.flat_commission_amount = fixedPayout;
     return normalized;
   }
 

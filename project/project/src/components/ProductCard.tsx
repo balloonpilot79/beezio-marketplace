@@ -79,7 +79,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const { user, profile, currentRole, userRoles, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-    const shippingCost = typeof product.shipping_cost === 'number' ? product.shipping_cost : 0;
+  const shippingCost = 0;
   const displayDescription = useMemo(() => {
       return sanitizeDescriptionForDisplay(product.description, product.lineage);
     }, [product.description, product.lineage]);
@@ -99,7 +99,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     ? `Earn $${flatCommission.toFixed(2)}`
     : `Earn ${commissionRate}%`;
   const commissionDisplayLabel = commissionType === 'flat_rate'
-    ? `$${flatCommission.toFixed(2)} affiliate commission`
+    ? `Affiliate earns $${flatCommission.toFixed(2)} per completed sale.`
     : `${commissionRate}% affiliate commission`;
   const hasCommission =
     commissionType === 'flat_rate'
@@ -442,7 +442,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     <span>Save</span>
                   </button>
                   {showPurchaseCtas && (
-                    <div className="text-xs text-gray-500">Buyer price (before tax & shipping)</div>
+                    <div className="text-xs text-gray-500">Buyer price (free shipping; tax at checkout)</div>
                   )}
                   {showCommissionDisplay && (
                     <div className="text-xs text-gray-500">{commissionDisplayLabel}</div>

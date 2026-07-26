@@ -35,6 +35,7 @@ interface MarketplaceProduct {
   flat_commission_amount?: number;
   affiliate_commission_type?: 'percent' | 'flat';
   affiliate_commission_value?: number;
+  affiliate_payout_amount?: number;
   seller_id?: string;
   status?: string;
   is_promotable?: boolean | null;
@@ -56,7 +57,7 @@ type CategoryRow = {
 const PAGE_SIZE = 160;
 const MARKETPLACE_FETCH_TIMEOUT_MS = 12000;
 const MARKETPLACE_SELECT_FIELDS =
-  'id,title,description,price,calculated_customer_price,seller_ask,seller_amount,seller_ask_price,is_digital,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status';
+  'id,title,description,price,calculated_customer_price,seller_ask,seller_amount,seller_ask_price,is_digital,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status';
 
 const CATEGORY_KEYWORDS: Array<{ category: string; keywords: string[] }> = [
   { category: 'Electronics', keywords: ['microphone', 'usb', 'keyboard', 'speaker', 'charger', 'camera', 'phone', 'tablet', 'laptop', 'tech', 'wireless', 'led', 'headphone'] },
@@ -99,7 +100,7 @@ const slugify = (value: string) =>
 const getCommissionScore = (product: MarketplaceProduct) => {
   const rawType = String(product.affiliate_commission_type || product.commission_type || 'percentage').toLowerCase();
   if (rawType === 'flat' || rawType === 'flat_rate') {
-    return Number(product.affiliate_commission_value ?? product.flat_commission_amount ?? 0);
+    return Number(product.affiliate_payout_amount ?? product.affiliate_commission_value ?? product.flat_commission_amount ?? 0);
   }
   return Number(product.affiliate_commission_value ?? product.commission_rate ?? product.affiliate_commission_rate ?? 0);
 };

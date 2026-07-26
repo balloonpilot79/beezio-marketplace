@@ -48,15 +48,6 @@ type ProductShippingRow = {
   shipping_options?: unknown;
 };
 
-const parseNumber = (value: unknown): number => {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string') {
-    const parsed = Number.parseFloat(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return 0;
-};
-
 const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const extractMissingColumnName = (message: string): string | null => {
@@ -96,27 +87,22 @@ const parseTransitRange = (value: string | undefined): { minDays: number | null;
   };
 };
 
-const normalizeProductOption = (row: ProductShippingRow): CheckoutShippingOption => {
+export const normalizeProductOption = (row: ProductShippingRow): CheckoutShippingOption => {
   const storedOptions = parseStoredOptions(row.shipping_options);
-  const freeShippingOption = storedOptions.find((option) => option?.included_in_price === true);
   const firstOption = storedOptions[0] || null;
-  const fallbackCost = parseNumber(row.shipping_price ?? row.shipping_cost ?? 0);
-  const sellerControlledCost = freeShippingOption
-    ? parseNumber(freeShippingOption.seller_shipping_cost ?? fallbackCost)
-    : fallbackCost;
-  const checkoutCost = freeShippingOption ? 0 : sellerControlledCost;
-  const methodName = freeShippingOption ? 'Free Shipping' : 'Seller Shipping';
+  const checkoutCost = 0;
+  const methodName = 'Free Shipping';
   const transitText = String(
     firstOption?.estimated_days ??
     firstOption?.estimatedDays ??
     firstOption?.days ??
-    (checkoutCost > 0 ? '3-5 business days' : '3-5 business days')
+    '3-5 business days'
   ).trim();
   const range = parseTransitRange(transitText);
 
   return {
-    id: `${row.id}:${freeShippingOption ? 'free-shipping' : 'seller-shipping'}`,
-    methodCode: freeShippingOption ? 'free-shipping' : 'seller-shipping',
+    id: `${row.id}:free-shipping`,
+    methodCode: 'free-shipping',
     methodName,
     cost: roundMoney(checkoutCost),
     minDays: range.minDays,
@@ -190,11 +176,7 @@ export const getCheckoutShippingQuote = async (payload: ShippingQuotePayload): P
     return { mappedProductIds: [], options: [] };
   }
 
-  const combinedCost = roundMoney(
-    shippingLineItems.reduce((sum, entry) => {
-      return sum + Number(entry.option.cost || 0) * Math.max(1, Number(entry.item.quantity || 1));
-    }, 0)
-  );
+  const combinedCost = 0;
 
   const minDaysCandidates = shippingLineItems
     .map((entry) => entry.option.minDays)
@@ -211,8 +193,8 @@ export const getCheckoutShippingQuote = async (payload: ShippingQuotePayload): P
     options: [
       {
         id: 'seller-shipping-total',
-        methodCode: combinedCost > 0 ? 'seller-shipping' : 'free-shipping',
-        methodName: combinedCost > 0 ? 'Seller Shipping' : 'Free Shipping',
+        methodCode: 'free-shipping',
+        methodName: 'Free Shipping',
         cost: combinedCost,
         minDays,
         maxDays,

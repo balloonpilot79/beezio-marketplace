@@ -325,11 +325,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getShippingTotal = () => {
-    const perItem = items.reduce((total, item) => total + (item.shippingCost || 0) * (item.quantity || 0), 0);
-    if (shippingOption) {
-      return shippingOption.cost || 0;
-    }
-    return perItem;
+    // Physical-product shipping is already included in each listed price.
+    // Keeping this hard-zero prevents stale cart records from adding it twice.
+    return 0;
   };
 
   const isInCart = (productId: string) => {

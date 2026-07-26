@@ -144,7 +144,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
   const buildSingleShippingOption = (
     shippingPrice: number,
-    includeInPrice: boolean = false
+    includeInPrice: boolean = true
   ): Array<{ name: string; cost: number; estimated_days: string; included_in_price?: boolean; seller_shipping_cost?: number }> => [{
     name: includeInPrice ? 'Free Shipping' : 'Seller Shipping',
     cost: includeInPrice ? 0 : Math.max(0, shippingPrice),
@@ -160,8 +160,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         raw = null;
       }
     }
-    if (!Array.isArray(raw) || raw.length === 0) return false;
-    return Boolean(raw[0]?.included_in_price);
+    if (!Array.isArray(raw) || raw.length === 0) return true;
+    // Beezio physical products always advertise free shipping. Legacy paid
+    // options are interpreted as the seller's supplier-shipping reserve.
+    return true;
   };
 
   const getStoredShippingAmount = (raw: any, fallback: number): number => {
@@ -180,7 +182,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const normalizeShippingOptions = (
     raw: any,
     shippingPrice: number,
-    includeInPrice: boolean = false
+    includeInPrice: boolean = true
   ): Array<{ name: string; cost: number; estimated_days: string }> => {
     let options: any = raw;
 
@@ -234,13 +236,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [showStickyAlert, setShowStickyAlert] = useState(false);
   const [pricingBreakdown, setPricingBreakdown] = useState<PricingBreakdown | null>(null);
   const [pricingSeed, setPricingSeed] = useState<{
-    sellerAmount: number;
+    supplierCost: number;
+    sellerMarkup: number;
     affiliateAmount: number;
-    affiliateType: 'percent' | 'flat';
   }>({
-    sellerAmount: 0,
+    supplierCost: 0,
+    sellerMarkup: 0,
     affiliateAmount: 0,
-    affiliateType: 'percent',
   });
   const [aiLoading, setAiLoading] = useState(false);
   const normalizedAccountRoles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role, currentRole);
@@ -257,10 +259,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     is_subscription: product?.is_subscription || false,
     subscription_interval: product?.subscription_interval || '',
     affiliate_enabled: true, // DEFAULT TO TRUE - Business preference
-    shipping_options: buildSingleShippingOption(product?.shipping_price ?? (product as any)?.shipping_cost ?? 0),
+    shipping_options: buildSingleShippingOption(product?.shipping_price ?? (product as any)?.shipping_cost ?? 0, true),
     requires_shipping: product?.requires_shipping !== false,
     shipping_price: product?.shipping_price ?? (product as any)?.shipping_cost ?? 0,
-    shipping_included_in_price: getShippingIncludedState(product?.shipping_options),
+    shipping_included_in_price: true,
     base_weight_oz: Number((product as any)?.base_weight_oz || 0) || 0,
     package_length_in: Number((product as any)?.package_length_in || 0) || 0,
     package_width_in: Number((product as any)?.package_width_in || 0) || 0,
@@ -278,15 +280,18 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [adminUrlImport, setAdminUrlImport] = useState<AdminUrlImportSeed | null>(null);
 
   useEffect(() => {
-    if (pricingSeed.sellerAmount <= 0) {
+    const sellerPayout = pricingSeed.supplierCost + pricingSeed.sellerMarkup;
+    if (sellerPayout <= 0) {
       setPricingBreakdown(null);
       return;
     }
 
     const nextBreakdown = calculatePricing({
-      sellerDesiredAmount: pricingSeed.sellerAmount,
+      supplierCost: pricingSeed.supplierCost,
+      sellerMarkup: pricingSeed.sellerMarkup,
+      sellerDesiredAmount: sellerPayout,
       affiliateRate: formData.affiliate_enabled ? pricingSeed.affiliateAmount : 0,
-      affiliateType: pricingSeed.affiliateType === 'flat' ? 'flat_rate' : 'percentage',
+      affiliateType: 'flat_rate',
       shippingIncludedAmount: (formData as any).shipping_included_in_price ? Number(formData.shipping_price) || 0 : 0,
       referralRate: 0,
       platformFeeRate: undefined,
@@ -312,7 +317,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         : wholesale + markup
     ) * 100) / 100;
     setAdminUrlImport({ ...next, sellerAmount });
-    setPricingSeed((current) => ({ ...current, sellerAmount }));
+    setPricingSeed((current) => ({
+      ...current,
+      supplierCost: wholesale,
+      sellerMarkup: Math.max(0, sellerAmount - wholesale),
+    }));
   };
   const resetForm = () => {
     setFormData({
@@ -326,10 +335,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       is_subscription: false,
       subscription_interval: '',
       affiliate_enabled: true,
-      shipping_options: buildSingleShippingOption(0),
+      shipping_options: buildSingleShippingOption(0, true),
       requires_shipping: true,
       shipping_price: 0,
-      shipping_included_in_price: false,
+      shipping_included_in_price: true,
       base_weight_oz: 0,
       package_length_in: 0,
       package_width_in: 0,
@@ -346,9 +355,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     });
     setPricingBreakdown(null);
     setPricingSeed({
-      sellerAmount: 0,
+      supplierCost: 0,
+      sellerMarkup: 0,
       affiliateAmount: 0,
-      affiliateType: 'percent',
     });
     setProductImages([]);
     setAdminUrlImport(null);
@@ -413,7 +422,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         if (loadError) throw loadError;
         if (!data) throw new Error('This product could not be loaded for editing.');
         if (!cancelled) {
-          const shippingIncludedInPrice = getShippingIncludedState(data.shipping_options);
+          const shippingIncludedInPrice = data.is_digital === true ? false : getShippingIncludedState(data.shipping_options);
           const shippingPrice = getStoredShippingAmount(
             data.shipping_options,
             data.shipping_price ?? data.shipping_cost ?? 0
@@ -459,34 +468,43 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               is_primary: index === 0,
             }))
           );
-          setPricingBreakdown({
-            sellerBaseAmount: Math.max(
-              0,
-              Number(data.seller_amount ?? data.seller_ask ?? data.seller_ask_price ?? 0) - (shippingIncludedInPrice ? shippingPrice : 0)
-            ),
+          const storedSellerPayout = Number(
+            data.seller_amount ?? data.seller_ask ?? data.seller_ask_price ?? 0
+          );
+          const storedSupplierCost = Math.max(
+            0,
+            Number(data.base_cost_cents || 0) / 100 ||
+              Number(data?.supplier_info?.wholesale_price || 0)
+          );
+          const storedMarkup = Math.max(
+            0,
+            storedSellerPayout - storedSupplierCost
+          );
+          const storedAffiliatePayout = data.commission_type === 'flat_rate'
+            ? Number(data.flat_commission_amount || data.affiliate_commission_value || 0)
+            : Number(
+                (storedSellerPayout * Number(data.commission_rate || data.affiliate_commission_value || 0)) /
+                  100
+              );
+          const loadedPricing = calculatePricing({
+            supplierCost: storedSupplierCost,
+            sellerMarkup: storedMarkup,
+            sellerDesiredAmount: storedSellerPayout,
+            affiliateRate: storedAffiliatePayout,
+            affiliateType: 'flat_rate',
             shippingIncludedAmount: shippingIncludedInPrice ? shippingPrice : 0,
-            sellerAmount: data.seller_amount ?? data.seller_ask ?? data.seller_ask_price ?? 0,
-            affiliateAmount: data.commission_type === 'flat_rate'
-              ? data.flat_commission_amount || data.affiliate_commission_value || 0
-              : (data.seller_amount ?? data.seller_ask ?? data.seller_ask_price ?? 0) * ((data.commission_rate || data.affiliate_commission_value || 0) / 100),
-            platformFee: data.platform_fee,
-            processingFee: data.processing_fee ?? data.paypal_fee ?? 0,
-            listingPrice: data.price,
-            affiliateRate: data.commission_type === 'flat_rate'
-              ? data.flat_commission_amount || data.affiliate_commission_value || 0
-              : data.commission_rate || data.affiliate_commission_value || 0,
-            affiliateType: data.commission_type,
+            testItem: isTestItemTitle(data.title),
+          });
+          setPricingBreakdown({
+            ...loadedPricing,
+            sellerBaseAmount: storedSellerPayout,
+            shippingIncludedAmount: shippingIncludedInPrice ? shippingPrice : 0,
+            sellerPayableAmount: storedSellerPayout + (shippingIncludedInPrice ? shippingPrice : 0),
           });
           setPricingSeed({
-            sellerAmount: Math.max(
-              0,
-              Number(data.seller_amount ?? data.seller_ask ?? data.seller_ask_price ?? 0) - (shippingIncludedInPrice ? shippingPrice : 0)
-            ),
-            affiliateAmount:
-              data.commission_type === 'flat_rate'
-                ? data.flat_commission_amount || data.affiliate_commission_value || 0
-                : data.commission_rate || data.affiliate_commission_value || 0,
-            affiliateType: data.commission_type === 'flat_rate' ? 'flat' : 'percent',
+            supplierCost: storedSupplierCost,
+            sellerMarkup: storedMarkup,
+            affiliateAmount: storedAffiliatePayout,
           });
         }
       } catch (error) {
@@ -630,9 +648,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       }));
       setProductImages(images.map((imageUrl, index) => ({ id: `url-import-${index}`, image_url: imageUrl, display_order: index, is_primary: index === 0 })));
       setPricingSeed({
-        sellerAmount: Math.max(0, Number(seed.sellerAmount || 0)),
+        supplierCost: Math.max(0, Number(seed.wholesalePrice || 0)),
+        sellerMarkup: Math.max(
+          0,
+          Number(seed.sellerAmount || 0) - Number(seed.wholesalePrice || 0)
+        ),
         affiliateAmount: Math.max(0, Number(seed.affiliateValue || 0)),
-        affiliateType: seed.affiliateType === 'flat_rate' ? 'flat' : 'percent',
       });
       setSelectedStorefrontIds(seed.storefrontId ? [String(seed.storefrontId)] : []);
       setVariantConfig((current) => ({ ...current, enabled: Array.isArray(seed.variants) && seed.variants.length > 0 }));
@@ -824,8 +845,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       category_id: nextIsDigital ? digitalCategoryId : (isDigitalCategoryOption({ id: prev.category_id, name: prev.category_id }) ? '' : prev.category_id),
       requires_shipping: nextIsDigital ? false : prev.requires_shipping,
       shipping_price: nextIsDigital ? 0 : prev.shipping_price,
-      shipping_included_in_price: nextIsDigital ? false : prev.shipping_included_in_price,
-      shipping_options: nextIsDigital ? [] : prev.shipping_options,
+      shipping_included_in_price: nextIsDigital ? false : true,
+      shipping_options: nextIsDigital
+        ? []
+        : normalizeShippingOptions(prev.shipping_options, Number(prev.shipping_price) || 0, true),
       digital_download_limit: Math.max(1, Number((prev as any).digital_download_limit || 1)),
       digital_return_policy_notice: String((prev as any).digital_return_policy_notice || '').trim() || DIGITAL_RETURN_POLICY_DEFAULT,
     }));
@@ -1137,14 +1160,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       : normalizeShippingOptions(
           (formData as any).shipping_options,
           Number(formData.shipping_price) || 0,
-          (formData as any).shipping_included_in_price === true
+          true
         );
 
     const shippingCharge = isDigitalProduct
       ? 0
-      : (formData as any).shipping_included_in_price === true
-        ? (Number(formData.shipping_price) || 0)
-        : 0;
+      : (Number(formData.shipping_price) || 0);
     const adminOnlyPriceError = getAdminOnlyLowPriceMessage({
       isAdmin: isAdminUser({ profile, user, userRoles }),
       listingPrice: pricingBreakdown.listingPrice,
@@ -1281,9 +1302,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             title: formData.title,
             description: formData.description,
             price: pricingBreakdown.listingPrice,
-            commission_rate: affiliateEnabled && pricingBreakdown.affiliateType === 'percentage' ? pricingBreakdown.affiliateRate : 0,
-            commission_type: pricingBreakdown.affiliateType,
-            flat_commission_amount: affiliateEnabled && pricingBreakdown.affiliateType === 'flat_rate' ? pricingBreakdown.affiliateAmount : 0,
+            commission_rate: 0,
+            commission_type: 'flat_rate',
+            flat_commission_amount: affiliateEnabled ? pricingBreakdown.affiliateAmount : 0,
             images: formData.images,
             videos: formData.videos,
             tags: mergedTags,
@@ -1296,6 +1317,15 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             seller_amount: pricingBreakdown.sellerAmount,
             seller_ask: pricingBreakdown.sellerAmount,
             seller_ask_price: pricingBreakdown.sellerAmount,
+            supplier_cost_amount: pricingBreakdown.supplierCost,
+            seller_markup_amount: pricingBreakdown.sellerMarkup,
+            affiliate_payout_amount: affiliateEnabled ? pricingBreakdown.affiliateAmount : 0,
+            shipping_reserve_amount: pricingBreakdown.shippingIncludedAmount,
+            influencer_allocation_amount: pricingBreakdown.referralAmount,
+            paypal_processing_allowance: pricingBreakdown.processingFee,
+            base_cost_cents: Math.round(pricingBreakdown.supplierCost * 100),
+            markup_type: 'flat',
+            markup_value: Math.round(pricingBreakdown.sellerMarkup * 100),
             platform_fee: pricingBreakdown.platformFee,
             processing_fee: pricingBreakdown.processingFee,
             shipping_options: normalizedShippingOptions,
@@ -1316,8 +1346,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             digital_download_instructions: isDigitalProduct ? (formData as any).digital_download_instructions : null,
             digital_return_policy_notice: isDigitalProduct ? (formData as any).digital_return_policy_notice : null,
             affiliate_enabled: affiliateEnabled,
-            affiliate_commission_type: pricingBreakdown.affiliateType === 'flat_rate' ? 'flat' : 'percent',
-            affiliate_commission_value: affiliateEnabled ? pricingBreakdown.affiliateRate : 0,
+            affiliate_commission_type: 'flat',
+            affiliate_commission_value: affiliateEnabled ? pricingBreakdown.affiliateAmount : 0,
              calculated_customer_price: pricingBreakdown.listingPrice,
              status: requiresManualReview ? 'draft' : affiliateEnabled ? 'active' : 'store_only',
              is_promotable: affiliateEnabled && !requiresManualReview,
@@ -1411,9 +1441,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             title: formData.title,
             description: formData.description,
             price: pricingBreakdown.listingPrice,
-            commission_rate: affiliateEnabled && pricingBreakdown.affiliateType === 'percentage' ? pricingBreakdown.affiliateRate : 0,
-            commission_type: pricingBreakdown.affiliateType,
-            flat_commission_amount: affiliateEnabled && pricingBreakdown.affiliateType === 'flat_rate' ? pricingBreakdown.affiliateAmount : 0,
+            commission_rate: 0,
+            commission_type: 'flat_rate',
+            flat_commission_amount: affiliateEnabled ? pricingBreakdown.affiliateAmount : 0,
             images: formData.images,
             videos: formData.videos,
             tags: mergedTags,
@@ -1425,6 +1455,15 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             seller_amount: pricingBreakdown.sellerAmount,
             seller_ask: pricingBreakdown.sellerAmount,
             seller_ask_price: pricingBreakdown.sellerAmount,
+            supplier_cost_amount: pricingBreakdown.supplierCost,
+            seller_markup_amount: pricingBreakdown.sellerMarkup,
+            affiliate_payout_amount: affiliateEnabled ? pricingBreakdown.affiliateAmount : 0,
+            shipping_reserve_amount: pricingBreakdown.shippingIncludedAmount,
+            influencer_allocation_amount: pricingBreakdown.referralAmount,
+            paypal_processing_allowance: pricingBreakdown.processingFee,
+            base_cost_cents: Math.round(pricingBreakdown.supplierCost * 100),
+            markup_type: 'flat',
+            markup_value: Math.round(pricingBreakdown.sellerMarkup * 100),
             platform_fee: pricingBreakdown.platformFee,
             processing_fee: pricingBreakdown.processingFee,
             seller_id: sellerProfileId,
@@ -1446,8 +1485,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             digital_download_instructions: isDigitalProduct ? (formData as any).digital_download_instructions : null,
             digital_return_policy_notice: isDigitalProduct ? (formData as any).digital_return_policy_notice : null,
             affiliate_enabled: affiliateEnabled,
-            affiliate_commission_type: pricingBreakdown.affiliateType === 'flat_rate' ? 'flat' : 'percent',
-            affiliate_commission_value: affiliateEnabled ? pricingBreakdown.affiliateRate : 0,
+            affiliate_commission_type: 'flat',
+            affiliate_commission_value: affiliateEnabled ? pricingBreakdown.affiliateAmount : 0,
              calculated_customer_price: pricingBreakdown.listingPrice,
              status: requiresManualReview ? 'draft' : affiliateEnabled ? 'active' : 'store_only',
              is_promotable: affiliateEnabled && !requiresManualReview,
@@ -1878,7 +1917,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 </label>
               </div>
               <div className="mt-3 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-900">
-                Your seller payout: ${Number(pricingSeed.sellerAmount || 0).toFixed(2)}
+                Your seller payout: ${(pricingSeed.supplierCost + pricingSeed.sellerMarkup).toFixed(2)}
               </div>
             </section>
           ) : null}
@@ -2092,10 +2131,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             <label className="block text-sm font-bold text-gray-900 mb-3">
               Pricing <span className="text-red-500">*</span>
             </label>
+              <p className="mb-4 text-sm leading-6 text-gray-600">
+                Enter the product cost, the profit you want to keep, and the fixed affiliate payout. Beezio adds every required amount on top.
+              </p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-gray-600 mb-2">
-                    Seller Payout
+                    Supplier / product cost
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-3 text-gray-500">$</span>
@@ -2103,10 +2145,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                       type="number"
                       min="0"
                       step="0.01"
-                      value={pricingSeed.sellerAmount}
+                      value={pricingSeed.supplierCost}
                       onChange={(e) => setPricingSeed((prev) => ({
                         ...prev,
-                        sellerAmount: Math.max(0, Number.parseFloat(normalizeMoneyInput(e.target.value)) || 0),
+                        supplierCost: Math.max(0, Number.parseFloat(normalizeMoneyInput(e.target.value)) || 0),
                       }))}
                       className="w-full rounded-lg border border-gray-300 py-3 pl-8 pr-3 focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
                     />
@@ -2115,31 +2157,30 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-gray-600 mb-2">
-                    Affiliate Type
+                    Seller markup / profit
                   </label>
-                  <select
-                    value={pricingSeed.affiliateType}
-                    onChange={(e) => setPricingSeed((prev) => ({
-                      ...prev,
-                      affiliateType: e.target.value === 'flat' ? 'flat' : 'percent',
-                    }))}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
-                  >
-                    <option value="percent">Percent</option>
-                    <option value="flat">Flat Dollar Amount</option>
-                  </select>
+                  <div className="relative">
+                    <span className="absolute left-3 top-3 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={pricingSeed.sellerMarkup}
+                      onChange={(e) => setPricingSeed((prev) => ({
+                        ...prev,
+                        sellerMarkup: Math.max(0, Number.parseFloat(normalizeMoneyInput(e.target.value)) || 0),
+                      }))}
+                      className="w-full rounded-lg border border-gray-300 py-3 pl-8 pr-3 focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-gray-600 mb-2">
-                    Affiliate {pricingSeed.affiliateType === 'flat' ? 'Payout' : 'Rate'}
+                    Affiliate payout per sale
                   </label>
                   <div className="relative">
-                    {pricingSeed.affiliateType === 'flat' ? (
-                      <span className="absolute left-3 top-3 text-gray-500">$</span>
-                    ) : (
-                      <span className="absolute right-3 top-3 text-gray-500">%</span>
-                    )}
+                    <span className="absolute left-3 top-3 text-gray-500">$</span>
                     <input
                       type="number"
                       min="0"
@@ -2149,8 +2190,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                         ...prev,
                         affiliateAmount: Math.max(0, Number.parseFloat(normalizeMoneyInput(e.target.value)) || 0),
                       }))}
-                      className={`w-full rounded-lg border border-gray-300 py-3 focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20 ${pricingSeed.affiliateType === 'flat' ? 'pl-8 pr-3' : 'px-4 pr-8'}`}
+                      className="w-full rounded-lg border border-gray-300 py-3 pl-8 pr-3 focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
                     />
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-emerald-700">
+                    Affiliate earns ${pricingSeed.affiliateAmount.toFixed(2)} per completed sale.
                   </div>
                 </div>
               </div>
@@ -2158,13 +2202,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
           {(formData as any).is_digital !== true && (
             <section className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
-              <div className="font-bold text-gray-950">Shipping charged to the customer</div>
+              <div className="font-bold text-gray-950">Supplier shipping cost</div>
               <p className="mt-1 text-sm leading-6 text-gray-700">
-                Enter the shipping amount for this product. Beezio will add it at checkout unless you choose to include it in the product price.
+                Enter what you need to pay to ship one item. Beezio includes this amount in the listed product price, reserves it in your seller payout, and shows the customer free shipping.
               </p>
               <div className="mt-4 max-w-xs">
                 <label className="mb-2 block text-sm font-semibold text-gray-900" htmlFor="main-shipping-price">
-                  Shipping price
+                  Shipping expense per item
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-3 text-gray-500">$</span>
@@ -2188,30 +2232,65 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   />
                 </div>
               </div>
-              <label className="mt-4 flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={Boolean((formData as any).shipping_included_in_price)}
-                  onChange={(event) =>
-                    setFormData((previous) => ({
-                      ...previous,
-                      shipping_included_in_price: event.target.checked,
-                      shipping_options: normalizeShippingOptions(
-                        (previous as any).shipping_options,
-                        Number(previous.shipping_price) || 0,
-                        event.target.checked
-                      ),
-                    }))
-                  }
-                  className="mt-1 h-5 w-5 rounded border-gray-300 text-[#ffcc00] focus:ring-[#ffcc00]"
-                />
-                <div>
-                  <div className="font-semibold text-gray-900">Include shipping in the product price</div>
-                  <div className="text-sm text-gray-600">
-                    The customer will see free shipping because this amount is folded into the listed price.
-                  </div>
+              <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
+                <div className="font-semibold text-emerald-900">Customer sees: Free shipping</div>
+                <div className="text-sm text-emerald-800">This expense is included once in the final product price and is never added again at checkout.</div>
+              </div>
+            </section>
+          )}
+
+          {pricingBreakdown && (
+            <section className="rounded-xl border-2 border-slate-900 bg-slate-950 p-5 text-white">
+              <div className="text-lg font-black">Review the complete price before listing</div>
+              <p className="mt-1 text-sm text-slate-300">
+                Nothing is published until you approve this breakdown and press Save.
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Supplier / product cost</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.supplierCost.toFixed(2)}</div>
                 </div>
-              </label>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Seller markup / profit</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.sellerMarkup.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Shipping reserved for seller</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.shippingIncludedAmount.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Total seller payout</div>
+                  <div className="mt-1 text-xl font-bold text-emerald-300">${pricingBreakdown.sellerAmount.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Affiliate payout</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.affiliateAmount.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Beezio fee</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.platformFee.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">PayPal processing allocation</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.processingFee.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Influencer allocation</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.referralAmount.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Estimated sales tax</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.taxAmount.toFixed(2)}</div>
+                </div>
+              </div>
+              <div className="mt-4 rounded-xl bg-[#ffcc00] p-4 text-slate-950">
+                <div className="text-sm font-bold uppercase tracking-wide">Final product price</div>
+                <div className="mt-1 text-4xl font-black">${pricingBreakdown.listingPrice.toFixed(2)}</div>
+                <div className="mt-1 text-sm font-semibold">Free shipping • Tax calculated at checkout</div>
+                <div className="mt-2 text-sm">
+                  Estimated checkout total: <strong>${pricingBreakdown.estimatedCheckoutTotal.toFixed(2)}</strong>. Actual tax depends on the customer’s location.
+                </div>
+              </div>
             </section>
           )}
 

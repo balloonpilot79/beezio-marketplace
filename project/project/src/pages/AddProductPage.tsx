@@ -6,7 +6,7 @@ import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
 import { ensureSellerProductInOrder } from '../utils/sellerProductOrder';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import { calculateCustomerProductPrice } from '../utils/pricing';
+import { computeFixedTierPricing } from '../../shared/customerPrice';
 
 type UploadMode = 'single' | 'bulk';
 
@@ -26,9 +26,9 @@ const AddProductPage: React.FC = () => {
     return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
   };
   const checklist = [
-    'Required: title, description, and the exact amount you want to keep. Taxes and shipping are added at checkout.',
+    'Required: title, description, the exact amount you want to keep, affiliate terms, and any supplier shipping expense. Beezio shows the complete customer price before you save.',
     'Upload at least one image (use the uploader below).',
-    'Set affiliate commission (percentage or flat) knowing it does not come out of your seller payout.',
+    'Set the fixed affiliate payout knowing it does not come out of your seller payout.',
     'Pick a category and stock quantity. Digital products use the Digital Products category.',
     'You can also add products from the marketplace via “Add to store”.',
   ];
@@ -64,16 +64,31 @@ const AddProductPage: React.FC = () => {
           const product = products[i];
           try {
             // Validate required fields
-            if (!product.title || !product.price) {
-              throw new Error(`Row ${i + 1}: Missing required fields (title, price)`);
+            if (!product.title || (product.supplier_cost == null && product.price == null)) {
+              throw new Error(`Row ${i + 1}: Missing required fields (title and supplier cost)`);
             }
 
             // Prepare product data
             const affiliateEnabled = String(product.affiliate_enabled ?? 'true').trim().toLowerCase() === 'true' ||
               String(product.affiliate_enabled ?? 'true').trim() === '1';
-            const sellerAsk = parseFloat(product.price);
-            const affiliateRatePercent = parseNonNegativeNumber(product.commission_rate, 0);
-            const listingPrice = calculateCustomerProductPrice(sellerAsk, 'percent', affiliateRatePercent);
+            const supplierCost = parseNonNegativeNumber(product.supplier_cost, 0);
+            const sellerMarkup = parseNonNegativeNumber(
+              product.seller_markup,
+              Math.max(0, parseNonNegativeNumber(product.price, 0) - supplierCost),
+            );
+            const affiliatePayout = parseNonNegativeNumber(
+              product.affiliate_payout ?? product.commission_rate,
+              0,
+            );
+            const shippingIncluded = parseNonNegativeNumber(product.shipping_cost, 0);
+            const pricing = computeFixedTierPricing({
+              supplierCost,
+              sellerMarkup,
+              affiliatePayout,
+              shippingIncluded,
+            });
+            const sellerAsk = pricing.sellerPayout;
+            const listingPrice = pricing.finalAdvertisedPrice;
             const productData = {
               title: product.title,
               description: product.description || '',
@@ -85,16 +100,30 @@ const AddProductPage: React.FC = () => {
               seller_id: sellerProfileId,
               affiliate_enabled: affiliateEnabled,
               is_promotable: affiliateEnabled,
-              commission_rate: affiliateRatePercent,
-              commission_type: product.commission_type || 'percentage',
+              commission_rate: affiliatePayout,
+              commission_type: 'flat_rate',
+              flat_commission_amount: affiliatePayout,
+              affiliate_payout_amount: affiliatePayout,
               seller_ask: sellerAsk,
               seller_amount: sellerAsk,
               seller_ask_price: sellerAsk,
+              supplier_cost_amount: pricing.supplierCost,
+              seller_markup_amount: pricing.sellerMarkup,
+              shipping_reserve_amount: pricing.shippingIncluded,
+              influencer_allocation_amount: pricing.influencerAllocation,
+              platform_fee_amount: pricing.platformFee,
+              paypal_processing_allowance: pricing.paypalProcessingAllowance,
               stock_quantity: parseInt(product.stock_quantity) || 0,
               sku: product.sku || null,
               weight: parseFloat(product.weight) || null,
               dimensions: product.dimensions || null,
-              shipping_options: product.shipping_options ? JSON.parse(product.shipping_options) : [],
+              shipping_options: [{
+                name: 'Free Shipping',
+                price: 0,
+                seller_cost: pricing.shippingIncluded,
+              }],
+              shipping_cost: 0,
+              shipping_fee: 0,
               requires_shipping: product.requires_shipping === 'true' || product.requires_shipping === '1',
               is_dropshipped: product.is_dropshipped === 'true' || product.is_dropshipped === '1',
               supplier_name: product.supplier_name || null,
@@ -138,17 +167,17 @@ const AddProductPage: React.FC = () => {
       {
         title: 'Example Product',
         description: 'This is an example product description',
-        price: '29.99',
+        supplier_cost: '18.00',
+        seller_markup: '11.99',
         category: 'Electronics',
         affiliate_enabled: 'true',
-        commission_rate: '0.10',
-        commission_type: 'percentage',
+        affiliate_payout: '5.00',
         stock_quantity: '100',
         sku: 'PROD-001',
         weight: '1.5',
         dimensions: '10x8x6',
         images: 'https://example.com/image1.jpg|https://example.com/image2.jpg',
-        shipping_options: '[{"name":"Standard","price":8.99,"days":"5-7"}]',
+        shipping_cost: '8.99',
         requires_shipping: 'true',
         is_dropshipped: 'false',
         supplier_name: '',

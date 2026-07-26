@@ -22,7 +22,7 @@ import {
 import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
 import { getProductIdentifierLines } from '../utils/productIdentifiers';
 import { normalizeProductImages, resolveProductImageFromList } from '../utils/imageHelpers';
-import { formatMoneyDisplay, formatShippingLineItem } from '../utils/moneyDisplay';
+import { formatMoneyDisplay } from '../utils/moneyDisplay';
 import { getReferralAttribution } from '../utils/referralTracking';
 import { resolveCheckoutAttribution } from '../utils/checkoutAttribution';
 import { setPostAuthPath } from '../utils/storefrontScope';
@@ -181,7 +181,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
         .limit(20);
 
       if (filter === 'affiliate') {
-        query = query.gt('commission_rate', 0);
+        query = query.or('affiliate_payout_amount.gt.0,flat_commission_amount.gt.0');
       }
 
       const { data, error } = await query;
@@ -376,7 +376,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
             affiliateType,
           });
           const commissionDisplayLabel = affiliateType === 'flat'
-            ? `$${Number(commissionConfig.value || 0).toFixed(2)} affiliate commission`
+            ? `Affiliate earns $${Number(commissionConfig.value || 0).toFixed(2)} per completed sale.`
             : `${Number(commissionConfig.value || 0)}% affiliate commission`;
 
           const primaryColor = colorScheme?.primary || '#f59e0b';
@@ -406,10 +406,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
           const requiresOptionSelection = hasVariants && !isStorefrontCtas;
 
           const productSellerName = storefrontBrand?.name || normalizedProduct.profiles?.full_name || 'Seller';
-          const isCJProduct = allowBackorder;
-          const shippingCost = isCJProduct
-            ? 0
-            : (typeof (normalizedProduct as any).shipping_cost === 'number' ? (normalizedProduct as any).shipping_cost : 0);
+          const shippingCost = 0;
           const storefrontCard = isStorefrontCtas;
           const imageForCart = heroImage;
           const rowAffiliateId = String((normalizedProduct as any)?.affiliate_id || '').trim() || undefined;
@@ -589,13 +586,9 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                   <div className="text-[0.68rem] font-semibold uppercase tracking-[0.22em]" style={{ color: accentColor }}>
                     {storefrontBrand?.name ? 'Store pick' : 'Featured item'}
                   </div>
-                  {isCJProduct ? (
-                    <span className="text-[11px] font-semibold text-slate-500">Shipping at checkout</span>
-                  ) : typeof normalizedProduct.shipping_cost === 'number' ? (
-                    <span className="text-[11px] font-semibold" style={{ color: primaryColor }}>
-                      {formatShippingLineItem(normalizedProduct.shipping_cost)}
-                    </span>
-                  ) : null}
+                  <span className="text-[11px] font-semibold" style={{ color: primaryColor }}>
+                    Free shipping
+                  </span>
                 </div>
               )}
               <Link to={productPathWithAttribution} onClick={(e) => e.stopPropagation()}>
@@ -657,7 +650,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                             <div className="border-t pt-1 mt-1 flex justify-between font-semibold">
                               <span>Buyer pays</span><span className="text-gray-900">${payouts.salePrice.toFixed(2)}</span>
                             </div>
-                            <div className="text-xs text-gray-500">No hidden fees. Shipping & tax are added at checkout.</div>
+                            <div className="text-xs text-gray-500">No hidden fees. Free shipping; tax is calculated at checkout.</div>
                           </div>
                         </div>
                       </>
@@ -669,11 +662,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                       {normalizedProduct.subscription_interval.charAt(0).toUpperCase() + normalizedProduct.subscription_interval.slice(1)}
                     </span>
                   )}
-                  {!storefrontCard && typeof normalizedProduct.shipping_cost === 'number' && !isCJProduct && (
-                    <span className="text-primary-500 text-xs font-semibold">{formatShippingLineItem(normalizedProduct.shipping_cost)}</span>
-                  )}
-                  {!storefrontCard && isCJProduct && (
-                    <span className="text-xs font-semibold text-slate-500">Shipping calculated at checkout</span>
+                  {!storefrontCard && (
+                    <span className="text-primary-500 text-xs font-semibold">Free shipping</span>
                   )}
                 </div>
               </div>

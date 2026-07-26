@@ -11,14 +11,14 @@ describe('cjBulkImportUtils', () => {
   it('calculates retail price with baked influencer reserve', () => {
     const cents = calculateRetailPriceCents(1000, {
       affiliate_percent: 20,
-      affiliate_floor_cents: 0,
+      affiliate_floor_cents: 200,
       affiliate_enabled: true,
       markup_type: 'flat',
       markup_value: 200,
       paypal_fee_bps: 350,
       paypal_fixed_cents: 65,
     });
-    expect(cents).toBe(2000);
+    expect(cents).toBe(1834);
   });
 
   it('estimates shipping from weight tiers', () => {

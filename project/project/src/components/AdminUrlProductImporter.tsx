@@ -59,8 +59,8 @@ const AdminUrlProductImporter = ({
   const [wholesalePrice, setWholesalePrice] = useState(0);
   const [markupType, setMarkupType] = useState<'percent' | 'flat'>('percent');
   const [markupValue, setMarkupValue] = useState(40);
-  const [affiliateType, setAffiliateType] = useState<'percentage' | 'flat_rate'>('percentage');
-  const [affiliateValue, setAffiliateValue] = useState(20);
+  const affiliateType = 'flat_rate' as const;
+  const [affiliateValue, setAffiliateValue] = useState(5);
   const [variants, setVariants] = useState<ImportVariant[]>([]);
 
   useEffect(() => {
@@ -99,10 +99,12 @@ const AdminUrlProductImporter = ({
   }, [markupType, markupValue, wholesalePrice]);
 
   const pricing = useMemo(() => calculatePricing({
+    supplierCost: wholesalePrice,
+    sellerMarkup: Math.max(0, sellerAmount - wholesalePrice),
     sellerDesiredAmount: sellerAmount,
     affiliateRate: Math.max(0, Number(affiliateValue) || 0),
-    affiliateType,
-  }), [affiliateType, affiliateValue, sellerAmount]);
+    affiliateType: 'flat_rate',
+  }), [affiliateValue, sellerAmount, wholesalePrice]);
 
   const runImport = async () => {
     const controller = new AbortController();
@@ -168,8 +170,8 @@ const AdminUrlProductImporter = ({
       markupType: 'percent',
       markupValue: 40,
       sellerAmount: 0,
-      affiliateType: 'percentage',
-      affiliateValue: 20,
+      affiliateType: 'flat_rate',
+      affiliateValue: 5,
       storefrontId,
       storefrontName: selectedStorefront?.name || '',
       variants: [],
@@ -328,11 +330,12 @@ const AdminUrlProductImporter = ({
                 <label className="text-sm font-bold text-gray-800">Markup {markupType === 'percent' ? '(%)' : '($)'}
                   <input type="number" min="0" step="0.01" value={markupValue} onChange={(event) => setMarkupValue(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" />
                 </label>
-                <label className="text-sm font-bold text-gray-800">Affiliate commission
-                  <div className="mt-2 grid grid-cols-[1fr_110px] gap-2"><input type="number" min="0" step="0.01" value={affiliateValue} onChange={(event) => setAffiliateValue(Number(event.target.value))} className="w-full rounded-xl border border-gray-300 px-4 py-3" /><select value={affiliateType} onChange={(event) => setAffiliateType(event.target.value as 'percentage' | 'flat_rate')} className="rounded-xl border border-gray-300 px-3"><option value="percentage">%</option><option value="flat_rate">$ flat</option></select></div>
+                <label className="text-sm font-bold text-gray-800">Affiliate payout per completed sale ($)
+                  <input type="number" min="0" step="0.01" value={affiliateValue} onChange={(event) => setAffiliateValue(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" />
+                  <span className="mt-2 block text-xs font-semibold text-emerald-700">Affiliate earns {money(affiliateValue)} per completed sale.</span>
                 </label>
               </div>
-              <p className="mt-4 text-xs leading-5 text-gray-600">Shipping and sales tax remain separate and are calculated at checkout. Verify supplier permissions, wholesale terms, labels, claims, inventory, and fulfillment details before publishing.</p>
+              <p className="mt-4 text-xs leading-5 text-gray-600">Enter the supplier shipping expense in the Add Product review. Beezio includes it in the final product price so the buyer sees free shipping; sales tax is calculated at checkout. Verify supplier permissions, wholesale terms, labels, claims, inventory, and fulfillment details before publishing.</p>
             </div>
 
             <div className="rounded-2xl bg-[#101820] p-5 text-white">
@@ -340,13 +343,16 @@ const AdminUrlProductImporter = ({
               <div className="mt-2 text-4xl font-black">{money(pricing.listingPrice)}</div>
               <dl className="mt-5 space-y-2 text-sm">
                 <div className="flex justify-between gap-3"><dt className="text-slate-400">Wholesale cost</dt><dd>{money(wholesalePrice)}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-400">Brand amount (cost + markup)</dt><dd>{money(pricing.sellerAmount)}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-400">Affiliate reserve</dt><dd>{money(pricing.affiliateAmount)}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-400">Influencer reserve</dt><dd>{money(pricing.referralAmount)}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-400">Beezio fee</dt><dd>{money(pricing.platformFee)}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-400">PayPal estimate</dt><dd>{money(Math.max(0, pricing.listingPrice - pricing.sellerAmount - pricing.affiliateAmount - pricing.referralAmount - pricing.platformFee))}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-400">Seller markup / profit</dt><dd>{money(pricing.sellerMarkup)}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-400">Total seller payout</dt><dd>{money(pricing.sellerAmount)}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-400">Affiliate payout</dt><dd>{money(pricing.affiliateAmount)}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-400">Influencer allocation</dt><dd>{money(pricing.referralAmount)}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-400">Beezio fixed fee</dt><dd>{money(pricing.platformFee)}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-400">PayPal estimate</dt><dd>{money(pricing.processingFee)}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-400">Estimated tax</dt><dd>{money(pricing.taxAmount)}</dd></div>
+                <div className="flex justify-between gap-3 font-bold"><dt>Estimated checkout total</dt><dd>{money(pricing.estimatedCheckoutTotal)}</dd></div>
               </dl>
-              <div className="mt-4 border-t border-white/15 pt-4 text-xs leading-5 text-slate-400">Tax and any separate shipping charge are added at checkout.</div>
+              <div className="mt-4 border-t border-white/15 pt-4 text-xs leading-5 text-slate-400">The product price includes supplier shipping; the buyer sees free shipping. Tax is calculated at checkout.</div>
             </div>
           </div>
 

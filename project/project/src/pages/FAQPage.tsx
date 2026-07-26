@@ -54,7 +54,7 @@ const faqSections = [
       {
         question: 'Does tax or shipping come out of my payout?',
         answer:
-          'No. Taxes and shipping are calculated at checkout and do not reduce your seller payout.'
+          'No. You enter the shipping expense before listing, Beezio includes it in the product price, and that amount is reserved in your seller payout. Buyers see free shipping; tax is calculated at checkout.'
       }
     ]
   },

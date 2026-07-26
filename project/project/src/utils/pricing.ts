@@ -1,49 +1,32 @@
-// Centralized pricing utilities for Beezio
-// Implements the unified fee model: seller keeps their ask, fees baked into buyer price
-
-import { PLATFORM_FEE_PERCENT } from '../config/beezioConfig';
-import { computeCustomerListingPrice } from '../../shared/customerPrice';
+import {
+  computeAffiliateAmountFromAsk,
+  computeCustomerListingPrice,
+  computeFixedTierPricing,
+} from '../../shared/customerPrice';
+import { computeFixedBeezioPlatformFee } from '../../shared/beezioFee';
 import {
   getAssignedInfluencerPayoutTotal,
   getInfluencerReserveTotal,
 } from '../../shared/referralBonus';
-import { calculateFinalPrice, computePayoutBreakdown, deriveAskPriceFromFinalPrice } from './pricingEngine';
-import { DEFAULT_BEEZIO_PLATFORM_RATE, computeBeezioPlatformFee } from '../../shared/beezioFee';
-import {
-  TEST_ITEM_BEEZIO_FEE,
-  TEST_ITEM_INFLUENCER_FEE,
-  TEST_ITEM_PRICE,
-  TEST_ITEM_PROCESSING_FEE,
-} from '../../shared/testItemPricing';
 
 export type AffiliateCommissionType = 'percent' | 'flat';
-export const DEFAULT_ZERO_AFFILIATE_PERCENT = 30;
-
-export const PROCESSING_PERCENT = 0.0399; // 3.99%
-export const PROCESSING_FLAT = 0.6;       // $0.60 per order
-
-// Platform and referral defaults
-export const BEEZIO_PLATFORM_RATE = DEFAULT_BEEZIO_PLATFORM_RATE;      // Fallback when seller ask is unknown
+export const DEFAULT_ZERO_AFFILIATE_PERCENT = 0;
+export const PROCESSING_PERCENT = 0.0399;
+export const PROCESSING_FLAT = 0.6;
+export const BEEZIO_PLATFORM_RATE = 0;
 export const REFERRAL_OF_BEEZIO_RATE = 0;
-
-// Default affiliate commission (decimal for backward compatibility)
-export const DEFAULT_AFFILIATE_RATE = 0.20;
-
+export const DEFAULT_AFFILIATE_RATE = 0;
 export const REFERRAL_PERCENT = 0;
 
 export const roundUpToTwoDecimals = (value: number): number =>
-  Math.ceil((value ?? 0) * 100) / 100;
+  Math.ceil((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
 export const roundToCurrency = (value: number): number =>
-  Math.round((value ?? 0 + Number.EPSILON) * 100) / 100;
+  Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
 export function normalizeAffiliateRate(rate?: number): number {
-  if (typeof rate !== 'number' || Number.isNaN(rate)) {
-    return DEFAULT_AFFILIATE_RATE;
-  }
-  if (rate > 1) return rate / 100;
-  if (rate < 0) return 0;
-  return rate;
+  if (!Number.isFinite(rate)) return 0;
+  return Math.max(0, Number(rate));
 }
 
 export function formatCurrency(value: number): string {
@@ -57,22 +40,16 @@ export function normalizeMoneyInput(value: string): string {
   return num.toString();
 }
 
-export function getPlatformRate(sellerAsk: number): number {
-  if (!Number.isFinite(sellerAsk)) return BEEZIO_PLATFORM_RATE;
-  return BEEZIO_PLATFORM_RATE;
+export function getPlatformRate(_sellerAsk: number): number {
+  return 0;
 }
 
 export function getAffiliateAmount(
-  sellerAsk: number,
+  sellerPayout: number,
   type: AffiliateCommissionType,
   value: number
 ): number {
-  if (!Number.isFinite(value) || value < 0) return 0;
-  if (!Number.isFinite(sellerAsk) || sellerAsk <= 0) return 0;
-  if (type === 'percent') {
-    return sellerAsk * (value / 100);
-  }
-  return value;
+  return computeAffiliateAmountFromAsk(sellerPayout, type, value);
 }
 
 type AffiliatePricingLike = {
@@ -82,81 +59,54 @@ type AffiliatePricingLike = {
   flat_commission_amount?: number | null;
   affiliate_commission_type?: 'percent' | 'flat' | null;
   affiliate_commission_value?: number | null;
+  affiliate_payout_amount?: number | null;
 };
 
 export function resolveAffiliateCommission(product: AffiliatePricingLike): {
   type: AffiliateCommissionType;
   value: number;
 } {
-  const pickPositiveNumber = (...values: unknown[]) => {
-    for (const value of values) {
-      const num = Number(value);
-      if (Number.isFinite(num) && num > 0) return num;
-    }
-    return 0;
-  };
+  const directFlat = Number(
+    product?.affiliate_payout_amount ??
+      product?.flat_commission_amount ??
+      (String(product?.affiliate_commission_type || '').toLowerCase() === 'flat'
+        ? product?.affiliate_commission_value
+        : 0)
+  );
+  if (Number.isFinite(directFlat) && directFlat > 0) {
+    return { type: 'flat', value: roundToCurrency(directFlat) };
+  }
 
-  const affiliateCommissionType = String(product?.affiliate_commission_type || '').trim().toLowerCase();
-  const commissionType = String(product?.commission_type || '').trim().toLowerCase();
-  const flatCommissionAmount = Number(product?.flat_commission_amount ?? 0);
-  const hasFlatAmount = Number.isFinite(flatCommissionAmount) && flatCommissionAmount > 0;
-  const normalizedType =
-    affiliateCommissionType === 'flat' ||
-    commissionType === 'flat_rate' ||
-    commissionType === 'fixed' ||
-    hasFlatAmount
-      ? 'flat'
-      : 'percent';
-
-  if (normalizedType === 'flat') {
-    const flatValue = pickPositiveNumber(
-      product?.flat_commission_amount,
-      affiliateCommissionType === 'flat' || commissionType === 'flat_rate' || commissionType === 'fixed'
-        ? pickPositiveNumber(product?.affiliate_commission_value, product?.affiliate_commission_rate, product?.commission_rate)
-        : 0
-    );
-    if (!(flatValue > 0)) {
-      return {
-        type: 'percent',
-        value: DEFAULT_ZERO_AFFILIATE_PERCENT,
-      };
-    }
+  // Read-only compatibility until the catalog migration converts every legacy
+  // percentage row to a frozen dollar payout.
+  const rawPercent = Number(
+    product?.affiliate_commission_value ??
+      product?.affiliate_commission_rate ??
+      product?.commission_rate ??
+      0
+  );
+  if (Number.isFinite(rawPercent) && rawPercent > 0) {
     return {
-      type: 'flat',
-      value: roundToCurrency(flatValue),
+      type: 'percent',
+      value: roundToCurrency(rawPercent > 1 ? rawPercent : rawPercent * 100),
     };
   }
 
-  const rawPercent = pickPositiveNumber(
-    product?.affiliate_commission_value,
-    product?.affiliate_commission_rate,
-    product?.commission_rate,
-    DEFAULT_ZERO_AFFILIATE_PERCENT
-  );
-  const percent =
-    Number.isFinite(rawPercent) && rawPercent > 0
-      ? rawPercent > 1
-        ? rawPercent
-        : rawPercent * 100
-      : DEFAULT_ZERO_AFFILIATE_PERCENT;
-
-  return {
-    type: 'percent',
-    value: roundToCurrency(percent),
-  };
+  return { type: 'flat', value: 0 };
 }
 
 export function calculateCustomerProductPrice(
-  sellerAsk: number,
+  sellerPayout: number,
   affiliateType: AffiliateCommissionType,
-  affiliateValue: number
+  affiliateValue: number,
+  shippingIncluded = 0
 ): number {
   return roundToCurrency(
     computeCustomerListingPrice({
-      sellerAsk,
+      sellerAsk: sellerPayout,
       affiliateType,
       affiliateValue,
-      beezioRate: getPlatformRate(sellerAsk),
+      shippingIncluded,
       paypalPercent: PROCESSING_PERCENT,
       paypalFixed: PROCESSING_FLAT,
     })
@@ -186,48 +136,32 @@ export interface PricingInput {
 }
 
 export function calculatePricing(input: PricingInput): PricingBreakdown {
-  const sellerAmount = Number.isFinite(input.sellerDesiredAmount) ? input.sellerDesiredAmount : 0;
+  const sellerAmount = roundToCurrency(Math.max(0, Number(input.sellerDesiredAmount || 0)));
   const affiliateType: AffiliateCommissionType =
     input.affiliateType === 'flat_rate' ? 'flat' : 'percent';
-  const testItem = input.testItem === true;
-  const platformRateOverride = Number.isFinite(input.platformFeeRate ?? NaN)
-    ? (input.platformFeeRate as number)
-    : undefined;
-  const platformRate = platformRateOverride ?? getPlatformRate(sellerAmount);
-  const affiliateAmount = roundToCurrency(
-    getAffiliateAmount(sellerAmount, affiliateType, input.affiliateRate)
+  const affiliateAmount = getAffiliateAmount(
+    sellerAmount,
+    affiliateType,
+    input.affiliateRate
   );
-  const platformFee = testItem
-    ? TEST_ITEM_BEEZIO_FEE
-    : roundToCurrency(
-        computeBeezioPlatformFee(sellerAmount, { rate: platformRate })
-      );
-  const referralAmount = testItem
-    ? roundToCurrency(TEST_ITEM_INFLUENCER_FEE * 2)
-    : roundToCurrency(getInfluencerReserveTotal(sellerAmount));
-  const listingPrice = testItem
-    ? TEST_ITEM_PRICE
-    : calculateCustomerProductPrice(
-        sellerAmount,
-        affiliateType,
-        input.affiliateRate
-      );
-  const processingFee = testItem
-    ? TEST_ITEM_PROCESSING_FEE
-    : roundToCurrency(listingPrice * PROCESSING_PERCENT + PROCESSING_FLAT);
-  const referralRate = testItem ? 0 : input.referralRate ?? REFERRAL_PERCENT;
+  const calculated = computeFixedTierPricing({
+    sellerPayout: sellerAmount,
+    affiliatePayout: affiliateAmount,
+    paypalPercent: PROCESSING_PERCENT,
+    paypalFixed: PROCESSING_FLAT,
+  });
 
   return {
     sellerAmount,
     affiliateAmount,
-    referralAmount,
-    platformFee,
-    processingFee,
-    listingPrice,
-    affiliateRate: input.affiliateRate,
-    affiliateType: affiliateType === 'percent' ? 'percentage' : 'flat_rate',
-    referralRate,
-    platformFeeRate: platformRate,
+    referralAmount: calculated.influencerAllocation,
+    platformFee: calculated.platformFee,
+    processingFee: calculated.paypalProcessingAllowance,
+    listingPrice: calculated.finalAdvertisedPrice,
+    affiliateRate: affiliateAmount,
+    affiliateType: 'flat_rate',
+    referralRate: 0,
+    platformFeeRate: 0,
   };
 }
 
@@ -243,12 +177,12 @@ export interface PayoutResult {
 
 export function calculatePayouts(
   salePrice: number,
-  sellerAsk: number,
+  sellerPayout: number,
   {
     hasAffiliate,
     hasAffiliateReferrer,
-    affiliateRate = DEFAULT_AFFILIATE_RATE,
-    affiliateType = 'percent',
+    affiliateRate = 0,
+    affiliateType = 'flat',
     influencerCount,
   }: {
     hasAffiliate: boolean;
@@ -258,126 +192,67 @@ export function calculatePayouts(
     influencerCount?: number;
   }
 ): PayoutResult {
+  const affiliateCommission = hasAffiliate
+    ? getAffiliateAmount(sellerPayout, affiliateType, affiliateRate)
+    : 0;
   const assignedInfluencerCount = Number.isFinite(influencerCount)
     ? Math.max(0, Math.floor(Number(influencerCount)))
     : hasAffiliateReferrer
       ? 1
       : 0;
-
-  if (affiliateType === 'percent') {
-    const affiliatePercent = affiliateRate > 1 ? affiliateRate : affiliateRate * 100;
-    const finalPrice = calculateFinalPrice(sellerAsk, {
-      affiliatePercent,
-      platformPercent: PLATFORM_FEE_PERCENT,
-    });
-
-    const breakdown = computePayoutBreakdown(finalPrice, sellerAsk, {
-      affiliatePercent,
-      platformPercent: PLATFORM_FEE_PERCENT,
-    }, { referralOverrideEnabled: false });
-    const referralBonus = getAssignedInfluencerPayoutTotal(sellerAsk, assignedInfluencerCount);
-
-    const processingFee = roundToCurrency(
-      breakdown.processingPercentAmount + breakdown.processingFixedFee
-    );
-    const regularPayPalAllocation = sellerAsk >= 25 ? processingFee : 0;
-
-    return {
-      salePrice: roundToCurrency(finalPrice),
-      sellerPayout: roundToCurrency(sellerAsk),
-      affiliateCommission: hasAffiliate ? roundToCurrency(breakdown.affiliateAmount) : 0,
-      referralBonus,
-      beezioGross: roundToCurrency(breakdown.platformGrossAmount),
-      beezioNet: roundToCurrency(Math.max(
-        breakdown.platformGrossAmount - referralBonus - regularPayPalAllocation,
-        0
-      )),
-      processingFee,
-    };
-  }
-
-  const normalizedAffiliateValue =
-    affiliateType === 'percent'
-      ? (affiliateRate > 1 ? affiliateRate : affiliateRate * 100)
-      : affiliateRate;
-
-  const affiliateCommission = hasAffiliate
-    ? roundToCurrency(getAffiliateAmount(sellerAsk, affiliateType, normalizedAffiliateValue))
-    : 0;
-
-  const platformGross = roundToCurrency(
-    computeBeezioPlatformFee(sellerAsk, { rate: getPlatformRate(sellerAsk) })
+  const referralBonus = getAssignedInfluencerPayoutTotal(
+    salePrice,
+    assignedInfluencerCount
   );
-
-  const referralBonus = getAssignedInfluencerPayoutTotal(sellerAsk, assignedInfluencerCount);
-  const regularPayPalAllocation = sellerAsk >= 25 ? roundToCurrency(salePrice * PROCESSING_PERCENT + PROCESSING_FLAT) : 0;
-  const beezioNet = roundToCurrency(Math.max(platformGross - referralBonus - regularPayPalAllocation, 0));
-  const processingFee = roundToCurrency(salePrice * PROCESSING_PERCENT + PROCESSING_FLAT);
-  const sellerPayout = roundToCurrency(sellerAsk);
+  const processingFee = roundUpToTwoDecimals(
+    salePrice * PROCESSING_PERCENT + PROCESSING_FLAT
+  );
+  const beezioGross = computeFixedBeezioPlatformFee(salePrice);
 
   return {
     salePrice: roundToCurrency(salePrice),
-    sellerPayout,
-    affiliateCommission,
+    sellerPayout: roundToCurrency(sellerPayout),
+    affiliateCommission: roundToCurrency(affiliateCommission),
     referralBonus,
-    beezioGross: platformGross,
-    beezioNet,
+    beezioGross,
+    // Processor allowance is a separate price bucket, so it does not reduce
+    // the fixed Beezio platform earnings.
+    beezioNet: beezioGross,
     processingFee,
   };
 }
 
 export function calculateSalePriceFromSellerAsk(
-  sellerAsk: number,
-  affiliateRate: number = DEFAULT_AFFILIATE_RATE,
-  affiliateType: AffiliateCommissionType = 'percent'
+  sellerPayout: number,
+  affiliateRate: number = 0,
+  affiliateType: AffiliateCommissionType = 'flat',
+  shippingIncluded: number = 0
 ): number {
-  const affiliateValue = affiliateType === 'percent'
-    ? (affiliateRate > 1 ? affiliateRate : affiliateRate * 100)
-    : affiliateRate;
-
-  return calculateCustomerProductPrice(sellerAsk, affiliateType, affiliateValue);
+  return calculateCustomerProductPrice(
+    sellerPayout,
+    affiliateType,
+    affiliateRate,
+    shippingIncluded
+  );
 }
 
 export function deriveSellerAskFromSalePrice(
   salePrice: number,
-  affiliateRate: number = DEFAULT_AFFILIATE_RATE,
-  affiliateType: AffiliateCommissionType = 'percent'
+  affiliateRate: number = 0,
+  affiliateType: AffiliateCommissionType = 'flat'
 ): number {
-  if (affiliateType === 'percent') {
-    const affiliatePercent = affiliateRate > 1 ? affiliateRate : affiliateRate * 100;
-    return deriveAskPriceFromFinalPrice(salePrice, {
-      affiliatePercent,
-      platformPercent: PLATFORM_FEE_PERCENT,
-    });
-  }
-
   if (!Number.isFinite(salePrice) || salePrice <= 0) return 0;
-
   let low = 0;
   let high = Math.max(salePrice, 1000);
-  let sellerAsk = 0;
-
-  for (let i = 0; i < 18; i++) {
+  let sellerPayout = 0;
+  for (let index = 0; index < 40; index += 1) {
     const mid = (low + high) / 2;
-    const computed = calculateCustomerProductPrice(
-      mid,
-      affiliateType,
-      affiliateType === 'percent'
-        ? affiliateRate > 1
-          ? affiliateRate
-          : affiliateRate * 100
-        : affiliateRate
-    );
-
-    if (computed > salePrice) {
-      high = mid;
-    } else {
-      low = mid;
-    }
-    sellerAsk = mid;
+    const computed = calculateCustomerProductPrice(mid, affiliateType, affiliateRate);
+    if (computed > salePrice) high = mid;
+    else low = mid;
+    sellerPayout = mid;
   }
-
-  return roundToCurrency(sellerAsk);
+  return roundToCurrency(sellerPayout);
 }
 
 export function buildPricedProduct<T extends {
@@ -389,32 +264,46 @@ export function buildPricedProduct<T extends {
   flat_commission_amount?: number;
   affiliate_commission_type?: 'percent' | 'flat';
   affiliate_commission_value?: number;
+  affiliate_payout_amount?: number;
   currency?: string;
   shipping_cost?: number;
   shipping_price?: number;
+  shipping_reserve_amount?: number;
 }>(product: T) {
-  const affiliatePricing = resolveAffiliateCommission(product);
-  const affiliateType: AffiliateCommissionType = affiliatePricing.type;
-  const affiliateValue = affiliatePricing.value;
-
-  const sellerAsk = typeof product.seller_ask === 'number'
-    ? product.seller_ask
-    : typeof product.seller_amount === 'number'
-      ? product.seller_amount
-      : deriveSellerAskFromSalePrice(product.price ?? 0, affiliateValue, affiliateType);
-
-  const salePrice = calculateCustomerProductPrice(sellerAsk, affiliateType, affiliateValue);
+  const affiliate = resolveAffiliateCommission(product);
+  const sellerPayout =
+    typeof product.seller_ask === 'number'
+      ? product.seller_ask
+      : typeof product.seller_amount === 'number'
+        ? product.seller_amount
+        : deriveSellerAskFromSalePrice(product.price ?? 0, affiliate.value, affiliate.type);
+  const shipping = Number(
+    product.shipping_reserve_amount ??
+      product.shipping_price ??
+      product.shipping_cost ??
+      0
+  );
+  const salePrice = calculateCustomerProductPrice(
+    sellerPayout,
+    affiliate.type,
+    affiliate.value,
+    shipping
+  );
 
   return {
     ...product,
-    seller_ask: sellerAsk,
-    seller_amount: sellerAsk,
+    seller_ask: sellerPayout,
+    seller_amount: sellerPayout,
     sale_price: salePrice,
     price: salePrice,
-    affiliate_commission_type: affiliateType,
-    affiliate_commission_value: affiliateValue,
+    affiliate_commission_type: affiliate.type,
+    affiliate_commission_value: affiliate.value,
+    affiliate_payout_amount:
+      affiliate.type === 'flat'
+        ? affiliate.value
+        : getAffiliateAmount(sellerPayout, affiliate.type, affiliate.value),
     currency: product.currency ?? 'USD',
-    shipping_price: product.shipping_price ?? product.shipping_cost ?? 0,
-    shipping_cost: product.shipping_price ?? product.shipping_cost ?? 0,
+    shipping_price: shipping,
+    shipping_cost: shipping,
   };
 }

@@ -17,6 +17,9 @@ type PriceLikeProduct = {
   flat_commission_amount?: number | null;
   affiliate_commission_type?: 'percent' | 'flat' | null;
   affiliate_commission_value?: number | null;
+  shipping_reserve_amount?: number | null;
+  shipping_price?: number | null;
+  shipping_cost?: number | null;
 };
 
 const toFiniteNumber = (value: unknown): number => {
@@ -44,7 +47,16 @@ export function getBuyerFacingProductPrice(product: PriceLikeProduct): number {
   const affiliateRate = toFiniteNumber(affiliatePricing.value);
 
   if (sellerAsk > 0) {
-    const computedBuyerPrice = calculateSalePriceFromSellerAsk(sellerAsk, affiliateRate, isFlat ? 'flat' : 'percent');
+    const shippingIncluded =
+      toFiniteNumber(product?.shipping_reserve_amount) ||
+      toFiniteNumber(product?.shipping_price) ||
+      toFiniteNumber(product?.shipping_cost);
+    const computedBuyerPrice = calculateSalePriceFromSellerAsk(
+      sellerAsk,
+      affiliateRate,
+      isFlat ? 'flat' : 'percent',
+      shippingIncluded
+    );
 
     // If direct price is missing or looks like a seller payout value, use computed.
     if (directPrice <= 0) return computedBuyerPrice;

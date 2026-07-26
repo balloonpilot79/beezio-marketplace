@@ -50,8 +50,12 @@ export const calculateRetailPriceCents = (costCents: number, rules: PricingRules
       ? Math.max(Math.round(cost * (Math.max(0, rules.markup_value) / 100)), 300)
       : Math.max(Math.max(0, rules.markup_value), 300);
   const sellerAsk = (cost + markup) / 100;
-  const affiliatePercent = rules.affiliate_enabled ? Math.max(0, rules.affiliate_percent) : 0;
-  return Math.round(calculateCustomerProductPrice(sellerAsk, 'percent', affiliatePercent) * 100);
+  // The historical `affiliate_floor_cents` field is the fixed-dollar affiliate
+  // payout for imported products. Percentage input is no longer used.
+  const affiliatePayout = rules.affiliate_enabled
+    ? Math.max(0, rules.affiliate_floor_cents) / 100
+    : 0;
+  return Math.round(calculateCustomerProductPrice(sellerAsk, 'flat', affiliatePayout) * 100);
 };
 
 export const estimateShippingCents = (weightOz: number, tiers: ShippingTier[]) => {

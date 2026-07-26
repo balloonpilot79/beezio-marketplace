@@ -57,7 +57,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ product, onSuccess, onError }
           sellerId: String(product.seller_id),
           sellerName: String((product as any)?.seller_name || (product as any)?.sellerName || 'Seller'),
           commission_rate: Number(product.commission_rate) || 0,
-          shippingCost: Number(product.shipping_cost) || 0,
+          shippingCost: 0,
         });
       });
 

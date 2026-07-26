@@ -1,6 +1,7 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import { applyCanonicalProductPricing } from '../../shared/productPricing';
+import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 
 function json(statusCode: number, body: unknown) {
   return {
@@ -62,6 +63,14 @@ function looksLikeCjProduct(product: any): boolean {
 
 function normalizeLegacyMarketplaceProduct(product: any) {
   const normalized = { ...(product || {}) };
+  const fixedAffiliatePayout = Number(normalized?.affiliate_payout_amount || 0);
+  if (fixedAffiliatePayout >= 0 && normalized?.affiliate_payout_amount != null) {
+    normalized.commission_type = 'flat_rate';
+    normalized.affiliate_commission_type = 'flat';
+    normalized.flat_commission_amount = fixedAffiliatePayout;
+    normalized.affiliate_commission_value = fixedAffiliatePayout;
+    normalized.commission_rate = 0;
+  }
   const commissionType = String(normalized?.commission_type || '').trim().toLowerCase();
   const affiliateCommissionType = String(normalized?.affiliate_commission_type || '').trim().toLowerCase();
   const hasExplicitFlatType =
@@ -102,11 +111,11 @@ function normalizeLegacyMarketplaceProduct(product: any) {
   const hasAnyCommission = normalizedPercent > 0 || normalizedAffiliateRate > 0 || normalizedAffiliateValue > 0 || normalizedFlatAmount > 0;
 
   if (!hasAnyCommission) {
-    normalized.commission_type = 'percentage';
-    normalized.affiliate_commission_type = 'percent';
-    normalized.commission_rate = 30;
-    normalized.affiliate_commission_rate = 30;
-    normalized.affiliate_commission_value = 30;
+    normalized.commission_type = 'flat_rate';
+    normalized.affiliate_commission_type = 'flat';
+    normalized.commission_rate = 0;
+    normalized.affiliate_commission_rate = 0;
+    normalized.affiliate_commission_value = 0;
   } else if (
     (String(normalized?.affiliate_commission_type || '').trim().toLowerCase() === 'flat' ||
       String(normalized?.commission_type || '').trim().toLowerCase() === 'flat_rate' ||
@@ -144,7 +153,7 @@ const handler: Handler = async (event) => {
 
     // Keep this intentionally conservative (public fields only).
     let selectFields =
-      'id,title,description,price,stock_quantity,total_inventory,in_stock,track_inventory,inventory_source,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,seller_id,average_rating,review_count,created_at,is_active,is_promotable,affiliate_enabled,status,lineage,dropship_provider,source_platform,source,cj_product_id,cj_pid,cj_product_code,cj_product_sku,cj_spu,display_search_code,import_status,seller_ask,seller_amount,seller_ask_price,calculated_customer_price';
+      'id,title,description,price,stock_quantity,total_inventory,in_stock,track_inventory,inventory_source,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,supplier_cost_amount,seller_markup_amount,shipping_reserve_amount,influencer_allocation_amount,paypal_processing_allowance,seller_id,average_rating,review_count,created_at,is_active,is_promotable,affiliate_enabled,status,lineage,dropship_provider,source_platform,source,cj_product_id,cj_pid,cj_product_code,cj_product_sku,cj_spu,display_search_code,import_status,seller_ask,seller_amount,seller_ask_price,calculated_customer_price';
 
     for (let attempt = 0; attempt < 16; attempt++) {
       const query = supabaseAdmin
@@ -202,17 +211,63 @@ const handler: Handler = async (event) => {
           });
         }
 
+        const productIds = products.map((product: any) => String(product?.id || '').trim()).filter(Boolean);
+        const storefrontsByProductId = new Map<string, any[]>();
+        if (productIds.length) {
+          const { data: placements } = await supabaseAdmin
+            .from('storefront_products')
+            .select('product_id,storefront_id')
+            .in('product_id', productIds.slice(0, 500));
+          const storefrontIds = Array.from(
+            new Set((placements || []).map((row: any) => String(row?.storefront_id || '').trim()).filter(Boolean))
+          );
+          const storefrontById = new Map<string, any>();
+          if (storefrontIds.length) {
+            const { data: storefrontRows } = await supabaseAdmin
+              .from('storefronts')
+              .select('id,name,slug,theme_settings,is_active')
+              .in('id', storefrontIds.slice(0, 500))
+              .eq('is_active', true);
+            (storefrontRows || []).forEach((row: any) => {
+              const id = String(row?.id || '').trim();
+              if (id) storefrontById.set(id, row);
+            });
+          }
+          (placements || []).forEach((placement: any) => {
+            const productId = String(placement?.product_id || '').trim();
+            const storefront = storefrontById.get(String(placement?.storefront_id || '').trim());
+            if (!productId || !storefront) return;
+            const list = storefrontsByProductId.get(productId) || [];
+            list.push(storefront);
+            storefrontsByProductId.set(productId, list);
+          });
+        }
+
         const normalized = products.map((p: any) => {
           const row = applyCanonicalProductPricing(normalizeLegacyMarketplaceProduct(p));
           const sellerMeta = sellerMetaById.get(String(row?.seller_id || '').trim()) || {};
           const categoryMeta = categoryMetaById.get(String(row?.category_id || '').trim()) || {};
+          const productStorefronts = storefrontsByProductId.get(String(row?.id || '').trim()) || [];
+          const houseStorefront = productStorefronts.find((storefront: any) =>
+            Boolean(resolveHouseBrandIdentity(storefront?.slug, storefront?.theme_settings?.brand_personality))
+          );
+          const houseBrand = houseStorefront
+            ? resolveHouseBrandIdentity(houseStorefront?.slug, houseStorefront?.theme_settings?.brand_personality)
+            : null;
+          const publicSellerName = houseBrand?.name || houseStorefront?.name || sellerMeta.full_name;
           return {
             ...row,
+            shipping_cost: 0,
+            shipping_price: 0,
+            shipping_options: row?.is_digital === true
+              ? []
+              : [{ name: 'Free Shipping', cost: 0, estimated_days: '3-5 business days', included_in_price: true }],
+            storefront_slug: houseStorefront?.slug || null,
             category: String(row?.category || categoryMeta.name || '').trim() || null,
             category_name: String(categoryMeta.name || row?.category || '').trim() || null,
             category_slug: String(row?.category_slug || categoryMeta.slug || '').trim() || null,
             profiles: {
-              full_name: sellerMeta.full_name,
+              full_name: publicSellerName,
               location: sellerMeta.location,
             },
           };

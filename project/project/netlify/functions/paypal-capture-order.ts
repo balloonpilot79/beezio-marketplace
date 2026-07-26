@@ -525,10 +525,10 @@ export const handler: Handler = async (event) => {
       const partnerRate = Math.max(0, Number(it.partner_rate ?? 0) || 0);
       const beezioRate = Number.isFinite(Number(it.beezio_rate)) ? Math.max(0, Number(it.beezio_rate)) : beezioRateDefault;
       const testItem = isTestItemTitle((it as any)?.products?.title);
-      const lowPriceItem = isLowPriceAmount(ask);
+      const lowPriceItem = isLowPriceAmount(listingUnit);
       const influencerBonusPoolLine = testItem
         ? TEST_ITEM_INFLUENCER_FEE * qty
-        : getReferrerBonusTotal(ask, qty);
+        : getReferrerBonusTotal(listingUnit, qty);
 
       askTotal += ask * qty;
       listingSubtotal += listingUnit * qty;
@@ -542,7 +542,7 @@ export const handler: Handler = async (event) => {
         regularBeezioFeeGrossTotal += (testItem
           ? TEST_ITEM_PLATFORM_GROSS
           : round2(
-              computeBeezioPlatformFee(ask, {
+              computeBeezioPlatformFee(listingUnit, {
                 rate: beezioRate,
                 minimum: beezioPlatformFeeMin,
                 cap: beezioPlatformFeeCap,
@@ -587,16 +587,13 @@ export const handler: Handler = async (event) => {
     const lowPriceBeezioFeeNetTotal = round2(lowPriceBeezioFeeGrossTotal);
     const regularPayPalAllocated = round2(Math.max(paypalFeeEstimate - lowPricePayPalAllocated, 0));
 
-    // Platform-fee policy:
-    // - Beezio fee has a $1.00 floor per item.
-    // - Once 10% of seller ask exceeds $1.00, use the 10% rate.
-    // - The fee caps at $20 per item, with orders above the threshold staying flat at $20.
-    // - Influencer reserve is charged on top of the buyer price and tracked separately.
-    // - PayPal only reduces Beezio operating profit on non-low-price items.
-    const regularBeezioFeeNetTotal = round2(Math.max(regularBeezioFeeGrossTotal - regularPayPalAllocated, 0));
+    // These totals are operational diagnostics. Frozen payout snapshots created
+    // below are authoritative. PayPal has its own allowance and never reduces
+    // the fixed Beezio platform fee.
+    const regularBeezioFeeNetTotal = regularBeezioFeeGrossTotal;
     beezioFeeGrossTotal = round2(regularBeezioFeeGrossTotal + lowPriceBeezioFeeGrossTotal);
     const beezioFeeNetTotal = round2(regularBeezioFeeNetTotal + lowPriceBeezioFeeNetTotal);
-    const beezioProfit = beezioFeeNetTotal;
+    const beezioProfit = round2(beezioFeeNetTotal + retainedBonusTotal);
 
     const holdReleaseAt = new Date(Date.now() + holdDays * 24 * 60 * 60 * 1000).toISOString();
 
