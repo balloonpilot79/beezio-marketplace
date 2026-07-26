@@ -1586,9 +1586,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
 
       <div className="space-y-2">
         <div>
-          <div className="text-sm font-medium text-gray-900">Shipping Calculator</div>
+          <div className="text-sm font-medium text-gray-900">Free shipping</div>
           <div className="mt-0.5 text-xs text-gray-600">
-            Shipping is set by the seller for this order before payment is completed.
+            Supplier shipping expenses are already included in each physical product price and are not added again at checkout.
           </div>
         </div>
         {shippingLoading && <div className="text-sm text-gray-600">Loading seller shipping...</div>}
@@ -1628,7 +1628,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
         )}
         {!shippingLoading && availableShippingOptions.length === 0 && !shippingError && !hasFreeOnlyShipping && (
           <div className="text-sm text-gray-600">
-            Shipping will appear here once the seller shipping setup is loaded.
+            Free shipping is included for this order.
           </div>
         )}
       </div>

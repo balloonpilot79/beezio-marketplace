@@ -1,6 +1,7 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import { applyCanonicalProductPricing } from '../../shared/productPricing';
+import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 
 type CacheEntry = { expiresAt: number; value: any };
 const memCache = new Map<string, CacheEntry>();
@@ -150,7 +151,7 @@ const handler: Handler = async (event) => {
     if (!productIdRaw) return json(400, { ok: false, error: 'Missing id' });
     if (!isUuid(productIdRaw)) return json(400, { ok: false, error: 'Invalid id' });
 
-    const cacheKey = `public-product-get:v3:${productIdRaw}`;
+    const cacheKey = `public-product-get:v4:${productIdRaw}`;
     const cached = getFromCache(cacheKey);
     if (cached) return json(200, cached);
 
@@ -244,6 +245,29 @@ const handler: Handler = async (event) => {
 
     let sellerName: string | undefined = undefined;
     let storeSettings: any = null;
+    let productStorefront: any = null;
+
+    const { data: placementRows } = await supabaseAdmin
+      .from('storefront_products')
+      .select('storefront_id')
+      .eq('product_id', productIdRaw)
+      .limit(20);
+    const storefrontIds = Array.from(
+      new Set((placementRows || []).map((row: any) => String(row?.storefront_id || '').trim()).filter(Boolean))
+    );
+    if (storefrontIds.length) {
+      const { data: storefrontRows } = await supabaseAdmin
+        .from('storefronts')
+        .select('id,name,slug,theme_settings,shipping_policy,return_policy,custom_domain,is_active')
+        .in('id', storefrontIds)
+        .eq('is_active', true);
+      productStorefront =
+        (storefrontRows || []).find((row: any) =>
+          Boolean(resolveHouseBrandIdentity(row?.slug, row?.theme_settings?.brand_personality))
+        ) ||
+        (storefrontRows || [])[0] ||
+        null;
+    }
 
     if (sellerId) {
       const [{ data: seller }, { data: settings }] = await Promise.all([
@@ -259,13 +283,38 @@ const handler: Handler = async (event) => {
       storeSettings = settings || null;
     }
 
+    const houseBrand = resolveHouseBrandIdentity(
+      productStorefront?.slug,
+      productStorefront?.theme_settings?.brand_personality
+    );
+    if (houseBrand?.name) sellerName = houseBrand.name;
+    else if (productStorefront?.name) sellerName = String(productStorefront.name).trim();
+
+    if (productStorefront) {
+      storeSettings = {
+        ...(storeSettings || {}),
+        store_name: sellerName,
+        subdomain: productStorefront.slug || storeSettings?.subdomain || null,
+        custom_domain: productStorefront.custom_domain || null,
+        shipping_policy: 'Free shipping. Shipping costs are included in each physical product price.',
+        return_policy: productStorefront.return_policy || storeSettings?.return_policy || null,
+      };
+    }
+
     const normalizedProduct = applyCanonicalProductPricing(normalizeLegacyProduct(product));
+    const isDigital = normalizedProduct?.is_digital === true;
 
     const responseBody = {
       ok: true,
       product: {
         ...(normalizedProduct as any),
         profiles: sellerName ? { full_name: sellerName } : undefined,
+        storefront_slug: productStorefront?.slug || null,
+        shipping_cost: 0,
+        shipping_price: 0,
+        shipping_options: isDigital
+          ? []
+          : [{ name: 'Free Shipping', cost: 0, estimated_days: '3-5 business days', included_in_price: true }],
       },
       store_settings: storeSettings,
     };

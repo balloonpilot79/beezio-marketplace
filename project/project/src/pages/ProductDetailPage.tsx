@@ -28,9 +28,10 @@ import { getCJProductInventory } from '../services/cjDropshipping';
 import { deleteProductById } from '../utils/deleteProduct';
 import { archiveProductById } from '../utils/archiveProduct';
 import { fetchAccountOwnedProducts } from '../utils/accountOwnedProducts';
-import { formatMoneyDisplay, formatShippingDisplay, formatShippingLineItem } from '../utils/moneyDisplay';
+import { formatMoneyDisplay, formatShippingDisplay } from '../utils/moneyDisplay';
 import { normalizeProductVideos } from '../utils/imageHelpers';
 import { resolveProductRefreshFailure } from '../utils/productRefreshState';
+import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 import {
   fetchProductReviews as fetchProductReviewsFromService,
   getUserProductReviewStatus,
@@ -1189,7 +1190,18 @@ const ProductDetailPage: React.FC = () => {
         if (storeSettingsError && storeSettingsError.code !== 'PGRST116') {
           console.warn('[ProductDetailPage] Error fetching store settings (non-fatal):', storeSettingsError);
         }
-        setSellerStoreSettings(storeSettingsData || null);
+        const returnedStoreSlug = String((data as any)?.storefront_slug || '').trim().toLowerCase();
+        const houseBrand = resolveHouseBrandIdentity(rawStoreSlug || returnedStoreSlug);
+        setSellerStoreSettings(
+          houseBrand
+            ? {
+                ...(storeSettingsData || {}),
+                store_name: houseBrand.name,
+                subdomain: houseBrand.slug,
+                shipping_policy: 'Free shipping. Shipping costs are included in each physical product price.',
+              }
+            : storeSettingsData || null
+        );
       } else {
         setSellerStoreSettings(null);
       }
@@ -1402,8 +1414,8 @@ const ProductDetailPage: React.FC = () => {
         quantity: quantity,
           image: (selectedVariant?.image_url ? resolveImageUrl(selectedVariant.image_url) : '') || product.images[0] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=800',
         sellerId: product.seller_id,
-        sellerName: product.profiles?.full_name || 'Unknown Seller',
-        shippingCost: Number(selectedShipping?.cost ?? product.shipping_cost ?? 0) || 0,
+        sellerName: sellerStoreSettings?.store_name || product.profiles?.full_name || 'Unknown Seller',
+        shippingCost: 0,
         maxQuantity: typeof computedMaxQuantity === 'number' ? computedMaxQuantity : undefined,
         affiliateId: cartAffiliateId,
         variantId: selectedVariant?.id ?? undefined,
@@ -1415,7 +1427,7 @@ const ProductDetailPage: React.FC = () => {
       // Show success message or redirect to checkout
       if (!options?.silent) {
         const variantText = selectedVariant ? ` (${formatVariantLabel(selectedVariant)})` : '';
-        alert(`Product${variantText} added to cart! ${selectedShipping ? `Shipping: ${selectedShipping.name} (+$${selectedShipping.cost.toFixed(2)})` : ''}`);
+        alert(`Product${variantText} added to cart! Free shipping is included in the product price.`);
         navigate('/cart');
       }
 
@@ -1443,8 +1455,8 @@ const ProductDetailPage: React.FC = () => {
         quantity: 1,
         image: (selectedVariant?.image_url ? resolveImageUrl(selectedVariant.image_url) : '') || product.images[0] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=800',
         sellerId: product.seller_id,
-        sellerName: product.profiles?.full_name || 'Unknown Seller',
-        shippingCost: Number(selectedShipping?.cost ?? product.shipping_cost ?? 0) || 0,
+        sellerName: sellerStoreSettings?.store_name || product.profiles?.full_name || 'Unknown Seller',
+        shippingCost: 0,
         maxQuantity: 1,
         affiliateId: cartAffiliateId,
         variantId: selectedVariant?.id ?? undefined,
@@ -1897,9 +1909,7 @@ const ProductDetailPage: React.FC = () => {
                 </span>
                 {showBuyerCtas && product.requires_shipping && (
                   <span className="text-sm text-gray-600">
-                    {allowBackorder
-                      ? 'Shipping calculated at checkout'
-                      : formatShippingLineItem(Number((product as any)?.shipping_price ?? product.shipping_cost ?? 0))}
+                    Free shipping
                   </span>
                 )}
                 {showBuyerCtas && product.is_digital && (

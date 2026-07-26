@@ -332,7 +332,7 @@ const AdminUrlProductImporter = ({
                   <div className="mt-2 grid grid-cols-[1fr_110px] gap-2"><input type="number" min="0" step="0.01" value={affiliateValue} onChange={(event) => setAffiliateValue(Number(event.target.value))} className="w-full rounded-xl border border-gray-300 px-4 py-3" /><select value={affiliateType} onChange={(event) => setAffiliateType(event.target.value as 'percentage' | 'flat_rate')} className="rounded-xl border border-gray-300 px-3"><option value="percentage">%</option><option value="flat_rate">$ flat</option></select></div>
                 </label>
               </div>
-              <p className="mt-4 text-xs leading-5 text-gray-600">Shipping and sales tax remain separate and are calculated at checkout. Verify supplier permissions, wholesale terms, labels, claims, inventory, and fulfillment details before publishing.</p>
+              <p className="mt-4 text-xs leading-5 text-gray-600">Enter the supplier shipping expense in the Add Product review. Beezio includes it in the final product price so the buyer sees free shipping; sales tax is calculated at checkout. Verify supplier permissions, wholesale terms, labels, claims, inventory, and fulfillment details before publishing.</p>
             </div>
 
             <div className="rounded-2xl bg-[#101820] p-5 text-white">
@@ -346,7 +346,7 @@ const AdminUrlProductImporter = ({
                 <div className="flex justify-between gap-3"><dt className="text-slate-400">Beezio fee</dt><dd>{money(pricing.platformFee)}</dd></div>
                 <div className="flex justify-between gap-3"><dt className="text-slate-400">PayPal estimate</dt><dd>{money(Math.max(0, pricing.listingPrice - pricing.sellerAmount - pricing.affiliateAmount - pricing.referralAmount - pricing.platformFee))}</dd></div>
               </dl>
-              <div className="mt-4 border-t border-white/15 pt-4 text-xs leading-5 text-slate-400">Tax and any separate shipping charge are added at checkout.</div>
+              <div className="mt-4 border-t border-white/15 pt-4 text-xs leading-5 text-slate-400">The product price includes supplier shipping; the buyer sees free shipping. Tax is calculated at checkout.</div>
             </div>
           </div>
 

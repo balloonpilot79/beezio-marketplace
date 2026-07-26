@@ -18,7 +18,7 @@ const PricingPage: React.FC<{
             <h2 className="text-2xl font-bold text-purple-600">How it works</h2>
             <ul className="list-disc list-inside text-gray-700 space-y-2">
               <li>You set the amount you want to keep per sale.</li>
-              <li>Shipping is separate and calculated at checkout based on your settings.</li>
+              <li>You enter the shipping expense before listing; Beezio includes it in the product price and the buyer sees free shipping.</li>
               <li>Beezio bakes platform and processing fees into the buyer price so checkout stays simple.</li>
               <li>Pricing is transparent and shown before purchase.</li>
             </ul>

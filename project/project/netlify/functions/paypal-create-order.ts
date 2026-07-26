@@ -1253,8 +1253,9 @@ export const handler: Handler = async (event) => {
       ? round2(subtotalListing * effectiveTaxRate)
       : round2(Math.max(0, taxAmountClient));
 
-    // Server-side shipping calculation (non-CJ + CJ weight tiers).
-    let nonCJShippingTotal = 0;
+    // Shipping is included in every physical product's listing price. We still
+    // validate supplier-specific fulfillment requirements, but never add a
+    // second shipping charge to the PayPal order.
     let cjTotalWeightOz = 0;
     let hasCJ = false;
 
@@ -1292,13 +1293,8 @@ export const handler: Handler = async (event) => {
         continue;
       }
 
-      const baseShipping = Number(product?.shipping_cost ?? product?.shipping_price ?? 0) || 0;
-      const qty = Math.max(1, Math.floor(Number(li.qty || 0)));
-      nonCJShippingTotal += round2(baseShipping * qty);
     }
-    nonCJShippingTotal = round2(nonCJShippingTotal);
 
-    let cjShippingTotal = 0;
     if (hasCJ) {
       let tiers: ShippingTier[] = DEFAULT_SHIPPING_TIERS;
       try {
@@ -1315,11 +1311,12 @@ export const handler: Handler = async (event) => {
         // fall back to defaults
       }
 
-      const shippingCents = pickTierCost(cjTotalWeightOz, tiers);
-      cjShippingTotal = Math.round((shippingCents / 100 + Number.EPSILON) * 100) / 100;
+      // Confirm that a configured tier exists for fulfillment costing. The
+      // result is already represented in the product price and seller payout.
+      pickTierCost(cjTotalWeightOz, tiers);
     }
 
-    const shippingAmount = round2(nonCJShippingTotal + cjShippingTotal);
+    const shippingAmount = 0;
 
     const totalCharged = round2(subtotalListing + shippingAmount + taxAmount);
 

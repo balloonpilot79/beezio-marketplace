@@ -26,7 +26,7 @@ const AddProductPage: React.FC = () => {
     return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
   };
   const checklist = [
-    'Required: title, description, and the exact amount you want to keep. Taxes and shipping are added at checkout.',
+    'Required: title, description, the exact amount you want to keep, affiliate terms, and any supplier shipping expense. Beezio shows the complete customer price before you save.',
     'Upload at least one image (use the uploader below).',
     'Set affiliate commission (percentage or flat) knowing it does not come out of your seller payout.',
     'Pick a category and stock quantity. Digital products use the Digital Products category.',

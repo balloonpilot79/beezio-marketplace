@@ -347,7 +347,7 @@ const handler: Handler = async (event) => {
 
     // Conservative public fields only; tolerate schema drift by retrying when a column is missing.
     let selectFields =
-      'id,title,description,price,currency,images,videos,category,category_id,shipping_cost,shipping_price,stock_quantity,total_inventory,in_stock,track_inventory,inventory_source,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status,lineage,source_platform,source,dropship_provider,cj_product_id,cj_pid,cj_spu,display_search_code,seller_ask,seller_amount,seller_ask_price,calculated_customer_price';
+      'id,title,description,price,currency,images,videos,category,category_id,shipping_cost,shipping_price,shipping_options,requires_shipping,is_digital,stock_quantity,total_inventory,in_stock,track_inventory,inventory_source,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status,lineage,source_platform,source,dropship_provider,cj_product_id,cj_pid,cj_spu,display_search_code,seller_ask,seller_amount,seller_ask_price,calculated_customer_price';
 
     let sellerOwnedProducts: any[] = [];
     let curatedProducts: any[] = [];
@@ -403,8 +403,16 @@ const handler: Handler = async (event) => {
 
     const orderedProducts = Array.from(productsById.values()).map((product: any) => {
       const orderSetting = (orderData || []).find((o: any) => o.product_id === product.id);
+      const isDigital = product?.is_digital === true;
       return {
         ...applyCanonicalProductPricing(normalizeLegacyStorefrontProduct(product)),
+        profiles: { full_name: mergedSeller.full_name },
+        storefront_slug: brandStorefront?.slug || storeSlug || null,
+        shipping_cost: 0,
+        shipping_price: 0,
+        shipping_options: isDigital
+          ? []
+          : [{ name: 'Free Shipping', cost: 0, estimated_days: '3-5 business days', included_in_price: true }],
         display_order: orderSetting?.display_order ?? 999,
         is_featured: orderSetting?.is_featured ?? false,
       };

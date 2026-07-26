@@ -91,7 +91,7 @@ const TermsPage: React.FC = () => {
                 <li>All payments are processed securely through Beezio checkout using approved payment providers.</li>
                 <li>Payments may be processed by PayPal or another provider chosen by Beezio.</li>
                 <li>Buyers are charged at the time of purchase.</li>
-                <li>Taxes and shipping are calculated at checkout based on seller settings.</li>
+                <li>Physical-product shipping is included in the listed product price; applicable taxes are calculated at checkout.</li>
                 <li>Insurance agents fund lead delivery through Beezio pricing and qualification rules before vetted leads are released.</li>
               </ul>
             </div>

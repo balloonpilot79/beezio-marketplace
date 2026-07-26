@@ -144,7 +144,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
   const buildSingleShippingOption = (
     shippingPrice: number,
-    includeInPrice: boolean = false
+    includeInPrice: boolean = true
   ): Array<{ name: string; cost: number; estimated_days: string; included_in_price?: boolean; seller_shipping_cost?: number }> => [{
     name: includeInPrice ? 'Free Shipping' : 'Seller Shipping',
     cost: includeInPrice ? 0 : Math.max(0, shippingPrice),
@@ -160,8 +160,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         raw = null;
       }
     }
-    if (!Array.isArray(raw) || raw.length === 0) return false;
-    return Boolean(raw[0]?.included_in_price);
+    if (!Array.isArray(raw) || raw.length === 0) return true;
+    // Beezio physical products always advertise free shipping. Legacy paid
+    // options are interpreted as the seller's supplier-shipping reserve.
+    return true;
   };
 
   const getStoredShippingAmount = (raw: any, fallback: number): number => {
@@ -180,7 +182,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const normalizeShippingOptions = (
     raw: any,
     shippingPrice: number,
-    includeInPrice: boolean = false
+    includeInPrice: boolean = true
   ): Array<{ name: string; cost: number; estimated_days: string }> => {
     let options: any = raw;
 
@@ -257,10 +259,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     is_subscription: product?.is_subscription || false,
     subscription_interval: product?.subscription_interval || '',
     affiliate_enabled: true, // DEFAULT TO TRUE - Business preference
-    shipping_options: buildSingleShippingOption(product?.shipping_price ?? (product as any)?.shipping_cost ?? 0),
+    shipping_options: buildSingleShippingOption(product?.shipping_price ?? (product as any)?.shipping_cost ?? 0, true),
     requires_shipping: product?.requires_shipping !== false,
     shipping_price: product?.shipping_price ?? (product as any)?.shipping_cost ?? 0,
-    shipping_included_in_price: getShippingIncludedState(product?.shipping_options),
+    shipping_included_in_price: true,
     base_weight_oz: Number((product as any)?.base_weight_oz || 0) || 0,
     package_length_in: Number((product as any)?.package_length_in || 0) || 0,
     package_width_in: Number((product as any)?.package_width_in || 0) || 0,
@@ -326,10 +328,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       is_subscription: false,
       subscription_interval: '',
       affiliate_enabled: true,
-      shipping_options: buildSingleShippingOption(0),
+      shipping_options: buildSingleShippingOption(0, true),
       requires_shipping: true,
       shipping_price: 0,
-      shipping_included_in_price: false,
+      shipping_included_in_price: true,
       base_weight_oz: 0,
       package_length_in: 0,
       package_width_in: 0,
@@ -413,7 +415,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         if (loadError) throw loadError;
         if (!data) throw new Error('This product could not be loaded for editing.');
         if (!cancelled) {
-          const shippingIncludedInPrice = getShippingIncludedState(data.shipping_options);
+          const shippingIncludedInPrice = data.is_digital === true ? false : getShippingIncludedState(data.shipping_options);
           const shippingPrice = getStoredShippingAmount(
             data.shipping_options,
             data.shipping_price ?? data.shipping_cost ?? 0
@@ -824,8 +826,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       category_id: nextIsDigital ? digitalCategoryId : (isDigitalCategoryOption({ id: prev.category_id, name: prev.category_id }) ? '' : prev.category_id),
       requires_shipping: nextIsDigital ? false : prev.requires_shipping,
       shipping_price: nextIsDigital ? 0 : prev.shipping_price,
-      shipping_included_in_price: nextIsDigital ? false : prev.shipping_included_in_price,
-      shipping_options: nextIsDigital ? [] : prev.shipping_options,
+      shipping_included_in_price: nextIsDigital ? false : true,
+      shipping_options: nextIsDigital
+        ? []
+        : normalizeShippingOptions(prev.shipping_options, Number(prev.shipping_price) || 0, true),
       digital_download_limit: Math.max(1, Number((prev as any).digital_download_limit || 1)),
       digital_return_policy_notice: String((prev as any).digital_return_policy_notice || '').trim() || DIGITAL_RETURN_POLICY_DEFAULT,
     }));
@@ -1137,14 +1141,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       : normalizeShippingOptions(
           (formData as any).shipping_options,
           Number(formData.shipping_price) || 0,
-          (formData as any).shipping_included_in_price === true
+          true
         );
 
     const shippingCharge = isDigitalProduct
       ? 0
-      : (formData as any).shipping_included_in_price === true
-        ? (Number(formData.shipping_price) || 0)
-        : 0;
+      : (Number(formData.shipping_price) || 0);
     const adminOnlyPriceError = getAdminOnlyLowPriceMessage({
       isAdmin: isAdminUser({ profile, user, userRoles }),
       listingPrice: pricingBreakdown.listingPrice,
@@ -2095,7 +2097,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-gray-600 mb-2">
-                    Seller Payout
+                    Seller keeps from product
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-3 text-gray-500">$</span>
@@ -2158,13 +2160,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
           {(formData as any).is_digital !== true && (
             <section className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
-              <div className="font-bold text-gray-950">Shipping charged to the customer</div>
+              <div className="font-bold text-gray-950">Supplier shipping cost</div>
               <p className="mt-1 text-sm leading-6 text-gray-700">
-                Enter the shipping amount for this product. Beezio will add it at checkout unless you choose to include it in the product price.
+                Enter what you need to pay to ship one item. Beezio includes this amount in the listed product price, reserves it in your seller payout, and shows the customer free shipping.
               </p>
               <div className="mt-4 max-w-xs">
                 <label className="mb-2 block text-sm font-semibold text-gray-900" htmlFor="main-shipping-price">
-                  Shipping price
+                  Shipping expense per item
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-3 text-gray-500">$</span>
@@ -2188,30 +2190,54 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   />
                 </div>
               </div>
-              <label className="mt-4 flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={Boolean((formData as any).shipping_included_in_price)}
-                  onChange={(event) =>
-                    setFormData((previous) => ({
-                      ...previous,
-                      shipping_included_in_price: event.target.checked,
-                      shipping_options: normalizeShippingOptions(
-                        (previous as any).shipping_options,
-                        Number(previous.shipping_price) || 0,
-                        event.target.checked
-                      ),
-                    }))
-                  }
-                  className="mt-1 h-5 w-5 rounded border-gray-300 text-[#ffcc00] focus:ring-[#ffcc00]"
-                />
-                <div>
-                  <div className="font-semibold text-gray-900">Include shipping in the product price</div>
-                  <div className="text-sm text-gray-600">
-                    The customer will see free shipping because this amount is folded into the listed price.
-                  </div>
+              <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
+                <div className="font-semibold text-emerald-900">Customer sees: Free shipping</div>
+                <div className="text-sm text-emerald-800">This expense is included once in the final product price and is never added again at checkout.</div>
+              </div>
+            </section>
+          )}
+
+          {pricingBreakdown && (
+            <section className="rounded-xl border-2 border-slate-900 bg-slate-950 p-5 text-white">
+              <div className="text-lg font-black">Review the complete price before listing</div>
+              <p className="mt-1 text-sm text-slate-300">
+                Nothing is published until you approve this breakdown and press Save.
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Seller keeps from product</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.sellerBaseAmount.toFixed(2)}</div>
                 </div>
-              </label>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Shipping reserved for seller</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.shippingIncludedAmount.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Total seller payout</div>
+                  <div className="mt-1 text-xl font-bold text-emerald-300">${pricingBreakdown.sellerAmount.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Affiliate commission</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.affiliateAmount.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Beezio fee</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.platformFee.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">PayPal processing allocation</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.processingFee.toFixed(2)}</div>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3">
+                  <div className="text-slate-300">Influencer reserve</div>
+                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.referralAmount.toFixed(2)}</div>
+                </div>
+              </div>
+              <div className="mt-4 rounded-xl bg-[#ffcc00] p-4 text-slate-950">
+                <div className="text-sm font-bold uppercase tracking-wide">Final product price</div>
+                <div className="mt-1 text-4xl font-black">${pricingBreakdown.listingPrice.toFixed(2)}</div>
+                <div className="mt-1 text-sm font-semibold">Free shipping • Tax calculated at checkout</div>
+              </div>
             </section>
           )}
 

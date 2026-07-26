@@ -87,18 +87,16 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
             }
 
             const rawOptions: ShippingOption[] = parseRawShippingOptions(publicProduct.shipping_options).map(normalizeShippingOption);
-            const normalizedShippingPrice = toFiniteNumber(publicProduct?.shipping_price ?? publicProduct?.shipping_cost ?? 0);
             const includedOption = rawOptions.find((option) => option.included_in_price === true);
-            const effectiveCost = includedOption ? 0 : normalizedShippingPrice;
             const options: ShippingOption[] = [{
               id: includedOption?.id || rawOptions[0]?.id || 'default',
-              name: includedOption ? 'Free Shipping' : 'Seller Shipping',
-              cost: effectiveCost,
+              name: 'Free Shipping',
+              cost: 0,
               estimated_days: includedOption?.estimated_days || rawOptions[0]?.estimated_days || '3-5 business days',
               origin_country: includedOption?.origin_country || rawOptions[0]?.origin_country,
               origin_label: includedOption?.origin_label || rawOptions[0]?.origin_label,
               processing_time: includedOption?.processing_time || rawOptions[0]?.processing_time,
-              included_in_price: Boolean(includedOption),
+              included_in_price: true,
             }];
 
             setShippingOptions(options);
@@ -153,18 +151,16 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
 
       const rawOptions: ShippingOption[] = parseRawShippingOptions(product.shipping_options).map(normalizeShippingOption);
 
-      const normalizedShippingPrice = toFiniteNumber(product?.shipping_price ?? product?.shipping_cost ?? 0);
       const includedOption = rawOptions.find((option) => option.included_in_price === true);
-      const effectiveCost = includedOption ? 0 : normalizedShippingPrice;
       const options: ShippingOption[] = [{
         id: includedOption?.id || rawOptions[0]?.id || 'default',
-        name: includedOption ? 'Free Shipping' : 'Seller Shipping',
-        cost: effectiveCost,
+        name: 'Free Shipping',
+        cost: 0,
         estimated_days: includedOption?.estimated_days || rawOptions[0]?.estimated_days || '3-5 business days',
         origin_country: includedOption?.origin_country || rawOptions[0]?.origin_country,
         origin_label: includedOption?.origin_label || rawOptions[0]?.origin_label,
         processing_time: includedOption?.processing_time || rawOptions[0]?.processing_time,
-        included_in_price: Boolean(includedOption),
+        included_in_price: true,
       }];
       
       setShippingOptions(options);
