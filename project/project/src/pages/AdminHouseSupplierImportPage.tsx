@@ -3,27 +3,26 @@ import { ExternalLink, FileSpreadsheet, ShieldCheck } from 'lucide-react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import AdminUrlProductImporter from '../components/AdminUrlProductImporter';
 
-type SupplierId = 'blanka' | 'roastify' | 'supliful';
+type SupplierId = 'printify' | 'roastify' | 'supliful';
 
 const SUPPLIERS: Record<SupplierId, {
   name: string;
   brand: string;
-  storefrontSlug: string;
+  storefrontSlug?: string;
   supplierUrl: string;
   placeholder: string;
   description: string;
   accessNote: string;
   automationNote: string;
 }> = {
-  blanka: {
-    name: 'Blanka',
-    brand: 'MareBelle',
-    storefrontSlug: 'marebelle',
-    supplierUrl: 'https://app.blankabrand.com/',
-    placeholder: 'https://app.blankabrand.com/products/...',
-    description: 'Bring a Blanka beauty product into MareBelle. Beezio will try public metadata first; authenticated portal pages can continue through manual entry while preserving the supplier URL.',
-    accessNote: 'Blanka can provide paid-plan CSV exports. Its direct API requires Blanka VIP access and an API key from their merchant-success team.',
-    automationNote: 'Keep fulfillment manual until the MareBelle catalog and live-order checks are complete.',
+  printify: {
+    name: 'Printify',
+    brand: 'Beezio-designed merchandise',
+    supplierUrl: 'https://printify.com/app/products',
+    placeholder: 'https://printify.com/app/products/...',
+    description: 'Bring an approved Printify product into Beezio after its design, print provider, variants, mockups, production cost, and shipping are confirmed. Choose the correct brand storefront during review so horse, Christian, eagle, and future collections stay separate.',
+    accessNote: 'Create the designed product in Printify first. Preserve the Printify product ID, provider, variant SKUs, colors, sizes, production cost, and mockups in the Beezio listing.',
+    automationNote: 'Keep fulfillment manual for launch. Place the Printify order only after the Beezio payment is captured and the shipping address is verified.',
   },
   roastify: {
     name: 'Roastify',
@@ -31,9 +30,9 @@ const SUPPLIERS: Record<SupplierId, {
     storefrontSlug: 'redtail',
     supplierUrl: 'https://merchant.roastify.app/',
     placeholder: 'https://merchant.roastify.app/products/...',
-    description: 'Bring a Roastify coffee product into RedTail. Verify the coffee, grind variants, Roastify SKU, wholesale cost, bag image, markup, and affiliate commission before publishing.',
+    description: 'Create a RedTail wholesale coffee lot, not a single-unit retail listing. Quantity 1 on Beezio must represent the complete stated lot. Verify unit count, roast, grind, Roastify SKU, lot cost, destination shipping, markup, and affiliate payout before publishing.',
     accessNote: 'Roastify offers Test and Live API keys on Base and Pro plans. The first launch remains manual so a supplier charge can never be triggered by an unverified Beezio order.',
-    automationNote: 'Preserve Roastify SKUs exactly. Whole Bean and Ground should remain separate variants when the supplier provides both.',
+    automationNote: 'Preserve Roastify SKUs exactly. Launch with 20-unit wholesale lots; Whole Bean and Ground remain separate variants. Do not enable a one-unit purchase option.',
   },
   supliful: {
     name: 'Supliful',

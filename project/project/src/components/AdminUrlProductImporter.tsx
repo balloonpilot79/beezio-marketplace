@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, Check, Image as ImageIcon, Link2, Loader2, PackageSearch } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { calculatePricing } from '../lib/pricing';
+import { calculatePricing, MIN_AFFILIATE_PAYOUT } from '../lib/pricing';
 import { supabase } from '../lib/supabase';
 
 type ImportVariant = {
@@ -60,7 +60,7 @@ const AdminUrlProductImporter = ({
   const [markupType, setMarkupType] = useState<'percent' | 'flat'>('percent');
   const [markupValue, setMarkupValue] = useState(40);
   const affiliateType = 'flat_rate' as const;
-  const [affiliateValue, setAffiliateValue] = useState(5);
+  const [affiliateValue, setAffiliateValue] = useState(MIN_AFFILIATE_PAYOUT);
   const [variants, setVariants] = useState<ImportVariant[]>([]);
 
   useEffect(() => {
@@ -171,7 +171,7 @@ const AdminUrlProductImporter = ({
       markupValue: 40,
       sellerAmount: 0,
       affiliateType: 'flat_rate',
-      affiliateValue: 5,
+      affiliateValue: MIN_AFFILIATE_PAYOUT,
       storefrontId,
       storefrontName: selectedStorefront?.name || '',
       variants: [],
@@ -331,7 +331,7 @@ const AdminUrlProductImporter = ({
                   <input type="number" min="0" step="0.01" value={markupValue} onChange={(event) => setMarkupValue(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" />
                 </label>
                 <label className="text-sm font-bold text-gray-800">Affiliate payout per completed sale ($)
-                  <input type="number" min="0" step="0.01" value={affiliateValue} onChange={(event) => setAffiliateValue(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" />
+                  <input type="number" min={MIN_AFFILIATE_PAYOUT} step="0.01" value={affiliateValue} onChange={(event) => setAffiliateValue(Math.max(MIN_AFFILIATE_PAYOUT, Number(event.target.value) || 0))} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" />
                   <span className="mt-2 block text-xs font-semibold text-emerald-700">Affiliate earns {money(affiliateValue)} per completed sale.</span>
                 </label>
               </div>

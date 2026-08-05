@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculatePricing } from './pricing';
+import { calculatePricing, validatePricingInput } from './pricing';
 
 describe('seller-reviewed product pricing', () => {
   it('keeps seller payout whole and adds shipping as a separate reserve', () => {
@@ -22,5 +22,12 @@ describe('seller-reviewed product pricing', () => {
     expect(withShipping.sellerPayableAmount).toBe(33.79);
     expect(withShipping.affiliateAmount).toBe(5);
     expect(withShipping.listingPrice).toBeGreaterThan(withoutShipping.listingPrice);
+  });
+
+  it('rejects affiliate payouts below the launch minimum', () => {
+    expect(validatePricingInput({ sellerDesiredAmount: 20, affiliateRate: 4.99 }))
+      .toContain('Affiliate payout must be at least $5.00 when affiliates are enabled');
+    expect(validatePricingInput({ sellerDesiredAmount: 20, affiliateRate: 5 })).toEqual([]);
+    expect(validatePricingInput({ sellerDesiredAmount: 20, affiliateRate: 0 })).toEqual([]);
   });
 });

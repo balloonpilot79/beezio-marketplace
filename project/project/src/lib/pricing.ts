@@ -47,6 +47,7 @@ export const MIN_PLATFORM_FEE_RATE = 0;
 export const MAX_PLATFORM_FEE_RATE = 0;
 export const PROCESSING_FEE_RATE = 0.0399;
 export const PROCESSING_FEE_FIXED = 0.6;
+export const MIN_AFFILIATE_PAYOUT = 5;
 export const DEFAULT_REFERRAL_RATE = 0;
 export const MIN_REFERRAL_RATE = 0;
 export const MAX_REFERRAL_RATE = 0;
@@ -208,6 +209,9 @@ export const validatePricingInput = (input: PricingInput): string[] => {
     errors.push('Supplier cost plus seller markup must be greater than 0');
   }
   if (input.affiliateRate < 0) errors.push('Affiliate payout cannot be negative');
+  if (input.affiliateRate > 0 && input.affiliateRate < MIN_AFFILIATE_PAYOUT) {
+    errors.push(`Affiliate payout must be at least $${MIN_AFFILIATE_PAYOUT.toFixed(2)} when affiliates are enabled`);
+  }
   if (input.shippingIncludedAmount && input.shippingIncludedAmount < 0) {
     errors.push('Shipping cannot be negative');
   }
@@ -216,7 +220,7 @@ export const validatePricingInput = (input: PricingInput): string[] => {
 
 // Retained for older calculator UI; values are fixed-dollar suggestions.
 export const getRecommendedAffiliateRates = (sellerAmount: number) => {
-  if (sellerAmount < 50) return { low: 3, medium: 5, high: 8 };
+  if (sellerAmount < 50) return { low: 5, medium: 7, high: 10 };
   if (sellerAmount < 200) return { low: 5, medium: 10, high: 20 };
   return { low: 10, medium: 20, high: 35 };
 };
