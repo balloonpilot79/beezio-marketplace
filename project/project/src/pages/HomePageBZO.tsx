@@ -34,6 +34,27 @@ const storefronts = [
   },
 ];
 
+const marketplaceFlow = [
+  {
+    icon: Store,
+    step: '1',
+    title: 'Seller lists',
+    detail: 'The seller adds a product, sets the amount they need to receive, and handles fulfillment.',
+  },
+  {
+    icon: BadgeDollarSign,
+    step: '2',
+    title: 'Affiliate promotes',
+    detail: 'An affiliate chooses the product, shares a tracked link, and earns the listed commission.',
+  },
+  {
+    icon: PackageCheck,
+    step: '3',
+    title: 'Customer buys',
+    detail: 'The customer checks out through Beezio and every earning is recorded for the completed sale.',
+  },
+];
+
 const roleCards = [
   {
     icon: Store,
@@ -92,10 +113,10 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
                 Sellers • Affiliates • Influencers
               </div>
               <h1 className="mt-5 max-w-4xl text-4xl font-black leading-[1.02] tracking-[-0.045em] text-white sm:text-5xl lg:text-7xl">
-                Build your brand. Sell your products. Promote others.
+                Bring a product. Build a store. Let affiliates help sell it.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                Sell your own products, earn as an affiliate, or grow a network as an influencer. Beezio connects branded storefronts, tracked promotions, and itemized earnings—without monthly or listing fees.
+                Beezio gives sellers a storefront and gives everyday people products they can promote for real commissions. Influencers can grow the network and receive lifetime attribution on eligible sales.
               </p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
                 {signupLink}
@@ -115,20 +136,27 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
 
             <div className="relative mx-auto w-full max-w-[460px]">
               <div className="absolute -inset-5 rounded-[38px] bg-gradient-to-br from-[#ffcb05]/20 via-transparent to-emerald-400/15 blur-2xl" />
-              <div className="relative overflow-hidden rounded-[30px] border border-white/15 bg-white/[0.06] p-3 shadow-2xl backdrop-blur">
-                <div className="overflow-hidden rounded-[22px] border border-white/10 bg-gradient-to-br from-[#063c2f] to-[#0b5b43]">
-                  <img
-                    src="/loving-nutrition-logo.png?v=20260723"
-                    alt="Loving Nutrition storefront logo"
-                    className="aspect-square w-full scale-[1.08] object-contain p-2"
-                  />
-                </div>
-                <div className="flex items-center justify-between gap-4 px-2 pb-1 pt-4">
+              <div className="relative overflow-hidden rounded-[30px] border border-white/15 bg-white/[0.06] p-5 shadow-2xl backdrop-blur sm:p-6">
+                <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
                   <div>
-                    <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffda45]">Powered by Beezio</div>
-                    <div className="mt-1 text-lg font-black">Your business deserves a storefront as polished as what you sell.</div>
+                    <div className="text-xs font-black uppercase tracking-[0.22em] text-[#ffda45]">One connected marketplace</div>
+                    <div className="mt-2 text-xl font-black text-white">A sale can create earnings for more than one person.</div>
                   </div>
-                  <img src="/bzobee.png" alt="Beezio bee" className="h-16 w-16 object-contain" />
+                  <img src="/bzobee.png" alt="Beezio bee" className="h-16 w-16 shrink-0 object-contain" />
+                </div>
+                <div className="mt-5 space-y-3">
+                  {marketplaceFlow.map(({ icon: Icon, step, title, detail }) => (
+                    <div key={step} className="flex gap-3 rounded-2xl border border-white/10 bg-black/15 p-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#ffcb05] text-[#101820]">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Step {step}</div>
+                        <div className="mt-1 font-black text-white">{title}</div>
+                        <p className="mt-1 text-xs leading-5 text-slate-300">{detail}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -137,10 +165,10 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
 
         <section className="overflow-hidden rounded-[28px] border border-white/10 bg-[#0c1720] py-8 sm:px-7 sm:py-10">
           <div className="px-5 sm:px-0">
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-[#ffcb05]">Storefronts built on Beezio</p>
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-[#ffcb05]">Example storefronts</p>
             <div className="mt-3 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-              <h2 className="max-w-3xl text-3xl font-black tracking-tight text-white sm:text-4xl">See the business before reading the business model.</h2>
-              <p className="max-w-md text-sm leading-6 text-slate-400">Each brand keeps its own look, slug, product collection, orders, and fulfillment details.</p>
+              <h2 className="max-w-3xl text-3xl font-black tracking-tight text-white sm:text-4xl">See what a business can build with Beezio.</h2>
+              <p className="max-w-md text-sm leading-6 text-slate-400">These Beezio-created brands demonstrate how sellers can have their own look, storefront, product collection, orders, and fulfillment details.</p>
             </div>
           </div>
 
@@ -156,6 +184,7 @@ const HomePageBZO: React.FC<HomePageProps> = ({ onOpenSimpleSignup }) => {
                 </div>
                 <div className="flex items-center justify-between gap-3 p-5">
                   <div>
+                    <div className="mb-2 inline-flex rounded-full border border-[#ffcb05]/30 bg-[#ffcb05]/10 px-2.5 py-1 text-[0.62rem] font-black uppercase tracking-[0.18em] text-[#ffda45]">Example storefront</div>
                     <div className="text-lg font-black text-white">{storefront.name}</div>
                     <div className="mt-1 text-sm text-slate-400">{storefront.label}</div>
                   </div>

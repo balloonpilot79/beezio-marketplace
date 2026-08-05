@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { ensureSellerProductInOrder } from '../utils/sellerProductOrder';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { computeFixedTierPricing } from '../../shared/customerPrice';
+import { MIN_AFFILIATE_PAYOUT } from '../lib/pricing';
 
 type UploadMode = 'single' | 'bulk';
 
@@ -80,6 +81,9 @@ const AddProductPage: React.FC = () => {
               product.affiliate_payout ?? product.commission_rate,
               0,
             );
+            if (affiliateEnabled && affiliatePayout < MIN_AFFILIATE_PAYOUT) {
+              throw new Error(`Affiliate payout must be at least $${MIN_AFFILIATE_PAYOUT.toFixed(2)}`);
+            }
             const shippingIncluded = parseNonNegativeNumber(product.shipping_cost, 0);
             const pricing = computeFixedTierPricing({
               supplierCost,

@@ -9,7 +9,7 @@ import { callGPT } from '../lib/gptClient';
 import { useNavigate, useParams } from 'react-router-dom';
 import { normalizeMoneyInput } from '../utils/pricing';
 import { resolveProfileIdForUser } from '../utils/resolveProfileId';
-import { calculatePricing } from '../lib/pricing';
+import { calculatePricing, MIN_AFFILIATE_PAYOUT } from '../lib/pricing';
 import { getAdminOnlyLowPriceMessage, isAdminUser } from '../utils/adminPricePolicy';
 import { isTestItemTitle } from '../../shared/testItemPricing';
 import { getNormalizedAccountRoles, isBuyerOnlyAccount } from '../utils/accountRoles';
@@ -1133,6 +1133,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
     const affiliateEnabled = formData.affiliate_enabled !== false;
+    if (affiliateEnabled && pricingBreakdown.affiliateAmount < MIN_AFFILIATE_PAYOUT) {
+      abortSubmit(`Affiliate-enabled products must pay at least $${MIN_AFFILIATE_PAYOUT.toFixed(2)} per completed sale.`);
+      return;
+    }
     if (!formData.title.trim()) {
       abortSubmit('Please add a product title');
       return;
@@ -2183,7 +2187,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                     <span className="absolute left-3 top-3 text-gray-500">$</span>
                     <input
                       type="number"
-                      min="0"
+                      min={MIN_AFFILIATE_PAYOUT}
                       step="0.01"
                       value={pricingSeed.affiliateAmount}
                       onChange={(e) => setPricingSeed((prev) => ({
@@ -2196,6 +2200,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   <div className="mt-2 text-sm font-semibold text-emerald-700">
                     Affiliate earns ${pricingSeed.affiliateAmount.toFixed(2)} per completed sale.
                   </div>
+                  <div className="mt-1 text-xs text-gray-600">Minimum affiliate payout: ${MIN_AFFILIATE_PAYOUT.toFixed(2)}.</div>
                 </div>
               </div>
           </div>

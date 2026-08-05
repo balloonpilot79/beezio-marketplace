@@ -300,12 +300,12 @@ const AdminProductHubPage: React.FC = () => {
           <p className="mt-1 text-sm text-slate-600">Choose a house-brand supplier, paste a public product URL, add one manually, or upload a spreadsheet.</p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {[
-              { label: 'Blanka', to: '/admin/suppliers/blanka' },
+              { label: 'Printify', to: '/admin/suppliers/printify' },
               { label: 'Roastify', to: '/admin/suppliers/roastify' },
               { label: 'Supliful', to: '/admin/suppliers/supliful' },
-              { label: 'Manual', to: '/add-product' },
+              { label: 'Add one', to: '/add-product' },
               { label: 'Spreadsheet', to: '/admin/bulk-products' },
-              { label: 'Printful', to: '/admin/printful' },
+              { label: 'Dashboard', to: '/dashboard?section=admin' },
             ].map((action) => (
               <Link key={action.label} to={action.to} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-4 text-center text-sm font-black text-slate-900 hover:border-amber-300 hover:bg-amber-50">
                 {action.label}
@@ -479,8 +479,8 @@ const AdminProductHubPage: React.FC = () => {
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {[
-            { id: 'blanka', name: 'Blanka', brand: 'MareBelle', detail: 'Beauty and personal-care products with brand-specific URL, manual, or spreadsheet review.' },
-            { id: 'roastify', name: 'Roastify', brand: 'RedTail', detail: 'Coffee products with grind variants, protected Roastify SKUs, costs, markup, and commissions.' },
+            { id: 'printify', name: 'Printify', brand: 'Beezio merchandise', detail: 'Approved horse, Christian, eagle, and future designs with provider, mockup, variant, cost, shipping, and storefront review.' },
+            { id: 'roastify', name: 'Roastify', brand: 'RedTail', detail: 'Wholesale coffee lots with protected Roastify SKUs, lot quantities, costs, shipping, markup, and affiliate payouts.' },
             { id: 'supliful', name: 'Supliful', brand: 'Loving Nutrition', detail: 'Wellness products with ingredients, label images, warnings, costs, and fulfillment review.' },
           ].map((supplier) => (
             <div key={supplier.id} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -494,28 +494,7 @@ const AdminProductHubPage: React.FC = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Printful Store Import</h2>
-            <p className="text-gray-700 mb-4">
-              Connect Beezio&apos;s Printful store, register the webhook, and import synced print-on-demand products directly into the admin catalog.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to="/admin/printful"
-                className="inline-flex items-center px-5 py-3 rounded-lg bg-[#ffcb05] text-black font-semibold hover:bg-[#e0b000] transition-colors"
-              >
-                Open Printful Import
-              </Link>
-              <Link
-                to="/dashboard?section=admin"
-                className="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 text-gray-900 font-semibold hover:bg-gray-50 transition-colors"
-              >
-                Open Admin Dashboard
-              </Link>
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 gap-6">
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Bulk Add Products (Spreadsheet)</h2>
             <p className="text-gray-700 mb-4">
@@ -541,7 +520,7 @@ const AdminProductHubPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Approved Product Sources</h2>
           <p className="text-gray-700">
-            Blanka, Roastify, and Supliful have dedicated admin-only import centers tied to MareBelle, RedTail, and Loving Nutrition. The importer reads public product data when available and falls back to reviewed manual entry for authenticated supplier portals. Printful keeps its dedicated connection. Confirm supplier permission, costs, variants, images, claims, labels, shipping, and fulfillment before publishing.
+            Printify, Roastify, and Supliful are the launch suppliers. The importer reads public product data when available and falls back to reviewed manual entry for authenticated supplier portals. Printify products must already contain approved artwork and verified provider variants; Roastify products are wholesale lots only; Supliful products require label and claims review. Confirm supplier permission, costs, variants, images, shipping, and fulfillment before publishing.
           </p>
         </div>
       </div>
