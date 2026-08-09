@@ -41,7 +41,58 @@
   status = 301
   force = true
 
-# API routes -> Netlify Functions
+# Core health + public commerce API routes
+[[redirects]]
+  from = "/api/health"
+  to = "/.netlify/functions/health"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/public/marketplace/products"
+  to = "/.netlify/functions/public-marketplace-products"
+  status = 200
+  force = true
+
+# PayPal runtime + checkout routes
+[[redirects]]
+  from = "/api/paypal/status"
+  to = "/.netlify/functions/paypal-status"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/paypal/client-token"
+  to = "/.netlify/functions/paypal-client-token"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/paypal/create-order"
+  to = "/.netlify/functions/paypal-create-order"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/paypal/capture-order"
+  to = "/.netlify/functions/paypal-capture-order"
+  status = 200
+  force = true
+
+# Seller / affiliate product actions
+[[redirects]]
+  from = "/api/seller/add-product"
+  to = "/.netlify/functions/seller-add-product"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/affiliate/add-product"
+  to = "/.netlify/functions/affiliate-add-product"
+  status = 200
+  force = true
+
+# Existing API routes -> Netlify Functions
 [[redirects]]
   from = "/api/checkout/create"
   to = "/.netlify/functions/checkout-create"
@@ -96,7 +147,7 @@
   status = 200
   force = true
 
-# SPA fallback
+# SPA fallback must remain last so API requests are never swallowed by index.html.
 [[redirects]]
   from = "/*"
   to = "/index.html"
