@@ -17,8 +17,6 @@ import { syncCJWebhookSubscriptions } from './_lib/cj-webhook-subscriptions';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { json } from './_lib/http';
 
-export const config = { schedule: '*/5 * * * *' };
-
 const text = (value: unknown): string => String(value ?? '').trim();
 
 const extractUrls = (value: unknown): string[] => {
