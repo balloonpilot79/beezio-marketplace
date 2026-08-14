@@ -32,7 +32,7 @@
   schedule = "*/5 * * * *"
 
 [functions."cj-live-audit-kickoff"]
-  schedule = "*/30 * * * *"
+  schedule = "*/5 * * * *"
 
 # Redirect www to non-www
 [[redirects]]
