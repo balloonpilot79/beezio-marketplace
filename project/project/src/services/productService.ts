@@ -70,25 +70,21 @@ const resolveJsonEncodedImageString = (raw: string): string | null => {
   }
 };
 
-// Normalize any stored path (full URL, bucket-prefixed path, or bare filename) to a usable public URL
 export const resolveImageUrl = (path?: string | null) => {
   if (!path) return PLACEHOLDER_IMAGE;
   if (path === PLACEHOLDER_IMAGE) return PLACEHOLDER_IMAGE;
   if (path.startsWith('/api/placeholder')) return PLACEHOLDER_IMAGE;
   if (path.startsWith('api/placeholder')) return PLACEHOLDER_IMAGE;
 
-  // Handle JSON/URL-encoded JSON strings like '["https://..."]' or '%5B%22https...%22%5D'
   const jsonCandidate = typeof path === 'string' ? resolveJsonEncodedImageString(path) : null;
   if (jsonCandidate) {
     return resolveImageUrl(jsonCandidate);
   }
 
-  // If we already have a full URL, just use it
   if (path.startsWith('http')) {
     return path;
   }
 
-  // Clean up common variants that include bucket/public prefixes
   let cleaned = path
     .replace(/^public\//, '')
     .replace(/^product-images\//, '')
@@ -96,7 +92,6 @@ export const resolveImageUrl = (path?: string | null) => {
     .replace(/^object\/public\//, '')
     .replace(/^\/+/, '');
 
-  // If someone stored "product-images/..." keep the inner path
   cleaned = cleaned.replace(/^product-images\//, '');
 
   if (!cleaned || cleaned.startsWith('api/placeholder')) {
@@ -108,7 +103,6 @@ export const resolveImageUrl = (path?: string | null) => {
     return data.publicUrl;
   }
 
-  // Fallback manual construction
   return `${PUBLIC_BUCKET_BASE}/${cleaned}`;
 };
 
@@ -235,7 +229,6 @@ const fetchProductsWithSelfHealing = async (params: {
         continue;
       }
 
-      // Some schemas won't support the categories join (missing `category_id` or FK).
       if (select === baseSelectWithCategories && messageIndicatesCategoryJoinIssue(message)) {
         break;
       }
@@ -372,9 +365,6 @@ const parseLooseNumber = (value: unknown): number | null => {
 
 const ATTRIBUTE_PART_SPLIT = /[|,;/]+/;
 
-// The CJ import pipeline sometimes stores raw CJ variants in `products.variants` JSONB.
-// This helper mirrors the server-side attribute parsing so the UI can render Size/Color selectors
-// even when normalized `product_variants` rows are missing or unavailable.
 const parseLegacyVariantAttributes = (variant: any): Record<string, string> => {
   const attributes: Record<string, string> = {};
   const looseFragments: string[] = [];
@@ -409,14 +399,13 @@ const parseLegacyVariantAttributes = (variant: any): Record<string, string> => {
 
   if (variant?.attributes && typeof variant.attributes === 'object' && !Array.isArray(variant.attributes)) {
     Object.entries(variant.attributes).forEach(([key, value]) => {
-      if (!key) return;
-      const str = String(value ?? '').trim();
-      if (!str) return;
-      attributes[String(key)] = str;
+      const normalizedKey = String(key || '').trim();
+      const normalizedValue = String(value || '').trim();
+      if (normalizedKey && normalizedValue) attributes[normalizedKey] = normalizedValue;
     });
   }
 
-  if (looseFragments.length > 0) {
+  if (Object.keys(attributes).length === 0 && looseFragments.length) {
     looseFragments.forEach((fragment, index) => {
       const fallbackKey = `Option ${index + 1}`;
       if (!attributes[fallbackKey]) {
@@ -449,7 +438,6 @@ const normalizeLegacyVariantRow = (productId: string, raw: any, index: number): 
   const rawInventory = parseLooseNumber(raw?.inventory) ?? parseLooseNumber(raw?.variantStock) ?? parseLooseNumber(raw?.stock) ?? null;
   const attributes = parseLegacyVariantAttributes(raw);
 
-  // Prefer a uuid `id` if present; otherwise use the CJ variant id / sku for UI selection.
   const idCandidate = String(raw?.id ?? '').trim();
   const id = looksLikeUuid(idCandidate) ? idCandidate : String(cjVariantId || sku);
 
@@ -484,8 +472,6 @@ const normalizeAttributesForMatch = (attributes: Record<string, string> | null |
 export const getVariantOptions = async (productId: string): Promise<ProductVariant[]> => {
   if (!isSupabaseConfigured) return [];
 
-  // Shopper variant reads must pass through the public projection so exact
-  // supplier VIDs and fulfillment economics never enter the browser payload.
   try {
     const response = await fetch(`/.netlify/functions/product-variants-public?productId=${encodeURIComponent(productId)}`);
     const payload = await response.json().catch(() => ({}));
@@ -510,14 +496,12 @@ export const getVariantOptions = async (productId: string): Promise<ProductVaria
     return query;
   };
 
-  // 1) Preferred: normalized `product_variants`
   try {
     const { data, error } = await queryNormalized(true);
     if (!error && Array.isArray(data) && data.length > 0) {
       return data as ProductVariant[];
     }
 
-    // Some environments may not have `is_active` yet; retry without it.
     const message = String((error as any)?.message || '');
     if (error && /is_active/i.test(message)) {
       const retry = await queryNormalized(false);
@@ -526,7 +510,6 @@ export const getVariantOptions = async (productId: string): Promise<ProductVaria
       }
     }
 
-    // If RLS blocks reads (common on public product pages), use server-side Netlify function fallback.
     if (error) {
       const m = String((error as any)?.message || '').toLowerCase();
       const likelyRls =
@@ -547,7 +530,6 @@ export const getVariantOptions = async (productId: string): Promise<ProductVaria
     console.warn('getVariantOptions: normalized query failed', error);
   }
 
-  // 2) Fallback: legacy `products.variants` JSONB (CJ raw variants or older variant formats).
   try {
     const { data, error } = await supabase
       .from('products')
@@ -587,7 +569,7 @@ export const resolveVariant = (
   );
 
   if (!Object.keys(normalizedSelection).length) {
-    return variants[0] ?? null;
+    return variants.length === 1 ? variants[0] : null;
   }
 
   const matches = variants.filter((variant) => {
@@ -598,5 +580,8 @@ export const resolveVariant = (
     });
   });
 
-  return matches[0] ?? variants[0];
+  // Never silently substitute a different SKU/VID when the chosen option
+  // combination does not exactly exist. The UI will keep the product blocked
+  // until the shopper selects a valid saved variant.
+  return matches.length === 1 ? matches[0] : null;
 };
