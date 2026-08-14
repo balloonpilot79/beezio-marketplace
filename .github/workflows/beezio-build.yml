@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20.19.0
+          node-version: 22
           cache: npm
           cache-dependency-path: project/project/package-lock.json
 
@@ -36,6 +36,6 @@ jobs:
         working-directory: project/project
         run: npm run build
 
-      - name: Netlify production bundle check
+      - name: Bundle Netlify functions
         working-directory: .
-        run: npx --yes netlify-cli@latest build
+        run: npx --yes netlify-cli@latest functions:build --src project/project/netlify/functions --functions .netlify/functions-dist
