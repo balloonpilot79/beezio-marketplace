@@ -9,6 +9,24 @@
   NODE_VERSION = "18"
   NPM_FLAGS = "--production=false"
 
+# CJ automation schedules are declared here because these functions use the
+# legacy Netlify Handler signature. Inline `config.schedule` is only extracted
+# reliably from the newer web-platform function signature.
+[functions."cj-process-webhooks"]
+  schedule = "* * * * *"
+
+[functions."cj-process-pending"]
+  schedule = "*/5 * * * *"
+
+[functions."cj-seed-supplyline-plus"]
+  schedule = "*/5 * * * *"
+
+[functions."cj-sync-orders"]
+  schedule = "*/15 * * * *"
+
+[functions."cj-sync-webhook-subscriptions"]
+  schedule = "@hourly"
+
 # Cache control headers
 [[headers]]
   for = "/*.html"
