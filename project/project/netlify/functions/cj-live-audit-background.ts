@@ -7,6 +7,13 @@ const MAX_PRODUCTS_PER_RUN = 5;
 const text = (value: unknown) => String(value ?? '').trim();
 const money = (value: unknown) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
+const isLiveCJVariant = (row: any): boolean => {
+  const raw = row?.variantStatus;
+  if (raw === undefined || raw === null || text(raw) === '') return true;
+  const status = Number(raw);
+  return !Number.isFinite(status) || status !== 0;
+};
+
 export const handler: Handler = async (event) => {
   const serviceRoleKey = text(process.env.SUPABASE_SERVICE_ROLE_KEY);
   const suppliedToken = text(event.headers.authorization || event.headers.Authorization).replace(/^Bearer\s+/i, '');
@@ -37,13 +44,14 @@ export const handler: Handler = async (event) => {
         pid,
         productSku: text(product?.cj_product_sku) || null,
       });
-      const liveVariants = Array.isArray(live?.variants) ? live.variants : [];
+      const allLiveRows = Array.isArray(live?.variants) ? live.variants : [];
+      const liveVariants = allLiveRows.filter(isLiveCJVariant);
       const liveByVid = new Map(liveVariants.map((row: any) => [text(row?.vid), row]));
 
       const [{ data: savedVariants, error: variantError }, { data: mappings, error: mappingError }] = await Promise.all([
         supabase
           .from('product_variants')
-          .select('id,cj_product_id,cj_variant_id,cj_vid,cj_variant_sku,supplier_cost_amount,is_orderable,order_reference_type,import_status')
+          .select('id,cj_product_id,cj_variant_id,cj_vid,cj_variant_sku,supplier_cost_amount,is_orderable,order_reference_type,import_status,is_active')
           .eq('product_id', product.id)
           .or('source_platform.eq.cj,source.eq.cj,provider.eq.CJ'),
         supabase
@@ -55,23 +63,25 @@ export const handler: Handler = async (event) => {
       if (variantError) throw new Error(`saved variant lookup failed: ${variantError.message}`);
       if (mappingError) throw new Error(`private mapping lookup failed: ${mappingError.message}`);
 
-      const saved = (savedVariants || []) as any[];
-      const privateMappings = (mappings || []) as any[];
+      const allSaved = (savedVariants || []) as any[];
+      const saved = allSaved.filter((variant) => variant?.is_active !== false);
+      const allMappings = (mappings || []) as any[];
+      const privateMappings = allMappings.filter((mapping) => mapping?.is_active !== false);
       const mappingByVariantId = new Map(privateMappings.map((row) => [text(row?.product_variant_id), row]));
       const seenVids = new Set<string>();
 
-      if (!liveVariants.length) issues.push('CJ returned no live variants');
-      if (saved.length !== liveVariants.length) issues.push(`variant count mismatch: saved ${saved.length}, CJ ${liveVariants.length}`);
-      if (privateMappings.length !== saved.length) issues.push(`private mapping count mismatch: ${privateMappings.length} vs ${saved.length}`);
+      if (!liveVariants.length) issues.push('CJ returned no currently live variants');
+      if (saved.length !== liveVariants.length) issues.push(`live variant count mismatch: saved active ${saved.length}, CJ active ${liveVariants.length}`);
+      if (privateMappings.length !== saved.length) issues.push(`active private mapping count mismatch: ${privateMappings.length} vs saved active ${saved.length}`);
 
       for (const variant of saved) {
         const vid = text(variant?.cj_vid);
         const savedSku = text(variant?.cj_variant_sku);
         if (!vid) {
-          issues.push(`saved variant ${variant?.id} has no CJ VID`);
+          issues.push(`saved active variant ${variant?.id} has no CJ VID`);
           continue;
         }
-        if (seenVids.has(vid)) issues.push(`duplicate saved CJ VID ${vid}`);
+        if (seenVids.has(vid)) issues.push(`duplicate saved active CJ VID ${vid}`);
         seenVids.add(vid);
 
         if (variant?.is_orderable !== true || text(variant?.order_reference_type).toLowerCase() !== 'cj_vid') {
@@ -80,7 +90,7 @@ export const handler: Handler = async (event) => {
 
         const liveVariant: any = liveByVid.get(vid);
         if (!liveVariant) {
-          issues.push(`CJ no longer returned VID ${vid}`);
+          issues.push(`CJ no longer returned VID ${vid} as an active variant`);
           continue;
         }
 
@@ -97,10 +107,9 @@ export const handler: Handler = async (event) => {
 
         const mapping: any = mappingByVariantId.get(text(variant?.id));
         if (!mapping) {
-          issues.push(`VID ${vid} has no private fulfillment mapping`);
+          issues.push(`VID ${vid} has no active private fulfillment mapping`);
           continue;
         }
-        if (mapping?.is_active !== true) issues.push(`VID ${vid} private mapping is inactive`);
         if (text(mapping?.beezio_product_id) !== text(product.id)) issues.push(`VID ${vid} mapping points to wrong Beezio product`);
         if (text(mapping?.cj_product_id) !== pid) issues.push(`VID ${vid} mapping points to wrong CJ product`);
         if (text(mapping?.cj_vid) !== vid) issues.push(`VID ${vid} private mapping VID mismatch`);
@@ -111,9 +120,12 @@ export const handler: Handler = async (event) => {
       const details = {
         checked_at: checkedAt,
         cj_product_id: pid,
-        saved_variant_count: saved.length,
-        live_variant_count: liveVariants.length,
-        private_mapping_count: privateMappings.length,
+        saved_active_variant_count: saved.length,
+        saved_inactive_variant_count: allSaved.length - saved.length,
+        cj_active_variant_count: liveVariants.length,
+        cj_inactive_variant_count: allLiveRows.length - liveVariants.length,
+        active_private_mapping_count: privateMappings.length,
+        inactive_private_mapping_count: allMappings.length - privateMappings.length,
         issues,
       };
 
