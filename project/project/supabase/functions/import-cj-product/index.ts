@@ -943,9 +943,33 @@ const upsertDefaultShippingOption = async (
     updated_at: now,
   }
 
-  const { error } = await client
+  // The live unique index also contains nullable variant_id, so a three-column
+  // PostgREST onConflict target does not match it. Resolve the product-level
+  // row explicitly to keep re-imports idempotent instead of accumulating
+  // duplicate NULL-variant shipping rows.
+  const { data: existing, error: lookupError } = await client
     .from('shipping_options')
-    .upsert([payload] as any[], { onConflict: 'product_id,destination_country,method_code' })
+    .select('id')
+    .eq('product_id', productId)
+    .eq('destination_country', 'US')
+    .eq('method_code', 'CJ_DEFAULT')
+    .is('variant_id', null)
+    .limit(1)
+    .maybeSingle()
+
+  if (lookupError) {
+    console.error('Failed to find default shipping option', lookupError)
+    return
+  }
+
+  const { error } = existing?.id
+    ? await client
+        .from('shipping_options')
+        .update(payload)
+        .eq('id', existing.id)
+    : await client
+        .from('shipping_options')
+        .insert(payload)
 
   if (error) {
     console.error('Failed to upsert default shipping option', error)
@@ -1597,6 +1621,7 @@ serve(async (req) => {
       // (pricing engine, checkout, analytics) can consistently recompute/validate totals.
       price: finalPrice,
       calculated_customer_price: finalPrice,
+      retail_price_cents: Math.round(finalPrice * 100),
       seller_ask: sellerAsk,
       seller_amount: sellerAsk,
       seller_ask_price: sellerAsk,
@@ -1609,7 +1634,10 @@ serve(async (req) => {
       platform_fee: platformAmount,
       currency: 'USD',
       base_weight_oz: baseWeightOz,
+      base_cost_cents: Math.round(safeCjUnitCost * 100),
+      shipping_estimate_cents: Math.round(shippingCostResolved * 100),
       image_url: normalizedImages[0] ?? cjProduct.productImage,
+      primary_image_url: normalizedImages[0] ?? cjProduct.productImage,
       images: normalizedImages,
       sku: resolvedProductSku,
       // Exact supplier variant payloads stay in private mapping tables. Public
@@ -1620,11 +1648,17 @@ serve(async (req) => {
       shipping_price: customerFacingShippingCost,
       shipping_options: customerFacingShippingOptions,
       affiliate_enabled: true,
+      affiliate_percent: affiliateType === 'percent' ? Math.round(safeAffiliateValue) : 0,
+      affiliate_floor_cents: affiliateType === 'flat' ? Math.round(safeAffiliateValue * 100) : 0,
       commission_rate: affiliateType === 'flat' ? safeAffiliateValue : safeAffiliateValue,
       commission_type: affiliateType === 'flat' ? 'flat_rate' : 'percentage',
       flat_commission_amount: affiliateType === 'flat' ? safeAffiliateValue : 0,
       affiliate_commission_type: affiliateType === 'flat' ? 'flat' : 'percent',
       affiliate_commission_value: safeAffiliateValue,
+      markup_type: markupType,
+      markup_value: markupType === 'flat' ? Math.round(safeMarkup * 100) : Math.round(safeMarkup),
+      paypal_fee_bps: 399,
+      paypal_fixed_cents: 60,
       source_platform: 'cj',
       external_product_id: normalizedCj.cj_pid || normalizedCj.cj_product_id,
       external_variant_id: selectedCanonicalVariant?.cj_vid || selectedCanonicalVariant?.cj_variant_id || null,
@@ -1636,6 +1670,7 @@ serve(async (req) => {
       dropship_provider: 'cj',
       is_dropshipped: true,
       product_type: 'one_time',
+      has_variants: variants.length > 0,
       lineage: SUPPLYLINE_PLUS_NAME,
       status: 'active',
       is_promotable: true,
@@ -1663,6 +1698,10 @@ serve(async (req) => {
       }
     }
 
+    if (await hasColumn('products', 'beezio_category_id')) {
+      insertPayload.beezio_category_id = categoryIdForUuidColumn
+    }
+
     if (productsHasCategory) {
       if (productsCategoryIsUuid) {
         insertPayload.category = categoryIdForUuidColumn
@@ -1684,16 +1723,30 @@ serve(async (req) => {
       'display_search_code',
       'source_import_version',
       'calculated_customer_price',
+      'retail_price_cents',
       'seller_ask',
       'seller_amount',
       'seller_ask_price',
       'platform_fee',
       'base_weight_oz',
+      'base_cost_cents',
+      'shipping_estimate_cents',
+      'primary_image_url',
+      'image_url',
+      'sku',
+      'variants',
       'shipping_price',
       'affiliate_enabled',
+      'affiliate_percent',
+      'affiliate_floor_cents',
       'flat_commission_amount',
       'affiliate_commission_type',
       'affiliate_commission_value',
+      'markup_type',
+      'markup_value',
+      'paypal_fee_bps',
+      'paypal_fixed_cents',
+      'source',
       'source_platform',
       'external_product_id',
       'external_variant_id',
@@ -1702,6 +1755,7 @@ serve(async (req) => {
       'inventory_source',
       'dropship_provider',
       'is_dropshipped',
+      'has_variants',
       'lineage',
       'is_promotable',
       'videos',
