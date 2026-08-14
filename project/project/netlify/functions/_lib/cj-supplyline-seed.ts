@@ -70,6 +70,19 @@ export function isSupplyLineSeedProductComplete(product: SupplyLineSeedProductSn
   );
 }
 
+export function getSupplyLinePlayableVideoUrls(values: unknown[]): string[] {
+  const unique = Array.from(new Set(
+    (values || []).map((value) => String(value ?? '').trim()).filter(Boolean)
+  ));
+  return unique.filter((value) => {
+    try {
+      return new URL(value).protocol === 'https:';
+    } catch {
+      return false;
+    }
+  });
+}
+
 export function getSupplyLineSeedPricing(maxSupplierCost: number): {
   markup: number;
   affiliateCommission: number;
