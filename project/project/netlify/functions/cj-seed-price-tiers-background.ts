@@ -12,11 +12,12 @@ import { computeFixedTierPricing } from '../../shared/customerPrice';
 
 const TIER_TARGET = 25;
 const TARGET_COUNT = 125;
-const MAX_NEW_PER_RUN = 3;
+const MAX_NEW_PER_RUN = 2;
 const MAX_VARIANTS_PER_PRODUCT = 24;
+const MAX_CANDIDATE_ATTEMPTS = 3;
 const PAGE_SIZE = 100;
-const MAX_SCAN_PAGES_PER_TIER = 6;
-const LOCK_MINUTES = 14;
+const MAX_RESULT_PAGE = 20;
+const LOCK_MINUTES = 50;
 const SOFT_TIME_LIMIT_MS = 14 * 60 * 1000;
 const MAX_PER_CATEGORY_PER_TIER = 7;
 
@@ -35,9 +36,10 @@ type CatalogSnapshot = {
   categoryCounts: Record<string, Record<string, number>>;
 };
 
+type TierPages = Record<string, number>;
+
 const text = (value: unknown) => String(value ?? '').trim();
 const money = (value: unknown) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const firstString = (...values: unknown[]) => {
   for (const value of values) {
@@ -53,6 +55,19 @@ const firstArray = (...values: unknown[]): any[] => {
   }
   return [];
 };
+
+function defaultTierPages(): TierPages {
+  return Object.fromEntries(PRICE_TIERS.map((tier) => [tier.key, 1]));
+}
+
+function normalizeTierPages(value: any): TierPages {
+  const defaults = defaultTierPages();
+  for (const tier of PRICE_TIERS) {
+    const parsed = Math.floor(Number(value?.[tier.key] || 1));
+    defaults[tier.key] = Number.isFinite(parsed) && parsed >= 1 && parsed <= MAX_RESULT_PAGE ? parsed : 1;
+  }
+  return defaults;
+}
 
 function extractProductRows(payload: any): any[] {
   const data = payload?.data ?? payload;
@@ -71,7 +86,7 @@ function extractUrlValues(value: unknown): string[] {
     const raw = value.trim();
     if (!raw) return [];
     if ((raw.startsWith('[') && raw.endsWith(']')) || (raw.startsWith('{') && raw.endsWith('}'))) {
-      try { return extractUrlValues(JSON.parse(raw)); } catch { /* keep raw */ }
+      try { return extractUrlValues(JSON.parse(raw)); } catch { /* retain raw */ }
     }
     return raw.includes(',') ? raw.split(',').map((part) => part.trim()).filter(Boolean) : [raw];
   }
@@ -187,13 +202,19 @@ async function acquireSeedLock(supabase: any) {
   return data || null;
 }
 
-async function releaseSeedLock(supabase: any, result: Record<string, unknown>, snapshot?: CatalogSnapshot) {
+async function releaseSeedLock(
+  supabase: any,
+  result: Record<string, unknown>,
+  snapshot: CatalogSnapshot | undefined,
+  tierPages: TierPages,
+) {
   const nowIso = new Date().toISOString();
   const complete = snapshot ? PRICE_TIERS.every((tier) => Number(snapshot.tierCounts[tier.key] || 0) >= TIER_TARGET) : false;
   await supabase.from('cj_seed_state').update({
     locked_until: null,
     last_result: result,
     tier_counts: snapshot?.tierCounts || {},
+    tier_pages: tierPages,
     completed_at: complete ? nowIso : null,
     updated_at: nowIso,
   }).eq('id', 1);
@@ -228,29 +249,28 @@ async function existingCjIds(supabase: any): Promise<Set<string>> {
   return new Set((data || []).flatMap((row: any) => [text(row?.cj_product_id), text(row?.cj_pid)]).filter(Boolean));
 }
 
-async function loadCandidateRows(tier: Tier): Promise<any[]> {
-  const rows: any[] = [];
+async function loadCandidateRows(tier: Tier, page: number): Promise<any[]> {
+  const response: any = await cjRequest('product/listV2', {
+    page,
+    size: PAGE_SIZE,
+    startSellPrice: tier.supplierMin,
+    endSellPrice: tier.supplierMax,
+    startWarehouseInventory: 1,
+    verifiedWarehouse: 1,
+    orderBy: 1,
+    sort: 'desc',
+    features: 'enable_category',
+  }, 'GET');
+
   const seen = new Set<string>();
-  for (let page = 1; page <= MAX_SCAN_PAGES_PER_TIER; page += 1) {
-    const response: any = await cjRequest('product/listV2', {
-      page,
-      size: PAGE_SIZE,
-      startSellPrice: tier.supplierMin,
-      endSellPrice: tier.supplierMax,
-      startWarehouseInventory: 1,
-      orderBy: 1,
-      sort: 'desc',
-      features: 'enable_category',
-    }, 'GET');
-    for (const row of extractProductRows(response)) {
+  return extractProductRows(response)
+    .filter((row) => {
       const pid = firstString(row?.pid, row?.id, row?.productId, row?.product_id);
-      if (!pid || seen.has(pid) || isBlockedProduct(row)) continue;
+      if (!pid || seen.has(pid) || isBlockedProduct(row)) return false;
       seen.add(pid);
-      rows.push(row);
-    }
-    await sleep(200);
-  }
-  return rows.sort((a, b) => scoreListRow(b) - scoreListRow(a));
+      return true;
+    })
+    .sort((a, b) => scoreListRow(b) - scoreListRow(a));
 }
 
 async function verifyVariantsInStock(pid: string, variants: any[]) {
@@ -365,6 +385,8 @@ export const handler: Handler = async (event) => {
 
   const supabase = createSupabaseAdmin();
   let lockAcquired = false;
+  let tierPages = defaultTierPages();
+  let snapshot: CatalogSnapshot | undefined;
   const runResult: Record<string, any> = {
     target_count: TARGET_COUNT,
     tier_target_count: TIER_TARGET,
@@ -378,149 +400,179 @@ export const handler: Handler = async (event) => {
     const lock = await acquireSeedLock(supabase);
     if (!lock) return { statusCode: 202, body: '' };
     lockAcquired = true;
+    tierPages = normalizeTierPages(lock?.tier_pages);
 
-    let snapshot = await catalogSnapshot(supabase);
+    snapshot = await catalogSnapshot(supabase);
     runResult.tier_counts_before = snapshot.tierCounts;
-    if (PRICE_TIERS.every((tier) => snapshot.tierCounts[tier.key] >= TIER_TARGET)) {
+    runResult.tier_pages_before = { ...tierPages };
+    if (PRICE_TIERS.every((tier) => snapshot!.tierCounts[tier.key] >= TIER_TARGET)) {
       runResult.status = 'complete';
       runResult.verified_count_after = snapshot.total;
-      await releaseSeedLock(supabase, runResult, snapshot);
+      await releaseSeedLock(supabase, runResult, snapshot, tierPages);
       return { statusCode: 202, body: '' };
     }
 
     const existingIds = await existingCjIds(supabase);
+    const targetTier = [...PRICE_TIERS]
+      .filter((tier) => Number(snapshot!.tierCounts[tier.key] || 0) < TIER_TARGET)
+      .sort((a, b) => Number(snapshot!.tierCounts[a.key] || 0) - Number(snapshot!.tierCounts[b.key] || 0))[0];
+
+    if (!targetTier) throw new Error('No incomplete price tier could be selected.');
+    const searchPage = Math.max(1, Math.min(MAX_RESULT_PAGE, Number(tierPages[targetTier.key] || 1)));
+    const candidates = await loadCandidateRows(targetTier, searchPage);
+    tierPages[targetTier.key] = searchPage >= MAX_RESULT_PAGE ? 1 : searchPage + 1;
+    runResult.searched_tier = targetTier.key;
+    runResult.searched_page = searchPage;
+    runResult.candidates_returned = candidates.length;
+
     let importedThisRun = 0;
-    const tiersNeeded = [...PRICE_TIERS].sort((a, b) => (snapshot.tierCounts[a.key] || 0) - (snapshot.tierCounts[b.key] || 0));
+    let attemptedCandidates = 0;
 
-    for (const searchTier of tiersNeeded) {
-      if (importedThisRun >= MAX_NEW_PER_RUN || Date.now() - startedAtMs >= SOFT_TIME_LIMIT_MS) break;
-      const candidates = await loadCandidateRows(searchTier);
+    for (const candidate of candidates) {
+      if (importedThisRun >= MAX_NEW_PER_RUN || attemptedCandidates >= MAX_CANDIDATE_ATTEMPTS) break;
+      if (Date.now() - startedAtMs >= SOFT_TIME_LIMIT_MS) break;
+      const pid = firstString(candidate?.pid, candidate?.id, candidate?.productId, candidate?.product_id);
+      if (!pid || existingIds.has(pid)) continue;
+      attemptedCandidates += 1;
 
-      for (const candidate of candidates) {
-        if (importedThisRun >= MAX_NEW_PER_RUN || Date.now() - startedAtMs >= SOFT_TIME_LIMIT_MS) break;
-        const pid = firstString(candidate?.pid, candidate?.id, candidate?.productId, candidate?.product_id);
-        if (!pid || existingIds.has(pid)) continue;
-
-        try {
-          const detail = await getCJProductDetail({ pid });
-          if (isBlockedProduct(candidate, detail)) continue;
-          const variants = Array.isArray(detail?.variants) ? detail.variants : [];
-          if (!variants.length || variants.length > MAX_VARIANTS_PER_PRODUCT) {
-            runResult.skipped.push({ pid, reason: !variants.length ? 'no exact VID variants' : `too many variants (${variants.length})` });
-            continue;
-          }
-          const images = imageCandidates(candidate, detail);
-          if (images.length < 2) {
-            runResult.skipped.push({ pid, reason: 'insufficient promotional images' });
-            continue;
-          }
-
-          const variantCosts = variants.map((variant: any) => Number(variant?.variantSellPrice || 0));
-          if (variantCosts.some((cost: number) => !Number.isFinite(cost) || cost <= 0)) continue;
-
-          await verifyVariantsInStock(pid, variants);
-          const freightQuotes = await getFreightForVariants(detail, variants);
-          const maxSupplierCost = Math.max(...variantCosts);
-          const maxShipping = Math.max(...freightQuotes.map((quote) => Number(quote.totalPostageFee || 0)));
-          const landedCost = money(maxSupplierCost + maxShipping);
-          const pricing = pricingForLandedCost(landedCost);
-          const finalPricing = computeFixedTierPricing({
-            supplierCost: maxSupplierCost,
-            sellerMarkup: pricing.markup,
-            affiliatePayout: pricing.affiliate,
-            shippingIncluded: maxShipping,
-          });
-          const actualTier = tierForPrice(finalPricing.finalAdvertisedPrice);
-          if (!actualTier || Number(snapshot.tierCounts[actualTier.key] || 0) >= TIER_TARGET) continue;
-
-          const category = canonicalCategory(firstString(detail?.categoryName, candidate?.categoryName, candidate?.threeCategoryName, candidate?.twoCategoryName));
-          if (Number(snapshot.categoryCounts[actualTier.key]?.[category] || 0) >= MAX_PER_CATEGORY_PER_TIER) continue;
-
-          const shippingRatioLimit = finalPricing.finalAdvertisedPrice < 50 ? 0.55 : 0.45;
-          if (maxShipping > finalPricing.finalAdvertisedPrice * shippingRatioLimit) {
-            runResult.skipped.push({ pid, price_tier: actualTier.key, reason: `shipping too high (${money(maxShipping).toFixed(2)})` });
-            continue;
-          }
-
-          let videos: string[] = [];
-          try {
-            const assets = await getCJProductVideos(pid);
-            videos = assets.map((asset) => text(asset.videoUrl)).filter(Boolean);
-          } catch { videos = []; }
-
-          let inventory: number | null = null;
-          try { inventory = await getCJInventory(pid); } catch { inventory = null; }
-
-          const cjProduct = {
-            pid,
-            productNameEn: firstString(detail?.productNameEn, candidate?.productNameEn, candidate?.nameEn, candidate?.name),
-            productSku: firstString(detail?.productSku, candidate?.productSku, candidate?.sku),
-            productImage: firstString(detail?.productImage, detail?.bigImage, images[0]),
-            categoryName: firstString(detail?.categoryName, candidate?.categoryName, category),
-            sellPrice: Number(detail?.sellPrice || candidate?.sellPrice || maxSupplierCost),
-          };
-          if (!cjProduct.productNameEn || !cjProduct.productSku || !cjProduct.productImage) continue;
-
-          const result = await importViaSupabase({
-            serviceRoleKey,
-            supabaseUrl,
-            cjProduct,
-            detail,
-            variants,
-            inventory,
-            freightQuotes,
-            videos,
-            markup: pricing.markup,
-            affiliate: pricing.affiliate,
-            finalPrice: finalPricing.finalAdvertisedPrice,
-            sellerAsk: money(maxSupplierCost + pricing.markup),
-          });
-
-          const productId = text(result?.product?.id);
-          if (!productId) throw new Error('Importer returned no Beezio product id.');
-          const { data: saved, error: savedError } = await supabase
-            .from('products')
-            .select('id,title,category,calculated_customer_price,verification_status,is_active,is_promotable,status')
-            .eq('id', productId)
-            .single();
-          if (savedError) throw savedError;
-          if (text(saved?.verification_status) !== 'verified' || saved?.is_active !== true || saved?.is_promotable !== true) {
-            throw new Error(`Database triple-check did not certify product (${text(saved?.verification_status) || 'unknown'}).`);
-          }
-
-          try { await subscribeCJProducts([pid]); } catch { /* reconciliation repairs this */ }
-          existingIds.add(pid);
-          importedThisRun += 1;
-          snapshot.tierCounts[actualTier.key] = Number(snapshot.tierCounts[actualTier.key] || 0) + 1;
-          snapshot.total += 1;
-          snapshot.categoryCounts[actualTier.key][category] = Number(snapshot.categoryCounts[actualTier.key][category] || 0) + 1;
-          runResult.imported.push({
-            pid,
-            product_id: productId,
-            title: text(saved?.title),
-            category,
-            price_tier: actualTier.key,
-            searched_tier: searchTier.key,
-            variants: variants.length,
-            max_supplier_cost: money(maxSupplierCost),
-            max_shipping: money(maxShipping),
-            seller_markup: pricing.markup,
-            affiliate_payout: pricing.affiliate,
-            advertised_price: Number(saved?.calculated_customer_price || finalPricing.finalAdvertisedPrice),
-            verification_status: saved?.verification_status,
-          });
-        } catch (error) {
-          runResult.failed.push({ pid, searched_tier: searchTier.key, error: error instanceof Error ? error.message : String(error) });
+      try {
+        const detail = await getCJProductDetail({ pid });
+        if (isBlockedProduct(candidate, detail)) {
+          runResult.skipped.push({ pid, reason: 'blocked product/category/brand term' });
+          continue;
         }
+
+        const variants = Array.isArray(detail?.variants) ? detail.variants : [];
+        if (!variants.length || variants.length > MAX_VARIANTS_PER_PRODUCT) {
+          runResult.skipped.push({ pid, reason: !variants.length ? 'no exact VID variants' : `too many variants (${variants.length})` });
+          continue;
+        }
+        const images = imageCandidates(candidate, detail);
+        if (images.length < 2) {
+          runResult.skipped.push({ pid, reason: 'insufficient promotional images' });
+          continue;
+        }
+
+        const variantCosts = variants.map((variant: any) => Number(variant?.variantSellPrice || 0));
+        if (variantCosts.some((cost: number) => !Number.isFinite(cost) || cost <= 0)) {
+          runResult.skipped.push({ pid, reason: 'invalid supplier price on one or more variants' });
+          continue;
+        }
+
+        await verifyVariantsInStock(pid, variants);
+        const freightQuotes = await getFreightForVariants(detail, variants);
+        const maxSupplierCost = Math.max(...variantCosts);
+        const maxShipping = Math.max(...freightQuotes.map((quote) => Number(quote.totalPostageFee || 0)));
+        const landedCost = money(maxSupplierCost + maxShipping);
+        const pricing = pricingForLandedCost(landedCost);
+        const finalPricing = computeFixedTierPricing({
+          supplierCost: maxSupplierCost,
+          sellerMarkup: pricing.markup,
+          affiliatePayout: pricing.affiliate,
+          shippingIncluded: maxShipping,
+        });
+        const actualTier = tierForPrice(finalPricing.finalAdvertisedPrice);
+        if (!actualTier || Number(snapshot.tierCounts[actualTier.key] || 0) >= TIER_TARGET) {
+          runResult.skipped.push({ pid, reason: `landed Beezio price did not fit an incomplete target tier (${finalPricing.finalAdvertisedPrice.toFixed(2)})` });
+          continue;
+        }
+
+        const category = canonicalCategory(firstString(detail?.categoryName, candidate?.categoryName, candidate?.threeCategoryName, candidate?.twoCategoryName));
+        if (Number(snapshot.categoryCounts[actualTier.key]?.[category] || 0) >= MAX_PER_CATEGORY_PER_TIER) {
+          runResult.skipped.push({ pid, reason: `category quota full (${category})` });
+          continue;
+        }
+
+        const shippingRatioLimit = finalPricing.finalAdvertisedPrice < 50 ? 0.55 : 0.45;
+        if (maxShipping > finalPricing.finalAdvertisedPrice * shippingRatioLimit) {
+          runResult.skipped.push({ pid, price_tier: actualTier.key, reason: `shipping too high (${money(maxShipping).toFixed(2)})` });
+          continue;
+        }
+
+        let videos: string[] = [];
+        try {
+          const assets = await getCJProductVideos(pid);
+          videos = assets.map((asset) => text(asset.videoUrl)).filter(Boolean);
+        } catch { videos = []; }
+
+        let inventory: number | null = null;
+        try { inventory = await getCJInventory(pid); } catch { inventory = null; }
+
+        const cjProduct = {
+          pid,
+          productNameEn: firstString(detail?.productNameEn, candidate?.productNameEn, candidate?.nameEn, candidate?.name),
+          productSku: firstString(detail?.productSku, candidate?.productSku, candidate?.sku),
+          productImage: firstString(detail?.productImage, detail?.bigImage, images[0]),
+          categoryName: firstString(detail?.categoryName, candidate?.categoryName, category),
+          sellPrice: Number(detail?.sellPrice || candidate?.sellPrice || maxSupplierCost),
+        };
+        if (!cjProduct.productNameEn || !cjProduct.productSku || !cjProduct.productImage) {
+          runResult.skipped.push({ pid, reason: 'missing product title, SKU, or image' });
+          continue;
+        }
+
+        const result = await importViaSupabase({
+          serviceRoleKey,
+          supabaseUrl,
+          cjProduct,
+          detail,
+          variants,
+          inventory,
+          freightQuotes,
+          videos,
+          markup: pricing.markup,
+          affiliate: pricing.affiliate,
+          finalPrice: finalPricing.finalAdvertisedPrice,
+          sellerAsk: money(maxSupplierCost + pricing.markup),
+        });
+
+        const productId = text(result?.product?.id);
+        if (!productId) throw new Error('Importer returned no Beezio product id.');
+        const { data: saved, error: savedError } = await supabase
+          .from('products')
+          .select('id,title,category,calculated_customer_price,verification_status,is_active,is_promotable,status')
+          .eq('id', productId)
+          .single();
+        if (savedError) throw savedError;
+        if (text(saved?.verification_status) !== 'verified' || saved?.is_active !== true || saved?.is_promotable !== true) {
+          throw new Error(`Database triple-check did not certify product (${text(saved?.verification_status) || 'unknown'}).`);
+        }
+
+        try { await subscribeCJProducts([pid]); } catch { /* reconciliation repairs this */ }
+        existingIds.add(pid);
+        importedThisRun += 1;
+        snapshot.tierCounts[actualTier.key] = Number(snapshot.tierCounts[actualTier.key] || 0) + 1;
+        snapshot.total += 1;
+        snapshot.categoryCounts[actualTier.key][category] = Number(snapshot.categoryCounts[actualTier.key][category] || 0) + 1;
+        runResult.imported.push({
+          pid,
+          product_id: productId,
+          title: text(saved?.title),
+          category,
+          price_tier: actualTier.key,
+          searched_tier: targetTier.key,
+          searched_page: searchPage,
+          variants: variants.length,
+          max_supplier_cost: money(maxSupplierCost),
+          max_shipping: money(maxShipping),
+          seller_markup: pricing.markup,
+          affiliate_payout: pricing.affiliate,
+          advertised_price: Number(saved?.calculated_customer_price || finalPricing.finalAdvertisedPrice),
+          verification_status: saved?.verification_status,
+        });
+      } catch (error) {
+        runResult.failed.push({ pid, searched_tier: targetTier.key, searched_page: searchPage, error: error instanceof Error ? error.message : String(error) });
       }
     }
 
     snapshot = await catalogSnapshot(supabase);
+    runResult.attempted_candidates = attemptedCandidates;
     runResult.tier_counts_after = snapshot.tierCounts;
+    runResult.tier_pages_after = tierPages;
     runResult.verified_count_after = snapshot.total;
-    runResult.status = PRICE_TIERS.every((tier) => snapshot.tierCounts[tier.key] >= TIER_TARGET) ? 'complete' : 'in_progress';
+    runResult.status = PRICE_TIERS.every((tier) => snapshot!.tierCounts[tier.key] >= TIER_TARGET) ? 'complete' : 'in_progress';
     runResult.finished_at = new Date().toISOString();
-    await releaseSeedLock(supabase, runResult, snapshot);
+    await releaseSeedLock(supabase, runResult, snapshot, tierPages);
     lockAcquired = false;
     return { statusCode: 202, body: '' };
   } catch (error) {
@@ -528,10 +580,11 @@ export const handler: Handler = async (event) => {
     runResult.error = error instanceof Error ? error.message : String(error);
     runResult.finished_at = new Date().toISOString();
     try {
-      const snapshot = await catalogSnapshot(supabase);
+      snapshot = snapshot || await catalogSnapshot(supabase);
       runResult.tier_counts_after = snapshot.tierCounts;
+      runResult.tier_pages_after = tierPages;
       runResult.verified_count_after = snapshot.total;
-      if (lockAcquired) await releaseSeedLock(supabase, runResult, snapshot);
+      if (lockAcquired) await releaseSeedLock(supabase, runResult, snapshot, tierPages);
     } catch { /* lock expires automatically */ }
     return { statusCode: 202, body: '' };
   }
