@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { extractCJOrderUpdate } from './_lib/cj-order-status';
-import { computeCJWebhookSignature, verifyCJWebhookSignature } from './cj-webhook';
+import { extractCJOrderUpdate } from './cj-order-status';
+import { computeCJWebhookSignature, verifyCJWebhookSignature } from '../cj-webhook';
 
 describe('CJ webhook contract', () => {
   it('matches CJ official HMAC-SHA256 Base64 example', () => {
