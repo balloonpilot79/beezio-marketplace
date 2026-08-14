@@ -407,10 +407,9 @@ const isAllowedCjVideoUrl = (value: string): boolean => {
   try {
     const url = new URL(value)
     const hostname = url.hostname.toLowerCase()
-    return url.protocol === 'https:' && (
-      hostname === 'cjdropshipping.com' ||
-      hostname.endsWith('.cjdropshipping.com')
-    )
+    const isCjHost = hostname === 'cjdropshipping.com' || hostname.endsWith('.cjdropshipping.com')
+    const isCjOssHost = /^cc-west-[a-z0-9-]+\.oss(?:-[a-z0-9-]+)?\.aliyuncs\.com$/.test(hostname)
+    return url.protocol === 'https:' && (isCjHost || isCjOssHost)
   } catch {
     return false
   }
@@ -1028,31 +1027,66 @@ serve(async (req) => {
       return json(500, { error: 'Missing SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY for RLS mode)' })
     }
 
-    // Authenticated user client (to validate the caller)
+    // Authenticated user client (to validate the caller). The only non-user
+    // path is a server-to-server SupplyLine seed request authenticated with the
+    // Supabase service-role JWT plus an explicit internal-purpose header.
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) return json(401, { error: 'Missing Authorization header' })
 
     const usingServiceRole = Boolean(serviceRoleKey)
-
-    const supabaseAuthed = createClient(supabaseUrl, anonKey || serviceRoleKey, {
-      global: { headers: { Authorization: authHeader } },
-    })
-
-    const { data: userData, error: userError } = await supabaseAuthed.auth.getUser()
-    if (userError || !userData?.user) {
-      return json(401, { error: 'Unauthorized', details: userError?.message })
-    }
-
-    const user = userData.user
-    const email = (user.email || '').toLowerCase()
-
-    const body = (await req.json()) as ImportRequest
-
-    // Admin-only by email fallback (matches UI gate); also allow DB role=admin.
     // Prefer service_role for inserts (bypasses RLS). If missing, fall back to anon+JWT (RLS enforced).
     const supabaseAdmin = usingServiceRole
       ? createClient(supabaseUrl, serviceRoleKey)
       : createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } })
+
+    const bearerToken = authHeader.replace(/^Bearer\s+/i, '').trim()
+    const isInternalSupplyLineImport = Boolean(
+      serviceRoleKey &&
+      bearerToken === serviceRoleKey &&
+      req.headers.get('X-Beezio-Internal-Import') === 'supplyline-plus'
+    )
+
+    let internalOwnerProfileId: string | null = null
+    let user: any = null
+    if (isInternalSupplyLineImport) {
+      const { data: storefront, error: storefrontError } = await supabaseAdmin
+        .from('storefronts')
+        .select('owner_id')
+        .eq('slug', SUPPLYLINE_PLUS_SLUG)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (storefrontError || !(storefront as any)?.owner_id) {
+        return json(503, { error: `${SUPPLYLINE_PLUS_NAME} owner is not configured.` })
+      }
+      internalOwnerProfileId = String((storefront as any).owner_id)
+      const { data: ownerProfile, error: ownerError } = await supabaseAdmin
+        .from('profiles')
+        .select('id,user_id,email,full_name')
+        .eq('id', internalOwnerProfileId)
+        .maybeSingle()
+      if (ownerError || !ownerProfile) {
+        return json(503, { error: `${SUPPLYLINE_PLUS_NAME} owner profile is unavailable.` })
+      }
+      user = {
+        id: String((ownerProfile as any).user_id || (ownerProfile as any).id),
+        email: (ownerProfile as any).email || null,
+        user_metadata: { full_name: (ownerProfile as any).full_name || '' },
+      }
+    } else {
+      const supabaseAuthed = createClient(supabaseUrl, anonKey || serviceRoleKey, {
+        global: { headers: { Authorization: authHeader } },
+      })
+      const { data: userData, error: userError } = await supabaseAuthed.auth.getUser()
+      if (userError || !userData?.user) {
+        return json(401, { error: 'Unauthorized', details: userError?.message })
+      }
+      user = userData.user
+    }
+
+    const email = (user.email || '').toLowerCase()
+    const body = (await req.json()) as ImportRequest
+
+    // Admin-only by email fallback (matches UI gate); also allow DB role=admin.
 
     const getColumnType = async (tableName: string, columnName: string): Promise<string | null> => {
       try {
@@ -1077,7 +1111,7 @@ serve(async (req) => {
     const isUuidColumn = (dataType: string | null): boolean => String(dataType || '').toLowerCase() === 'uuid'
 
     const emailWhitelisted = email === 'jason@beezio.co' || email === 'jasonlovingsr@gmail.com' || email === 'shop@beezio.co'
-    let isAllowed = emailWhitelisted
+    let isAllowed = isInternalSupplyLineImport || emailWhitelisted
     let callerRole = ''
     if (!isAllowed) {
       try {
@@ -1100,7 +1134,7 @@ serve(async (req) => {
 
     // Resolve the caller profile id for FK constraints (products.seller_id -> profiles.id)
     const defaultRole = email === 'jason@beezio.co' || email === 'jasonlovingsr@gmail.com' || email === 'shop@beezio.co' ? 'admin' : 'buyer'
-    let sellerProfileId: string | null = null
+    let sellerProfileId: string | null = internalOwnerProfileId
     try {
       const { data: existingProfile } = await supabaseAdmin
         .from('profiles')
