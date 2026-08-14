@@ -3,6 +3,7 @@ import {
   SUPPLYLINE_SEED_CANDIDATES,
   SUPPLYLINE_SEED_TARGET_COUNT,
   getRemainingSupplyLineSeedCandidates,
+  getSupplyLinePlayableVideoUrls,
   getSupplyLineSeedPricing,
   isSupplyLineSeedProductComplete,
 } from './cj-supplyline-seed';
@@ -39,5 +40,13 @@ describe('SupplyLine Plus launch seeding', () => {
     expect(isSupplyLineSeedProductComplete({ ...complete, videos: [] })).toBe(false);
     expect(isSupplyLineSeedProductComplete({ ...complete, retail_price_cents: 0 })).toBe(false);
     expect(isSupplyLineSeedProductComplete({ ...complete, source_platform: null })).toBe(false);
+  });
+
+  it('accepts downloadable HTTPS video URLs but rejects CJ video IDs', () => {
+    expect(getSupplyLinePlayableVideoUrls([
+      'video-id-only',
+      'https://download-only-api.cjdropshipping.com/video/demo.mp4',
+      'https://download-only-api.cjdropshipping.com/video/demo.mp4',
+    ])).toEqual(['https://download-only-api.cjdropshipping.com/video/demo.mp4']);
   });
 });

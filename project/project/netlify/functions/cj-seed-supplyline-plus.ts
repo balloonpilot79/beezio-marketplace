@@ -8,6 +8,7 @@ import {
 import {
   SUPPLYLINE_SEED_TARGET_COUNT,
   getRemainingSupplyLineSeedCandidates,
+  getSupplyLinePlayableVideoUrls,
   getSupplyLineSeedPricing,
   isSupplyLineSeedProductComplete,
   type SupplyLineSeedCandidate,
@@ -48,7 +49,10 @@ const unique = (values: unknown[]): string[] =>
 
 async function prepareCandidate(candidate: SupplyLineSeedCandidate) {
   const detail = await getCJProductDetail({ pid: candidate.cjProductId });
-  const videosFromDetail = unique([
+  // Product detail can return video IDs rather than URLs. Only the separate
+  // video endpoint (or a true HTTPS URL in detail) proves the media can be
+  // downloaded and cached for storefront playback.
+  const videosFromDetail = getSupplyLinePlayableVideoUrls([
     ...extractUrls(detail?.productVideoList),
     ...extractUrls(detail?.videoList),
     ...extractUrls(detail?.videos),
@@ -59,7 +63,7 @@ async function prepareCandidate(candidate: SupplyLineSeedCandidate) {
   let videos = videosFromDetail;
   try {
     const assets = await getCJProductVideos(candidate.cjProductId);
-    videos = unique([...assets.map((asset) => asset.videoUrl), ...videosFromDetail]);
+    videos = getSupplyLinePlayableVideoUrls([...assets.map((asset) => asset.videoUrl), ...videosFromDetail]);
   } catch (error) {
     console.warn('SupplyLine seed video lookup fallback:', error instanceof Error ? error.message : error);
   }
