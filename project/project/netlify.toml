@@ -18,9 +18,6 @@
 [functions."cj-process-pending"]
   schedule = "*/5 * * * *"
 
-[functions."cj-seed-supplyline-plus"]
-  schedule = "*/5 * * * *"
-
 [functions."cj-sync-orders"]
   schedule = "*/15 * * * *"
 
