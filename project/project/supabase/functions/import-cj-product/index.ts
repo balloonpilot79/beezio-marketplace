@@ -407,10 +407,9 @@ const isAllowedCjVideoUrl = (value: string): boolean => {
   try {
     const url = new URL(value)
     const hostname = url.hostname.toLowerCase()
-    return url.protocol === 'https:' && (
-      hostname === 'cjdropshipping.com' ||
-      hostname.endsWith('.cjdropshipping.com')
-    )
+    const isCjHost = hostname === 'cjdropshipping.com' || hostname.endsWith('.cjdropshipping.com')
+    const isCjOssHost = /^cc-west-[a-z0-9-]+\.oss(?:-[a-z0-9-]+)?\.aliyuncs\.com$/.test(hostname)
+    return url.protocol === 'https:' && (isCjHost || isCjOssHost)
   } catch {
     return false
   }
@@ -944,9 +943,33 @@ const upsertDefaultShippingOption = async (
     updated_at: now,
   }
 
-  const { error } = await client
+  // The live unique index also contains nullable variant_id, so a three-column
+  // PostgREST onConflict target does not match it. Resolve the product-level
+  // row explicitly to keep re-imports idempotent instead of accumulating
+  // duplicate NULL-variant shipping rows.
+  const { data: existing, error: lookupError } = await client
     .from('shipping_options')
-    .upsert([payload] as any[], { onConflict: 'product_id,destination_country,method_code' })
+    .select('id')
+    .eq('product_id', productId)
+    .eq('destination_country', 'US')
+    .eq('method_code', 'CJ_DEFAULT')
+    .is('variant_id', null)
+    .limit(1)
+    .maybeSingle()
+
+  if (lookupError) {
+    console.error('Failed to find default shipping option', lookupError)
+    return
+  }
+
+  const { error } = existing?.id
+    ? await client
+        .from('shipping_options')
+        .update(payload)
+        .eq('id', existing.id)
+    : await client
+        .from('shipping_options')
+        .insert(payload)
 
   if (error) {
     console.error('Failed to upsert default shipping option', error)
@@ -1028,31 +1051,66 @@ serve(async (req) => {
       return json(500, { error: 'Missing SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY for RLS mode)' })
     }
 
-    // Authenticated user client (to validate the caller)
+    // Authenticated user client (to validate the caller). The only non-user
+    // path is a server-to-server SupplyLine seed request authenticated with the
+    // Supabase service-role JWT plus an explicit internal-purpose header.
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) return json(401, { error: 'Missing Authorization header' })
 
     const usingServiceRole = Boolean(serviceRoleKey)
-
-    const supabaseAuthed = createClient(supabaseUrl, anonKey || serviceRoleKey, {
-      global: { headers: { Authorization: authHeader } },
-    })
-
-    const { data: userData, error: userError } = await supabaseAuthed.auth.getUser()
-    if (userError || !userData?.user) {
-      return json(401, { error: 'Unauthorized', details: userError?.message })
-    }
-
-    const user = userData.user
-    const email = (user.email || '').toLowerCase()
-
-    const body = (await req.json()) as ImportRequest
-
-    // Admin-only by email fallback (matches UI gate); also allow DB role=admin.
     // Prefer service_role for inserts (bypasses RLS). If missing, fall back to anon+JWT (RLS enforced).
     const supabaseAdmin = usingServiceRole
       ? createClient(supabaseUrl, serviceRoleKey)
       : createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } })
+
+    const bearerToken = authHeader.replace(/^Bearer\s+/i, '').trim()
+    const isInternalSupplyLineImport = Boolean(
+      serviceRoleKey &&
+      bearerToken === serviceRoleKey &&
+      req.headers.get('X-Beezio-Internal-Import') === 'supplyline-plus'
+    )
+
+    let internalOwnerProfileId: string | null = null
+    let user: any = null
+    if (isInternalSupplyLineImport) {
+      const { data: storefront, error: storefrontError } = await supabaseAdmin
+        .from('storefronts')
+        .select('owner_id')
+        .eq('slug', SUPPLYLINE_PLUS_SLUG)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (storefrontError || !(storefront as any)?.owner_id) {
+        return json(503, { error: `${SUPPLYLINE_PLUS_NAME} owner is not configured.` })
+      }
+      internalOwnerProfileId = String((storefront as any).owner_id)
+      const { data: ownerProfile, error: ownerError } = await supabaseAdmin
+        .from('profiles')
+        .select('id,user_id,email,full_name')
+        .eq('id', internalOwnerProfileId)
+        .maybeSingle()
+      if (ownerError || !ownerProfile) {
+        return json(503, { error: `${SUPPLYLINE_PLUS_NAME} owner profile is unavailable.` })
+      }
+      user = {
+        id: String((ownerProfile as any).user_id || (ownerProfile as any).id),
+        email: (ownerProfile as any).email || null,
+        user_metadata: { full_name: (ownerProfile as any).full_name || '' },
+      }
+    } else {
+      const supabaseAuthed = createClient(supabaseUrl, anonKey || serviceRoleKey, {
+        global: { headers: { Authorization: authHeader } },
+      })
+      const { data: userData, error: userError } = await supabaseAuthed.auth.getUser()
+      if (userError || !userData?.user) {
+        return json(401, { error: 'Unauthorized', details: userError?.message })
+      }
+      user = userData.user
+    }
+
+    const email = (user.email || '').toLowerCase()
+    const body = (await req.json()) as ImportRequest
+
+    // Admin-only by email fallback (matches UI gate); also allow DB role=admin.
 
     const getColumnType = async (tableName: string, columnName: string): Promise<string | null> => {
       try {
@@ -1077,7 +1135,7 @@ serve(async (req) => {
     const isUuidColumn = (dataType: string | null): boolean => String(dataType || '').toLowerCase() === 'uuid'
 
     const emailWhitelisted = email === 'jason@beezio.co' || email === 'jasonlovingsr@gmail.com' || email === 'shop@beezio.co'
-    let isAllowed = emailWhitelisted
+    let isAllowed = isInternalSupplyLineImport || emailWhitelisted
     let callerRole = ''
     if (!isAllowed) {
       try {
@@ -1100,7 +1158,7 @@ serve(async (req) => {
 
     // Resolve the caller profile id for FK constraints (products.seller_id -> profiles.id)
     const defaultRole = email === 'jason@beezio.co' || email === 'jasonlovingsr@gmail.com' || email === 'shop@beezio.co' ? 'admin' : 'buyer'
-    let sellerProfileId: string | null = null
+    let sellerProfileId: string | null = internalOwnerProfileId
     try {
       const { data: existingProfile } = await supabaseAdmin
         .from('profiles')
@@ -1563,6 +1621,7 @@ serve(async (req) => {
       // (pricing engine, checkout, analytics) can consistently recompute/validate totals.
       price: finalPrice,
       calculated_customer_price: finalPrice,
+      retail_price_cents: Math.round(finalPrice * 100),
       seller_ask: sellerAsk,
       seller_amount: sellerAsk,
       seller_ask_price: sellerAsk,
@@ -1575,7 +1634,10 @@ serve(async (req) => {
       platform_fee: platformAmount,
       currency: 'USD',
       base_weight_oz: baseWeightOz,
+      base_cost_cents: Math.round(safeCjUnitCost * 100),
+      shipping_estimate_cents: Math.round(shippingCostResolved * 100),
       image_url: normalizedImages[0] ?? cjProduct.productImage,
+      primary_image_url: normalizedImages[0] ?? cjProduct.productImage,
       images: normalizedImages,
       sku: resolvedProductSku,
       // Exact supplier variant payloads stay in private mapping tables. Public
@@ -1586,11 +1648,17 @@ serve(async (req) => {
       shipping_price: customerFacingShippingCost,
       shipping_options: customerFacingShippingOptions,
       affiliate_enabled: true,
+      affiliate_percent: affiliateType === 'percent' ? Math.round(safeAffiliateValue) : 0,
+      affiliate_floor_cents: affiliateType === 'flat' ? Math.round(safeAffiliateValue * 100) : 0,
       commission_rate: affiliateType === 'flat' ? safeAffiliateValue : safeAffiliateValue,
       commission_type: affiliateType === 'flat' ? 'flat_rate' : 'percentage',
       flat_commission_amount: affiliateType === 'flat' ? safeAffiliateValue : 0,
       affiliate_commission_type: affiliateType === 'flat' ? 'flat' : 'percent',
       affiliate_commission_value: safeAffiliateValue,
+      markup_type: markupType,
+      markup_value: markupType === 'flat' ? Math.round(safeMarkup * 100) : Math.round(safeMarkup),
+      paypal_fee_bps: 399,
+      paypal_fixed_cents: 60,
       source_platform: 'cj',
       external_product_id: normalizedCj.cj_pid || normalizedCj.cj_product_id,
       external_variant_id: selectedCanonicalVariant?.cj_vid || selectedCanonicalVariant?.cj_variant_id || null,
@@ -1602,6 +1670,7 @@ serve(async (req) => {
       dropship_provider: 'cj',
       is_dropshipped: true,
       product_type: 'one_time',
+      has_variants: variants.length > 0,
       lineage: SUPPLYLINE_PLUS_NAME,
       status: 'active',
       is_promotable: true,
@@ -1629,6 +1698,10 @@ serve(async (req) => {
       }
     }
 
+    if (await hasColumn('products', 'beezio_category_id')) {
+      insertPayload.beezio_category_id = categoryIdForUuidColumn
+    }
+
     if (productsHasCategory) {
       if (productsCategoryIsUuid) {
         insertPayload.category = categoryIdForUuidColumn
@@ -1650,16 +1723,30 @@ serve(async (req) => {
       'display_search_code',
       'source_import_version',
       'calculated_customer_price',
+      'retail_price_cents',
       'seller_ask',
       'seller_amount',
       'seller_ask_price',
       'platform_fee',
       'base_weight_oz',
+      'base_cost_cents',
+      'shipping_estimate_cents',
+      'primary_image_url',
+      'image_url',
+      'sku',
+      'variants',
       'shipping_price',
       'affiliate_enabled',
+      'affiliate_percent',
+      'affiliate_floor_cents',
       'flat_commission_amount',
       'affiliate_commission_type',
       'affiliate_commission_value',
+      'markup_type',
+      'markup_value',
+      'paypal_fee_bps',
+      'paypal_fixed_cents',
+      'source',
       'source_platform',
       'external_product_id',
       'external_variant_id',
@@ -1668,6 +1755,7 @@ serve(async (req) => {
       'inventory_source',
       'dropship_provider',
       'is_dropshipped',
+      'has_variants',
       'lineage',
       'is_promotable',
       'videos',
