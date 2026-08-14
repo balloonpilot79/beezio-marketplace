@@ -347,6 +347,7 @@ const normalizeVideoUrl = (value: unknown): string => {
   const raw = String(value || '').trim()
   if (!raw) return ''
   if (raw.startsWith('//')) return `https:${raw}`
+  if (/^http:\/\//i.test(raw)) return raw.replace(/^http:\/\//i, 'https://')
   return raw
 }
 
@@ -427,8 +428,13 @@ const cacheCjVideos = async (
   cjProductId: string,
   sourceUrls: string[]
 ): Promise<string[]> => {
-  const allowedUrls = uniqueStrings(sourceUrls).filter(isAllowedCjVideoUrl)
+  const requestedUrls = uniqueStrings(sourceUrls.map(normalizeVideoUrl)).filter(Boolean)
+  const allowedUrls = requestedUrls.filter(isAllowedCjVideoUrl)
   const cachedUrls: string[] = []
+
+  if (requestedUrls.length && !allowedUrls.length) {
+    throw new Error('CJ video metadata contained no trusted downloadable HTTPS URL.')
+  }
 
   for (const sourceUrl of allowedUrls) {
     try {
