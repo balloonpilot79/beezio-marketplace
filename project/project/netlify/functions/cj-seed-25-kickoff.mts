@@ -5,11 +5,11 @@ export default async () => {
   const siteUrl = String(process.env.URL || 'https://beezio.co').replace(/\/$/, '');
 
   if (!serviceRoleKey) {
-    console.error('CJ seed kickoff skipped: SUPABASE_SERVICE_ROLE_KEY is missing.');
+    console.error('CJ price-tier seed kickoff skipped: SUPABASE_SERVICE_ROLE_KEY is missing.');
     return;
   }
 
-  const response = await fetch(`${siteUrl}/.netlify/functions/cj-seed-25-background`, {
+  const response = await fetch(`${siteUrl}/.netlify/functions/cj-seed-price-tiers-background`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${serviceRoleKey}`,
@@ -20,9 +20,9 @@ export default async () => {
 
   if (response.status !== 202) {
     const body = await response.text().catch(() => '');
-    console.error('CJ seed background kickoff failed:', response.status, body.slice(0, 300));
+    console.error('CJ price-tier background kickoff failed:', response.status, body.slice(0, 300));
   } else {
-    console.log('CJ verified 25-product background seed accepted.');
+    console.log('CJ 125-product price-tier background seed accepted.');
   }
 };
 
