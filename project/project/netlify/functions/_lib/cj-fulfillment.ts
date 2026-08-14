@@ -121,27 +121,46 @@ export async function createUnpaidCJOrderForBeezioOrder(params: {
     }
   }
 
-  const origins = Array.from(new Set(mappedItems
-    .map(({ mapping }) => text(mapping?.origin_country_code).toUpperCase())
-    .filter(Boolean)));
-  if (origins.length !== 1) throw new Error('One CJ order cannot contain variants from different origin countries.');
-
   const shipping = (order as any)?.shipping_address || (order as any)?.shipping_info || {};
   const destinationCountryCode = normalizeCountryCode(shipping?.country || shipping?.country_code);
   if (!destinationCountryCode) throw new Error('SupplyLine order has no supported shipping country code.');
 
-  const freight = await getCJFreightQuote({
-    originCountryCode: origins[0],
-    destinationCountryCode,
-    destinationZip: shipping?.zip || shipping?.postal_code || shipping?.zipCode || null,
-    items: mappedItems.map(({ item, mapping }) => ({
-      vid: mapping.cj_vid,
-      quantity: Math.max(1, Math.floor(Number(item?.quantity || 1))),
-    })),
-  });
-  const preferredMethod = text((queued as any)?.cj_logistic_name);
-  const selectedFreight = freight.options.find(
-    (option) => preferredMethod && option.logisticName.toLowerCase() === preferredMethod.toLowerCase()
+  const mappedOrigins = Array.from(new Set(mappedItems
+    .map(({ mapping }) => text(mapping?.origin_country_code).toUpperCase())
+    .filter(Boolean)));
+  const originCandidates = Array.from(new Set([...mappedOrigins, 'US', 'CN']));
+  const freightItems = mappedItems.map(({ item, mapping }) => ({
+    vid: mapping.cj_vid,
+    quantity: Math.max(1, Math.floor(Number(item?.quantity || 1))),
+  }));
+
+  let freight: Awaited<ReturnType<typeof getCJFreightQuote>> | null = null;
+  let selectedOrigin = '';
+  let lastFreightError: unknown = null;
+  for (const originCountryCode of originCandidates) {
+    try {
+      const candidate = await getCJFreightQuote({
+        originCountryCode,
+        destinationCountryCode,
+        destinationZip: shipping?.zip || shipping?.postal_code || shipping?.zipCode || null,
+        items: freightItems,
+      });
+      if (candidate.options.length) {
+        freight = candidate;
+        selectedOrigin = originCountryCode;
+        break;
+      }
+    } catch (error) {
+      lastFreightError = error;
+    }
+  }
+  if (!freight || !selectedOrigin) {
+    throw new Error(`CJ could not find one live origin/logistics route for the complete SupplyLine cart: ${lastFreightError instanceof Error ? lastFreightError.message : 'no compatible route'}`);
+  }
+
+  const preferredMethods = Array.from(new Set(mappedItems.map(({ mapping }) => text(mapping?.freight_method)).filter(Boolean)));
+  const selectedFreight = freight.options.find((option) =>
+    preferredMethods.some((method) => method.toLowerCase() === option.logisticName.toLowerCase())
   ) || freight.options[0];
 
   const customerName = text(
@@ -153,7 +172,7 @@ export async function createUnpaidCJOrderForBeezioOrder(params: {
   const createPayload = buildCJCreateOrderV2Payload({
     orderNumber,
     logisticName: selectedFreight.logisticName,
-    fromCountryCode: origins[0],
+    fromCountryCode: selectedOrigin,
     address: {
       countryCode: destinationCountryCode,
       country: countryName(destinationCountryCode, shipping?.country),
@@ -183,6 +202,8 @@ export async function createUnpaidCJOrderForBeezioOrder(params: {
 
     const cjOrderId = text(response?.orderId || response?.cjOrderId || response?.id) || null;
     if (!cjOrderId) throw new Error('CJ created no order id.');
+    const shipmentOrderId = text(response?.shipmentOrderId || response?.shipmentOrderNumber || response?.shipmentId) || null;
+    const cjPayId = text(response?.payId || response?.paymentId) || null;
     const cjPayUrl = text(response?.cjPayUrl || response?.payUrl) || null;
     const productCost = parseCJUsd(response?.productAmount) || round2(mappedItems.reduce(
       (total, { item, mapping }) => total + Number(mapping?.supplier_cost_amount || item?.supplier_cost_amount || 0) * Math.max(1, Number(item?.quantity || 1)),
@@ -198,6 +219,8 @@ export async function createUnpaidCJOrderForBeezioOrder(params: {
     const orderData = {
       create_order_v2: createPayload,
       freight: {
+        mapped_origins: mappedOrigins,
+        selected_common_origin: selectedOrigin,
         logistic_name: selectedFreight.logisticName,
         total_postage_fee: selectedFreight.totalPostageFee,
         reserved_shipping_total: storedReserve,
@@ -210,10 +233,12 @@ export async function createUnpaidCJOrderForBeezioOrder(params: {
       beezio_order_id: orderId,
       cj_order_number: orderNumber,
       cj_order_id: cjOrderId,
+      shipment_order_id: shipmentOrderId,
+      cj_pay_id: cjPayId,
       cj_status: 'unpaid',
       cj_pay_url: cjPayUrl,
       cj_logistic_name: selectedFreight.logisticName,
-      cj_origin_country_code: origins[0],
+      cj_origin_country_code: selectedOrigin,
       cj_product_cost: productCost,
       cj_shipping_cost: shippingCost,
       cj_cost: totalCost,
@@ -250,8 +275,8 @@ export async function createUnpaidCJOrderForBeezioOrder(params: {
       cj_order_number: orderNumber,
       cj_status: 'create_failed',
       cj_logistic_name: selectedFreight.logisticName,
-      cj_origin_country_code: origins[0],
-      order_data: { create_order_v2: createPayload },
+      cj_origin_country_code: selectedOrigin,
+      order_data: { create_order_v2: createPayload, mapped_origins: mappedOrigins, selected_common_origin: selectedOrigin },
       error_message: message,
       attempt_count: attemptCount,
       last_attempt_at: attemptAt,
