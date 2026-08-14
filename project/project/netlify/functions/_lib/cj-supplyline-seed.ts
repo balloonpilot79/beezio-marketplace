@@ -6,6 +6,17 @@ export type SupplyLineSeedCandidate = {
 
 export const SUPPLYLINE_SEED_TARGET_COUNT = 3;
 
+export type SupplyLineSeedProductSnapshot = {
+  source_platform?: unknown;
+  videos?: unknown;
+  retail_price_cents?: unknown;
+  base_cost_cents?: unknown;
+  shipping_estimate_cents?: unknown;
+  calculated_customer_price?: unknown;
+  markup_value?: unknown;
+  affiliate_floor_cents?: unknown;
+};
+
 // Public CJ catalog references chosen for low item cost, low weight, multiple
 // variants, and an existing product video. Live CJ API checks still decide
 // whether any candidate is safe to import.
@@ -41,6 +52,22 @@ export function getRemainingSupplyLineSeedCandidates(existingProductIds: unknown
     (existingProductIds || []).map((value) => String(value ?? '').trim()).filter(Boolean)
   );
   return SUPPLYLINE_SEED_CANDIDATES.filter((candidate) => !existing.has(candidate.cjProductId));
+}
+
+export function isSupplyLineSeedProductComplete(product: SupplyLineSeedProductSnapshot | null | undefined): boolean {
+  const videos = Array.isArray(product?.videos)
+    ? product.videos.map((value) => String(value ?? '').trim()).filter(Boolean)
+    : [];
+  return (
+    String(product?.source_platform ?? '').trim().toLowerCase() === 'cj' &&
+    videos.length > 0 &&
+    Number(product?.retail_price_cents) > 0 &&
+    Number(product?.base_cost_cents) > 0 &&
+    Number(product?.shipping_estimate_cents) > 0 &&
+    Number(product?.calculated_customer_price) > 0 &&
+    Number(product?.markup_value) > 0 &&
+    Number(product?.affiliate_floor_cents) > 0
+  );
 }
 
 export function getSupplyLineSeedPricing(maxSupplierCost: number): {
