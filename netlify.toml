@@ -8,6 +8,29 @@
   NODE_VERSION = "18"
   NPM_FLAGS = "--production=false"
 
+# Explicit CJ schedules. Keep these at repo root because this is the Netlify
+# config that selects the project/project build base.
+[functions."cj-process-webhooks"]
+  schedule = "* * * * *"
+
+[functions."cj-process-pending"]
+  schedule = "*/5 * * * *"
+
+[functions."cj-sync-orders"]
+  schedule = "*/15 * * * *"
+
+[functions."cj-sync-webhook-subscriptions"]
+  schedule = "@hourly"
+
+[functions."cj-seed-25-kickoff"]
+  schedule = "*/15 * * * *"
+
+[functions."cj-sandbox-order-test-kickoff"]
+  schedule = "*/15 * * * *"
+
+[functions."cj-auto-pay-kickoff"]
+  schedule = "*/5 * * * *"
+
 # Redirect www to non-www
 [[redirects]]
   from = "https://www.beezio.co/*"
