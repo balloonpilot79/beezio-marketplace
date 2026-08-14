@@ -6,7 +6,7 @@
   functions = "netlify/functions"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20.19.0"
   NPM_FLAGS = "--production=false"
 
 # CJ automation schedules are declared here because these functions use the
@@ -35,7 +35,7 @@
   schedule = "*/5 * * * *"
 
 [functions."cj-live-audit-kickoff"]
-  schedule = "*/30 * * * *"
+  schedule = "*/5 * * * *"
 
 # Cache control headers
 [[headers]]
