@@ -34,6 +34,9 @@
 [functions."cj-auto-pay-kickoff"]
   schedule = "*/5 * * * *"
 
+[functions."cj-live-audit-kickoff"]
+  schedule = "*/30 * * * *"
+
 # Cache control headers
 [[headers]]
   for = "/*.html"
