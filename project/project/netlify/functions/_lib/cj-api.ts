@@ -137,6 +137,94 @@ export async function getCJOpenId(): Promise<string | null> {
   return cachedOpenId;
 }
 
+export type CJWebhookSettingsPayload = {
+  product: { type: 'ENABLE'; callbackUrls: [string] };
+  stock: { type: 'ENABLE'; callbackUrls: [string] };
+  order: { type: 'ENABLE'; callbackUrls: [string] };
+  logistics: { type: 'ENABLE'; callbackUrls: [string] };
+};
+
+export type CJProductSubscriptionResult = {
+  successProductIds: string[];
+  failProductIds: string[];
+  subscribeAll: false;
+};
+
+export const DEFAULT_CJ_WEBHOOK_CALLBACK_URL =
+  'https://beezio.co/.netlify/functions/cj-webhook';
+
+export function resolveCJWebhookCallbackUrl(): string {
+  const configured = String(process.env.CJ_WEBHOOK_CALLBACK_URL || '').trim();
+  const callbackUrl = configured || DEFAULT_CJ_WEBHOOK_CALLBACK_URL;
+  let parsed: URL;
+  try {
+    parsed = new URL(callbackUrl);
+  } catch {
+    throw new Error('CJ_WEBHOOK_CALLBACK_URL must be a valid public HTTPS URL.');
+  }
+  if (parsed.protocol !== 'https:' || parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+    throw new Error('CJ_WEBHOOK_CALLBACK_URL must be a public HTTPS URL.');
+  }
+  return parsed.toString();
+}
+
+export function buildCJWebhookSettingsPayload(callbackUrl: string): CJWebhookSettingsPayload {
+  const normalizedCallbackUrl = String(callbackUrl || '').trim();
+  if (!normalizedCallbackUrl) throw new Error('CJ webhook callback URL is required.');
+  const enabled = { type: 'ENABLE' as const, callbackUrls: [normalizedCallbackUrl] as [string] };
+  return {
+    product: { ...enabled, callbackUrls: [...enabled.callbackUrls] as [string] },
+    stock: { ...enabled, callbackUrls: [...enabled.callbackUrls] as [string] },
+    order: { ...enabled, callbackUrls: [...enabled.callbackUrls] as [string] },
+    logistics: { ...enabled, callbackUrls: [...enabled.callbackUrls] as [string] },
+  };
+}
+
+export function normalizeCJProductSubscriptionIds(productIds: unknown[]): string[] {
+  return Array.from(
+    new Set((productIds || []).map((value) => String(value ?? '').trim()).filter(Boolean))
+  );
+}
+
+export async function configureCJWebhooks(
+  callbackUrl = resolveCJWebhookCallbackUrl()
+): Promise<{ callbackUrl: string }> {
+  const normalizedCallbackUrl = String(callbackUrl || '').trim();
+  await cjRequest('webhook/set', buildCJWebhookSettingsPayload(normalizedCallbackUrl) as any, 'POST');
+  return { callbackUrl: normalizedCallbackUrl };
+}
+
+export async function subscribeCJProducts(productIds: unknown[]): Promise<CJProductSubscriptionResult> {
+  const normalizedProductIds = normalizeCJProductSubscriptionIds(productIds);
+  if (!normalizedProductIds.length) {
+    return { successProductIds: [], failProductIds: [], subscribeAll: false };
+  }
+
+  const successProductIds: string[] = [];
+  const failProductIds: string[] = [];
+  for (let offset = 0; offset < normalizedProductIds.length; offset += 100) {
+    const chunk = normalizedProductIds.slice(offset, offset + 100);
+    const response: any = await cjRequest(
+      'webhook/product/subscribe',
+      { productIds: chunk, subscribeAll: false },
+      'POST'
+    );
+    const data = response?.data ?? {};
+    const succeeded = normalizeCJProductSubscriptionIds(data?.successProductIds || []);
+    const failed = normalizeCJProductSubscriptionIds(data?.failProductIds || []);
+    const accountedFor = new Set([...succeeded, ...failed]);
+
+    successProductIds.push(...succeeded);
+    failProductIds.push(...failed, ...chunk.filter((productId) => !accountedFor.has(productId)));
+  }
+
+  return {
+    successProductIds: normalizeCJProductSubscriptionIds(successProductIds),
+    failProductIds: normalizeCJProductSubscriptionIds(failProductIds),
+    subscribeAll: false,
+  };
+}
+
 export async function cjRequest<T = any>(
   endpoint: string,
   body: Record<string, unknown> = {},

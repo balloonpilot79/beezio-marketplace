@@ -16,6 +16,7 @@ import {
   attributesToOptions,
 } from './_lib/cj-import-utils';
 import { buildSearchableCodes, normalizeCjDetailPayload } from '../../shared/cjIdentity';
+import { syncCJWebhookSubscriptions } from './_lib/cj-webhook-subscriptions';
 
 type ImportResponse = {
   ok: boolean;
@@ -558,6 +559,31 @@ export const handler: Handler = async (event) => {
         errors.push({
           cj_product_id: item.cj_product_id,
           message: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    const importedCjProductIds = Array.from(new Set([
+      ...productsCreated,
+      ...productsUpdated,
+    ]));
+    if (importedCjProductIds.length > 0) {
+      try {
+        const subscriptionResult = await syncCJWebhookSubscriptions({
+          supabaseAdmin,
+          onlyProductIds: importedCjProductIds,
+        });
+        for (const failedProductId of subscriptionResult.failed_product_ids) {
+          errors.push({
+            cj_product_id: failedProductId,
+            message: 'CJ did not confirm the product/stock webhook subscription.',
+          });
+        }
+      } catch (subscriptionError) {
+        errors.push({
+          message: `CJ webhook subscription reconciliation failed: ${
+            subscriptionError instanceof Error ? subscriptionError.message : String(subscriptionError)
+          }`,
         });
       }
     }

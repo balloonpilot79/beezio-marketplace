@@ -1010,6 +1010,33 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
     return await res.json().catch(() => ({}));
   };
 
+  const invokeCjProductSubscription = async (cjProductId: string) => {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+    const token = sessionData?.session?.access_token;
+    if (!token) throw new Error('You must be signed in to subscribe CJ product updates');
+
+    const res = await fetch('/.netlify/functions/cj-subscribe-product', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ cj_product_id: cjProductId }),
+    });
+    const raw = await res.text();
+    let parsed: any = null;
+    try {
+      parsed = raw ? JSON.parse(raw) : null;
+    } catch {
+      parsed = null;
+    }
+    if (!res.ok) {
+      throw new Error(parsed?.error || raw || `CJ product subscription failed (${res.status})`);
+    }
+    return parsed;
+  };
+
   const importProduct = async (cjProduct: CJProduct, options?: { silent?: boolean }) => {
     // Allow importing multiple products in parallel without race conditions.
     markImporting(cjProduct.pid, true);
@@ -1225,6 +1252,9 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
       if (!newProduct?.id) {
         throw new Error('Server import completed without returning a product record');
       }
+
+      const subscriptionResult = await invokeCjProductSubscription(String(cjProduct.pid));
+      serverImportResult.subscription = subscriptionResult;
 
       if (!options?.silent) {
         alert(buildImportSuccessMessage(cjProduct.productNameEn, serverImportResult));
