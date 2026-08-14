@@ -1,6 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
-import { handler as fulfillCjOrderHandler } from './cj-fulfill-order';
+import { createUnpaidCJOrderForBeezioOrder } from './_lib/cj-fulfillment';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -17,16 +17,15 @@ const supabase = createClient(
   SUPABASE_SERVICE_ROLE_KEY || 'missing-service-role-key'
 );
 
-// Retired integration: historical order support remains, but this function is
-// intentionally no longer scheduled.
+export const config = { schedule: '*/5 * * * *' };
 
 export const handler: Handler = async () => {
   const { data: pending, error } = await supabase
     .from('cj_orders')
-    .select('beezio_order_id,cj_status,cj_order_id')
-    .eq('cj_status', 'waiting_funds')
+    .select('beezio_order_id,cj_status,cj_order_id,next_attempt_at')
+    .in('cj_status', ['awaiting_beezio_payment', 'create_failed'])
     .is('cj_order_id', null)
-    .limit(20);
+    .limit(50);
 
   if (error) {
     console.error('cj-process-pending: failed to query pending cj_orders:', error);
@@ -37,7 +36,14 @@ export const handler: Handler = async () => {
     };
   }
 
-  const orderIds = (pending || []).map((row: any) => row.beezio_order_id).filter(Boolean);
+  const now = Date.now();
+  const orderIds = (pending || [])
+    .filter((row: any) => {
+      const retryAt = Date.parse(String(row?.next_attempt_at || ''));
+      return !Number.isFinite(retryAt) || retryAt <= now;
+    })
+    .map((row: any) => row.beezio_order_id)
+    .filter(Boolean);
   let processed = 0;
   let succeeded = 0;
   let deferred = 0;
@@ -46,16 +52,9 @@ export const handler: Handler = async () => {
   for (const orderId of orderIds) {
     processed += 1;
     try {
-      const res: any = await fulfillCjOrderHandler({
-        httpMethod: 'POST',
-        body: JSON.stringify({ orderId }),
-        headers: {},
-      } as any);
-
-      const code = Number(res?.statusCode || 0);
-      if (code === 200) succeeded += 1;
-      else if (code === 202) deferred += 1;
-      else failed += 1;
+      const result = await createUnpaidCJOrderForBeezioOrder({ orderId, supabaseAdmin: supabase });
+      if (result.skipped) deferred += 1;
+      else succeeded += 1;
     } catch (e) {
       failed += 1;
       console.error('cj-process-pending: fulfillment invocation failed:', e instanceof Error ? e.message : e);

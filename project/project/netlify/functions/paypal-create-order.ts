@@ -6,7 +6,7 @@ import { getPayPalEnv, isPayPalEnabled, paypalRequestId } from './_lib/paypal';
 import { getEnvNumber } from './_lib/env';
 import { getPaymentProvider } from './_lib/providers';
 import { requireAdmin } from './_lib/auth';
-import { getCJInventory } from './_lib/cj-api';
+import { getCJFreightQuote, getCJInventory, getCJVariantByVid } from './_lib/cj-api';
 import { resolveRecruiterInfluencerId } from './_lib/influencer-referrals';
 import { validateCjOrderVariant } from './_lib/order-guards';
 import { createBeezioOrderNumber } from '../../shared/orderNumber';
@@ -31,25 +31,6 @@ const LOCKED_PLATFORM_FEE_MIN_PER_ITEM = DEFAULT_BEEZIO_PLATFORM_FEE_MIN;
 const LOCKED_PLATFORM_FEE_CAP = DEFAULT_BEEZIO_PLATFORM_FEE_CAP;
 const LOCKED_LARGE_ORDER_THRESHOLD = DEFAULT_BEEZIO_LARGE_ORDER_THRESHOLD;
 const LOCKED_LARGE_ORDER_FEE = DEFAULT_BEEZIO_LARGE_ORDER_FLAT_FEE;
-
-type ShippingTier = {
-  min_oz: number;
-  max_oz: number;
-  shipping_cents: number;
-};
-
-const DEFAULT_SHIPPING_TIERS: ShippingTier[] = [
-  { min_oz: 0, max_oz: 8, shipping_cents: 499 },
-  { min_oz: 9, max_oz: 32, shipping_cents: 699 },
-  { min_oz: 33, max_oz: 80, shipping_cents: 999 },
-  { min_oz: 81, max_oz: 160, shipping_cents: 1499 },
-  { min_oz: 161, max_oz: 999999, shipping_cents: 1999 },
-];
-
-const safeNumber = (value: unknown, fallback = 0) => {
-  const parsed = typeof value === 'string' ? Number.parseFloat(value) : Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -129,6 +110,17 @@ const VARIANT_SELECT_COLUMNS = [
   'inventory_policy',
   'is_active',
   'image_url',
+  'supplier_cost_amount',
+  'seller_markup_amount',
+  'seller_payout_amount',
+  'affiliate_payout_amount',
+  'shipping_reserve_amount',
+  'calculated_customer_price',
+  'cj_freight_method',
+  'cj_freight_origin_country',
+  'cj_freight_destination_country',
+  'cj_freight_quoted_at',
+  'cj_price_verified_at',
 ];
 
 const extractMissingColumnName = (message: string): string | null => {
@@ -209,7 +201,7 @@ const resolveAffiliateCommissionRate = (
         );
     const normalizedFlatValue = round2(Math.max(0, flatValue));
     if (!(normalizedFlatValue > 0) || !(sellerAsk > 0)) return roundRate(zeroCommissionFallbackPercent);
-    return roundRate(Math.min(normalizedFlatValue / sellerAsk, 1));
+    return roundRate(normalizedFlatValue / sellerAsk);
   }
 
   const rawPercent = pickPositiveNumber(
@@ -444,11 +436,32 @@ const normalizeProductToken = (value: unknown): string =>
     .trim()
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, '-');
 
-const pickTierCost = (totalOz: number, tiers: ShippingTier[]): number => {
-  const rounded = Math.max(0, totalOz);
-  const tier = tiers.find((t) => rounded >= t.min_oz && rounded <= t.max_oz);
-  if (tier) return Math.max(0, Math.round(tier.shipping_cents));
-  return tiers.length ? Math.max(0, Math.round(tiers[tiers.length - 1].shipping_cents)) : 0;
+const normalizeCountryCode = (value: unknown): string => {
+  const raw = String(value || '').trim();
+  if (/^[a-z]{2}$/i.test(raw)) return raw.toUpperCase();
+  const normalized = raw.toLowerCase().replace(/[^a-z]/g, '');
+  const aliases: Record<string, string> = {
+    unitedstates: 'US', usa: 'US', unitedstatesofamerica: 'US',
+    canada: 'CA', mexico: 'MX', unitedkingdom: 'GB', greatbritain: 'GB',
+    australia: 'AU', newzealand: 'NZ', germany: 'DE', france: 'FR',
+    spain: 'ES', italy: 'IT', ireland: 'IE', netherlands: 'NL', belgium: 'BE',
+  };
+  return aliases[normalized] || '';
+};
+
+const isCJProduct = (product: any, variant?: any): boolean => {
+  const markers = [
+    variant?.source,
+    variant?.source_platform,
+    variant?.inventory_source,
+    product?.source_platform,
+    product?.inventory_source,
+    product?.dropship_provider,
+    product?.lineage,
+  ]
+    .map((value) => String(value || '').trim().toLowerCase())
+    .filter(Boolean);
+  return markers.some((value) => value === 'cj' || value === 'supplyline plus' || value === 'supplyline_plus');
 };
 
 type CartLineItem = {
@@ -892,6 +905,30 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    const selectedCjVariantIds = Array.from(new Set(lineItems.flatMap((lineItem) => {
+      const product = tokenToProduct.get(normalizeProductToken(lineItem.product_id));
+      const variant = variantMap.get(normalizeProductToken(lineItem.variant_id));
+      const variantId = isUuid(variant?.id) ? String(variant.id).trim() : '';
+      return isCJProduct(product, variant) && variantId ? [variantId] : [];
+    })));
+    const privateCjVariantMap = new Map<string, any>();
+    if (selectedCjVariantIds.length) {
+      const { data: privateMappings, error: privateMappingsError } = await supabaseAdmin
+        .from('cj_variant_mappings')
+        .select('product_variant_id,beezio_product_id,cj_product_id,cj_vid,supplier_cost_amount,origin_country_code,freight_method,freight_cost_amount,freight_destination_country,freight_quoted_at,price_verified_at,is_active')
+        .in('product_variant_id', selectedCjVariantIds);
+      if (privateMappingsError) {
+        return json(503, {
+          error: 'SupplyLine Plus fulfillment mappings are unavailable. Please try again shortly.',
+          code: 'SUPPLYLINE_MAPPING_UNAVAILABLE',
+        });
+      }
+      for (const mapping of (privateMappings as any[]) || []) {
+        const key = String(mapping?.product_variant_id || '').trim();
+        if (key) privateCjVariantMap.set(key, mapping);
+      }
+    }
+
     // Seller defaults (best-effort)
     let defaultPartnerPercent = 0;
     {
@@ -903,22 +940,6 @@ export const handler: Handler = async (event) => {
       const val = Number((sellerRow as any)?.default_partner_commission_percent);
       defaultPartnerPercent = Number.isFinite(val) ? Math.max(0, val) : 0;
     }
-
-    const askTotal = lineItems.reduce((acc, li) => {
-      const qty = Math.max(1, Math.floor(Number(li.qty || 0)));
-      const token = normalizeProductToken(li.product_id);
-      const prod = tokenToProduct.get(token);
-      const ask = Math.max(
-        0,
-        Number(
-          prod?.seller_ask ??
-          prod?.seller_amount ??
-          prod?.seller_ask_price ??
-          0
-        )
-      );
-      return acc + ask * qty;
-    }, 0);
 
     // Compute listing subtotal (pre tax/shipping) with PayPal model.
     let subtotalListing = 0;
@@ -962,7 +983,21 @@ export const handler: Handler = async (event) => {
           },
         });
       }
-      const askRaw = Math.max(
+      const cjItem = isCJProduct(prod, variant);
+      const privateMapping = variantId ? privateCjVariantMap.get(variantId) : null;
+      if (cjItem && (!privateMapping || privateMapping?.is_active === false)) {
+        return json(409, {
+          error: `The selected SupplyLine Plus option for ${String(prod?.title || prod?.name || 'this product')} needs to be refreshed.`,
+          code: 'SUPPLYLINE_EXACT_VARIANT_REQUIRED',
+          product_id: productId,
+          variant_id: variantId,
+        });
+      }
+
+      const variantSellerPayout = Number(variant?.seller_payout_amount);
+      const askRaw = cjItem && Number.isFinite(variantSellerPayout) && variantSellerPayout > 0
+        ? variantSellerPayout
+        : Math.max(
         0,
         Number(
           prod?.seller_ask ??
@@ -983,18 +1018,26 @@ export const handler: Handler = async (event) => {
 
       const beezioRate = LOCKED_PLATFORM_RATE;
       const affiliateEnabled = (prod?.affiliate_enabled ?? true) !== false;
-      const configuredAffiliateRate = affiliateEnabled ? resolveAffiliateCommissionRate(
-        prod,
-        ask,
-        defaultPartnerPercent
-      ) : 0;
+      const storedVariantAffiliatePayout = Number(variant?.affiliate_payout_amount);
+      const hasVariantAffiliatePayout = cjItem && Number.isFinite(storedVariantAffiliatePayout) && storedVariantAffiliatePayout >= 0;
+      const configuredAffiliateRate = affiliateEnabled
+        ? hasVariantAffiliatePayout
+          ? roundRate(storedVariantAffiliatePayout / ask)
+          : resolveAffiliateCommissionRate(prod, ask, defaultPartnerPercent)
+        : 0;
       const partnerRate = partnerId ? configuredAffiliateRate : 0;
-      const pricingPartnerRate = configuredAffiliateRate;
       const influencerRate = 0;
-      const affiliatePayoutUnit = round2(ask * pricingPartnerRate);
+      const affiliatePayoutUnit = affiliateEnabled
+        ? hasVariantAffiliatePayout
+          ? round2(storedVariantAffiliatePayout)
+          : round2(ask * configuredAffiliateRate)
+        : 0;
+      const storedVariantShipping = Number(variant?.shipping_reserve_amount);
       const shippingReserveUnit = round2(Math.max(
         0,
-        Number(
+        cjItem && Number.isFinite(storedVariantShipping)
+          ? storedVariantShipping
+          : Number(
           prod?.shipping_reserve_amount ??
           prod?.shipping_price ??
           prod?.shipping_cost ??
@@ -1002,7 +1045,6 @@ export const handler: Handler = async (event) => {
         )
       ));
 
-      if (!(askTotal > 0)) return json(400, { error: 'Invalid cart subtotal' });
       const unitPricing = isTestItemTitle(title)
         ? null
         : computeFixedTierPricing({
@@ -1023,7 +1065,13 @@ export const handler: Handler = async (event) => {
       );
       const platformFeeNetUnit = platformFeeGrossUnit;
       const cjMapping = cjCostMap.get(productId);
-      const cjCost = Number(cjMapping?.cj_cost ?? cjMapping?.price_breakdown?.cjCost ?? NaN);
+      const cjCost = Number(
+        privateMapping?.supplier_cost_amount ??
+        variant?.supplier_cost_amount ??
+        cjMapping?.cj_cost ??
+        cjMapping?.price_breakdown?.cjCost ??
+        NaN
+      );
       const cjCostUnit = Number.isFinite(cjCost) ? round2(cjCost) : null;
       const beezioCjProfitUnit = Number.isFinite(cjCost)
         ? round2(Math.max(0, ask - cjCost))
@@ -1055,20 +1103,14 @@ export const handler: Handler = async (event) => {
 
     const strictCJInventory = String(process.env.CJ_STRICT_STOCK_REQUIRED || 'false').trim().toLowerCase() === 'true';
     const inventoryErrors: Array<{ product_id: string; variant_id: string | null; requested_qty: number; available_qty: number | null; reason: string; title?: string }> = [];
-    const cjDemandByKey = new Map<string, { pid: string; vid?: string; productId: string; variantId: string | null; title: string; qty: number }>();
-
-    const getIsCJ = (product: any): boolean => {
-      const dropshipProvider = String(product?.dropship_provider || '').trim().toLowerCase();
-      const lineage = String(product?.lineage || '').trim().toLowerCase();
-      return dropshipProvider === 'cj' || lineage === 'cj';
-    };
+    const cjDemandByKey = new Map<string, { pid: string; vid: string; productId: string; variantId: string; title: string; qty: number }>();
 
     const shouldUseCjInventory = (product: any, variant: any): boolean => {
       const variantInventorySource = String(variant?.inventory_source || '').trim().toLowerCase();
       if (variantInventorySource) return variantInventorySource === 'cj';
       const productInventorySource = String(product?.inventory_source || '').trim().toLowerCase();
       if (productInventorySource) return productInventorySource === 'cj';
-      return getIsCJ(product) || String(variant?.source_platform || '').trim().toLowerCase() === 'cj';
+      return isCJProduct(product, variant);
     };
 
     for (const li of lineItems) {
@@ -1182,22 +1224,22 @@ export const handler: Handler = async (event) => {
         continue;
       }
 
-      const mapping = cjCostMap.get(productId);
-      const pid = String(variant?.cj_product_id || mapping?.cj_product_id || '').trim();
-      const vid = String(variantValidation.orderReference || variant?.cj_vid || variant?.cj_variant_id || mapping?.cj_variant_id || '').trim() || undefined;
-      if (!pid) {
+      const mapping = privateCjVariantMap.get(variantId);
+      const pid = String(mapping?.cj_product_id || '').trim();
+      const vid = String(mapping?.cj_vid || '').trim();
+      if (!pid || !vid || vid !== String(variantValidation.orderReference || '').trim()) {
         inventoryErrors.push({
           product_id: productId,
           variant_id: variantId,
           requested_qty: qty,
           available_qty: null,
-          reason: 'CJ_MAPPING_MISSING',
+          reason: 'CJ_EXACT_MAPPING_MISSING',
           title,
         });
         continue;
       }
 
-      const demandKey = `${pid}::${vid || ''}`;
+      const demandKey = `${pid}::${vid}`;
       const existingDemand = cjDemandByKey.get(demandKey);
       if (existingDemand) {
         existingDemand.qty += qty;
@@ -1222,12 +1264,30 @@ export const handler: Handler = async (event) => {
     }
 
     if (cjDemandByKey.size > 0) {
+      const livePriceChanges: Array<{
+        productId: string;
+        variantId: string;
+        vid: string;
+        supplierCost: number;
+      }> = [];
+      const priceVerificationFailures: Array<{ product_id: string; variant_id: string; reason: string }> = [];
       for (const demand of cjDemandByKey.values()) {
         let available: number | null = null;
+        let liveSupplierCost = 0;
         try {
-          available = await getCJInventory(demand.pid, demand.vid);
-        } catch {
+          const [inventory, liveVariant] = await Promise.all([
+            getCJInventory(demand.pid, demand.vid),
+            getCJVariantByVid(demand.vid),
+          ]);
+          available = inventory;
+          liveSupplierCost = Number(liveVariant?.variantSellPrice || 0);
+        } catch (verificationError) {
           available = null;
+          priceVerificationFailures.push({
+            product_id: demand.productId,
+            variant_id: demand.variantId,
+            reason: verificationError instanceof Error ? verificationError.message : 'Live CJ price verification failed',
+          });
         }
 
         const verifyFailed = available === null;
@@ -1243,6 +1303,95 @@ export const handler: Handler = async (event) => {
             title: demand.title,
           });
         }
+
+        if (liveSupplierCost > 0) {
+          const mapping = privateCjVariantMap.get(demand.variantId);
+          const storedSupplierCost = Number(mapping?.supplier_cost_amount || 0);
+          if (!Number.isFinite(storedSupplierCost) || Math.abs(liveSupplierCost - storedSupplierCost) > 0.001) {
+            livePriceChanges.push({
+              productId: demand.productId,
+              variantId: demand.variantId,
+              vid: demand.vid,
+              supplierCost: round2(liveSupplierCost),
+            });
+          }
+        } else if (!priceVerificationFailures.some((failure) => failure.variant_id === demand.variantId)) {
+          priceVerificationFailures.push({
+            product_id: demand.productId,
+            variant_id: demand.variantId,
+            reason: 'CJ returned no current supplier price',
+          });
+        }
+      }
+
+      if (priceVerificationFailures.length) {
+        return json(409, {
+          error: 'A SupplyLine Plus option could not be price-verified. The buyer was not charged.',
+          code: 'SUPPLYLINE_PRICE_UNVERIFIED',
+          items: priceVerificationFailures,
+        });
+      }
+
+      if (livePriceChanges.length) {
+        const affectedProducts = new Set<string>();
+        for (const change of livePriceChanges) {
+          const variant = variantMap.get(change.variantId);
+          const sellerMarkup = round2(Math.max(0, Number(variant?.seller_markup_amount || 0)));
+          const affiliatePayout = round2(Math.max(0, Number(variant?.affiliate_payout_amount || 0)));
+          const shippingReserve = round2(Math.max(0, Number(variant?.shipping_reserve_amount || 0)));
+          const repriced = computeFixedTierPricing({
+            supplierCost: change.supplierCost,
+            sellerMarkup,
+            affiliatePayout,
+            shippingIncluded: shippingReserve,
+            paypalPercent: paypalPct,
+            paypalFixed,
+            payoutBuffer,
+          });
+          const now = new Date().toISOString();
+          await supabaseAdmin.from('product_variants').update({
+            supplier_cost_amount: change.supplierCost,
+            seller_payout_amount: repriced.sellerPayout,
+            calculated_customer_price: repriced.finalAdvertisedPrice,
+            price: repriced.finalAdvertisedPrice,
+            cost_cents: Math.round(change.supplierCost * 100),
+            retail_price_cents: Math.round(repriced.finalAdvertisedPrice * 100),
+            cj_price_verified_at: now,
+            updated_at: now,
+          }).eq('id', change.variantId);
+          await supabaseAdmin.from('cj_variant_mappings').update({
+            supplier_cost_amount: change.supplierCost,
+            price_verified_at: now,
+            updated_at: now,
+          }).eq('product_variant_id', change.variantId);
+          affectedProducts.add(change.productId);
+        }
+
+        for (const productId of affectedProducts) {
+          const { data: variants } = await supabaseAdmin
+            .from('product_variants')
+            .select('supplier_cost_amount,seller_payout_amount,calculated_customer_price')
+            .eq('product_id', productId)
+            .eq('is_active', true);
+          const rows = (variants as any[]) || [];
+          const maxPrice = Math.max(0, ...rows.map((row) => Number(row?.calculated_customer_price || 0)));
+          const maxCost = Math.max(0, ...rows.map((row) => Number(row?.supplier_cost_amount || 0)));
+          const maxSellerPayout = Math.max(0, ...rows.map((row) => Number(row?.seller_payout_amount || 0)));
+          await supabaseAdmin.from('products').update({
+            price: maxPrice,
+            calculated_customer_price: maxPrice,
+            supplier_cost_amount: maxCost,
+            seller_ask: maxSellerPayout,
+            seller_amount: maxSellerPayout,
+            seller_ask_price: maxSellerPayout,
+            updated_at: new Date().toISOString(),
+          }).eq('id', productId);
+        }
+
+        return json(409, {
+          error: 'A SupplyLine Plus supplier price changed. The listing was refreshed automatically; review the new total and try again.',
+          code: 'SUPPLYLINE_VARIANT_PRICE_CHANGED',
+        });
       }
 
       if (inventoryErrors.length > 0) {
@@ -1277,67 +1426,82 @@ export const handler: Handler = async (event) => {
     });
     const taxAmount = round2(subtotalListing * taxResolution.rate);
 
-    // Shipping is included in every physical product's listing price. We still
-    // validate supplier-specific fulfillment requirements, but never add a
-    // second shipping charge to the PayPal order.
-    let cjTotalWeightOz = 0;
-    let hasCJ = false;
-
-    for (const li of lineItems) {
-      const productId = String(li.product_id || '').trim();
-      if (!productId) continue;
-      const product = tokenToProduct.get(normalizeProductToken(productId));
-      const requiresShipping = product?.is_digital === true ? false : product?.requires_shipping !== false;
-      if (!requiresShipping) continue;
-
-      const isCJ = getIsCJ(product);
-      if (isCJ) {
-        hasCJ = true;
-        const variantId = li.variant_id ? String(li.variant_id).trim() : null;
-        if (!variantId) {
-          return json(400, { error: 'CJ products require a selected variant before checkout.' });
-        }
-        const variantValidation = await validateCjOrderVariant({
-          supabaseAdmin,
-          productId,
-          variantId,
+    // SupplyLine Plus shipping is included in the advertised item price. Before
+    // PayPal can charge the buyer, verify the exact VIDs against CJ's live freight
+    // calculator and freeze the chosen method in a private fulfillment record.
+    let cjShippingSnapshot: Record<string, any> | null = null;
+    if (cjDemandByKey.size > 0) {
+      const destinationCountryCode = normalizeCountryCode(shippingAddress?.country);
+      if (!destinationCountryCode) {
+        return json(400, {
+          error: 'A supported two-letter shipping country is required for SupplyLine Plus products.',
+          code: 'SUPPLYLINE_DESTINATION_REQUIRED',
         });
-        if (!variantValidation.ok) {
-          return json(400, { error: variantValidation.reason || 'CJ variant mapping is incomplete.' });
-        }
-        const variant = variantId ? variantMap.get(variantId) : null;
-        const variantWeight = variant ? Math.max(0, safeNumber(variant?.weight_oz, 0)) : 0;
-        const baseWeight = Math.max(0, safeNumber(product?.base_weight_oz, 0));
-        const weightOz = variantWeight > 0 ? variantWeight : baseWeight;
-        if (weightOz <= 0) {
-          return json(400, { error: 'Missing shipping weight for CJ product.' });
-        }
-        const qty = Math.max(1, Math.floor(Number(li.qty || 0)));
-        cjTotalWeightOz += weightOz * qty;
-        continue;
       }
 
-    }
+      const mappings = Array.from(cjDemandByKey.values()).map((demand) => privateCjVariantMap.get(demand.variantId));
+      const origins = Array.from(new Set(mappings
+        .map((mapping) => String(mapping?.origin_country_code || '').trim().toUpperCase())
+        .filter(Boolean)));
+      if (origins.length !== 1) {
+        return json(409, {
+          error: 'These SupplyLine Plus items cannot ship together. Please checkout them separately.',
+          code: 'SUPPLYLINE_ORIGIN_CONFLICT',
+        });
+      }
 
-    if (hasCJ) {
-      let tiers: ShippingTier[] = DEFAULT_SHIPPING_TIERS;
+      const preferredMethods = Array.from(new Set(mappings
+        .map((mapping) => String(mapping?.freight_method || '').trim())
+        .filter(Boolean)));
+      let liveQuote: Awaited<ReturnType<typeof getCJFreightQuote>>;
       try {
-        const { data: ruleRows } = await supabaseAdmin
-          .from('shipping_rules')
-          .select('tiers_json')
-          .eq('name', 'default')
-          .limit(1);
-        const tiersRaw = (ruleRows || [])[0]?.tiers_json;
-        if (Array.isArray(tiersRaw) && tiersRaw.length) {
-          tiers = tiersRaw as ShippingTier[];
-        }
-      } catch {
-        // fall back to defaults
+        liveQuote = await getCJFreightQuote({
+          originCountryCode: origins[0],
+          destinationCountryCode,
+          destinationZip: shippingAddress?.zip || shippingAddress?.postal_code || null,
+          items: Array.from(cjDemandByKey.values()).map((demand) => ({
+            vid: demand.vid,
+            quantity: demand.qty,
+          })),
+        });
+      } catch (quoteError) {
+        return json(409, {
+          error: 'Live SupplyLine Plus shipping is unavailable for this address. Please verify the address or try another item.',
+          code: 'SUPPLYLINE_SHIPPING_UNAVAILABLE',
+          details: quoteError instanceof Error ? quoteError.message : 'No live shipping method was returned.',
+        });
       }
 
-      // Confirm that a configured tier exists for fulfillment costing. The
-      // result is already represented in the product price and seller payout.
-      pickTierCost(cjTotalWeightOz, tiers);
+      const preferred = preferredMethods.length === 1
+        ? liveQuote.options.find((option) => option.logisticName.toLowerCase() === preferredMethods[0].toLowerCase())
+        : null;
+      const selectedFreight = preferred || liveQuote.options[0];
+      const storedShippingReserve = round2(computedItems.reduce((total, item) => {
+        const mapping = item.variantId ? privateCjVariantMap.get(item.variantId) : null;
+        return mapping ? total + item.shippingReserveUnit * item.quantity : total;
+      }, 0));
+
+      if (selectedFreight.totalPostageFee > storedShippingReserve + 0.01) {
+        return json(409, {
+          error: 'SupplyLine Plus shipping changed before checkout. Refresh this product before charging the buyer.',
+          code: 'SUPPLYLINE_SHIPPING_PRICE_CHANGED',
+        });
+      }
+
+      cjShippingSnapshot = {
+        origin_country_code: origins[0],
+        destination_country_code: destinationCountryCode,
+        destination_zip: String(shippingAddress?.zip || shippingAddress?.postal_code || '').trim() || null,
+        logistic_name: selectedFreight.logisticName,
+        logistic_aging: selectedFreight.logisticAging,
+        logistic_price: selectedFreight.logisticPrice,
+        taxes_fee: selectedFreight.taxesFee,
+        clearance_operation_fee: selectedFreight.clearanceOperationFee,
+        tariff: selectedFreight.tariff,
+        total_postage_fee: selectedFreight.totalPostageFee,
+        reserved_shipping_total: storedShippingReserve,
+        quoted_at: new Date().toISOString(),
+      };
     }
 
     const shippingAmount = 0;
@@ -1505,10 +1669,43 @@ export const handler: Handler = async (event) => {
     const { error: orderError } = await insertWithFallback('orders', orderPayload);
     if (orderError) return json(500, { error: 'Failed to create order', details: orderError.message });
 
+    if (cjShippingSnapshot) {
+      const cjProductCost = round2(computedItems.reduce(
+        (total, item) => total + Math.max(0, Number(item.cjCostUnit || 0)) * item.quantity,
+        0
+      ));
+      const cjShippingCost = round2(Number(cjShippingSnapshot.total_postage_fee || 0));
+      const { error: cjQueueError } = await supabaseAdmin.from('cj_orders').insert({
+        beezio_order_id: beezioOrderId,
+        cj_order_number: orderNumber,
+        cj_status: 'awaiting_beezio_payment',
+        cj_logistic_name: String(cjShippingSnapshot.logistic_name || '').trim(),
+        cj_origin_country_code: String(cjShippingSnapshot.origin_country_code || '').trim(),
+        cj_product_cost: cjProductCost,
+        cj_shipping_cost: cjShippingCost,
+        cj_cost: round2(cjProductCost + cjShippingCost),
+        order_data: { shipping_quote: cjShippingSnapshot },
+        response_data: {},
+        attempt_count: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      if (cjQueueError) {
+        await supabaseAdmin.from('orders').delete().eq('id', beezioOrderId);
+        return json(500, {
+          error: 'Failed to reserve SupplyLine Plus fulfillment.',
+          code: 'SUPPLYLINE_QUEUE_FAILED',
+          details: cjQueueError.message,
+        });
+      }
+    }
+
     const orderItemsPayload = computedItems.map((it) => {
       const variantId = it.variantId ? String(it.variantId).trim() : null;
       const variant = variantId ? variantMap.get(variantId) : null;
       const product = productMap.get(it.productId);
+      const isCjItem = isCJProduct(product, variant);
+      const privateMapping = variantId ? privateCjVariantMap.get(variantId) : null;
       const sourcePlatform = String(variant?.source_platform || product?.source_platform || '').trim() || null;
       const externalProductId = String(variant?.external_product_id || product?.external_id || '').trim() || null;
       const externalVariantId = String(variant?.external_variant_id || '').trim() || null;
@@ -1527,9 +1724,11 @@ export const handler: Handler = async (event) => {
         platform_percent_at_purchase: platformPercentAtPurchase,
         seller_ask_amount: it.ask,
         supplier_cost_amount: round2(Math.max(0, Number(
-          product?.supplier_cost_amount ?? (Number(product?.base_cost_cents || 0) / 100)
+          it.cjCostUnit ?? product?.supplier_cost_amount ?? (Number(product?.base_cost_cents || 0) / 100)
         ))),
-        seller_markup_amount: round2(Math.max(0, Number(product?.seller_markup_amount ?? 0))),
+        seller_markup_amount: round2(Math.max(0, Number(
+          isCjItem ? variant?.seller_markup_amount : product?.seller_markup_amount ?? 0
+        ))),
         affiliate_payout_amount: partnerId ? it.affiliatePayoutUnit : 0,
         shipping_reserve_amount: it.shippingReserveUnit,
         influencer_allocation_amount: it.influencerAllocationUnit,
@@ -1541,8 +1740,8 @@ export const handler: Handler = async (event) => {
         computed_listing_price: it.listingUnit,
         variant_id: variantId,
         sku: variant?.sku || null,
-        cj_product_id: variant?.cj_product_id || null,
-        cj_variant_id: variant?.cj_vid || variant?.cj_variant_id || null,
+        cj_product_id: isCjItem ? privateMapping?.cj_product_id || null : variant?.cj_product_id || null,
+        cj_variant_id: isCjItem ? privateMapping?.cj_vid || null : variant?.cj_vid || variant?.cj_variant_id || null,
         source_platform: sourcePlatform,
         external_product_id: externalProductId,
         external_variant_id: externalVariantId,

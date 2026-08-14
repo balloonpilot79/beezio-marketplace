@@ -7,6 +7,8 @@ import {
   getCJProducts, 
   getCJProductDetail, 
   getCJCategories,
+  getCJFreightQuote,
+  getCJProductVideos,
   calculateBeezioPrice,
   mapCJCategoryToBeezio 
 } from '../services/cjDropshipping';
@@ -791,7 +793,7 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
       const defaultCategoryOverrides: Record<string, string> = {};
       visibleProducts.forEach(product => {
         defaultPricing[product.pid] = {
-          markup: 3,
+          markup: 10,
           affiliatePercent: 5,
         };
 
@@ -833,9 +835,15 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
     setDebugInfo('Testing CJ API...');
     try {
       // Test the proxy directly
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = String(sessionData?.session?.access_token || '').trim();
+      if (!accessToken) throw new Error('Sign in as a Beezio admin first.');
       const response = await fetch('/.netlify/functions/cj-proxy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({
           endpoint: 'product/listV2',
           body: { page: 1, size: 10 },
@@ -872,7 +880,7 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
 
   const updatePricing = (pid: string, field: 'markup' | 'affiliatePercent', value: number) => {
     setPricingSettings(prev => {
-      const current = prev[pid] || { markup: 3, affiliatePercent: 5 };
+      const current = prev[pid] || { markup: 10, affiliatePercent: 5 };
       const next = {
         ...current,
         [field]: value,
@@ -1040,6 +1048,10 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
       // The "primary" variant is the first selected one, or null if none selected
       const primaryVid = selectedVids[0] || '';
       const selectedVariant = primaryVid ? allVariants.find(v => String(v?.vid) === String(primaryVid)) : null;
+      const selectedVariants = allVariants.filter((variant) => selectedVids.includes(String(variant?.vid || '')));
+      if (!selectedVariants.length) {
+        throw new Error('Select at least one CJ variant with an exact VID before importing.');
+      }
 
       // Inventory strategy:
       // 1) Sum selected variant inventory from live CJ variant queries.
@@ -1073,12 +1085,80 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
       }
 
       // Get pricing settings
-      const pricing = pricingSettings[cjProduct.pid] || { markup: 3, affiliatePercent: 5 };
-      const shippingOptionsSnapshot = getShippingOptionsSnapshot(detailedProduct, allVariants, 0);
+      const pricing = pricingSettings[cjProduct.pid] || { markup: 10, affiliatePercent: 5 };
+      const variantFreightQuotes: Array<Record<string, unknown>> = [];
+      for (const variant of selectedVariants) {
+        const hintedOrigin = normalizeCountryCode(detailedProduct?.originCountry || detailedProduct?.shipFrom);
+        const originCandidates = Array.from(new Set([
+          ...(hintedOrigin.length === 2 ? [hintedOrigin] : []),
+          'CN',
+          'US',
+        ]));
+        let resolvedQuote: Record<string, unknown> | null = null;
+        let lastFreightError: unknown = null;
+
+        for (const originCountryCode of originCandidates) {
+          try {
+            const options = await getCJFreightQuote({
+              startCountryCode: originCountryCode,
+              endCountryCode: 'US',
+              zip: '10001',
+              products: [{ vid: variant.vid, quantity: 1 }],
+            });
+            const option = options[0];
+            resolvedQuote = {
+              vid: variant.vid,
+              originCountryCode,
+              destinationCountryCode: 'US',
+              destinationZip: '10001',
+              logisticName: option.logisticName,
+              logisticAging: option.logisticAging,
+              logisticPrice: option.logisticPrice,
+              taxesFee: option.taxesFee,
+              clearanceOperationFee: option.clearanceOperationFee,
+              tariff: option.tariff,
+              totalPostageFee: option.totalPostageFee,
+              quotedAt: new Date().toISOString(),
+            };
+            break;
+          } catch (freightError) {
+            lastFreightError = freightError;
+          }
+        }
+
+        if (!resolvedQuote) {
+          throw new Error(
+            `No live CJ shipping method was available for ${variant.variantNameEn || variant.variantSku || variant.vid}: ${
+              lastFreightError instanceof Error ? lastFreightError.message : 'quote failed'
+            }`
+          );
+        }
+        variantFreightQuotes.push(resolvedQuote);
+      }
+
+      const shippingOptionsSnapshot = variantFreightQuotes.map((quote) => ({
+        name: String(quote.logisticName || ''),
+        cost: Number(quote.totalPostageFee || 0),
+        estimated_days: String(quote.logisticAging || ''),
+        origin_country: String(quote.originCountryCode || ''),
+        destination_country: String(quote.destinationCountryCode || ''),
+        tracking_supported: true,
+        vid: String(quote.vid || ''),
+      }));
       const shippingCost = shippingOptionsSnapshot.length
-        ? Math.min(...shippingOptionsSnapshot.map((option) => Number(option.cost || 0)).filter((value) => Number.isFinite(value) && value >= 0))
+        ? Math.max(...shippingOptionsSnapshot.map((option) => Number(option.cost || 0)))
         : 0;
-      const videoCandidates = getVideoCandidates(detailedProduct, allVariants);
+
+      let videoCandidates = getVideoCandidates(detailedProduct, selectedVariants);
+      try {
+        const videoAssets = await getCJProductVideos(cjProduct.pid);
+        videoCandidates = Array.from(new Set([
+          ...videoAssets.map((asset) => asset.videoUrl),
+          ...videoCandidates,
+        ])).slice(0, 12);
+      } catch (videoError) {
+        console.warn('CJ video query failed (continuing without supplier-hosted video):', videoError);
+      }
       const hasRecruiter = false;
       const cjBaseCost = resolveEffectiveCjCost(cjProduct.sellPrice, allVariants, selectedVids);
       const landedCost = cjBaseCost + (Number.isFinite(shippingCost) ? shippingCost : 0);
@@ -1121,15 +1201,17 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
         cjProduct,
         detailedProduct,
         selectedVariant,
-        variants: allVariants,
+        variants: selectedVariants,
         inventory: stockQuantity,
         pricing: {
           markup: pricing.markup,
+          markupType: 'flat',
           affiliateCommission: pricing.affiliatePercent,
-          affiliateCommissionType: 'percent',
+          affiliateCommissionType: 'flat',
         },
         shippingCost,
         shippingOptions: shippingOptionsSnapshot,
+        variantFreightQuotes,
         videos: videoCandidates,
         beezioCategory: beezioCategoryName,
         categoryId: categoryIdFallback,
@@ -1212,7 +1294,7 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
       !normalizedSearch ||
       getProductSearchTokens(product).some((token) => token.includes(normalizedSearch));
 
-    const pricing = pricingSettings[product.pid] || { markup: 3, affiliatePercent: 5 };
+    const pricing = pricingSettings[product.pid] || { markup: 10, affiliatePercent: 5 };
     const detailState = detailByPid[product.pid];
     const variants = detailState?.detail?.variants || [];
     const selectedVids = selectedVariantsByPid[product.pid] || [];
@@ -1258,8 +1340,8 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
   const sortedProducts = (() => {
     const sorted = [...filteredProducts];
     sorted.sort((a, b) => {
-      const pricingA = pricingSettings[a.pid] || { markup: 3, affiliatePercent: 5 };
-      const pricingB = pricingSettings[b.pid] || { markup: 3, affiliatePercent: 5 };
+      const pricingA = pricingSettings[a.pid] || { markup: 10, affiliatePercent: 5 };
+      const pricingB = pricingSettings[b.pid] || { markup: 10, affiliatePercent: 5 };
 
       const detailA = detailByPid[a.pid]?.detail;
       const detailB = detailByPid[b.pid]?.detail;
@@ -1567,7 +1649,7 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
                 }}
                 className="h-4 w-4 rounded border-gray-300 text-[#ffcb05] focus:ring-[#ffcb05]"
               />
-              Match affiliate % to markup (global)
+              Match affiliate payout to markup (global)
             </label>
             <label className="inline-flex items-center gap-2 text-sm text-gray-700">
               <input
@@ -1694,7 +1776,7 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {sortedProducts.map(product => {
-                const pricing = pricingSettings[product.pid] || { markup: 3, affiliatePercent: 5 };
+                const pricing = pricingSettings[product.pid] || { markup: 10, affiliatePercent: 5 };
                 const detailState = detailByPid[product.pid];
                 const variants = detailState?.detail?.variants || [];
                 const selectedVids = resolveSelectedVids(product.pid, variants);
@@ -2021,7 +2103,7 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
                         </div>
 
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">Your Markup (%)</label>
+                          <label className="block text-xs text-gray-600 mb-1">Your Markup ($)</label>
                           <input
                             type="number"
                             value={pricing.markup}
@@ -2034,7 +2116,7 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
 
                         <div>
                           <div className="flex items-center justify-between">
-                            <label className="block text-xs text-gray-600">Partner Commission (%)</label>
+                            <label className="block text-xs text-gray-600">Partner Payout ($)</label>
                             <label className="inline-flex items-center gap-2 text-xs text-gray-600">
                               <input
                                 type="checkbox"
@@ -2059,7 +2141,6 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
                               disabled={globalMatchAffiliateToMarkup || matchAffiliateByPid[product.pid]}
                               className="w-full min-w-0 px-3 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-[#ffcb05] focus:border-transparent"
                               min="0"
-                              max="100"
                               step="0.1"
                             />
                         </div>

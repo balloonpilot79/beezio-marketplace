@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { buildStoreInsuranceListings } from './_lib/storeInsurance';
 import { applyCanonicalProductPricing } from '../../shared/productPricing';
 import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
+import { isSupplyLineProduct, sanitizeSupplyLineProduct } from '../../shared/publicSupplyLineProduct';
 
 type CacheEntry = { expiresAt: number; value: any };
 const memCache = new Map<string, CacheEntry>();
@@ -104,21 +105,7 @@ function isVisibleStorefrontProduct(product: any): boolean {
 }
 
 function looksLikeCjProduct(product: any): boolean {
-  const directMarkers = [
-    product?.source_platform,
-    product?.source,
-    product?.dropship_provider,
-    product?.inventory_source,
-    product?.lineage,
-  ]
-    .map((value) => String(value || '').trim().toLowerCase())
-    .filter(Boolean);
-
-  if (directMarkers.some((value) => value === 'cj')) return true;
-  if (String(product?.cj_product_id || '').trim() || String(product?.cj_pid || '').trim() || String(product?.cj_spu || '').trim()) return true;
-
-  const imageList = Array.isArray(product?.images) ? product.images : [];
-  return imageList.some((entry: any) => String(entry || '').toLowerCase().includes('cjdropshipping.com'));
+  return isSupplyLineProduct(product);
 }
 
 function normalizeLegacyStorefrontProduct(product: any) {
@@ -412,7 +399,7 @@ const handler: Handler = async (event) => {
     const orderedProducts = Array.from(productsById.values()).map((product: any) => {
       const orderSetting = (orderData || []).find((o: any) => o.product_id === product.id);
       const isDigital = product?.is_digital === true;
-      return {
+      return sanitizeSupplyLineProduct({
         ...applyCanonicalProductPricing(normalizeLegacyStorefrontProduct(product)),
         profiles: { full_name: mergedSeller.full_name },
         storefront_slug: brandStorefront?.slug || storeSlug || null,
@@ -420,10 +407,15 @@ const handler: Handler = async (event) => {
         shipping_price: 0,
         shipping_options: isDigital
           ? []
-          : [{ name: 'Free Shipping', cost: 0, estimated_days: '3-5 business days', included_in_price: true }],
+          : [{
+              name: 'Free Shipping',
+              cost: 0,
+              estimated_days: isSupplyLineProduct(product) ? 'Confirmed for your address at checkout' : '3-5 business days',
+              included_in_price: true,
+            }],
         display_order: orderSetting?.display_order ?? 999,
         is_featured: orderSetting?.is_featured ?? false,
-      };
+      });
     });
 
     orderedProducts.sort((a: any, b: any) => {
@@ -486,12 +478,12 @@ const handler: Handler = async (event) => {
               const productId = String(product?.id || '').trim();
               if (!productId || combinedById.has(productId)) return;
               const order = promotedOrderById.get(productId);
-              combinedById.set(productId, {
+              combinedById.set(productId, sanitizeSupplyLineProduct({
                 ...applyCanonicalProductPricing(normalizeLegacyStorefrontProduct(product)),
                 affiliate_id: sharedAffiliateId,
                 display_order: Number.isFinite(Number(order?.display_order)) ? Number(order.display_order) : 999,
                 is_featured: Boolean(order?.is_featured),
-              });
+              }));
             });
 
           orderedProducts.splice(0, orderedProducts.length, ...Array.from(combinedById.values()));

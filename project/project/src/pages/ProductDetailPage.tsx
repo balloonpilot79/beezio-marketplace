@@ -364,9 +364,12 @@ const ProductDetailPage: React.FC = () => {
   const allowBackorder = useMemo(
     () =>
       String((product as any)?.lineage || '').toUpperCase() === 'CJ' ||
+      String((product as any)?.lineage || '').toLowerCase() === 'supplyline plus' ||
       String((product as any)?.dropship_provider || '').toLowerCase() === 'cj' ||
       String((product as any)?.source_platform || '').toLowerCase() === 'cj' ||
+      String((product as any)?.source_platform || '').toLowerCase() === 'supplyline_plus' ||
       String((product as any)?.source || '').toLowerCase() === 'cj' ||
+      String((product as any)?.source || '').toLowerCase() === 'supplyline_plus' ||
       String((product as any)?.inventory_source || '').toLowerCase() === 'cj' ||
       Boolean((product as any)?.cj_product_id || (product as any)?.cj_pid || (product as any)?.cj_spu || (product as any)?.display_search_code),
     [product?.lineage, (product as any)?.dropship_provider, (product as any)?.source_platform, (product as any)?.source, (product as any)?.inventory_source, (product as any)?.cj_product_id, (product as any)?.cj_pid, (product as any)?.cj_spu, (product as any)?.display_search_code]
@@ -668,6 +671,12 @@ const ProductDetailPage: React.FC = () => {
 
   const finalDisplayPrice = useMemo(() => {
     if (!product) return 0;
+    const exactVariantPrice = Number(
+      (selectedVariant as any)?.calculated_customer_price ?? (selectedVariant as any)?.price
+    );
+    if (Number.isFinite(exactVariantPrice) && exactVariantPrice > 0) {
+      return exactVariantPrice;
+    }
     try {
       return getBuyerFacingProductPrice(product as any);
     } catch (e) {
@@ -676,7 +685,7 @@ const ProductDetailPage: React.FC = () => {
         ? product.calculated_customer_price
         : product.price;
     }
-  }, [product]);
+  }, [product, selectedVariant]);
 
   const samplePrice = useMemo(() => {
     if (!product?.sample_enabled) return null;
@@ -686,8 +695,10 @@ const ProductDetailPage: React.FC = () => {
   }, [product?.sample_enabled, product?.sample_price]);
 
   const affiliateEarnings = useMemo(() => {
+    const exactVariantPayout = Number((selectedVariant as any)?.affiliate_payout_amount);
+    if (Number.isFinite(exactVariantPayout) && exactVariantPayout >= 0) return exactVariantPayout;
     return getAffiliateAmount(derivedSellerAsk, commissionType, commissionValue);
-  }, [commissionType, commissionValue, derivedSellerAsk]);
+  }, [commissionType, commissionValue, derivedSellerAsk, selectedVariant]);
   const earningsAmount = useMemo(() => {
     if (isSellingRole) return affiliateEarnings;
     return null;
@@ -1339,7 +1350,7 @@ const ProductDetailPage: React.FC = () => {
     const computedMaxQuantity = await (async () => {
       const lineage = String((product as any)?.lineage || '').toUpperCase();
       const provider = String((product as any)?.dropship_provider || '').toLowerCase();
-      const isCJ = lineage === 'CJ' || provider === 'cj';
+      const isCJ = lineage === 'CJ' || lineage === 'SUPPLYLINE PLUS' || provider === 'cj';
       const tracksInventory = (product as any)?.track_inventory !== false;
 
       if (isCJ && !tracksInventory) {

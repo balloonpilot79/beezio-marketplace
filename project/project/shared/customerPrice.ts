@@ -1,5 +1,5 @@
-import { computeFixedBeezioPlatformFee } from './beezioFee';
-import { getInfluencerReserveTotal } from './referralBonus';
+import { computeFixedBeezioPlatformFee } from './beezioFee.ts';
+import { getInfluencerReserveTotal } from './referralBonus.ts';
 
 export type SharedAffiliateCommissionType = 'percent' | 'flat';
 

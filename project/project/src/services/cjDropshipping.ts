@@ -1,7 +1,13 @@
 // CJ Dropshipping API Integration Service
 // Handles product import, order creation, and tracking synchronization
 
-import { PLATFORM_FEE_PERCENT, PROCESSING_FIXED_FEE, PROCESSING_PERCENT } from '../config/beezioConfig';
+import { supabase } from '../lib/supabase';
+import { computeFixedTierPricing } from '../../shared/customerPrice';
+import {
+  normalizeCJFreightOptions,
+  normalizeCJVideoAssets,
+  parseCJUsd,
+} from '../../shared/cjContract';
 
 // Beezio: CJ Variants + Shipping extension (do not remove)
 // IMPORTANT: Never call CJ directly from the browser or expose CJ API keys via VITE_ env vars.
@@ -402,37 +408,7 @@ const buildCjImagesFromDetail = (detail: any, fallbackSingleImage?: string): str
   return normalizeImageList([main, ...productListImages, ...(variantImages || [])]);
 };
 
-function parseCJPriceToUSD(value: unknown): number {
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value) || value <= 0) return 0;
-    // Heuristic: CJ sometimes returns integer cents-like values (e.g. 1299 for $12.99)
-    if (Number.isInteger(value) && value >= 1000 && value <= 1000000) {
-      return Math.round((value / 100 + Number.EPSILON) * 100) / 100;
-    }
-    return Math.round((value + Number.EPSILON) * 100) / 100;
-  }
-
-  const raw = String(value ?? '').trim();
-  if (!raw) return 0;
-
-  // CJ can return ranges like "12.99--19.99" or currency-prefixed strings.
-  // Use the highest parsed value so list/detail values align with CJ app price displays.
-  const numericMatches = raw.match(/-?\d+(?:\.\d+)?/g) || [];
-  const normalized = numericMatches
-    .map((token) => {
-      const parsed = Number(token);
-      if (!Number.isFinite(parsed) || parsed <= 0) return null;
-      const hadDecimal = token.includes('.');
-      if (!hadDecimal && Number.isInteger(parsed) && parsed >= 1000 && parsed <= 1000000) {
-        return Math.round((parsed / 100 + Number.EPSILON) * 100) / 100;
-      }
-      return Math.round((parsed + Number.EPSILON) * 100) / 100;
-    })
-    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
-
-  if (normalized.length === 0) return 0;
-  return Math.max(...normalized);
-}
+const parseCJPriceToUSD = parseCJUsd;
 
 interface CJOrder {
   orderNumber: string;
@@ -511,10 +487,14 @@ async function cjRequest<T>(endpoint: string, data?: any, method: 'GET' | 'POST'
   // Use Netlify function proxy to avoid CORS issues
   let response: Response;
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = String(sessionData?.session?.access_token || '').trim();
+    if (!accessToken) throw new Error('Sign in as a Beezio admin to use the CJ catalog.');
     response = await fetch('/.netlify/functions/cj-proxy', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
         endpoint,
@@ -806,7 +786,7 @@ export async function getCJProducts(
  * Get detailed product information including variants
  */
 export async function getCJProductDetail(pid: string): Promise<CJProduct> {
-  const response = await cjRequest<any>('product/query', { pid }, 'GET');
+  const response = await cjRequest<any>('product/query', { pid, features: 'enable_video' }, 'GET');
   const data: any = extractDetailPayload(response, pid);
 
   if (!data) {
@@ -864,7 +844,9 @@ export async function getCJProductDetail(pid: string): Promise<CJProduct> {
   if (rawVariants.length) {
     data.variants = rawVariants
       .map((v: any) => {
-        const vid = firstNonEmptyString(v.vid, v.id, v.variantId, v.variant_id, v.skuId);
+        // Current CJ ordering and freight APIs require the documented `vid`.
+        // Never substitute a row id, SKU id, or product id here.
+        const vid = String(v?.vid || '').trim();
         const variantNameEn =
           firstNonEmptyString(v.variantNameEn, v.variantName, v.variant_name, v.variantKeyEn, v.variantKey);
         const variantSku = firstNonEmptyString(v.variantSku, v.sku, v.variant_sku, v.productSku);
@@ -1009,7 +991,10 @@ export async function getCJCategories(): Promise<Array<{ id: string; name: strin
  * Create order in CJ system after payment clears
  */
 export async function createCJOrder(orderData: CJOrder): Promise<CJOrderResponse> {
-  const response = await cjRequest<CJOrderResponse>('shopping/order/createOrder', orderData);
+  const response = await cjRequest<CJOrderResponse>('shopping/order/createOrderV2', {
+    ...orderData,
+    payType: 3,
+  });
   return response.data;
 }
 
@@ -1025,10 +1010,8 @@ export async function getCJOrderTracking(orderNumber: string): Promise<CJTrackin
  * Sync inventory for a specific product
  */
 export async function getCJProductInventory(pid: string, vid?: string): Promise<number | null> {
-  const data: any = { pid };
-  if (vid) {
-    data.vid = vid;
-  }
+  const exactVid = String(vid || '').trim();
+  if (vid && !exactVid) throw new Error('CJ inventory lookup requires an exact VID.');
 
   const resolveInventory = (payload: any): number | null => {
     const rows = [
@@ -1093,38 +1076,39 @@ export async function getCJProductInventory(pid: string, vid?: string): Promise<
     return null;
   };
 
-  const postResponse = await cjRequest<any>('product/inventory/query', data);
-  const postPayload: any = postResponse?.data ?? null;
-  const postValue = resolveInventory(postPayload);
-  if (postValue !== null) return postValue;
-
-  // Some CJ environments return inventory data only when queried as GET.
-  const getResponse = await cjRequest<any>('product/inventory/query', data, 'GET');
-  const getPayload: any = getResponse?.data ?? null;
-  const getValue = resolveInventory(getPayload);
-  if (getValue !== null) return getValue;
-
-  // Last fallback: infer from detail variant stock when available.
-  try {
-    const detail = await getCJProductDetail(pid);
-    const variants = Array.isArray((detail as any)?.variants) ? (detail as any).variants : [];
-    if (variants.length > 0) {
-      if (vid) {
-        const match = variants.find((v: any) => String(v?.vid || '') === String(vid));
-        const parsed = extractInventoryFromRow(match);
-        if (parsed !== null) return Math.floor(parsed);
-      } else {
-        const numbers = variants
-          .map((v: any) => extractInventoryFromRow(v))
-          .filter((v: number | null): v is number => v !== null);
-        if (numbers.length > 0) return Math.floor(numbers.reduce((acc, n) => acc + n, 0));
-      }
-    }
-  } catch {
-    // no-op
+  if (exactVid) {
+    const response = await cjRequest<any>('product/stock/queryByVid', { vid: exactVid }, 'GET');
+    const rows = Array.isArray(response?.data) ? response.data : [];
+    const exactRows = rows.filter((row: any) => String(row?.vid || '').trim() === exactVid);
+    const values = exactRows
+      .map((row: any) => toNonNegativeNumber(row?.totalInventoryNum ?? row?.totalInventory))
+      .filter((value: number | null): value is number => value !== null);
+    return values.length ? Math.floor(values.reduce((sum, value) => sum + value, 0)) : null;
   }
 
-  return null;
+  const response = await cjRequest<any>('product/stock/getInventoryByPid', { pid }, 'GET');
+  const rows = Array.isArray(response?.data?.inventories) ? response.data.inventories : [];
+  const values = rows
+    .map((row: any) => toNonNegativeNumber(row?.totalInventoryNum))
+    .filter((value: number | null): value is number => value !== null);
+  return values.length ? Math.floor(values.reduce((sum, value) => sum + value, 0)) : null;
+}
+
+export async function getCJProductVideos(productId: string) {
+  const response = await cjRequest<any>('product/queryVideosByProductId', { productId }, 'POST');
+  return normalizeCJVideoAssets(response);
+}
+
+export async function getCJFreightQuote(params: {
+  startCountryCode: string;
+  endCountryCode: string;
+  zip?: string;
+  products: Array<{ vid: string; quantity: number }>;
+}) {
+  const response = await cjRequest<any>('logistic/freightCalculate', params, 'POST');
+  const options = normalizeCJFreightOptions(response);
+  if (!options.length) throw new Error('CJ returned no shipping method for the selected variants.');
+  return options;
 }
 
 /**
@@ -1136,14 +1120,10 @@ export async function getCJProductInventory(pid: string, vid?: string): Promise<
  * - Beezio platform fee (15%)
  * - Processing fee (2.9% + $0.30)
  */
-const MIN_AFFILIATE_COMMISSION = 5;
-const MIN_PLATFORM_FEE = 4;
-const MIN_CJ_MARKUP_DOLLARS = 3;
-
 export function calculateBeezioPrice(
   cjCost: number,
-  markupPercent: number = 100, // Your markup (e.g., 100% = double the cost)
-  affiliateCommissionPercent: number = 20, // Affiliate gets % of seller ask (min $5)
+  sellerMarkupDollars: number = 10,
+  affiliatePayoutDollars: number = 5,
   hasRecruiter: boolean = true, // If affiliate was recruited, 5% of sale is paid to recruiter from platform fee
   options?: { applyMinimums?: boolean }
 ): {
@@ -1158,41 +1138,33 @@ export function calculateBeezioPrice(
   breakdown: string;
 } {
   const cleanCost = Number.isFinite(cjCost) ? cjCost : 0;
-  const cleanMarkup = Number.isFinite(markupPercent) ? markupPercent : 0;
-  const applyMinimums = options?.applyMinimums !== false;
-  const rawProfit = cleanCost * (cleanMarkup / 100);
-  const yourProfit = cleanCost > 0
-    ? (applyMinimums ? Math.max(rawProfit, MIN_CJ_MARKUP_DOLLARS) : Math.max(rawProfit, 0))
-    : 0;
+  const cleanMarkup = Number.isFinite(sellerMarkupDollars) ? sellerMarkupDollars : 0;
+  void options;
+  const yourProfit = cleanCost > 0 ? Math.max(cleanMarkup, 0) : 0;
   const sellerAsk = cleanCost + yourProfit;
 
-  const percentAffiliate = Number.isFinite(affiliateCommissionPercent) ? affiliateCommissionPercent : 0;
-  const computedAffiliate = sellerAsk * (percentAffiliate / 100);
-  const affiliateCommission = applyMinimums
-    ? Math.max(computedAffiliate, MIN_AFFILIATE_COMMISSION)
-    : Math.max(computedAffiliate, 0);
-  const platformPercent = PLATFORM_FEE_PERCENT / 100;
-  const computedPlatform = (sellerAsk + affiliateCommission) * platformPercent;
-  const beezioFee = applyMinimums ? Math.max(computedPlatform, MIN_PLATFORM_FEE) : Math.max(computedPlatform, 0);
+  const affiliateCommission = Number.isFinite(affiliatePayoutDollars)
+    ? Math.max(affiliatePayoutDollars, 0)
+    : 0;
+  const pricing = computeFixedTierPricing({
+    sellerPayout: sellerAsk,
+    affiliatePayout: affiliateCommission,
+  });
+  const beezioFee = pricing.platformFee;
   const recruiterCommission = 0;
   const beezioNet = beezioFee; // Referral override disabled in config
-
-  const processingPercent = PROCESSING_PERCENT / 100;
-  const processingFixed = PROCESSING_FIXED_FEE;
-  const targetNetAfterProcessing = sellerAsk + affiliateCommission + beezioFee;
-  const denom = 1 - Math.max(0, processingPercent);
-  const finalPrice = denom > 0 ? (targetNetAfterProcessing + processingFixed) / denom : targetNetAfterProcessing;
-  const processingFee = finalPrice * processingPercent + processingFixed;
+  const finalPrice = pricing.finalAdvertisedPrice;
+  const processingFee = pricing.paypalProcessingAllowance;
 
   const breakdown = `
 Customer Pays: $${finalPrice.toFixed(2)}
 ├─ Base Cost: $${cleanCost.toFixed(2)}
-├─ Your Profit: $${yourProfit.toFixed(2)} (${markupPercent}% markup, min $${MIN_CJ_MARKUP_DOLLARS.toFixed(2)})
-├─ Affiliate Commission: $${affiliateCommission.toFixed(2)} (${percentAffiliate}% of seller ask, min $${MIN_AFFILIATE_COMMISSION.toFixed(2)})
+├─ Your Profit: $${yourProfit.toFixed(2)} (seller-selected flat markup)
+├─ Affiliate Commission: $${affiliateCommission.toFixed(2)} (seller-selected flat payout)
 ${hasRecruiter ? `├─ Recruiter Commission: $${recruiterCommission.toFixed(2)} (5% slice of platform fee)` : ''}
-├─ Beezio Fee (Gross): $${beezioFee.toFixed(2)} (15% platform fee, min $${MIN_PLATFORM_FEE.toFixed(2)})
+├─ Beezio Fee (Gross): $${beezioFee.toFixed(2)} (fixed price tier)
 ${hasRecruiter ? `├─ Beezio Fee (Net): $${beezioNet.toFixed(2)}` : ''}
-└─ Processing Fee: $${processingFee.toFixed(2)}
+└─ PayPal Allowance: $${processingFee.toFixed(2)}
 `;
 
   return {
@@ -1250,6 +1222,8 @@ export default {
   createCJOrder,
   getCJOrderTracking,
   getCJProductInventory,
+  getCJProductVideos,
+  getCJFreightQuote,
   calculateBeezioPrice,
   mapCJCategoryToBeezio,
   placeCJOrderFromPaidOrder,

@@ -484,6 +484,18 @@ const normalizeAttributesForMatch = (attributes: Record<string, string> | null |
 export const getVariantOptions = async (productId: string): Promise<ProductVariant[]> => {
   if (!isSupabaseConfigured) return [];
 
+  // Shopper variant reads must pass through the public projection so exact
+  // supplier VIDs and fulfillment economics never enter the browser payload.
+  try {
+    const response = await fetch(`/.netlify/functions/product-variants-public?productId=${encodeURIComponent(productId)}`);
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok && Array.isArray((payload as any)?.variants)) {
+      return (payload as any).variants as ProductVariant[];
+    }
+  } catch (error) {
+    console.warn('getVariantOptions: public projection failed', error);
+  }
+
   const queryNormalized = async (filterActive: boolean) => {
     let query = supabase
       .from('product_variants')

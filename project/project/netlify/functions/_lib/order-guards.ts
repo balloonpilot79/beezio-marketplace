@@ -71,8 +71,6 @@ export async function validateCjOrderVariant(params: {
     ok: true,
     variant,
     orderReferenceType: validation.orderReferenceType,
-    orderReference: validation.orderReferenceType === 'cj_vid'
-      ? String((variant as any).cj_vid || '').trim()
-      : String((variant as any).cj_variant_id || '').trim(),
+    orderReference: String((variant as any).cj_vid || '').trim(),
   };
 }
