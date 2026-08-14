@@ -4,6 +4,7 @@ import {
   getCJFreightQuote,
   getCJInventory,
   getCJProductDetail,
+  getCJVariantByVid,
 } from './_lib/cj-api';
 import { parseCJUsd } from '../../shared/cjContract';
 import { computeFixedTierPricing } from '../../shared/customerPrice';
@@ -147,7 +148,8 @@ export const handler: Handler = async (event) => {
       if (saved.length !== liveVariants.length) issues.push(`live variant count mismatch: saved active ${saved.length}, CJ active ${liveVariants.length}`);
       if (privateMappings.length !== saved.length) issues.push(`active private mapping count mismatch: ${privateMappings.length} vs saved active ${saved.length}`);
 
-      // Identity must be perfect before any automatic economics update is allowed.
+      // Product detail is used to prove the complete current variant set. Exact
+      // queryByVid is used below as the authority for each VID's SKU and price.
       for (const variant of saved) {
         const vid = text(variant?.cj_vid);
         const savedSku = text(variant?.cj_variant_sku);
@@ -162,15 +164,15 @@ export const handler: Handler = async (event) => {
           issues.push(`VID ${vid} is not orderable by exact CJ VID`);
         }
 
-        const liveVariant: any = liveByVid.get(vid);
-        if (!liveVariant) {
+        const detailVariant: any = liveByVid.get(vid);
+        if (!detailVariant) {
           issues.push(`CJ no longer returned VID ${vid} as an active variant`);
           continue;
         }
 
-        const liveSku = text(liveVariant?.variantSku);
-        if (!savedSku || liveSku !== savedSku) {
-          issues.push(`VID ${vid} SKU mismatch: saved ${savedSku || '(blank)'}, CJ ${liveSku || '(blank)'}`);
+        const detailSku = text(detailVariant?.variantSku);
+        if (!savedSku || detailSku !== savedSku) {
+          issues.push(`VID ${vid} product-detail SKU mismatch: saved ${savedSku || '(blank)'}, CJ ${detailSku || '(blank)'}`);
         }
 
         const mapping: any = mappingByVariantId.get(text(variant?.id));
@@ -194,10 +196,22 @@ export const handler: Handler = async (event) => {
 
       for (const variant of saved) {
         const vid = text(variant.cj_vid);
-        const liveVariant: any = liveByVid.get(vid);
         const mapping: any = mappingByVariantId.get(text(variant.id));
-        const liveCost = money(parseCJUsd(liveVariant?.variantSellPrice));
-        if (!(liveCost > 0)) throw new Error(`VID ${vid} returned invalid live supplier cost`);
+
+        // queryByVid is the price/SKU authority because CJ product/query can lag
+        // behind the exact variant endpoint. This is also the endpoint used by
+        // the sandbox/order safety checks.
+        const exactVariant: any = await getCJVariantByVid(vid);
+        if (text(exactVariant?.vid) !== vid) {
+          throw new Error(`VID ${vid} exact-query identity mismatch`);
+        }
+        const exactSku = text(exactVariant?.variantSku);
+        const savedSku = text(variant?.cj_variant_sku);
+        if (!exactSku || exactSku !== savedSku) {
+          throw new Error(`VID ${vid} exact-query SKU mismatch: saved ${savedSku || '(blank)'}, CJ ${exactSku || '(blank)'}`);
+        }
+        const liveCost = money(parseCJUsd(exactVariant?.variantSellPrice));
+        if (!(liveCost > 0)) throw new Error(`VID ${vid} exact query returned invalid live supplier cost`);
 
         const freight = await quoteVariantFreight({
           vid,
@@ -273,7 +287,7 @@ export const handler: Handler = async (event) => {
             freight_destination_country: 'US',
             freight_quoted_at: checkedAt,
             price_verified_at: checkedAt,
-            raw_supplier_payload: liveVariant || {},
+            raw_supplier_payload: exactVariant || {},
             is_active: true,
             updated_at: checkedAt,
           })
@@ -283,6 +297,8 @@ export const handler: Handler = async (event) => {
         updatedVariantRows.push({
           id: variant.id,
           vid,
+          exact_variant_sku: exactSku,
+          pricing_source: 'product/variant/queryByVid',
           old_supplier_cost: money(variant?.supplier_cost_amount),
           new_supplier_cost: liveCost,
           seller_markup: sellerMarkup,
@@ -306,6 +322,7 @@ export const handler: Handler = async (event) => {
       const details = {
         checked_at: checkedAt,
         cj_product_id: pid,
+        price_authority: 'product/variant/queryByVid',
         saved_active_variant_count: saved.length,
         saved_inactive_variant_count: allSaved.length - saved.length,
         cj_active_variant_count: liveVariants.length,
