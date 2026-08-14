@@ -9,6 +9,7 @@ import {
   SUPPLYLINE_SEED_TARGET_COUNT,
   getRemainingSupplyLineSeedCandidates,
   getSupplyLineSeedPricing,
+  isSupplyLineSeedProductComplete,
   type SupplyLineSeedCandidate,
 } from './_lib/cj-supplyline-seed';
 import { syncCJWebhookSubscriptions } from './_lib/cj-webhook-subscriptions';
@@ -177,10 +178,24 @@ export const handler: Handler = async () => {
   try {
     const { data: mappings, error: mappingError } = await supabaseAdmin
       .from('cj_product_mappings')
-      .select('cj_product_id');
+      .select('beezio_product_id,cj_product_id,price_breakdown');
     if (mappingError) throw new Error(mappingError.message);
-    const existingProductIds = unique((mappings || []).map((row: any) => row?.cj_product_id));
-    const existingSeedCount = existingProductIds.filter((productId) =>
+    const mappedBeezioProductIds = unique((mappings || []).map((row: any) => row?.beezio_product_id));
+    const { data: mappedProducts, error: productsError } = mappedBeezioProductIds.length
+      ? await supabaseAdmin
+          .from('products')
+          .select('id,source_platform,videos,retail_price_cents,base_cost_cents,shipping_estimate_cents,calculated_customer_price,markup_value,affiliate_floor_cents')
+          .in('id', mappedBeezioProductIds)
+      : { data: [], error: null };
+    if (productsError) throw new Error(productsError.message);
+    const productById = new Map((mappedProducts || []).map((row: any) => [text(row?.id), row]));
+    const completeProductIds = unique((mappings || []).flatMap((row: any) => {
+      const subscribed = row?.price_breakdown?.cj_webhook_subscription?.status === 'subscribed';
+      return subscribed && isSupplyLineSeedProductComplete(productById.get(text(row?.beezio_product_id)))
+        ? [row?.cj_product_id]
+        : [];
+    }));
+    const existingSeedCount = completeProductIds.filter((productId) =>
       getRemainingSupplyLineSeedCandidates([]).some((candidate) => candidate.cjProductId === productId)
     ).length;
     if (existingSeedCount >= SUPPLYLINE_SEED_TARGET_COUNT) {
@@ -188,7 +203,7 @@ export const handler: Handler = async () => {
     }
 
     const failures: Array<{ cj_product_id: string; error: string }> = [];
-    for (const candidate of getRemainingSupplyLineSeedCandidates(existingProductIds)) {
+    for (const candidate of getRemainingSupplyLineSeedCandidates(completeProductIds)) {
       try {
         const payload = await prepareCandidate(candidate);
         const supabaseUrl = text(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL).replace(/\/$/, '');
@@ -213,6 +228,9 @@ export const handler: Handler = async () => {
         }
         if (!response.ok || !body?.product?.id) {
           throw new Error(body?.details || body?.error || raw || `Import failed (${response.status})`);
+        }
+        if (!isSupplyLineSeedProductComplete(body.product)) {
+          throw new Error('Imported product failed normalized pricing or cached-video verification.');
         }
 
         const subscription = await syncCJWebhookSubscriptions({
