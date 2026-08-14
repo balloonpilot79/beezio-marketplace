@@ -1779,17 +1779,40 @@ serve(async (req) => {
       console.error('Default shipping option sync warning:', shippingError)
     }
 
+    const mappingProductId = normalizedCj.cj_product_id || cjProduct.pid
+    const mappingVariantId = selectedCanonicalVariant?.cj_vid || selectedCanonicalVariant?.cj_variant_id || null
+    let existingMappingPriceBreakdown: Record<string, unknown> = {}
+    try {
+      let existingMappingQuery = supabaseAdmin
+        .from('cj_product_mappings')
+        .select('price_breakdown')
+        .eq('cj_product_id', mappingProductId)
+      existingMappingQuery = mappingVariantId
+        ? existingMappingQuery.eq('cj_variant_id', mappingVariantId)
+        : existingMappingQuery.is('cj_variant_id', null)
+      const { data: existingMapping } = await existingMappingQuery.maybeSingle()
+      if (
+        (existingMapping as any)?.price_breakdown &&
+        typeof (existingMapping as any).price_breakdown === 'object'
+      ) {
+        existingMappingPriceBreakdown = (existingMapping as any).price_breakdown
+      }
+    } catch {
+      existingMappingPriceBreakdown = {}
+    }
+
     const { error: mappingError } = await supabaseAdmin
       .from('cj_product_mappings')
       .upsert({
         beezio_product_id: product.id,
-        cj_product_id: normalizedCj.cj_product_id || cjProduct.pid,
+        cj_product_id: mappingProductId,
         cj_product_sku: normalizedCj.cj_product_sku || normalizedCj.cj_product_code || normalizedCj.cj_spu,
-        cj_variant_id: selectedCanonicalVariant?.cj_vid || selectedCanonicalVariant?.cj_variant_id || null,
+        cj_variant_id: mappingVariantId,
         cj_cost: safeCjUnitCost,
         markup_percent: pricing.markup,
         affiliate_commission_percent: affiliateType === 'flat' ? 0 : safeAffiliateValue,
         price_breakdown: {
+          ...existingMappingPriceBreakdown,
           finalPrice,
           sellerAsk,
           markupType,
