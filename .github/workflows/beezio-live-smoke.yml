@@ -1,0 +1,48 @@
+name: Beezio live Netlify smoke
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Wait for Netlify production functions
+        shell: bash
+        run: |
+          set -u
+          health_url="https://beezio.co/.netlify/functions/health"
+          protected=(
+            "https://beezio.co/.netlify/functions/cj-sandbox-order-test-background"
+            "https://beezio.co/.netlify/functions/cj-seed-price-tiers-background"
+            "https://beezio.co/.netlify/functions/cj-auto-pay-background"
+          )
+
+          for attempt in $(seq 1 20); do
+            health_code=$(curl -sS -o /tmp/health.out -w "%{http_code}" "$health_url" || true)
+            all_ready=true
+            codes=()
+            for url in "${protected[@]}"; do
+              code=$(curl -sS -X POST -H 'Content-Type: application/json' -d '{}' -o /dev/null -w "%{http_code}" "$url" || true)
+              codes+=("$code")
+              if [ "$code" != "403" ]; then
+                all_ready=false
+              fi
+            done
+
+            echo "attempt=$attempt health=$health_code protected=${codes[*]}"
+            if [ "$health_code" = "200" ] && [ "$all_ready" = "true" ]; then
+              echo "Netlify production has the new protected SupplyLine functions."
+              exit 0
+            fi
+
+            sleep 30
+          done
+
+          echo "Netlify production did not expose all expected functions within the smoke-test window."
+          exit 1
