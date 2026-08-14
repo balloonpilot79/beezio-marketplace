@@ -12,24 +12,23 @@ import { computeFixedTierPricing } from '../../shared/customerPrice';
 
 const TIER_TARGET = 25;
 const TARGET_COUNT = 125;
-const MAX_NEW_PER_RUN = 5;
-const MAX_VARIANTS_PER_PRODUCT = 10;
+const MAX_NEW_PER_RUN = 3;
+const MAX_VARIANTS_PER_PRODUCT = 24;
 const PAGE_SIZE = 100;
-const MAX_SCAN_PAGES_PER_TIER = 3;
+const MAX_SCAN_PAGES_PER_TIER = 6;
 const LOCK_MINUTES = 14;
-const SOFT_TIME_LIMIT_MS = 12 * 60 * 1000;
+const SOFT_TIME_LIMIT_MS = 14 * 60 * 1000;
 const MAX_PER_CATEGORY_PER_TIER = 7;
 
 const PRICE_TIERS = [
-  { key: 'under_25', label: 'Under $25', min: 0.01, max: 24.99, supplierMin: 0.20, supplierMax: 15 },
-  { key: '25_49', label: '$25-$49.99', min: 25, max: 49.99, supplierMin: 5, supplierMax: 30 },
-  { key: '50_99', label: '$50-$99.99', min: 50, max: 99.99, supplierMin: 15, supplierMax: 65 },
-  { key: '100_249', label: '$100-$249.99', min: 100, max: 249.99, supplierMin: 40, supplierMax: 180 },
-  { key: '250_499', label: '$250-$499.99', min: 250, max: 499.99, supplierMin: 100, supplierMax: 400 },
+  { key: 'under_25', label: 'Under $25', min: 0.01, max: 24.99, supplierMin: 0.20, supplierMax: 18 },
+  { key: '25_49', label: '$25-$49.99', min: 25, max: 49.99, supplierMin: 3, supplierMax: 35 },
+  { key: '50_99', label: '$50-$99.99', min: 50, max: 99.99, supplierMin: 10, supplierMax: 75 },
+  { key: '100_249', label: '$100-$249.99', min: 100, max: 249.99, supplierMin: 25, supplierMax: 190 },
+  { key: '250_499', label: '$250-$499.99', min: 250, max: 499.99, supplierMin: 70, supplierMax: 425 },
 ] as const;
 
 type Tier = (typeof PRICE_TIERS)[number];
-
 type CatalogSnapshot = {
   total: number;
   tierCounts: Record<string, number>;
@@ -65,6 +64,24 @@ function extractProductRows(payload: any): any[] {
   return [];
 }
 
+function extractUrlValues(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.flatMap(extractUrlValues);
+  if (typeof value === 'string') {
+    const raw = value.trim();
+    if (!raw) return [];
+    if ((raw.startsWith('[') && raw.endsWith(']')) || (raw.startsWith('{') && raw.endsWith('}'))) {
+      try { return extractUrlValues(JSON.parse(raw)); } catch { /* keep raw */ }
+    }
+    return raw.includes(',') ? raw.split(',').map((part) => part.trim()).filter(Boolean) : [raw];
+  }
+  if (typeof value === 'object') {
+    const row = value as any;
+    return extractUrlValues(row.url || row.image || row.src || row.bigImage || row.productImage || row.variantImage);
+  }
+  return [];
+}
+
 function tierForPrice(value: unknown): Tier | null {
   const price = Number(value);
   if (!Number.isFinite(price) || price <= 0) return null;
@@ -93,17 +110,9 @@ function canonicalCategory(value: unknown): string {
 
 function productText(row: any, detail?: any): string {
   return [
-    row?.nameEn,
-    row?.productNameEn,
-    row?.productName,
-    row?.name,
-    row?.categoryName,
-    row?.threeCategoryName,
-    row?.twoCategoryName,
-    row?.oneCategoryName,
-    detail?.productNameEn,
-    detail?.categoryName,
-    detail?.brandName,
+    row?.nameEn, row?.productNameEn, row?.productName, row?.name,
+    row?.categoryName, row?.threeCategoryName, row?.twoCategoryName, row?.oneCategoryName,
+    detail?.productNameEn, detail?.categoryName, detail?.brandName,
   ].map(text).filter(Boolean).join(' ').toLowerCase();
 }
 
@@ -123,15 +132,24 @@ function isBlockedProduct(row: any, detail?: any): boolean {
 function imageCandidates(product: any, detail: any): string[] {
   const variants = Array.isArray(detail?.variants) ? detail.variants : [];
   const candidates = [
-    product?.productImage,
-    product?.bigImage,
-    detail?.productImage,
-    detail?.bigImage,
-    ...(Array.isArray(detail?.productImageList) ? detail.productImageList : []),
-    ...(Array.isArray(detail?.images) ? detail.images : []),
-    ...variants.map((variant: any) => variant?.variantImage || variant?.variantImageUrl || variant?.variantBigImage),
+    ...extractUrlValues(product?.productImage),
+    ...extractUrlValues(product?.bigImage),
+    ...extractUrlValues(product?.productImageSet),
+    ...extractUrlValues(product?.productImageList),
+    ...extractUrlValues(product?.images),
+    ...extractUrlValues(detail?.productImage),
+    ...extractUrlValues(detail?.bigImage),
+    ...extractUrlValues(detail?.productImageSet),
+    ...extractUrlValues(detail?.productImageList),
+    ...extractUrlValues(detail?.images),
+    ...variants.flatMap((variant: any) => [
+      ...extractUrlValues(variant?.variantImage),
+      ...extractUrlValues(variant?.variantImageUrl),
+      ...extractUrlValues(variant?.variantBigImage),
+      ...extractUrlValues(variant?.images),
+    ]),
   ];
-  return Array.from(new Set(candidates.map(text).filter(Boolean)));
+  return Array.from(new Set(candidates.map(text).filter((url) => /^https:\/\//i.test(url))));
 }
 
 function scoreListRow(row: any): number {
@@ -157,26 +175,14 @@ async function acquireSeedLock(supabase: any) {
   const now = new Date();
   const nowIso = now.toISOString();
   const lockUntil = new Date(now.getTime() + LOCK_MINUTES * 60_000).toISOString();
-
-  await supabase.from('cj_seed_state').upsert({
-    id: 1,
-    target_count: TARGET_COUNT,
-    tier_target_count: TIER_TARGET,
-  }, { onConflict: 'id' });
-
+  await supabase.from('cj_seed_state').upsert({ id: 1, target_count: TARGET_COUNT, tier_target_count: TIER_TARGET }, { onConflict: 'id' });
   const { data, error } = await supabase
     .from('cj_seed_state')
-    .update({
-      locked_until: lockUntil,
-      last_run_at: nowIso,
-      started_at: nowIso,
-      updated_at: nowIso,
-    })
+    .update({ locked_until: lockUntil, last_run_at: nowIso, started_at: nowIso, updated_at: nowIso })
     .eq('id', 1)
     .or(`locked_until.is.null,locked_until.lt.${nowIso}`)
     .select('*')
     .maybeSingle();
-
   if (error) throw new Error(`CJ seed lock failed: ${error.message}`);
   return data || null;
 }
@@ -184,16 +190,13 @@ async function acquireSeedLock(supabase: any) {
 async function releaseSeedLock(supabase: any, result: Record<string, unknown>, snapshot?: CatalogSnapshot) {
   const nowIso = new Date().toISOString();
   const complete = snapshot ? PRICE_TIERS.every((tier) => Number(snapshot.tierCounts[tier.key] || 0) >= TIER_TARGET) : false;
-  await supabase
-    .from('cj_seed_state')
-    .update({
-      locked_until: null,
-      last_result: result,
-      tier_counts: snapshot?.tierCounts || {},
-      completed_at: complete ? nowIso : null,
-      updated_at: nowIso,
-    })
-    .eq('id', 1);
+  await supabase.from('cj_seed_state').update({
+    locked_until: null,
+    last_result: result,
+    tier_counts: snapshot?.tierCounts || {},
+    completed_at: complete ? nowIso : null,
+    updated_at: nowIso,
+  }).eq('id', 1);
 }
 
 async function catalogSnapshot(supabase: any): Promise<CatalogSnapshot> {
@@ -209,7 +212,6 @@ async function catalogSnapshot(supabase: any): Promise<CatalogSnapshot> {
 
   const tierCounts: Record<string, number> = Object.fromEntries(PRICE_TIERS.map((tier) => [tier.key, 0]));
   const categoryCounts: Record<string, Record<string, number>> = Object.fromEntries(PRICE_TIERS.map((tier) => [tier.key, {}]));
-
   for (const row of (data || []) as any[]) {
     const tier = tierForPrice(row?.calculated_customer_price || row?.price);
     if (!tier) continue;
@@ -217,16 +219,11 @@ async function catalogSnapshot(supabase: any): Promise<CatalogSnapshot> {
     const category = canonicalCategory(row?.category);
     categoryCounts[tier.key][category] = Number(categoryCounts[tier.key][category] || 0) + 1;
   }
-
   return { total: Object.values(tierCounts).reduce((sum, value) => sum + value, 0), tierCounts, categoryCounts };
 }
 
 async function existingCjIds(supabase: any): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('cj_product_id,cj_pid')
-    .eq('source_platform', 'cj')
-    .limit(5000);
+  const { data, error } = await supabase.from('products').select('cj_product_id,cj_pid').eq('source_platform', 'cj').limit(5000);
   if (error) throw new Error(`Existing CJ product lookup failed: ${error.message}`);
   return new Set((data || []).flatMap((row: any) => [text(row?.cj_product_id), text(row?.cj_pid)]).filter(Boolean));
 }
@@ -234,7 +231,6 @@ async function existingCjIds(supabase: any): Promise<Set<string>> {
 async function loadCandidateRows(tier: Tier): Promise<any[]> {
   const rows: any[] = [];
   const seen = new Set<string>();
-
   for (let page = 1; page <= MAX_SCAN_PAGES_PER_TIER; page += 1) {
     const response: any = await cjRequest('product/listV2', {
       page,
@@ -244,18 +240,28 @@ async function loadCandidateRows(tier: Tier): Promise<any[]> {
       startWarehouseInventory: 1,
       orderBy: 1,
       sort: 'desc',
+      features: 'enable_category',
     }, 'GET');
-
     for (const row of extractProductRows(response)) {
       const pid = firstString(row?.pid, row?.id, row?.productId, row?.product_id);
       if (!pid || seen.has(pid) || isBlockedProduct(row)) continue;
       seen.add(pid);
       rows.push(row);
     }
-    await sleep(250);
+    await sleep(200);
   }
-
   return rows.sort((a, b) => scoreListRow(b) - scoreListRow(a));
+}
+
+async function verifyVariantsInStock(pid: string, variants: any[]) {
+  for (const variant of variants) {
+    const vid = text(variant?.vid);
+    if (!vid) throw new Error('Variant missing exact CJ VID.');
+    const inventory = await getCJInventory(pid, vid);
+    if (inventory === null || inventory <= 0) {
+      throw new Error(`Variant ${vid} is not currently verified as in stock.`);
+    }
+  }
 }
 
 async function getFreightForVariants(detail: any, variants: any[]) {
@@ -268,7 +274,6 @@ async function getFreightForVariants(detail: any, variants: any[]) {
     if (!vid) throw new Error('Variant missing exact CJ VID.');
     let selected: any = null;
     let lastError: unknown = null;
-
     for (const originCountryCode of originCandidates) {
       try {
         const freight = await getCJFreightQuote({
@@ -294,15 +299,11 @@ async function getFreightForVariants(detail: any, variants: any[]) {
           quotedAt: new Date().toISOString(),
         };
         break;
-      } catch (error) {
-        lastError = error;
-      }
+      } catch (error) { lastError = error; }
     }
-
     if (!selected) throw new Error(`No live US freight quote for VID ${vid}: ${lastError instanceof Error ? lastError.message : 'quote failed'}`);
     quotes.push(selected);
   }
-
   return quotes;
 }
 
@@ -348,7 +349,6 @@ async function importViaSupabase(params: {
       computed: { finalPrice: params.finalPrice, sellerAsk: params.sellerAsk },
     }),
   });
-
   const raw = await response.text();
   let payload: any = null;
   try { payload = raw ? JSON.parse(raw) : null; } catch { payload = null; }
@@ -361,7 +361,6 @@ export const handler: Handler = async (event) => {
   const serviceRoleKey = text(process.env.SUPABASE_SERVICE_ROLE_KEY);
   const suppliedToken = text(event.headers.authorization || event.headers.Authorization).replace(/^Bearer\s+/i, '');
   const supabaseUrl = text(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL);
-
   if (!serviceRoleKey || !supabaseUrl || suppliedToken !== serviceRoleKey) return { statusCode: 403, body: '' };
 
   const supabase = createSupabaseAdmin();
@@ -386,7 +385,6 @@ export const handler: Handler = async (event) => {
       runResult.status = 'complete';
       runResult.verified_count_after = snapshot.total;
       await releaseSeedLock(supabase, runResult, snapshot);
-      lockAcquired = false;
       return { statusCode: 202, body: '' };
     }
 
@@ -394,41 +392,33 @@ export const handler: Handler = async (event) => {
     let importedThisRun = 0;
     const tiersNeeded = [...PRICE_TIERS].sort((a, b) => (snapshot.tierCounts[a.key] || 0) - (snapshot.tierCounts[b.key] || 0));
 
-    for (const targetTier of tiersNeeded) {
+    for (const searchTier of tiersNeeded) {
       if (importedThisRun >= MAX_NEW_PER_RUN || Date.now() - startedAtMs >= SOFT_TIME_LIMIT_MS) break;
-      if ((snapshot.tierCounts[targetTier.key] || 0) >= TIER_TARGET) continue;
-
-      const candidates = await loadCandidateRows(targetTier);
-      let importedForTier = false;
+      const candidates = await loadCandidateRows(searchTier);
 
       for (const candidate of candidates) {
-        if (Date.now() - startedAtMs >= SOFT_TIME_LIMIT_MS) break;
+        if (importedThisRun >= MAX_NEW_PER_RUN || Date.now() - startedAtMs >= SOFT_TIME_LIMIT_MS) break;
         const pid = firstString(candidate?.pid, candidate?.id, candidate?.productId, candidate?.product_id);
         if (!pid || existingIds.has(pid)) continue;
 
         try {
           const detail = await getCJProductDetail({ pid });
-          if (isBlockedProduct(candidate, detail)) {
-            runResult.skipped.push({ pid, target_tier: targetTier.key, reason: 'blocked product/category/brand term' });
-            continue;
-          }
-
+          if (isBlockedProduct(candidate, detail)) continue;
           const variants = Array.isArray(detail?.variants) ? detail.variants : [];
           if (!variants.length || variants.length > MAX_VARIANTS_PER_PRODUCT) {
-            runResult.skipped.push({ pid, target_tier: targetTier.key, reason: !variants.length ? 'no exact VID variants' : `too many variants (${variants.length})` });
+            runResult.skipped.push({ pid, reason: !variants.length ? 'no exact VID variants' : `too many variants (${variants.length})` });
             continue;
           }
-          if (imageCandidates(candidate, detail).length < 2) {
-            runResult.skipped.push({ pid, target_tier: targetTier.key, reason: 'insufficient promotional images' });
+          const images = imageCandidates(candidate, detail);
+          if (images.length < 2) {
+            runResult.skipped.push({ pid, reason: 'insufficient promotional images' });
             continue;
           }
 
           const variantCosts = variants.map((variant: any) => Number(variant?.variantSellPrice || 0));
-          if (variantCosts.some((cost: number) => !Number.isFinite(cost) || cost <= 0)) {
-            runResult.skipped.push({ pid, target_tier: targetTier.key, reason: 'invalid variant supplier price' });
-            continue;
-          }
+          if (variantCosts.some((cost: number) => !Number.isFinite(cost) || cost <= 0)) continue;
 
+          await verifyVariantsInStock(pid, variants);
           const freightQuotes = await getFreightForVariants(detail, variants);
           const maxSupplierCost = Math.max(...variantCosts);
           const maxShipping = Math.max(...freightQuotes.map((quote) => Number(quote.totalPostageFee || 0)));
@@ -441,17 +431,14 @@ export const handler: Handler = async (event) => {
             shippingIncluded: maxShipping,
           });
           const actualTier = tierForPrice(finalPricing.finalAdvertisedPrice);
-          if (!actualTier || actualTier.key !== targetTier.key) continue;
+          if (!actualTier || Number(snapshot.tierCounts[actualTier.key] || 0) >= TIER_TARGET) continue;
 
           const category = canonicalCategory(firstString(detail?.categoryName, candidate?.categoryName, candidate?.threeCategoryName, candidate?.twoCategoryName));
-          if (Number(snapshot.categoryCounts[targetTier.key]?.[category] || 0) >= MAX_PER_CATEGORY_PER_TIER) {
-            runResult.skipped.push({ pid, target_tier: targetTier.key, reason: `category quota full (${category})` });
-            continue;
-          }
+          if (Number(snapshot.categoryCounts[actualTier.key]?.[category] || 0) >= MAX_PER_CATEGORY_PER_TIER) continue;
 
-          const shippingRatioLimit = finalPricing.finalAdvertisedPrice < 50 ? 0.45 : 0.35;
+          const shippingRatioLimit = finalPricing.finalAdvertisedPrice < 50 ? 0.55 : 0.45;
           if (maxShipping > finalPricing.finalAdvertisedPrice * shippingRatioLimit) {
-            runResult.skipped.push({ pid, target_tier: targetTier.key, reason: `shipping too high (${money(maxShipping).toFixed(2)})` });
+            runResult.skipped.push({ pid, price_tier: actualTier.key, reason: `shipping too high (${money(maxShipping).toFixed(2)})` });
             continue;
           }
 
@@ -463,16 +450,12 @@ export const handler: Handler = async (event) => {
 
           let inventory: number | null = null;
           try { inventory = await getCJInventory(pid); } catch { inventory = null; }
-          if (inventory !== null && inventory <= 0) {
-            runResult.skipped.push({ pid, target_tier: targetTier.key, reason: 'out of stock' });
-            continue;
-          }
 
           const cjProduct = {
             pid,
             productNameEn: firstString(detail?.productNameEn, candidate?.productNameEn, candidate?.nameEn, candidate?.name),
             productSku: firstString(detail?.productSku, candidate?.productSku, candidate?.sku),
-            productImage: firstString(detail?.productImage, detail?.bigImage, candidate?.productImage, candidate?.bigImage),
+            productImage: firstString(detail?.productImage, detail?.bigImage, images[0]),
             categoryName: firstString(detail?.categoryName, candidate?.categoryName, category),
             sellPrice: Number(detail?.sellPrice || candidate?.sellPrice || maxSupplierCost),
           };
@@ -505,20 +488,19 @@ export const handler: Handler = async (event) => {
             throw new Error(`Database triple-check did not certify product (${text(saved?.verification_status) || 'unknown'}).`);
           }
 
-          try { await subscribeCJProducts([pid]); } catch { /* reconciliation repairs subscription later */ }
-
+          try { await subscribeCJProducts([pid]); } catch { /* reconciliation repairs this */ }
           existingIds.add(pid);
           importedThisRun += 1;
-          importedForTier = true;
-          snapshot.tierCounts[targetTier.key] = Number(snapshot.tierCounts[targetTier.key] || 0) + 1;
+          snapshot.tierCounts[actualTier.key] = Number(snapshot.tierCounts[actualTier.key] || 0) + 1;
           snapshot.total += 1;
-          snapshot.categoryCounts[targetTier.key][category] = Number(snapshot.categoryCounts[targetTier.key][category] || 0) + 1;
+          snapshot.categoryCounts[actualTier.key][category] = Number(snapshot.categoryCounts[actualTier.key][category] || 0) + 1;
           runResult.imported.push({
             pid,
             product_id: productId,
             title: text(saved?.title),
             category,
-            price_tier: targetTier.key,
+            price_tier: actualTier.key,
+            searched_tier: searchTier.key,
             variants: variants.length,
             max_supplier_cost: money(maxSupplierCost),
             max_shipping: money(maxShipping),
@@ -527,13 +509,10 @@ export const handler: Handler = async (event) => {
             advertised_price: Number(saved?.calculated_customer_price || finalPricing.finalAdvertisedPrice),
             verification_status: saved?.verification_status,
           });
-          break;
         } catch (error) {
-          runResult.failed.push({ pid, target_tier: targetTier.key, error: error instanceof Error ? error.message : String(error) });
+          runResult.failed.push({ pid, searched_tier: searchTier.key, error: error instanceof Error ? error.message : String(error) });
         }
       }
-
-      if (!importedForTier) runResult.skipped.push({ target_tier: targetTier.key, reason: 'no qualifying candidate found this run' });
     }
 
     snapshot = await catalogSnapshot(supabase);
@@ -557,3 +536,5 @@ export const handler: Handler = async (event) => {
     return { statusCode: 202, body: '' };
   }
 };
+
+export default handler;
