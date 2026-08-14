@@ -17,32 +17,36 @@ jobs:
         run: |
           set -u
           health_url="https://beezio.co/.netlify/functions/health"
-          protected=(
-            "https://beezio.co/.netlify/functions/cj-sandbox-order-test-background"
-            "https://beezio.co/.netlify/functions/cj-seed-price-tiers-background"
+          background=(
+            "https://beezio.co/.netlify/functions/cj-sandbox-order-test-v2-background"
+            "https://beezio.co/.netlify/functions/cj-seed-tiers-v2-background"
             "https://beezio.co/.netlify/functions/cj-auto-pay-background"
+            "https://beezio.co/.netlify/functions/cj-live-audit-background"
           )
 
+          # Netlify background functions acknowledge invocation with 202 before
+          # the background handler runs. This smoke test proves the deployed
+          # endpoint exists; the handler itself still enforces its service-role token.
           for attempt in $(seq 1 20); do
             health_code=$(curl -sS -o /tmp/health.out -w "%{http_code}" "$health_url" || true)
             all_ready=true
             codes=()
-            for url in "${protected[@]}"; do
+            for url in "${background[@]}"; do
               code=$(curl -sS -X POST -H 'Content-Type: application/json' -d '{}' -o /dev/null -w "%{http_code}" "$url" || true)
               codes+=("$code")
-              if [ "$code" != "403" ]; then
+              if [ "$code" != "202" ]; then
                 all_ready=false
               fi
             done
 
-            echo "attempt=$attempt health=$health_code protected=${codes[*]}"
+            echo "attempt=$attempt health=$health_code background=${codes[*]}"
             if [ "$health_code" = "200" ] && [ "$all_ready" = "true" ]; then
-              echo "Netlify production has the new protected SupplyLine functions."
+              echo "Netlify production exposes the current SupplyLine background functions."
               exit 0
             fi
 
             sleep 30
           done
 
-          echo "Netlify production did not expose all expected functions within the smoke-test window."
+          echo "Netlify production did not expose all expected SupplyLine functions within the smoke-test window."
           exit 1
