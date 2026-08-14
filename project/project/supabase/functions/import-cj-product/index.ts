@@ -1112,18 +1112,49 @@ serve(async (req) => {
 
     // Admin-only by email fallback (matches UI gate); also allow DB role=admin.
 
+    // PostgREST does not expose information_schema as a normal API table. The
+    // old lookup therefore reported every optional product column as missing
+    // and silently stripped normalized pricing, source, and video fields. A
+    // one-row `select('*')` includes every public column key (including NULL
+    // values), so cache that shape and infer only the small amount of type
+    // information needed for category compatibility.
+    const tableColumnTypeCache = new Map<string, Map<string, string>>()
     const getColumnType = async (tableName: string, columnName: string): Promise<string | null> => {
       try {
-        const { data, error } = await supabaseAdmin
-          .from('information_schema.columns')
-          .select('data_type')
-          .eq('table_schema', 'public')
-          .eq('table_name', tableName)
-          .eq('column_name', columnName)
-          .limit(1)
-          .maybeSingle()
-        if (error || !data) return null
-        return String((data as any).data_type || '').trim() || null
+        let columnTypes = tableColumnTypeCache.get(tableName)
+        if (!columnTypes) {
+          const { data, error } = await supabaseAdmin
+            .from(tableName)
+            .select('*')
+            .limit(1)
+            .maybeSingle()
+          if (error) return null
+
+          columnTypes = new Map<string, string>()
+          if (data && typeof data === 'object') {
+            for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+              let inferredType = 'unknown'
+              if (looksLikeUuid(value)) inferredType = 'uuid'
+              else if (typeof value === 'string') inferredType = 'text'
+              else if (typeof value === 'number') inferredType = 'numeric'
+              else if (typeof value === 'boolean') inferredType = 'boolean'
+              else if (Array.isArray(value)) inferredType = 'array'
+              else if (value && typeof value === 'object') inferredType = 'jsonb'
+              columnTypes.set(key, inferredType)
+            }
+          }
+          tableColumnTypeCache.set(tableName, columnTypes)
+        }
+
+        if (columnTypes.has(columnName)) return columnTypes.get(columnName) || 'unknown'
+
+        // Empty tables have no sample row. Probe just the requested column so
+        // existence detection remains correct without exposing schema tables.
+        const { error: probeError } = await supabaseAdmin
+          .from(tableName)
+          .select(columnName)
+          .limit(0)
+        return probeError ? null : 'unknown'
       } catch {
         return null
       }
