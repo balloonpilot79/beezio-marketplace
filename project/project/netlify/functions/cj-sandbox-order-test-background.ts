@@ -168,7 +168,7 @@ export const handler: Handler = async (event) => {
       shippingAddress: '123 Test Street',
       email: 'sandbox@beezio.co',
       remark: 'Beezio SupplyLine Plus CJ sandbox verification',
-      payType: 3,
+      payType: 1,
       isSandbox: 1,
       logisticName: freight.option.logisticName,
       fromCountryCode: freight.originCountryCode,
