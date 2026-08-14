@@ -34,6 +34,9 @@
 [functions."cj-live-audit-kickoff"]
   schedule = "*/5 * * * *"
 
+[functions."cj-price-policy-kickoff"]
+  schedule = "*/15 * * * *"
+
 # Redirect www to non-www
 [[redirects]]
   from = "https://www.beezio.co/*"
