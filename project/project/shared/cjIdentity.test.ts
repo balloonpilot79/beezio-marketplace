@@ -110,14 +110,15 @@ describe('cjIdentity', () => {
     expect(normalized.variants[0].variant_display_sku).toBe('CJ-SKU-1');
   });
 
-  it('falls back to cj_variant_id for order reference when cj_vid is missing', () => {
+  it('blocks a CJ variant id when the exact CJ VID is missing', () => {
     const normalized = normalizeCjDetailPayload({
       pid: 'P100',
       variants: [{ variantId: 'VAR-1', variantSku: 'SKU-1' }],
     });
 
-    expect(normalized.variants[0].order_reference_type).toBe('cj_variant_id');
-    expect(normalized.variants[0].is_orderable).toBe(true);
+    expect(normalized.variants[0].order_reference_type).toBe('none');
+    expect(normalized.variants[0].is_orderable).toBe(false);
+    expect(normalized.warnings.some((warning) => warning.code === 'missing_variant_reference')).toBe(true);
   });
 
   it('flags a parent code shown as a variant display code', () => {

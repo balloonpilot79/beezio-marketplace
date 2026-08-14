@@ -2,6 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import { applyCanonicalProductPricing } from '../../shared/productPricing';
 import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
+import { sanitizeSupplyLineProduct } from '../../shared/publicSupplyLineProduct';
 
 type CacheEntry = { expiresAt: number; value: any };
 const memCache = new Map<string, CacheEntry>();
@@ -315,7 +316,11 @@ const handler: Handler = async (event) => {
       };
     }
 
-    const normalizedProduct = applyCanonicalProductPricing(normalizeLegacyProduct(product));
+    let normalizedProduct = applyCanonicalProductPricing(normalizeLegacyProduct(product));
+    const isSupplyLinePlus = looksLikeCjProduct(normalizedProduct);
+    if (isSupplyLinePlus) {
+      normalizedProduct = sanitizeSupplyLineProduct(normalizedProduct);
+    }
     const isDigital = normalizedProduct?.is_digital === true;
 
     const responseBody = {
@@ -328,7 +333,12 @@ const handler: Handler = async (event) => {
         shipping_price: 0,
         shipping_options: isDigital
           ? []
-          : [{ name: 'Free Shipping', cost: 0, estimated_days: '3-5 business days', included_in_price: true }],
+          : [{
+              name: 'Free Shipping',
+              cost: 0,
+              estimated_days: isSupplyLinePlus ? 'Confirmed for your address at checkout' : '3-5 business days',
+              included_in_price: true,
+            }],
       },
       store_settings: storeSettings,
     };

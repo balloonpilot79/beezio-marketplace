@@ -1,7 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { normalizeCjDetailPayload } from '../../../shared/cjIdentity.ts'
-import { getReferrerBonusPerItem } from '../../../shared/referralBonus.ts'
+import { computeFixedTierPricing } from '../../../shared/customerPrice.ts'
+import {
+  parseCJUsd,
+  SUPPLYLINE_PLUS_NAME,
+  SUPPLYLINE_PLUS_SLUG,
+} from '../../../shared/cjContract.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,10 +60,25 @@ type ImportRequest = {
   inventory?: number | null
   pricing: {
     markup: number
+    markupType?: 'percent' | 'flat'
     affiliateCommission: number
     affiliateCommissionType?: 'percent' | 'flat'
   }
   shippingCost?: number
+  variantFreightQuotes?: Array<{
+    vid: string
+    originCountryCode: string
+    destinationCountryCode: string
+    destinationZip?: string
+    logisticName: string
+    logisticAging?: string | null
+    logisticPrice: number
+    taxesFee?: number
+    clearanceOperationFee?: number
+    tariff?: number
+    totalPostageFee: number
+    quotedAt: string
+  }>
   beezioCategory: string
   categoryId: string | null
   computed: {
@@ -174,34 +194,7 @@ const looksLikeUuid = (value: unknown): value is string => {
   return UUID_REGEX.test(trimmed)
 }
 
-const parseCJPriceToUSD = (value: unknown): number => {
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value) || value <= 0) return 0
-    if (Number.isInteger(value) && value >= 1000 && value <= 1000000) {
-      return roundToTwo(value / 100)
-    }
-    return roundToTwo(value)
-  }
-
-  const raw = String(value ?? '').trim()
-  if (!raw) return 0
-
-  const matches = raw.match(/-?\d+(?:\.\d+)?/g) || []
-  const normalized = matches
-    .map((token) => {
-      const parsed = Number(token)
-      if (!Number.isFinite(parsed) || parsed <= 0) return null
-      const hadDecimal = token.includes('.')
-      if (!hadDecimal && Number.isInteger(parsed) && parsed >= 1000 && parsed <= 1000000) {
-        return roundToTwo(parsed / 100)
-      }
-      return roundToTwo(parsed)
-    })
-    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0)
-
-  if (!normalized.length) return 0
-  return Math.max(...normalized)
-}
+const parseCJPriceToUSD = parseCJUsd
 
 const GRAMS_PER_OUNCE = 28.3495
 
@@ -408,6 +401,163 @@ const extractVideosFromCjPayload = (detailed: any, variants: any[], clientVideos
   return uniqueStrings([...fromDetail, ...fromVariants, ...extractVideoUrls(clientVideos)]).slice(0, 12)
 }
 
+const MAX_CJ_VIDEO_BYTES = 50 * 1024 * 1024
+
+const isAllowedCjVideoUrl = (value: string): boolean => {
+  try {
+    const url = new URL(value)
+    const hostname = url.hostname.toLowerCase()
+    return url.protocol === 'https:' && (
+      hostname === 'cjdropshipping.com' ||
+      hostname.endsWith('.cjdropshipping.com')
+    )
+  } catch {
+    return false
+  }
+}
+
+const shortSha256 = async (value: string): Promise<string> => {
+  const bytes = new TextEncoder().encode(value)
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))
+  return Array.from(digest.slice(0, 16)).map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+const cacheCjVideos = async (
+  client: any,
+  sellerProfileId: string,
+  cjProductId: string,
+  sourceUrls: string[]
+): Promise<string[]> => {
+  const allowedUrls = uniqueStrings(sourceUrls).filter(isAllowedCjVideoUrl)
+  const cachedUrls: string[] = []
+
+  for (const sourceUrl of allowedUrls) {
+    try {
+      const response = await fetch(sourceUrl, {
+        headers: { Referer: 'https://developers.cjdropshipping.com/' },
+      })
+      if (!response.ok) throw new Error(`download failed (${response.status})`)
+
+      const contentLength = Number(response.headers.get('content-length') || 0)
+      if (Number.isFinite(contentLength) && contentLength > MAX_CJ_VIDEO_BYTES) {
+        throw new Error('video exceeds the 50 MB storage limit')
+      }
+
+      const contentTypeRaw = String(response.headers.get('content-type') || 'video/mp4').split(';')[0].trim()
+      const contentType = contentTypeRaw.startsWith('video/') ? contentTypeRaw : 'video/mp4'
+      const bytes = new Uint8Array(await response.arrayBuffer())
+      if (!bytes.byteLength || bytes.byteLength > MAX_CJ_VIDEO_BYTES) {
+        throw new Error('video is empty or exceeds the 50 MB storage limit')
+      }
+
+      const extension = contentType.includes('webm') ? 'webm' : contentType.includes('quicktime') ? 'mov' : 'mp4'
+      const digest = await shortSha256(sourceUrl)
+      const safePid = String(cjProductId || 'product').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 80)
+      const objectPath = `${sellerProfileId}/product-videos/cj/${safePid}/${digest}.${extension}`
+      const { error: uploadError } = await client.storage
+        .from('product-images')
+        .upload(objectPath, bytes, { contentType, upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: publicData } = client.storage.from('product-images').getPublicUrl(objectPath)
+      const publicUrl = String(publicData?.publicUrl || '').trim()
+      if (!publicUrl) throw new Error('storage returned no public video URL')
+      cachedUrls.push(publicUrl)
+    } catch (error) {
+      console.error('CJ video cache warning:', sourceUrl, String((error as any)?.message || error))
+    }
+  }
+
+  if (allowedUrls.length && !cachedUrls.length) {
+    throw new Error('CJ videos were found but none could be cached for reliable playback.')
+  }
+  return cachedUrls
+}
+
+const MAX_CJ_IMAGE_BYTES = 15 * 1024 * 1024
+
+const isAllowedCjImageUrl = (value: string): boolean => {
+  try {
+    const url = new URL(value)
+    const hostname = url.hostname.toLowerCase()
+    const isCjHost = hostname === 'cjdropshipping.com' || hostname.endsWith('.cjdropshipping.com')
+    // CJ's current product API documentation also returns images from its
+    // `cc-west-*` Alibaba OSS buckets.
+    const isCjOssHost = /^cc-west-[a-z0-9-]+\.oss(?:-[a-z0-9-]+)?\.aliyuncs\.com$/.test(hostname)
+    return url.protocol === 'https:' && (isCjHost || isCjOssHost)
+  } catch {
+    return false
+  }
+}
+
+type CachedCjImages = {
+  urls: string[]
+  bySource: Map<string, string>
+}
+
+const cacheCjImages = async (
+  client: any,
+  sellerProfileId: string,
+  cjProductId: string,
+  sourceUrls: string[]
+): Promise<CachedCjImages> => {
+  const requestedUrls = uniqueStrings(sourceUrls).slice(0, 10)
+  const allowedUrls = requestedUrls.filter(isAllowedCjImageUrl)
+  const cachedUrls: string[] = []
+  const bySource = new Map<string, string>()
+
+  for (const sourceUrl of allowedUrls) {
+    try {
+      const response = await fetch(sourceUrl, {
+        headers: { Referer: 'https://developers.cjdropshipping.com/' },
+      })
+      if (!response.ok) throw new Error(`download failed (${response.status})`)
+
+      const contentLength = Number(response.headers.get('content-length') || 0)
+      if (Number.isFinite(contentLength) && contentLength > MAX_CJ_IMAGE_BYTES) {
+        throw new Error('image exceeds the 15 MB storage limit')
+      }
+
+      const contentTypeRaw = String(response.headers.get('content-type') || 'image/jpeg').split(';')[0].trim()
+      if (!contentTypeRaw.startsWith('image/')) throw new Error(`unexpected content type ${contentTypeRaw}`)
+      const bytes = new Uint8Array(await response.arrayBuffer())
+      if (!bytes.byteLength || bytes.byteLength > MAX_CJ_IMAGE_BYTES) {
+        throw new Error('image is empty or exceeds the 15 MB storage limit')
+      }
+
+      const extension = contentTypeRaw.includes('png')
+        ? 'png'
+        : contentTypeRaw.includes('webp')
+          ? 'webp'
+          : contentTypeRaw.includes('gif')
+            ? 'gif'
+            : contentTypeRaw.includes('avif')
+              ? 'avif'
+              : 'jpg'
+      const digest = await shortSha256(sourceUrl)
+      const safePid = String(cjProductId || 'product').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 80)
+      const objectPath = `${sellerProfileId}/product-images/supplyline/${safePid}/${digest}.${extension}`
+      const { error: uploadError } = await client.storage
+        .from('product-images')
+        .upload(objectPath, bytes, { contentType: contentTypeRaw, upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: publicData } = client.storage.from('product-images').getPublicUrl(objectPath)
+      const publicUrl = String(publicData?.publicUrl || '').trim()
+      if (!publicUrl) throw new Error('storage returned no public image URL')
+      cachedUrls.push(publicUrl)
+      bySource.set(sourceUrl, publicUrl)
+    } catch (error) {
+      console.error('CJ image cache warning:', sourceUrl, String((error as any)?.message || error))
+    }
+  }
+
+  if (requestedUrls.length && !cachedUrls.length) {
+    throw new Error('CJ images were found but none could be cached without exposing the supplier source.')
+  }
+  return { urls: cachedUrls, bySource }
+}
+
 const deriveEstimatedDays = (value: unknown): string => {
   const raw = String(value || '').trim()
   if (!raw) return '5-12 business days'
@@ -570,9 +720,12 @@ const upsertProductVariants = async (
   productSku: string,
   pricing: {
     markup: number
+    markupType: 'percent' | 'flat'
     affiliateValue: number
     affiliateType: 'percent' | 'flat'
-  }
+  },
+  freightQuotes: NonNullable<ImportRequest['variantFreightQuotes']>,
+  cachedImageBySource: Map<string, string>
 ) => {
   const normalizedDetail = normalizeCjDetailPayload(
     {
@@ -585,21 +738,36 @@ const upsertProductVariants = async (
   const canonicalVariantById = new Map(
     normalizedDetail.variants.map((variant) => [String(variant.cj_vid || variant.cj_variant_id || '').trim(), variant])
   )
+  const freightQuoteByVid = new Map(
+    freightQuotes.map((quote) => [String(quote?.vid || '').trim(), quote])
+  )
+  const now = new Date().toISOString()
   const normalizedRows = variants
     .map(variant => {
       if (!variant?.vid) return null
       const canonicalVariant = canonicalVariantById.get(String(variant.vid).trim()) || null
-      // Normalize all possible fields
+      const freightQuote = freightQuoteByVid.get(String(variant.vid).trim())
+      if (!freightQuote) {
+        throw new Error(`Live CJ freight quote missing for exact VID ${variant.vid}.`)
+      }
       const supplierCost = parseCJPriceToUSD(variant.variantSellPrice ?? basePrice)
       const safeSupplierCost = Number.isFinite(supplierCost) && supplierCost > 0 ? supplierCost : basePrice
-      const rawMarkup = safeSupplierCost * (Math.max(0, Number(pricing.markup || 0)) / 100)
-      const sellerAsk = roundToTwo(safeSupplierCost + Math.max(rawMarkup, MIN_CJ_MARKUP))
-      const retailPrice = calculateFinalPriceFromAsk(
-        sellerAsk,
-        pricing.affiliateType === 'percent' ? Math.max(0, Number(pricing.affiliateValue || 0)) : 0,
-        pricing.affiliateType === 'flat' ? Math.max(0, Number(pricing.affiliateValue || 0)) : 0,
-        pricing.affiliateType
-      )
+      const configuredMarkup = Math.max(0, Number(pricing.markup || 0))
+      const sellerMarkup = pricing.markupType === 'flat'
+        ? roundToTwo(configuredMarkup)
+        : roundToTwo(safeSupplierCost * configuredMarkup / 100)
+      const sellerPayout = roundToTwo(safeSupplierCost + sellerMarkup)
+      const affiliatePayout = pricing.affiliateType === 'flat'
+        ? roundToTwo(Math.max(0, Number(pricing.affiliateValue || 0)))
+        : roundToTwo(sellerPayout * Math.max(0, Number(pricing.affiliateValue || 0)) / 100)
+      const shippingReserve = roundToTwo(Math.max(0, Number(freightQuote.totalPostageFee || 0)))
+      const fixedPricing = computeFixedTierPricing({
+        supplierCost: safeSupplierCost,
+        sellerMarkup,
+        affiliatePayout,
+        shippingIncluded: shippingReserve,
+      })
+      const retailPrice = fixedPricing.finalAdvertisedPrice
       const sku = canonicalVariant?.variant_display_sku || String(variant.variantSku || '').trim() || `CJ Variant ID: ${variant.vid}`
       const inventoryCandidate =
         variant.variantStock ??
@@ -611,13 +779,6 @@ const upsertProductVariants = async (
       const inventoryNumber = Number(inventoryCandidate)
       const hasKnownInventory = Number.isFinite(inventoryNumber) && inventoryNumber >= 0
       const inventory = hasKnownInventory ? Math.max(0, Math.floor(inventoryNumber)) : null
-      // Collect all known and unknown fields
-      const extraFields: Record<string, any> = {}
-      for (const key in variant) {
-        if (!['vid','variantSku','variantNameEn','variantImage','variantSellPrice','variantStock','variantKey'].includes(key)) {
-          extraFields[key] = variant[key]
-        }
-      }
       const weightCandidate =
         (variant as any)?.variantWeight ??
         (variant as any)?.weight ??
@@ -627,6 +788,14 @@ const upsertProductVariants = async (
         (variant as any)?.variantWeightG ??
         null
       const weightOz = toWeightOz(weightCandidate)
+      const sourceImage = String(
+        variant.variantImage ||
+          (variant as any)?.variantBigImage ||
+          (variant as any)?.variantImageUrl ||
+          (variant as any)?.image ||
+          (variant as any)?.bigImage ||
+          ''
+      ).trim()
       return {
         product_id: productId,
         provider: 'CJ',
@@ -643,9 +812,9 @@ const upsertProductVariants = async (
         external_inventory_key: canonicalVariant?.external_inventory_key || String(variant.vid || '').trim() || null,
         variant_display_sku: canonicalVariant?.variant_display_sku || sku,
         searchable_codes: canonicalVariant?.searchable_codes || [],
-        is_orderable: canonicalVariant?.is_orderable ?? true,
-        order_reference_type: canonicalVariant?.order_reference_type || 'cj_vid',
-        raw_variant_payload_json: canonicalVariant?.raw_variant_payload_json || variant,
+        is_orderable: Boolean(canonicalVariant?.cj_vid),
+        order_reference_type: 'cj_vid',
+        raw_variant_payload_json: {},
         import_status: canonicalVariant?.warnings?.length ? 'needs_review' : 'ready',
         external_product_id: cjProductId,
         external_variant_id: variant.vid,
@@ -658,17 +827,21 @@ const upsertProductVariants = async (
         price: retailPrice > 0 ? retailPrice : safeSupplierCost,
         cost_cents: Math.round(safeSupplierCost * 100),
         retail_price_cents: Math.round((retailPrice > 0 ? retailPrice : safeSupplierCost) * 100),
+        supplier_cost_amount: safeSupplierCost,
+        seller_markup_amount: sellerMarkup,
+        seller_payout_amount: sellerPayout,
+        affiliate_payout_amount: affiliatePayout,
+        shipping_reserve_amount: shippingReserve,
+        calculated_customer_price: retailPrice,
+        cj_freight_method: String(freightQuote.logisticName || '').trim(),
+        cj_freight_origin_country: String(freightQuote.originCountryCode || '').trim().toUpperCase(),
+        cj_freight_destination_country: String(freightQuote.destinationCountryCode || '').trim().toUpperCase(),
+        cj_freight_quoted_at: String(freightQuote.quotedAt || now),
+        cj_price_verified_at: now,
         compare_at_price: null,
         currency: 'USD',
         weight_oz: weightOz,
-        image_url:
-          variant.variantImage ||
-          (variant as any)?.variantBigImage ||
-          (variant as any)?.variantImageUrl ||
-          (variant as any)?.image ||
-          (variant as any)?.bigImage ||
-          fallbackImage ||
-          null,
+        image_url: (sourceImage ? cachedImageBySource.get(sourceImage) : null) || fallbackImage || null,
         attributes: parseVariantAttributes(variant),
         inventory,
         in_stock: hasKnownInventory ? inventory > 0 : true,
@@ -676,12 +849,14 @@ const upsertProductVariants = async (
         inventory_source: 'cj',
         is_active: true,
         external_data: {
-          raw_variant: variant,
-          shipping_options: Array.isArray((variant as any)?.shippingOptions) ? (variant as any).shippingOptions : [],
+          supplyline_plus: true,
+          shipping_display: {
+            estimated_days: freightQuote.logisticAging || null,
+            destination_country: freightQuote.destinationCountryCode,
+          },
         },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        ...extraFields
+        created_at: now,
+        updated_at: now,
       }
     })
     .filter((row): row is NonNullable<typeof row> => Boolean(row))
@@ -690,9 +865,10 @@ const upsertProductVariants = async (
     return
   }
 
-  const { error } = await client
+  const { data: savedVariants, error } = await client
     .from('product_variants')
     .upsert(normalizedRows as any[], { onConflict: 'cj_variant_id' })
+    .select('id,cj_vid,cj_variant_id')
 
   if (error) {
     console.error('Failed to upsert product_variants', error)
@@ -708,6 +884,40 @@ const upsertProductVariants = async (
       } catch (logErr) {
         console.error('Failed to log variant upsert error', logErr)
       }
+    throw error
+  }
+
+  const sourceVariantByVid = new Map(variants.map((variant) => [String(variant.vid || '').trim(), variant]))
+  const privateMappings = ((savedVariants as any[]) || []).map((saved) => {
+    const exactVid = String(saved?.cj_vid || '').trim()
+    const sourceVariant = sourceVariantByVid.get(exactVid)
+    const row = normalizedRows.find((candidate) => String(candidate?.cj_vid || '').trim() === exactVid)
+    const quote = freightQuoteByVid.get(exactVid)
+    if (!exactVid || !row || !quote) return null
+    return {
+      product_variant_id: saved.id,
+      beezio_product_id: productId,
+      cj_product_id: cjProductId,
+      cj_vid: exactVid,
+      cj_variant_sku: String(sourceVariant?.variantSku || '').trim() || null,
+      supplier_cost_amount: row.supplier_cost_amount,
+      origin_country_code: String(quote.originCountryCode || 'CN').trim().toUpperCase(),
+      freight_method: String(quote.logisticName || '').trim() || null,
+      freight_cost_amount: row.shipping_reserve_amount,
+      freight_destination_country: String(quote.destinationCountryCode || 'US').trim().toUpperCase(),
+      freight_quoted_at: String(quote.quotedAt || now),
+      price_verified_at: now,
+      raw_supplier_payload: sourceVariant || {},
+      is_active: true,
+      updated_at: now,
+    }
+  }).filter(Boolean)
+
+  if (privateMappings.length) {
+    const { error: privateMappingError } = await client
+      .from('cj_variant_mappings')
+      .upsert(privateMappings, { onConflict: 'product_variant_id' })
+    if (privateMappingError) throw privateMappingError
   }
 }
 
@@ -743,45 +953,62 @@ const upsertDefaultShippingOption = async (
   }
 }
 
-const PLATFORM_FEE_PERCENT = 10
-const STRIPE_PERCENT = 3.0
-const STRIPE_FIXED_FEE = 0.6
-const MIN_AFFILIATE_COMMISSION = 0
-const MIN_PLATFORM_FEE = 1
-const MIN_CJ_MARKUP = 0
+const ensureSupplyLinePlusPlacement = async (
+  client: any,
+  ownerProfileId: string,
+  productId: string
+) => {
+  const { data: existing, error: lookupError } = await client
+    .from('storefronts')
+    .select('id,owner_id,name,slug,is_active')
+    .eq('slug', SUPPLYLINE_PLUS_SLUG)
+    .maybeSingle()
+  if (lookupError) throw lookupError
 
-const influencerBonusPoolSurcharge = (askPrice: number, slotCount: number = 2): number => {
-  const perSlotBonus = getReferrerBonusPerItem(Number.isFinite(askPrice) ? askPrice : 0)
-  const normalizedSlotCount = Number.isFinite(slotCount) ? Math.max(0, Math.floor(slotCount)) : 0
-  return roundToTwo(perSlotBonus * normalizedSlotCount)
-}
+  let storefront = existing as any
+  if (storefront) {
+    if (String(storefront.owner_id || '').trim() !== ownerProfileId) {
+      throw new Error(`${SUPPLYLINE_PLUS_NAME} is already owned by another Beezio profile.`)
+    }
+    const { data: updated, error: updateError } = await client
+      .from('storefronts')
+      .update({
+        name: SUPPLYLINE_PLUS_NAME,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', storefront.id)
+      .select('id,owner_id,name,slug,is_active')
+      .single()
+    if (updateError) throw updateError
+    storefront = updated
+  } else {
+    const { data: inserted, error: insertError } = await client
+      .from('storefronts')
+      .insert({
+        owner_id: ownerProfileId,
+        type: 'seller',
+        name: SUPPLYLINE_PLUS_NAME,
+        slug: SUPPLYLINE_PLUS_SLUG,
+        is_active: true,
+      })
+      .select('id,owner_id,name,slug,is_active')
+      .single()
+    if (insertError) throw insertError
+    storefront = inserted
+  }
 
-const calculateFinalPriceFromAsk = (
-  askPrice: number,
-  affiliatePercent: number,
-  affiliateFlatAmount: number,
-  affiliateType: 'percent' | 'flat',
-  platformFlatAmount?: number,
-  influencerSlotCount: number = 2
-): number => {
-  const safeFlat = Number.isFinite(affiliateFlatAmount) ? affiliateFlatAmount : 0
-  const safePlatformFlat = Number.isFinite(platformFlatAmount) ? Math.max(0, Number(platformFlatAmount)) : NaN
-  const pAff = (Number.isFinite(affiliatePercent) ? affiliatePercent : 0) / 100
-  const pPlatform = PLATFORM_FEE_PERCENT / 100
-  const pStripe = STRIPE_PERCENT / 100
-  const denom = 1 - pStripe
-  if (denom <= 0) return 0
+  const { error: placementError } = await client
+    .from('storefront_products')
+    .upsert({
+      storefront_id: storefront.id,
+      product_id: productId,
+      placement_source: 'supplyline_plus',
+      source_owner_id: ownerProfileId,
+    }, { onConflict: 'storefront_id,product_id' })
+  if (placementError) throw placementError
 
-  const influencerPool = influencerBonusPoolSurcharge(askPrice, influencerSlotCount)
-  const computedAffiliate = affiliateType === 'flat' ? safeFlat : askPrice * pAff
-  const affiliateAmount = Math.max(computedAffiliate, MIN_AFFILIATE_COMMISSION)
-  const computedPlatform = (askPrice + affiliateAmount) * pPlatform
-  const basePlatformAmount = Number.isFinite(safePlatformFlat)
-    ? safePlatformFlat
-    : Math.max(computedPlatform, MIN_PLATFORM_FEE)
-  const platformAmount = roundToTwo(basePlatformAmount + influencerPool)
-  const targetNetAfterStripe = askPrice + affiliateAmount + platformAmount
-  return roundToTwo((targetNetAfterStripe + STRIPE_FIXED_FEE) / denom)
+  return storefront
 }
 
 serve(async (req) => {
@@ -920,7 +1147,7 @@ serve(async (req) => {
       return json(400, { error: 'Missing cjProduct' })
     }
 
-    const pricing = body?.pricing || { markup: 3, affiliateCommission: 5 }
+    const pricing = body?.pricing || { markup: 10, affiliateCommission: 5 }
     const detailed = body?.detailedProduct || null
     const selectedVariant = body?.selectedVariant || null
     const variants = (body?.variants ?? []) as ImportVariant[]
@@ -956,26 +1183,70 @@ serve(async (req) => {
       typeof variantInventorySum === 'number' && Number.isFinite(variantInventorySum)
         ? variantInventorySum
         : (typeof resolvedInventory === 'number' && Number.isFinite(resolvedInventory) ? resolvedInventory : null);
-    const shippingCostInput = Number(body?.shippingCost ?? 0);
-    const shippingCost = Number.isFinite(shippingCostInput) && shippingCostInput >= 0 ? shippingCostInput : 0;
-    const shippingOptions = extractShippingOptionsFromCjPayload({
-      detailed,
-      variants,
-      fallbackShippingCost: shippingCost,
-      clientShippingOptions: Array.isArray((body as any)?.shippingOptions) ? (body as any).shippingOptions : [],
-    })
-    const shippingCostResolved = shippingOptions.length
-      ? Math.min(...shippingOptions.map((option) => Number(option.cost || 0)).filter((value) => Number.isFinite(value) && value >= 0))
-      : shippingCost
+    const freightQuotes = (Array.isArray(body?.variantFreightQuotes) ? body.variantFreightQuotes : [])
+      .map((quote) => ({
+        ...quote,
+        vid: String(quote?.vid || '').trim(),
+        originCountryCode: String(quote?.originCountryCode || '').trim().toUpperCase(),
+        destinationCountryCode: String(quote?.destinationCountryCode || '').trim().toUpperCase(),
+        logisticName: String(quote?.logisticName || '').trim(),
+        totalPostageFee: roundToTwo(Number(quote?.totalPostageFee || 0)),
+        quotedAt: String(quote?.quotedAt || '').trim(),
+      }))
+    const freightQuoteByVid = new Map(freightQuotes.map((quote) => [quote.vid, quote]))
+    const missingFreightVids = variants
+      .map((variant) => String(variant?.vid || '').trim())
+      .filter((vid) => !vid || !freightQuoteByVid.has(vid))
+    if (!variants.length || missingFreightVids.length) {
+      return json(400, {
+        error: 'Every imported variant requires a live CJ freight quote for its exact VID.',
+        missingVids: missingFreightVids,
+      })
+    }
+    for (const quote of freightQuotes) {
+      const quotedAtMs = Date.parse(quote.quotedAt)
+      if (
+        !quote.vid ||
+        !quote.originCountryCode ||
+        !quote.destinationCountryCode ||
+        !quote.logisticName ||
+        !(quote.totalPostageFee > 0) ||
+        !Number.isFinite(quotedAtMs) ||
+        Date.now() - quotedAtMs > 2 * 60 * 60 * 1000
+      ) {
+        return json(400, { error: `Invalid or stale live freight quote for exact VID ${quote.vid || 'unknown'}.` })
+      }
+    }
+
+    const shippingOptions = freightQuotes.map((quote) => ({
+      name: quote.logisticName,
+      cost: quote.totalPostageFee,
+      estimated_days: String(quote.logisticAging || ''),
+      origin_country: quote.originCountryCode,
+      destination_country: quote.destinationCountryCode,
+      tracking_supported: true,
+      vid: quote.vid,
+    }))
+    const shippingCostResolved = Math.max(...freightQuotes.map((quote) => quote.totalPostageFee))
     const customerFacingShippingOptions = shippingOptions.map((option) => ({
-      ...option,
+      name: option.name,
       cost: 0,
+      estimated_days: option.estimated_days,
+      origin_country: option.origin_country,
+      destination_country: option.destination_country,
+      tracking_supported: true,
     }))
     const customerFacingShippingCost = 0
-    const videos = extractVideosFromCjPayload(
+    const sourceVideos = extractVideosFromCjPayload(
       detailed,
       variants,
       Array.isArray((body as any)?.videos) ? (body as any).videos : []
+    )
+    const videos = await cacheCjVideos(
+      supabaseAdmin,
+      sellerProfileId,
+      String(cjProduct.pid || '').trim(),
+      sourceVideos
     )
     const originTag = String(shippingOptions[0]?.origin_label || shippingOptions[0]?.origin_country || '').trim()
     const importTags = uniqueStrings([
@@ -983,59 +1254,57 @@ serve(async (req) => {
       ...(String((detailed as any)?.brandName || (detailed as any)?.brand || '').trim()
         ? [`Brand: ${String((detailed as any)?.brandName || (detailed as any)?.brand || '').trim()}`]
         : []),
-      'CJ Imported',
+      SUPPLYLINE_PLUS_NAME,
     ])
     const beezioCategory = String(body?.beezioCategory || '').trim() || null
 
     // Compute pricing server-side to avoid client/UI drift.
-    const variantCostCandidate = selectedVariant && Object.prototype.hasOwnProperty.call(selectedVariant, 'variantSellPrice')
-      ? (selectedVariant as any).variantSellPrice
-      : undefined
-    const cjUnitCost = parseCJPriceToUSD(variantCostCandidate ?? (cjProduct as any).sellPrice)
+    const variantCosts = variants
+      .map((variant) => parseCJPriceToUSD((variant as any)?.variantSellPrice))
+      .filter((cost) => cost > 0)
+    const cjUnitCost = variantCosts.length
+      ? Math.max(...variantCosts)
+      : parseCJPriceToUSD((cjProduct as any).sellPrice)
     const markup = Number(pricing?.markup ?? 0)
-    const markupTypeRaw = String(pricing?.markupType || 'percent').toLowerCase()
+    const markupTypeRaw = String(pricing?.markupType || 'flat').toLowerCase()
     const markupType: 'percent' | 'flat' = markupTypeRaw === 'flat' ? 'flat' : 'percent'
     const affiliateValue = Number(pricing?.affiliateCommission ?? 0)
-    const affiliateTypeRaw = String(pricing?.affiliateCommissionType || 'percent').toLowerCase()
+    const affiliateTypeRaw = String(pricing?.affiliateCommissionType || 'flat').toLowerCase()
     const affiliateType: 'percent' | 'flat' = affiliateTypeRaw === 'flat' ? 'flat' : 'percent'
     const platformFeeValue = Number(pricing?.platformFee ?? NaN)
     const safeCjUnitCost = Number.isFinite(cjUnitCost) && cjUnitCost > 0 ? cjUnitCost : 0
-    const safeCjCost = roundToTwo(safeCjUnitCost + Math.max(0, shippingCostResolved))
     const safeMarkup = Number.isFinite(markup) && markup >= 0 ? markup : 0
     const safeAffiliateValue = Number.isFinite(affiliateValue) && affiliateValue >= 0 ? affiliateValue : 0
-    const safePlatformFee = Number.isFinite(platformFeeValue) && platformFeeValue >= 0 ? roundToTwo(platformFeeValue) : null
+    void platformFeeValue
 
-    const rawMarkup = markupType === 'flat' ? safeMarkup : safeCjCost * (safeMarkup / 100)
-    const sellerAsk = roundToTwo(safeCjCost + Math.max(rawMarkup, MIN_CJ_MARKUP))
-    const affiliateAmount = Math.max(
-      affiliateType === 'flat' ? safeAffiliateValue : sellerAsk * (safeAffiliateValue / 100),
-      MIN_AFFILIATE_COMMISSION
-    )
-    const basePlatformAmount = safePlatformFee !== null
-      ? safePlatformFee
-      : Math.max((sellerAsk + affiliateAmount) * (PLATFORM_FEE_PERCENT / 100), MIN_PLATFORM_FEE)
-    const influencerSlotCount = callerRole === 'admin' ? 1 : 2
-    const influencerBonusPool = influencerBonusPoolSurcharge(sellerAsk, influencerSlotCount)
-    const platformAmount = roundToTwo(basePlatformAmount + influencerBonusPool)
-    const finalPrice = calculateFinalPriceFromAsk(
-      sellerAsk,
-      affiliateType === 'percent' ? safeAffiliateValue : 0,
-      affiliateType === 'flat' ? safeAffiliateValue : 0,
-      affiliateType,
-      basePlatformAmount,
-      influencerSlotCount
-    )
-    const samplePrice = calculateSamplePriceFromCost(safeCjCost)
+    const sellerMarkup = markupType === 'flat'
+      ? safeMarkup
+      : roundToTwo(safeCjUnitCost * safeMarkup / 100)
+    const sellerAsk = roundToTwo(safeCjUnitCost + sellerMarkup)
+    const affiliateAmount = affiliateType === 'flat'
+      ? roundToTwo(safeAffiliateValue)
+      : roundToTwo(sellerAsk * safeAffiliateValue / 100)
+    const fixedPricing = computeFixedTierPricing({
+      supplierCost: safeCjUnitCost,
+      sellerMarkup,
+      affiliatePayout: affiliateAmount,
+      shippingIncluded: shippingCostResolved,
+    })
+    const influencerBonusPool = fixedPricing.influencerAllocation
+    const basePlatformAmount = fixedPricing.platformFee
+    const platformAmount = fixedPricing.platformFee
+    const finalPrice = fixedPricing.finalAdvertisedPrice
+    const samplePrice = calculateSamplePriceFromCost(safeCjUnitCost + shippingCostResolved)
     const sampleEnabled = samplePrice > 0
 
     if (!Number.isFinite(finalPrice) || finalPrice <= 0 || !Number.isFinite(sellerAsk) || sellerAsk <= 0) {
       return json(400, {
         error: 'Invalid pricing inputs',
-        details: { cjCost: (cjProduct as any).sellPrice, normalizedCjCost: cjUnitCost, landedCjCost: safeCjCost, markup: pricing?.markup, markupType, affiliateCommission: pricing?.affiliateCommission, affiliateType, platformFee: pricing?.platformFee, minAffiliate: MIN_AFFILIATE_COMMISSION, minPlatform: MIN_PLATFORM_FEE },
+        details: { cjCost: (cjProduct as any).sellPrice, normalizedCjCost: cjUnitCost, shippingCostResolved, markup: pricing?.markup, markupType, affiliateCommission: pricing?.affiliateCommission, affiliateType },
       })
     }
 
-    const normalizedImages = (() => {
+    const sourceImages = (() => {
       const raw = (detailed as any)?.productImageList
       let list: string[] = []
       if (Array.isArray(raw)) {
@@ -1085,6 +1354,13 @@ serve(async (req) => {
 
       return uniqueStrings([...unique, ...variantImageUrls]).slice(0, 10)
     })()
+    const cachedImages = await cacheCjImages(
+      supabaseAdmin,
+      sellerProfileId,
+      String(cjProduct.pid || '').trim(),
+      sourceImages
+    )
+    const normalizedImages = cachedImages.urls
 
     const canonicalDetailPayload = {
       ...(detailed || {}),
@@ -1269,9 +1545,7 @@ serve(async (req) => {
       description: (() => {
         const cleaned = sanitizeImportedDescription(normalizedCj.description || detailed?.description || '')
         if (cleaned) return cleaned
-        return affiliateType === 'flat'
-          ? `${normalizedCj.title || cjProduct.productNameEn}. Earn $${Math.max(safeAffiliateValue, MIN_AFFILIATE_COMMISSION).toFixed(2)} commission!`
-          : `${normalizedCj.title || cjProduct.productNameEn}. Earn ${safeAffiliateValue}% commission!`
+        return String(normalizedCj.title || cjProduct.productNameEn).trim()
       })(),
       source: 'cj',
       cj_product_id: normalizedCj.cj_product_id || String(cjProduct.pid || '').trim() || null,
@@ -1280,7 +1554,7 @@ serve(async (req) => {
       cj_product_sku: normalizedCj.cj_product_sku,
       cj_spu: normalizedCj.cj_spu,
       cj_name_raw: normalizedCj.cj_name_raw,
-      cj_source_payload_json: normalizedCj.cj_source_payload_json,
+      cj_source_payload_json: {},
       searchable_codes: normalizedCj.searchable_codes,
       import_status: normalizedCj.import_status,
       display_search_code: normalizedCj.display_search_code,
@@ -1292,13 +1566,21 @@ serve(async (req) => {
       seller_ask: sellerAsk,
       seller_amount: sellerAsk,
       seller_ask_price: sellerAsk,
+      supplier_cost_amount: safeCjUnitCost,
+      seller_markup_amount: sellerMarkup,
+      affiliate_payout_amount: affiliateAmount,
+      shipping_reserve_amount: shippingCostResolved,
+      influencer_allocation_amount: fixedPricing.influencerAllocation,
+      paypal_processing_allowance: fixedPricing.paypalProcessingAllowance,
       platform_fee: platformAmount,
       currency: 'USD',
       base_weight_oz: baseWeightOz,
       image_url: normalizedImages[0] ?? cjProduct.productImage,
       images: normalizedImages,
       sku: resolvedProductSku,
-      variants: variants.length > 0 ? canonicalDetailPayload.variants : null,
+      // Exact supplier variant payloads stay in private mapping tables. Public
+      // clients load the sanitized product_variants projection instead.
+      variants: null,
       requires_shipping: true,
       shipping_cost: customerFacingShippingCost,
       shipping_price: customerFacingShippingCost,
@@ -1313,29 +1595,6 @@ serve(async (req) => {
       external_product_id: normalizedCj.cj_pid || normalizedCj.cj_product_id,
       external_variant_id: selectedCanonicalVariant?.cj_vid || selectedCanonicalVariant?.cj_variant_id || null,
       track_inventory: hasKnownInventory,
-      api_integration: {
-        enabled: true,
-        supplier: 'CJdropshipping',
-        supplier_product_id: normalizedCj.cj_pid || normalizedCj.cj_product_id,
-        supplier_variant_id: selectedCanonicalVariant?.cj_vid || selectedCanonicalVariant?.cj_variant_id || null,
-        supplier_sku: resolvedProductSku,
-        supplier_cost: safeCjCost,
-        supplier_unit_cost: safeCjUnitCost,
-        supplier_shipping_cost: shippingCostResolved,
-        brand_name: String((detailed as any)?.brandName || (detailed as any)?.brand || '').trim() || null,
-        beezio_platform_fee: platformAmount,
-        cj_identity: {
-          product: {
-            cj_product_id: normalizedCj.cj_product_id,
-            cj_pid: normalizedCj.cj_pid,
-            cj_product_code: normalizedCj.cj_product_code,
-            cj_product_sku: normalizedCj.cj_product_sku,
-            cj_spu: normalizedCj.cj_spu,
-          },
-          selected_variant: selectedCanonicalVariant,
-          warnings: normalizedCj.warnings,
-        },
-      },
       stock_quantity: productStockQuantity,
       total_inventory: productStockQuantity,
       in_stock: hasKnownInventory ? productStockQuantity > 0 : true,
@@ -1343,7 +1602,7 @@ serve(async (req) => {
       dropship_provider: 'cj',
       is_dropshipped: true,
       product_type: 'one_time',
-      lineage: 'CJ',
+      lineage: SUPPLYLINE_PLUS_NAME,
       status: 'active',
       is_promotable: true,
       is_active: true,
@@ -1405,7 +1664,6 @@ serve(async (req) => {
       'external_product_id',
       'external_variant_id',
       'track_inventory',
-      'api_integration',
       'total_inventory',
       'inventory_source',
       'dropship_provider',
@@ -1460,12 +1718,6 @@ serve(async (req) => {
           cjVariantId: selectedCanonicalVariant?.cj_variant_id,
           nonce: buildSkuNonce(),
         })
-        if (insertPayload?.api_integration) {
-          insertPayload.api_integration = {
-            ...insertPayload.api_integration,
-            supplier_sku: insertPayload.sku,
-          }
-        }
         continue
       }
       const match = message.match(/Could not find the ['"]([^'\"]+)['"] column/i)
@@ -1492,7 +1744,7 @@ serve(async (req) => {
     }
 
     const variantFallbackImage = normalizedImages[0] ?? cjProduct.productImage
-    const variantBasePrice = safeCjCost > 0 ? safeCjCost : parseCJPriceToUSD(cjProduct.sellPrice)
+    const variantBasePrice = safeCjUnitCost > 0 ? safeCjUnitCost : parseCJPriceToUSD(cjProduct.sellPrice)
 
     try {
       await upsertProductVariants(
@@ -1506,16 +1758,23 @@ serve(async (req) => {
         cjProduct.productSku,
         {
           markup: safeMarkup,
+          markupType,
           affiliateValue: safeAffiliateValue,
           affiliateType,
-        }
+        },
+        freightQuotes,
+        cachedImages.bySource
       )
     } catch (variantError) {
-      console.error('Variants sync warning:', variantError)
+      await supabaseAdmin
+        .from('products')
+        .update({ is_active: false, status: 'draft', import_status: 'needs_review', updated_at: new Date().toISOString() })
+        .eq('id', product.id)
+      throw new Error(`Variant import failed: ${String((variantError as any)?.message || variantError)}`)
     }
 
     try {
-      await upsertDefaultShippingOption(supabaseAdmin, product.id, customerFacingShippingCost)
+      await upsertDefaultShippingOption(supabaseAdmin, product.id, shippingCostResolved)
     } catch (shippingError) {
       console.error('Default shipping option sync warning:', shippingError)
     }
@@ -1527,7 +1786,7 @@ serve(async (req) => {
         cj_product_id: normalizedCj.cj_product_id || cjProduct.pid,
         cj_product_sku: normalizedCj.cj_product_sku || normalizedCj.cj_product_code || normalizedCj.cj_spu,
         cj_variant_id: selectedCanonicalVariant?.cj_vid || selectedCanonicalVariant?.cj_variant_id || null,
-        cj_cost: safeCjCost,
+        cj_cost: safeCjUnitCost,
         markup_percent: pricing.markup,
         affiliate_commission_percent: affiliateType === 'flat' ? 0 : safeAffiliateValue,
         price_breakdown: {
@@ -1541,8 +1800,6 @@ serve(async (req) => {
           influencerBonusPool,
           basePlatformAmount,
           platformAmount,
-          minAffiliate: MIN_AFFILIATE_COMMISSION,
-          minPlatform: MIN_PLATFORM_FEE,
           selectedVariant: selectedVariant ? {
             vid: (selectedVariant as any)?.vid,
             variantSku: (selectedVariant as any)?.variantSku,
@@ -1550,7 +1807,6 @@ serve(async (req) => {
             variantSellPrice: (selectedVariant as any)?.variantSellPrice,
           } : null,
           inventory: resolvedInventory,
-          shippingCost,
           shippingCostResolved,
           customerFacingShippingCost,
           cjUnitCost: safeCjUnitCost,
@@ -1584,8 +1840,26 @@ serve(async (req) => {
       }, { onConflict: 'cj_product_id,cj_variant_id' })
 
     if (mappingError) {
-      // Non-fatal: product exists, mapping can be repaired.
-      console.error('CJ mapping insert failed:', mappingError)
+      await supabaseAdmin
+        .from('products')
+        .update({ is_active: false, status: 'draft', import_status: 'needs_review', updated_at: new Date().toISOString() })
+        .eq('id', product.id)
+      throw new Error(`Private SupplyLine mapping failed: ${mappingError.message}`)
+    }
+
+    let supplyLineStorefront: any = null
+    try {
+      supplyLineStorefront = await ensureSupplyLinePlusPlacement(
+        supabaseAdmin,
+        sellerProfileId,
+        product.id
+      )
+    } catch (placementError) {
+      await supabaseAdmin
+        .from('products')
+        .update({ is_active: false, status: 'draft', import_status: 'needs_review', updated_at: new Date().toISOString() })
+        .eq('id', product.id)
+      throw new Error(`SupplyLine Plus placement failed: ${String((placementError as any)?.message || placementError)}`)
     }
 
     try {
@@ -1614,6 +1888,7 @@ serve(async (req) => {
     return json(200, {
       product,
       mappingCreated: !mappingError,
+      storefront: supplyLineStorefront,
       visibility: {
         owner_profile_id: sellerProfileId,
         import_status: normalizedCj.import_status,

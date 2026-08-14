@@ -5,6 +5,7 @@ import { resolveAuthUserIdFromProfileId } from './_lib/auth';
 import { decryptSecret } from './_lib/crypto';
 import { createPrintifyOrder } from './_lib/printify';
 import { createPrintfulOrder } from './_lib/printful';
+import { createUnpaidCJOrderForBeezioOrder } from './_lib/cj-fulfillment';
 
 type DispatchBody = {
   orderId?: string;
@@ -46,6 +47,23 @@ export const handler: Handler = async (event) => {
     const lineItems = (items as any[]) || [];
     if (!lineItems.length) return json(200, { ok: true, message: 'No order items to fulfill' });
 
+    const cjItems = lineItems.filter((it) => {
+      const source = String(
+        it?.variant?.source_platform ||
+        it?.variant?.source ||
+        it?.source_platform ||
+        it?.product?.source_platform ||
+        it?.product?.source ||
+        it?.product?.lineage ||
+        ''
+      ).trim().toLowerCase();
+      return source === 'cj' || source === 'supplyline_plus' || source === 'supplyline plus' || Boolean(it?.cj_product_id || it?.cj_variant_id);
+    });
+    let cjResult: any = null;
+    if (cjItems.length) {
+      cjResult = await createUnpaidCJOrderForBeezioOrder({ orderId, supabaseAdmin });
+    }
+
     const manualFulfillmentOnly = String(process.env.MANUAL_FULFILLMENT_ONLY || 'true').trim().toLowerCase() !== 'false';
 
     const { data: existingVendorOrders, error: existingVendorOrdersError } = await supabaseAdmin
@@ -63,32 +81,37 @@ export const handler: Handler = async (event) => {
     }
 
     if (manualFulfillmentOnly) {
-      await supabaseAdmin.from('vendor_orders').upsert({
-        order_id: orderId,
-        vendor_id: 'manual_seller',
-        vendor_order_id: null,
-        items: lineItems.map((item) => ({
-          order_item_id: item?.id || null,
-          product_id: item?.product_id || null,
-          title: item?.product?.title || null,
-          quantity: Number(item?.quantity || 1),
-          source_platform: item?.variant?.source_platform || item?.source_platform || null,
-        })),
-        shipping_address: (order as any)?.shipping_address || null,
-        status: 'pending',
-        vendor_response: { mode: 'manual_fulfillment_only', queued_at: new Date().toISOString() },
-      }, { onConflict: 'order_id,vendor_id' });
+      const cjItemIds = new Set(cjItems.map((item: any) => String(item?.id || '').trim()).filter(Boolean));
+      const manualItems = lineItems.filter((item: any) => !cjItemIds.has(String(item?.id || '').trim()));
+      if (manualItems.length) {
+        await supabaseAdmin.from('vendor_orders').upsert({
+          order_id: orderId,
+          vendor_id: 'manual_seller',
+          vendor_order_id: null,
+          items: manualItems.map((item) => ({
+            order_item_id: item?.id || null,
+            product_id: item?.product_id || null,
+            title: item?.product?.title || null,
+            quantity: Number(item?.quantity || 1),
+            source_platform: item?.variant?.source_platform || item?.source_platform || null,
+          })),
+          shipping_address: (order as any)?.shipping_address || null,
+          status: 'pending',
+          vendor_response: { mode: 'manual_fulfillment_only', queued_at: new Date().toISOString() },
+        }, { onConflict: 'order_id,vendor_id' });
+      }
 
       await supabaseAdmin
         .from('orders')
-        .update({ fulfillment_status: 'manual_review', updated_at: new Date().toISOString() })
+        .update({ fulfillment_status: cjResult ? 'processing' : 'manual_review', updated_at: new Date().toISOString() })
         .eq('id', orderId);
 
       return json(200, {
         ok: true,
         manual_only: true,
+        cj: cjResult,
         existing_vendor_orders: (existingVendorOrders as any[]) || [],
-        message: 'Order queued for manual fulfillment',
+        message: manualItems.length ? 'Non-SupplyLine items queued for manual fulfillment' : 'SupplyLine Plus order created in CJ as unpaid',
       });
     }
 
@@ -104,11 +127,6 @@ export const handler: Handler = async (event) => {
 
     const printifyItems = lineItems.filter((it) => String(it?.variant?.source_platform || it?.source_platform || '').toLowerCase() === 'printify');
     const printfulItems = lineItems.filter((it) => String(it?.variant?.source_platform || it?.source_platform || '').toLowerCase() === 'printful');
-    const cjItems = lineItems.filter((it) => {
-      const source = String(it?.variant?.source_platform || it?.source_platform || '').toLowerCase();
-      return source === 'cj' || Boolean(it?.cj_product_id || it?.cj_variant_id);
-    });
-
     let printifyResult: any = null;
     let printfulResult: any = null;
 
@@ -239,7 +257,7 @@ export const handler: Handler = async (event) => {
       await supabaseAdmin
         .from('orders')
         .update({
-          fulfillment_status: printifyResult || printfulResult || hasExistingAutomatedVendorOrders ? 'processing' : 'manual_review',
+          fulfillment_status: 'processing',
           updated_at: new Date().toISOString(),
         })
         .eq('id', orderId);
@@ -249,8 +267,9 @@ export const handler: Handler = async (event) => {
       ok: true,
       printify: printifyResult,
       printful: printfulResult,
+      cj: cjResult,
       existing_vendor_orders: (existingVendorOrders as any[]) || [],
-      cj_manual_required: cjItems.length,
+      cj_manual_required: 0,
     });
   } catch (e: any) {
     const statusCode = Number(e?.statusCode) || 500;

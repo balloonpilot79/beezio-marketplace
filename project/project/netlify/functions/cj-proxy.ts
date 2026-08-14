@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from './_lib/auth';
 
 // Netlify Functions use CJ_API_KEY (no VITE_ prefix).
 // Never use VITE_CJ_API_KEY here because that encourages putting secrets into the client build env.
@@ -20,6 +21,7 @@ const supabaseAdmin =
 
 // In-memory token cache (resets on cold starts, which is fine since tokens last 15 days)
 let cachedAccessToken: string | null = null;
+let cachedOpenId: string | null = null;
 let tokenExpiryMs: number | null = null;
 let tokenFetchedAtMs: number | null = null;
 let tokenFetchInFlight: Promise<string> | null = null;
@@ -127,7 +129,7 @@ async function getAccessToken(): Promise<string> {
       try {
         const { data, error } = await supabaseAdmin
           .from('cj_tokens')
-          .select('access_token, expires_at')
+          .select('access_token, open_id, expires_at')
           .eq('id', 1)
           .maybeSingle();
 
@@ -135,6 +137,7 @@ async function getAccessToken(): Promise<string> {
           const expiresAtMs = data.expires_at ? new Date(data.expires_at).getTime() : NaN;
           if (Number.isFinite(expiresAtMs) && expiresAtMs > Date.now() + 60_000) {
             cachedAccessToken = data.access_token;
+            cachedOpenId = String(data.open_id || '').trim() || null;
             tokenExpiryMs = expiresAtMs;
             tokenFetchedAtMs = Date.now();
             console.log('Using persistent CJ access token cache');
@@ -180,6 +183,7 @@ async function getAccessToken(): Promise<string> {
     }
 
     cachedAccessToken = data.data.accessToken;
+    cachedOpenId = String(data?.data?.openId || '').trim() || null;
     tokenFetchedAtMs = Date.now();
 
     const rawExpiry = data.data.accessTokenExpiryDate;
@@ -210,7 +214,7 @@ async function getAccessToken(): Promise<string> {
         await supabaseAdmin
           .from('cj_tokens')
           .upsert(
-            { id: 1, access_token: cachedAccessToken, expires_at: expiresAt },
+            { id: 1, access_token: cachedAccessToken, open_id: cachedOpenId, expires_at: expiresAt },
             { onConflict: 'id' }
           );
       } catch (e) {
@@ -229,6 +233,19 @@ async function getAccessToken(): Promise<string> {
 }
 
 export const handler: Handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      },
+      body: '{}',
+    };
+  }
+
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
@@ -243,6 +260,8 @@ export const handler: Handler = async (event) => {
   }
 
   try {
+    await requireAdmin(event as any);
+
     // Get the endpoint and method from the request body
     const { endpoint, body: requestBody, method = 'POST' } = JSON.parse(event.body || '{}');
 
@@ -255,6 +274,31 @@ export const handler: Handler = async (event) => {
           'Access-Control-Allow-Headers': 'Content-Type'
         },
         body: JSON.stringify({ error: 'Endpoint is required' })
+      };
+    }
+
+    const normalizedEndpoint = String(endpoint).replace(/^\/+/, '').trim();
+    const normalizedMethod = String(method || 'POST').trim().toUpperCase();
+    const allowedRequests = new Set([
+      'GET product/getCategory',
+      'GET product/list',
+      'GET product/listV2',
+      'GET product/query',
+      'GET product/variant/queryByVid',
+      'GET product/stock/queryByVid',
+      'GET product/stock/getInventoryByPid',
+      'POST product/queryVideosByProductId',
+      'POST logistic/freightCalculate',
+    ]);
+    if (!allowedRequests.has(`${normalizedMethod} ${normalizedEndpoint}`)) {
+      return {
+        statusCode: 403,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+        body: JSON.stringify({ error: 'CJ proxy endpoint is not allowed' }),
       };
     }
 
@@ -324,16 +368,16 @@ export const handler: Handler = async (event) => {
     }
 
     // Build URL with query params for GET requests
-    let url = `${CJ_API_BASE_URL}/${endpoint}`;
+    let url = `${CJ_API_BASE_URL}/${normalizedEndpoint}`;
     const fetchOptions: RequestInit = {
-      method: method,
+      method: normalizedMethod,
       headers: {
         'Content-Type': 'application/json',
         'cj-access-token': accessToken
       }
     };
 
-    if (method === 'GET' && requestBody && Object.keys(requestBody).length > 0) {
+    if (normalizedMethod === 'GET' && requestBody && Object.keys(requestBody).length > 0) {
       // Convert body to query params for GET requests
       const params = new URLSearchParams();
       Object.entries(requestBody).forEach(([key, value]) => {
@@ -342,12 +386,12 @@ export const handler: Handler = async (event) => {
         }
       });
       url += `?${params.toString()}`;
-    } else if (method === 'POST') {
+    } else if (normalizedMethod === 'POST') {
       // Include body for POST requests
       fetchOptions.body = JSON.stringify(requestBody || {});
     }
 
-    console.log('CJ API Request:', { url, method, endpoint, hasToken: !!accessToken });
+    console.log('CJ API Request:', { url, method: normalizedMethod, endpoint: normalizedEndpoint, hasToken: !!accessToken });
 
     // Make request to CJ API with access token (rate-limited per function instance)
     const response = await enqueueCJRequest(() => fetch(url, fetchOptions));
@@ -395,11 +439,13 @@ export const handler: Handler = async (event) => {
     };
   } catch (error) {
     console.error('CJ Proxy Error:', error);
+    const statusCode = Number((error as any)?.statusCode) || 500;
     return {
-      statusCode: 500,
+      statusCode,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
       body: JSON.stringify({ 
         error: 'Failed to fetch from CJ API',

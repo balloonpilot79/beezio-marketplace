@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
+import { isSupplyLineProduct, sanitizeSupplyLineVariant } from '../../shared/publicSupplyLineProduct';
 
 const defaultHeaders = {
   'Content-Type': 'application/json',
@@ -40,16 +41,28 @@ const handler: Handler = async (event) => {
     const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data, error } = await supabaseAdmin
-      .from('product_variants')
-      .select('*')
-      .eq('product_id', productId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: true });
+    const [{ data, error }, { data: product }] = await Promise.all([
+      supabaseAdmin
+        .from('product_variants')
+        .select('*')
+        .eq('product_id', productId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true }),
+      supabaseAdmin
+        .from('products')
+        .select('id,source,source_platform,dropship_provider,inventory_source,lineage,cj_product_id,cj_pid,cj_spu,images')
+        .eq('id', productId)
+        .maybeSingle(),
+    ]);
 
     if (error) return json(500, { error: error.message });
 
-    return json(200, { variants: Array.isArray(data) ? data : [] });
+    const variants = Array.isArray(data) ? data : [];
+    return json(200, {
+      variants: isSupplyLineProduct(product)
+        ? variants.map((variant: any) => sanitizeSupplyLineVariant(variant || {}))
+        : variants,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to load variants';
     return json(500, { error: message });

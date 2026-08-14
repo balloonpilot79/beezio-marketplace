@@ -51,6 +51,29 @@ describe('fixed-tier Beezio pricing contract', () => {
     expect(result.estimatedCheckoutTotal).toBe(55.29);
   });
 
+  it('allows the seller to offer an affiliate payout larger than the seller payout', () => {
+    const result = computeFixedTierPricing({
+      supplierCost: 4,
+      sellerMarkup: 1,
+      affiliatePayout: 8,
+    });
+
+    expect(result.sellerPayout).toBe(5);
+    expect(result.affiliatePayout).toBe(8);
+    expect(result.finalAdvertisedPrice).toBeGreaterThanOrEqual(13);
+  });
+
+  it('does not enforce markup or affiliate minimums', () => {
+    const result = computeFixedTierPricing({
+      supplierCost: 4,
+      sellerMarkup: 0,
+      affiliatePayout: 0,
+    });
+
+    expect(result.sellerMarkup).toBe(0);
+    expect(result.affiliatePayout).toBe(0);
+  });
+
   it('uses $1 total influencer allocation only when the settled price is under $20', () => {
     const under = computeFixedTierPricing({ sellerPayout: 15 });
     const crossed = computeFixedTierPricing({ sellerPayout: 17 });

@@ -167,13 +167,12 @@ export const validateCjVariantForOrdering = (variant: {
   }
 
   const cjVid = firstString(variant?.cj_vid);
-  const cjVariantId = firstString(variant?.cj_variant_id);
   const displaySku = firstString(variant?.variant_display_sku);
   const searchableCodes = Array.isArray(variant?.searchable_codes) ? variant.searchable_codes : [];
-  const orderReferenceType = cjVid ? 'cj_vid' : cjVariantId ? 'cj_variant_id' : 'none';
+  const orderReferenceType = cjVid ? 'cj_vid' : 'none';
 
-  if (!cjVid && !cjVariantId) {
-    return { ok: false, reason: 'CJ variant mapping is missing a CJ VID/CJ variant id.', orderReferenceType };
+  if (!cjVid) {
+    return { ok: false, reason: 'CJ variant mapping is missing its exact CJ VID.', orderReferenceType };
   }
 
   if (displaySku && searchableCodes.length > 0) {
@@ -248,13 +247,13 @@ export const normalizeCjDetailPayload = (
     ];
     const searchableCodePairs = buildSearchableCodePairs(searchableSourceCodes);
     const searchableCodes = buildSearchableCodes(searchableSourceCodes);
-    const orderable = Boolean(cjVid || cjVariantId);
+    const orderable = Boolean(cjVid);
     const variantWarnings: CjWarning[] = [];
 
     if (!orderable) {
       variantWarnings.push({
         code: 'missing_variant_reference',
-        message: 'Variant is missing both CJ VID and CJ variant id.',
+        message: 'Variant is missing its exact CJ VID.',
         variantIndex: index,
       });
     }
@@ -317,7 +316,7 @@ export const normalizeCjDetailPayload = (
       searchable_codes: searchableCodes,
       searchable_code_pairs: searchableCodePairs,
       is_orderable: orderable,
-      order_reference_type: cjVid ? 'cj_vid' : cjVariantId ? 'cj_variant_id' : 'none',
+      order_reference_type: cjVid ? 'cj_vid' : 'none',
       raw_variant_payload_json: variant,
       warnings: variantWarnings,
     };

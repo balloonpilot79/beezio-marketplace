@@ -305,6 +305,9 @@ export const handler: Handler = async (event) => {
       buyerProfile = buyerResult.data || null;
     }
 
+    const mayViewInternalOrderData =
+      isAdminRequest || Boolean(sellerProfileId && ownerIdSet.has(sellerProfileId));
+
     const items = rawItems.map((item) => {
       const quantity = Math.max(1, Number(item?.quantity || 1));
       const price = Number(item?.price || item?.computed_listing_price || 0) || 0;
@@ -325,7 +328,6 @@ export const handler: Handler = async (event) => {
         variant_id: variantId || null,
         quantity,
         price,
-        seller_ask_amount: Number(item?.seller_ask_amount || 0) || 0,
         line_total: lineTotal,
         title: String(item?.product_title || item?.title_snapshot || productRow?.title || 'Unknown Product'),
         description: String(productRow?.description || '').trim() || null,
@@ -334,11 +336,6 @@ export const handler: Handler = async (event) => {
           : productRow?.image_url
             ? [String(productRow.image_url)]
             : [],
-        sku:
-          String(item?.sku || '').trim() ||
-          String(variantRow?.variant_display_sku || variantRow?.sku || '').trim() ||
-          String(productRow?.sku || '').trim() ||
-          null,
         variant_label:
           variantRow?.attributes && typeof variantRow.attributes === 'object'
             ? Object.entries(variantRow.attributes)
@@ -346,28 +343,36 @@ export const handler: Handler = async (event) => {
                 .filter(Boolean)
                 .join(' | ') || null
             : null,
-        variant_sku:
-          String(variantRow?.variant_display_sku || variantRow?.sku || '').trim() || null,
-        cj_variant_id:
-          String(item?.cj_variant_id || variantRow?.cj_vid || variantRow?.cj_variant_id || '').trim() || null,
-        external_variant_id:
-          String(item?.external_variant_id || '').trim() || null,
-        supplier_cost_amount: Number(item?.supplier_cost_amount || 0) || 0,
-        seller_markup_amount: Number(item?.seller_markup_amount || 0) || 0,
-        shipping_reserve_amount: Number(item?.shipping_reserve_amount || 0) || 0,
-        influencer_allocation_amount: Number(item?.influencer_allocation_amount || 0) || 0,
-        platform_fee_amount: Number(item?.platform_fee_amount || 0) || 0,
-        paypal_processing_allowance: Number(item?.paypal_processing_allowance || 0) || 0,
-        applied_affiliate_commission_basis: 'fixed_affiliate_payout_per_completed_sale',
-        configured_affiliate_commission_percent: configuredAffiliatePercent,
-        configured_affiliate_commission_amount: Number(
-          ((fixedAffiliatePayout || (lineTotal * configuredAffiliatePercent) / 100) * quantity).toFixed(2)
-        ),
-        applied_affiliate_rate: appliedAffiliateRate,
-        applied_affiliate_commission_amount: Number(
-          ((fixedAffiliatePayout || sellerAskAmount * appliedAffiliateRate) * quantity).toFixed(2)
-        ),
-        platform_percent_at_purchase: Math.max(0, Number(item?.platform_percent_at_purchase || 0) || 0),
+        ...(mayViewInternalOrderData ? {
+          seller_ask_amount: Number(item?.seller_ask_amount || 0) || 0,
+          sku:
+            String(item?.sku || '').trim() ||
+            String(variantRow?.variant_display_sku || variantRow?.sku || '').trim() ||
+            String(productRow?.sku || '').trim() ||
+            null,
+          variant_sku:
+            String(variantRow?.variant_display_sku || variantRow?.sku || '').trim() || null,
+          cj_variant_id:
+            String(item?.cj_variant_id || variantRow?.cj_vid || variantRow?.cj_variant_id || '').trim() || null,
+          external_variant_id:
+            String(item?.external_variant_id || '').trim() || null,
+          supplier_cost_amount: Number(item?.supplier_cost_amount || 0) || 0,
+          seller_markup_amount: Number(item?.seller_markup_amount || 0) || 0,
+          shipping_reserve_amount: Number(item?.shipping_reserve_amount || 0) || 0,
+          influencer_allocation_amount: Number(item?.influencer_allocation_amount || 0) || 0,
+          platform_fee_amount: Number(item?.platform_fee_amount || 0) || 0,
+          paypal_processing_allowance: Number(item?.paypal_processing_allowance || 0) || 0,
+          applied_affiliate_commission_basis: 'fixed_affiliate_payout_per_completed_sale',
+          configured_affiliate_commission_percent: configuredAffiliatePercent,
+          configured_affiliate_commission_amount: Number(
+            ((fixedAffiliatePayout || (lineTotal * configuredAffiliatePercent) / 100) * quantity).toFixed(2)
+          ),
+          applied_affiliate_rate: appliedAffiliateRate,
+          applied_affiliate_commission_amount: Number(
+            ((fixedAffiliatePayout || sellerAskAmount * appliedAffiliateRate) * quantity).toFixed(2)
+          ),
+          platform_percent_at_purchase: Math.max(0, Number(item?.platform_percent_at_purchase || 0) || 0),
+        } : {}),
       };
     });
 
@@ -476,7 +481,7 @@ export const handler: Handler = async (event) => {
           email: String(orderRow.billing_email || buyerProfile?.email || '').trim() || '',
         },
         items,
-        fee_summary: {
+        ...(mayViewInternalOrderData ? { fee_summary: {
           seller_earnings: Number(payoutLedger?.seller_earnings || 0) || 0,
           configured_affiliate_commission_total: configuredAffiliateCommissionTotal,
           applied_affiliate_commission_total: appliedAffiliateCommissionTotal,
@@ -492,7 +497,7 @@ export const handler: Handler = async (event) => {
           influencer_bonus_retained_total: influencerBonusRetainedTotal,
           hold_release_at: String(payoutLedger?.hold_release_at || '').trim() || null,
           payout_status: String(payoutLedger?.status || '').trim() || null,
-        },
+        } } : {}),
         disputes: ((disputesResult.data as any[]) || []).map((dispute) => ({
           id: String(dispute?.id || ''),
           dispute_type: String(dispute?.dispute_type || '').trim() || null,

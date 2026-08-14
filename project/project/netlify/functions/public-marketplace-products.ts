@@ -2,6 +2,8 @@ import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import { applyCanonicalProductPricing } from '../../shared/productPricing';
 import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
+import { isSupplyLineProduct, sanitizeSupplyLineProduct } from '../../shared/publicSupplyLineProduct';
+import { SUPPLYLINE_PLUS_SLUG } from '../../shared/cjContract';
 
 function json(statusCode: number, body: unknown) {
   return {
@@ -44,21 +46,7 @@ function isMarketplaceVisible(product: any) {
 }
 
 function looksLikeCjProduct(product: any): boolean {
-  const directMarkers = [
-    product?.source_platform,
-    product?.source,
-    product?.dropship_provider,
-    product?.inventory_source,
-    product?.lineage,
-  ]
-    .map((value) => String(value || '').trim().toLowerCase())
-    .filter(Boolean);
-
-  if (directMarkers.some((value) => value === 'cj')) return true;
-  if (String(product?.cj_product_id || '').trim() || String(product?.cj_pid || '').trim() || String(product?.cj_spu || '').trim()) return true;
-
-  const imageList = Array.isArray(product?.images) ? product.images : [];
-  return imageList.some((entry: any) => String(entry || '').toLowerCase().includes('cjdropshipping.com'));
+  return isSupplyLineProduct(product);
 }
 
 function normalizeLegacyMarketplaceProduct(product: any) {
@@ -249,19 +237,26 @@ const handler: Handler = async (event) => {
           const categoryMeta = categoryMetaById.get(String(row?.category_id || '').trim()) || {};
           const productStorefronts = storefrontsByProductId.get(String(row?.id || '').trim()) || [];
           const houseStorefront = productStorefronts.find((storefront: any) =>
+            String(storefront?.slug || '').trim().toLowerCase() === SUPPLYLINE_PLUS_SLUG
+          ) || productStorefronts.find((storefront: any) =>
             Boolean(resolveHouseBrandIdentity(storefront?.slug, storefront?.theme_settings?.brand_personality))
           );
           const houseBrand = houseStorefront
             ? resolveHouseBrandIdentity(houseStorefront?.slug, houseStorefront?.theme_settings?.brand_personality)
             : null;
           const publicSellerName = houseBrand?.name || houseStorefront?.name || sellerMeta.full_name;
-          return {
+          return sanitizeSupplyLineProduct({
             ...row,
             shipping_cost: 0,
             shipping_price: 0,
             shipping_options: row?.is_digital === true
               ? []
-              : [{ name: 'Free Shipping', cost: 0, estimated_days: '3-5 business days', included_in_price: true }],
+              : [{
+                  name: 'Free Shipping',
+                  cost: 0,
+                  estimated_days: isSupplyLineProduct(row) ? 'Confirmed for your address at checkout' : '3-5 business days',
+                  included_in_price: true,
+                }],
             storefront_slug: houseStorefront?.slug || null,
             category: String(row?.category || categoryMeta.name || '').trim() || null,
             category_name: String(categoryMeta.name || row?.category || '').trim() || null,
@@ -270,7 +265,7 @@ const handler: Handler = async (event) => {
               full_name: publicSellerName,
               location: sellerMeta.location,
             },
-          };
+          });
         }).slice(0, limit);
 
         return json(200, { ok: true, products: normalized });

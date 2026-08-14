@@ -2,6 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import { buildStoreInsuranceListings } from './_lib/storeInsurance';
 import { applyCanonicalProductPricing } from '../../shared/productPricing';
+import { sanitizeSupplyLineProduct } from '../../shared/publicSupplyLineProduct';
 
 function json(statusCode: number, body: unknown) {
   return {
@@ -265,10 +266,10 @@ const handler: Handler = async (event) => {
       productsById = new Map(
         visibleProducts.map((product: any) => [
           String(product.id),
-          {
+          sanitizeSupplyLineProduct({
             ...applyCanonicalProductPricing(normalizeAffiliateStoreProduct(product)),
             profiles: { full_name: sellerNameById.get(String(product?.seller_id || '').trim()) || undefined },
-          },
+          }),
         ])
       );
     }
@@ -327,10 +328,10 @@ const handler: Handler = async (event) => {
               product_id: productId,
               is_featured: Boolean(order?.is_featured),
               display_order: Number.isFinite(Number(order?.display_order)) ? Number(order.display_order) : 999,
-              products: {
+              products: sanitizeSupplyLineProduct({
                 ...applyCanonicalProductPricing(normalizeAffiliateStoreProduct(product)),
                 profiles: rowsWithProducts[0]?.products?.profiles || undefined,
-              },
+              }),
             });
           });
 
