@@ -9,7 +9,7 @@ export default async () => {
     return;
   }
 
-  const response = await fetch(`${siteUrl}/.netlify/functions/cj-sandbox-order-test-background`, {
+  const response = await fetch(`${siteUrl}/.netlify/functions/cj-sandbox-order-test-v2-background`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${serviceRoleKey}`,
@@ -20,9 +20,9 @@ export default async () => {
 
   if (response.status !== 202) {
     const body = await response.text().catch(() => '');
-    console.error('CJ sandbox background kickoff failed:', response.status, body.slice(0, 300));
+    console.error('CJ sandbox-v2 background kickoff failed:', response.status, body.slice(0, 300));
   } else {
-    console.log('CJ sandbox verification background run accepted.');
+    console.log('CJ state-aware sandbox verification background run accepted.');
   }
 };
 
