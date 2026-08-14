@@ -9,7 +9,7 @@ export default async () => {
     return;
   }
 
-  const response = await fetch(`${siteUrl}/.netlify/functions/cj-seed-price-tiers-background`, {
+  const response = await fetch(`${siteUrl}/.netlify/functions/cj-seed-tiers-v2-background`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${serviceRoleKey}`,
@@ -20,9 +20,9 @@ export default async () => {
 
   if (response.status !== 202) {
     const body = await response.text().catch(() => '');
-    console.error('CJ price-tier background kickoff failed:', response.status, body.slice(0, 300));
+    console.error('CJ tier-v2 background kickoff failed:', response.status, body.slice(0, 300));
   } else {
-    console.log('CJ 125-product price-tier background seed accepted.');
+    console.log('CJ 125-product corrected price-tier seed accepted.');
   }
 };
 
