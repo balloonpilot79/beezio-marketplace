@@ -5,7 +5,7 @@
   command = "npm run build"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20.19.0"
   NPM_FLAGS = "--production=false"
 
 # Explicit CJ schedules. Keep these at repo root because this is the Netlify
