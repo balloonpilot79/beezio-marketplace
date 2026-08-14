@@ -28,6 +28,10 @@ jobs:
         working-directory: project/project
         run: npm ci
 
+      - name: Exact variant safety test
+        working-directory: project/project
+        run: npm test -- src/services/productService.variant.test.ts
+
       - name: Vite production build
         working-directory: project/project
         run: npm run build
