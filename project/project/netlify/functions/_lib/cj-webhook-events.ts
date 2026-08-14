@@ -2,6 +2,141 @@ import { applyCJOrderUpdate, extractCJOrderUpdate } from './cj-order-status';
 
 const text = (value: unknown): string => String(value ?? '').trim();
 
+async function markProductsPendingAudit(
+  supabaseAdmin: any,
+  productIds: string[],
+  details: Record<string, unknown>,
+) {
+  const ids = Array.from(new Set(productIds.map(text).filter(Boolean)));
+  if (!ids.length) return;
+  const checkedAt = new Date().toISOString();
+  const { error } = await supabaseAdmin
+    .from('products')
+    .update({
+      cj_live_audit_status: 'pending',
+      cj_live_audited_at: null,
+      cj_live_audit_details: {
+        invalidated_at: checkedAt,
+        source: 'cj_webhook',
+        ...details,
+      },
+      updated_at: checkedAt,
+    })
+    .in('id', ids);
+  if (error) throw error;
+}
+
+async function applyProductMessage(supabaseAdmin: any, payload: any) {
+  const params = payload?.params || {};
+  const pid = text(params?.pid);
+  if (!pid) return;
+
+  const { data: products, error } = await supabaseAdmin
+    .from('products')
+    .select('id')
+    .or(`cj_product_id.eq.${pid},cj_pid.eq.${pid}`)
+    .eq('source_platform', 'cj');
+  if (error) throw error;
+
+  const productIds = ((products as any[]) || []).map((row) => text(row?.id)).filter(Boolean);
+  if (!productIds.length) return;
+
+  const messageType = text(payload?.messageType).toUpperCase();
+  const productStatus = Number(params?.productStatus);
+  const fields = Array.isArray(params?.fields) ? params.fields.map(text).filter(Boolean) : [];
+  const now = new Date().toISOString();
+
+  if (messageType === 'DELETE' || productStatus === 2) {
+    const { error: disableError } = await supabaseAdmin
+      .from('products')
+      .update({
+        is_active: false,
+        is_promotable: false,
+        status: 'draft',
+        import_status: 'needs_review',
+        verification_status: 'failed',
+        verified_at: null,
+        cj_live_audit_status: 'failed',
+        cj_live_audited_at: now,
+        cj_live_audit_details: {
+          invalidated_at: now,
+          source: 'cj_product_webhook',
+          message_type: messageType,
+          product_status: Number.isFinite(productStatus) ? productStatus : null,
+          fields,
+          reason: 'cj_product_off_sale_or_deleted',
+        },
+        updated_at: now,
+      })
+      .in('id', productIds);
+    if (disableError) throw disableError;
+    return;
+  }
+
+  await markProductsPendingAudit(supabaseAdmin, productIds, {
+    event_type: 'PRODUCT',
+    message_type: messageType,
+    pid,
+    fields,
+    product_status: Number.isFinite(productStatus) ? productStatus : null,
+  });
+}
+
+async function applyVariantMessage(supabaseAdmin: any, payload: any) {
+  const params = payload?.params || {};
+  const vid = text(params?.vid);
+  if (!vid) return;
+
+  const { data: mappings, error } = await supabaseAdmin
+    .from('cj_variant_mappings')
+    .select('product_variant_id,beezio_product_id,cj_vid')
+    .eq('cj_vid', vid);
+  if (error) throw error;
+  const rows = (mappings as any[]) || [];
+  if (!rows.length) return;
+
+  const messageType = text(payload?.messageType).toUpperCase();
+  const variantStatus = Number(params?.variantStatus);
+  const fields = Array.isArray(params?.fields) ? params.fields.map(text).filter(Boolean) : [];
+  const offSale = messageType === 'DELETE' || variantStatus === 0;
+  const now = new Date().toISOString();
+
+  if (offSale) {
+    const variantIds = rows.map((row) => text(row?.product_variant_id)).filter(Boolean);
+    if (variantIds.length) {
+      const { error: variantError } = await supabaseAdmin
+        .from('product_variants')
+        .update({
+          is_active: false,
+          is_orderable: false,
+          import_status: 'needs_review',
+          updated_at: now,
+        })
+        .in('id', variantIds);
+      if (variantError) throw variantError;
+    }
+
+    const { error: mappingError } = await supabaseAdmin
+      .from('cj_variant_mappings')
+      .update({ is_active: false, updated_at: now })
+      .eq('cj_vid', vid);
+    if (mappingError) throw mappingError;
+  }
+
+  await markProductsPendingAudit(
+    supabaseAdmin,
+    rows.map((row) => text(row?.beezio_product_id)),
+    {
+      event_type: 'VARIANT',
+      message_type: messageType,
+      vid,
+      fields,
+      variant_status: Number.isFinite(variantStatus) ? variantStatus : null,
+      off_sale: offSale,
+    },
+  );
+}
+
 async function applyStockMessage(supabaseAdmin: any, params: any) {
   const stockRows = Object.values(params && typeof params === 'object' ? params : {})
     .flatMap((value: any) => Array.isArray(value) ? value : [])
@@ -66,6 +201,10 @@ export async function processCJWebhookPayload(supabaseAdmin: any, payload: any):
       update: extractCJOrderUpdate(payload),
       sendShipmentNotice: false,
     });
+  } else if (eventType === 'PRODUCT') {
+    await applyProductMessage(supabaseAdmin, payload);
+  } else if (eventType === 'VARIANT') {
+    await applyVariantMessage(supabaseAdmin, payload);
   } else if (eventType === 'STOCK') {
     await applyStockMessage(supabaseAdmin, payload?.params);
   }
