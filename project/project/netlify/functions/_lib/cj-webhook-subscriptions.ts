@@ -90,21 +90,6 @@ async function placeMappedProductsInSupplyLinePlus(
     .upsert(placements, { onConflict: 'storefront_id,product_id' });
   if (placementError) throw new Error(`SupplyLine Plus placement failed: ${placementError.message}`);
 
-  for (let offset = 0; offset < productIds.length; offset += 100) {
-    const { error: productError } = await supabaseAdmin
-      .from('products')
-      .update({
-        lineage: 'SupplyLine Plus',
-        source: 'cj',
-        source_platform: 'cj',
-        dropship_provider: 'cj',
-        is_dropshipped: true,
-        updated_at: new Date().toISOString(),
-      })
-      .in('id', productIds.slice(offset, offset + 100));
-    if (productError) throw new Error(`SupplyLine Plus product repair failed: ${productError.message}`);
-  }
-
   return placements.length;
 }
 
