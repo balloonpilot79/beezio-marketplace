@@ -16,6 +16,21 @@ function normalizeCountryCode(value: unknown): string {
   return /^[A-Z]{2}$/.test(raw) ? raw : '';
 }
 
+function listRows(payload: any): any[] {
+  const data = payload?.data ?? payload;
+  if (Array.isArray(data)) return data;
+  for (const value of [data?.list, data?.content, data?.records, data?.rows]) {
+    if (Array.isArray(value)) return value;
+  }
+  return [];
+}
+
+function rowContainsVid(row: any, vid: string): boolean {
+  const products = [row?.productList, row?.products, row?.orderItemList]
+    .find((value) => Array.isArray(value)) || [];
+  return products.some((item: any) => text(item?.vid) === vid);
+}
+
 async function selectVerifiedVariant(supabase: any) {
   const { data: products, error: productError } = await supabase
     .from('products')
@@ -81,6 +96,20 @@ async function chooseFreight(mapping: any, vid: string) {
   }
 
   throw new Error(`Sandbox freight quote failed: ${lastError instanceof Error ? lastError.message : 'no valid method'}`);
+}
+
+async function resolveSandboxChildOrderId(shipmentOrderId: string, vid: string): Promise<string> {
+  if (!shipmentOrderId) return '';
+  const listRaw: any = await cjRequest('shopping/order/list', {
+    pageNum: 1,
+    pageSize: 20,
+    shipmentOrderId,
+  }, 'GET');
+  const rows = listRows(listRaw);
+  const match = rows.find((row) => Number(row?.isSandbox ?? 0) === 1 && rowContainsVid(row, vid))
+    || rows.find((row) => Number(row?.isSandbox ?? 0) === 1)
+    || rows[0];
+  return text(match?.orderId);
 }
 
 export const handler: Handler = async (event) => {
@@ -150,7 +179,7 @@ export const handler: Handler = async (event) => {
 
     const createdRaw: any = await cjRequest('shopping/order/createOrderV2', payload, 'POST');
     const created = createdRaw?.data ?? createdRaw;
-    const orderId = text(created?.orderId || created?.cjOrderId || created?.id);
+    let orderId = text(created?.orderId || created?.cjOrderId || created?.id);
     const shipmentOrderId = text(created?.shipmentOrderId || created?.shipmentOrderNumber || created?.shipmentId);
     if (!orderId && !shipmentOrderId) throw new Error('CJ sandbox create-order response contained no order identifier.');
 
@@ -165,7 +194,7 @@ export const handler: Handler = async (event) => {
     result.freight_method = freight.option.logisticName;
     result.freight_cost = money(freight.option.totalPostageFee);
     result.order_number = orderNumber;
-    result.cj_order_id = orderId || null;
+    result.cj_order_id_from_create = orderId || null;
     result.shipment_order_id = shipmentOrderId || null;
     result.create_response = created;
 
@@ -174,21 +203,26 @@ export const handler: Handler = async (event) => {
     if (payRaw?.result === false) throw new Error(payRaw?.message || 'CJ sandbox simulated payment failed.');
     result.simulate_pay = true;
 
-    const statusOrderId = orderId || shipmentOrderId;
-    const processingRaw: any = await cjRequest('shopping/sandbox/updateStatus', { orderId: statusOrderId, targetStatus: 400 }, 'POST');
+    if (!orderId && shipmentOrderId) {
+      orderId = await resolveSandboxChildOrderId(shipmentOrderId, vid);
+      result.resolved_child_order_id = orderId || null;
+    }
+    if (!orderId) throw new Error('CJ sandbox payment succeeded but no child orderId could be resolved for status/tracking verification.');
+
+    const processingRaw: any = await cjRequest('shopping/sandbox/updateStatus', { orderId, targetStatus: 400 }, 'POST');
     if (processingRaw?.result === false) throw new Error(processingRaw?.message || 'CJ sandbox processing-status update failed.');
     result.processing_status = 400;
 
     const trackingNumber = `BZO-SBX-${Date.now().toString(36).toUpperCase()}`.slice(0, 64);
-    const trackingRaw: any = await cjRequest('shopping/sandbox/updateTrackNumber', { orderId: statusOrderId, trackNumber: trackingNumber }, 'POST');
+    const trackingRaw: any = await cjRequest('shopping/sandbox/updateTrackNumber', { orderId, trackNumber: trackingNumber }, 'POST');
     if (trackingRaw?.result === false) throw new Error(trackingRaw?.message || 'CJ sandbox tracking-number update failed.');
     result.tracking_number = trackingNumber;
 
-    const shippedRaw: any = await cjRequest('shopping/sandbox/updateStatus', { orderId: statusOrderId, targetStatus: 500 }, 'POST');
+    const shippedRaw: any = await cjRequest('shopping/sandbox/updateStatus', { orderId, targetStatus: 500 }, 'POST');
     if (shippedRaw?.result === false) throw new Error(shippedRaw?.message || 'CJ sandbox shipped-status update failed.');
     result.shipped_status = 500;
 
-    const detail = orderId ? await getCJOrderDetail(orderId) : null;
+    const detail = await getCJOrderDetail(orderId);
     if (detail) {
       const sandboxFlag = Number(detail?.isSandbox ?? detail?.sandbox ?? 0);
       if (sandboxFlag !== 1) throw new Error('CJ returned the sandbox test order as a real order.');
@@ -212,7 +246,7 @@ export const handler: Handler = async (event) => {
       product_variant_id: variant.id,
       cj_product_id: cjProductId || null,
       cj_vid: vid,
-      cj_order_id: orderId || shipmentOrderId || null,
+      cj_order_id: orderId,
       cj_order_number: orderNumber,
       simulated_tracking_number: trackingNumber,
       last_error: null,
