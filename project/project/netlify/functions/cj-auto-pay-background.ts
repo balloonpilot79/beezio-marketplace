@@ -21,6 +21,14 @@ function isPaidBeezioOrder(order: any): boolean {
   return paymentStatus === 'paid' || status === 'completed';
 }
 
+function isBlockedBeezioOrder(order: any): boolean {
+  const values = [order?.payment_status, order?.status, order?.fulfillment_status]
+    .map((value) => text(value).toLowerCase());
+  return values.some((value) => [
+    'cancelled', 'canceled', 'refunded', 'refund', 'voided', 'failed', 'disputed', 'chargeback',
+  ].includes(value));
+}
+
 function isUnpaidCJStatus(value: unknown): boolean {
   const status = text(value).toUpperCase();
   return !status || ['CREATED', 'IN_CART', 'UNPAID'].includes(status);
@@ -77,6 +85,7 @@ export const handler: Handler = async (event) => {
         .eq('id', cjOrder.beezio_order_id)
         .maybeSingle();
       if (orderError || !beezioOrder) throw new Error(orderError?.message || 'Beezio order not found for CJ auto-pay.');
+      if (isBlockedBeezioOrder(beezioOrder)) throw new Error('Beezio order is cancelled/refunded/voided/disputed; CJ auto-pay blocked.');
       if (!isPaidBeezioOrder(beezioOrder)) throw new Error('Beezio payment is not captured; CJ auto-pay blocked.');
 
       const baselineCost = money(cjOrder?.cj_cost || 0);
