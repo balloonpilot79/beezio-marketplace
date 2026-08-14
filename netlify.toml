@@ -23,7 +23,7 @@
   schedule = "@hourly"
 
 [functions."cj-seed-25-kickoff"]
-  schedule = "*/15 * * * *"
+  schedule = "0 * * * *"
 
 [functions."cj-sandbox-order-test-kickoff"]
   schedule = "*/15 * * * *"
