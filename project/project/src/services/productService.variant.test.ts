@@ -43,7 +43,11 @@ describe('resolveVariant exact matching', () => {
     expect(resolveVariant([variants[0]], {})?.id).toBe('small-red');
   });
 
-  it('returns null if a selection ambiguously matches multiple saved variants', () => {
-    expect(resolveVariant(variants, { Size: 'Small' })).toBeNull();
+  it('returns null if the supplied attributes still match more than one saved variant', () => {
+    const ambiguousVariants = [
+      variant('small-red', { Size: 'Small', Color: 'Red' }),
+      variant('small-blue', { Size: 'Small', Color: 'Blue' }),
+    ];
+    expect(resolveVariant(ambiguousVariants, { Size: 'Small' })).toBeNull();
   });
 });
