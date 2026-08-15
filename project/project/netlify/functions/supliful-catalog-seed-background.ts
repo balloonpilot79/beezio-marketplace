@@ -116,7 +116,7 @@ function parseCatalog(html: string): CatalogProduct[] {
 async function fetchCatalog(): Promise<CatalogProduct[]> {
   const response = await fetch(CATALOG_URL, {
     headers: {
-      'User-Agent': 'Beezio-LovingNutrition-CatalogSync/3.0',
+      'User-Agent': 'Beezio-LovingNutrition-CatalogSync/4.0',
       Accept: 'text/html,application/xhtml+xml',
     },
   });
@@ -141,7 +141,7 @@ export const handler: Handler = async () => {
   const [{ data: existingRows, error: existingError }, { data: placementRows, error: placementError }] = await Promise.all([
     supabase
       .from('products')
-      .select('id,external_id,vendor_sku,source_url,status,is_promotable,supplier_info')
+      .select('id,external_id,vendor_sku,source_url,status,is_active,is_promotable,affiliate_enabled,in_stock,images,primary_image_url,supplier_info')
       .eq('source_platform', 'supliful')
       .limit(1000),
     supabase
@@ -161,10 +161,12 @@ export const handler: Handler = async () => {
 
   const placementIds = new Set((placementRows || []).map((row: any) => text(row?.product_id)).filter(Boolean));
   let nextPosition = Math.max(0, ...(placementRows || []).map((row: any) => Number(row?.position || 0))) + 1;
-  const liveRows: any[] = [];
+  const syncedRows: any[] = [];
   const placementCandidates: Array<{ productId: string; position: number }> = [];
   const unavailableIds: string[] = [];
   const sourceErrors: string[] = [];
+  let brandReadySynced = 0;
+  let brandingHeldSynced = 0;
 
   for (const product of catalog) {
     const supplierId = text(product.id);
@@ -173,8 +175,7 @@ export const handler: Handler = async () => {
     const title = text(product.name);
     const category = text(product.category?.name) || 'Supplements & Wellness';
     const suggestedRetail = money(product.priceRetail);
-    const cost = tierOneCost(product);
-    const images = imagesFor(product);
+    const rawSupplierImages = imagesFor(product);
     const sourceUrl = slug ? `${CATALOG_URL}/${slug}` : '';
     const existing = existingByKey.get(supplierId) || existingByKey.get(supplierSku) || existingByKey.get(sourceUrl);
 
@@ -184,7 +185,8 @@ export const handler: Handler = async () => {
       continue;
     }
 
-    if (!supplierId || !supplierSku || !slug || !title || suggestedRetail <= 0 || cost <= 0 || images.length < 2) {
+    const cost = tierOneCost(product);
+    if (!supplierId || !supplierSku || !slug || !title || suggestedRetail <= 0 || cost <= 0 || rawSupplierImages.length < 2) {
       sourceErrors.push(`${supplierSku || supplierId || slug || title || 'unknown'}: missing required source identity/cost/media`);
       continue;
     }
@@ -195,7 +197,23 @@ export const handler: Handler = async () => {
     const existingInfo = existing?.supplier_info && typeof existing.supplier_info === 'object'
       ? existing.supplier_info
       : {};
+    const verifiedBrandImage = existingInfo?.verified_brand_image === true;
+    const existingImages = Array.isArray(existing?.images)
+      ? existing.images.map(text).filter((url: string) => /^https:\/\//i.test(url))
+      : [];
+    const existingPrimaryImage = text(existing?.primary_image_url);
+
+    // A verified branded product image belongs to Beezio/Loving Nutrition and must never
+    // be replaced by Supliful's raw "add logo" catalog mockup during a catalog refresh.
+    const displayImages = verifiedBrandImage && existingImages.length > 0
+      ? existingImages
+      : rawSupplierImages;
+    const displayPrimaryImage = verifiedBrandImage && /^https:\/\//i.test(existingPrimaryImage)
+      ? existingPrimaryImage
+      : displayImages[0];
+
     const description = portableTextToPlainText(product.description) || `${title} — ${category}.`;
+    const now = new Date().toISOString();
     const supplierInfo = {
       ...existingInfo,
       supplier: 'Supliful',
@@ -205,8 +223,12 @@ export const handler: Handler = async () => {
       catalog_slug: slug,
       brand_logo_url: BRAND_LOGO,
       custom_label_required: true,
+      verified_brand_image: verifiedBrandImage,
       label_status: existingInfo?.label_status || 'pending_supliful_approval',
-      branding_status: existingInfo?.branding_status || 'pending_supliful_label_approval',
+      branding_status: verifiedBrandImage
+        ? (existingInfo?.branding_status || 'verified_loving_nutrition_product_mockup')
+        : 'blocked_missing_loving_nutrition_product_mockup',
+      marketplace_hold_reason: verifiedBrandImage ? null : 'missing_real_branded_product_image',
       base_cost_status: 'conservative_public_tier1_loaded',
       tier1_supplier_cost: cost,
       public_supliful_price: product.priceSupliful ?? null,
@@ -215,7 +237,7 @@ export const handler: Handler = async () => {
       availability: product.availability || [],
       is_new: Boolean(product.isNew),
       bestseller: Boolean(product.bestseller),
-      pricing_status: 'live_manual_fulfillment',
+      pricing_status: verifiedBrandImage ? 'live_manual_fulfillment' : 'branding_hold',
       fulfillment_mode: 'manual_order',
       manual_fulfillment_required: true,
       shipping_status: 'us_standard_shipping_fulfillment_processing_reserved',
@@ -223,25 +245,27 @@ export const handler: Handler = async () => {
       affiliate_target: affiliate,
       seller_markup: markup,
       live_customer_price: pricing.finalAdvertisedPrice,
-      activation_rule: 'manual_supliful_order_after_beezio_payment',
-      catalog_data_verified_at: new Date().toISOString(),
+      activation_rule: verifiedBrandImage
+        ? 'manual_supliful_order_after_beezio_payment'
+        : 'verified_loving_nutrition_product_mockup_required_before_sale',
+      catalog_data_verified_at: now,
     };
 
-    liveRows.push({
+    syncedRows.push({
       id: productId,
       title,
       description,
       price: pricing.finalAdvertisedPrice,
       currency: 'USD',
-      images,
-      primary_image_url: images[0],
+      images: displayImages,
+      primary_image_url: displayPrimaryImage,
       category,
       product_type: category,
       seller_id: storefront.owner_id,
-      status: 'active',
-      is_active: true,
-      is_promotable: true,
-      affiliate_enabled: true,
+      status: verifiedBrandImage ? 'active' : 'draft',
+      is_active: verifiedBrandImage,
+      is_promotable: verifiedBrandImage,
+      affiliate_enabled: verifiedBrandImage,
       source_platform: 'supliful',
       source: 'supliful',
       dropship_provider: 'supliful',
@@ -274,18 +298,21 @@ export const handler: Handler = async () => {
       influencer_allocation_amount: pricing.influencerAllocation,
       paypal_processing_allowance: pricing.paypalProcessingAllowance,
       track_inventory: false,
-      in_stock: true,
+      in_stock: verifiedBrandImage,
       stock_quantity: 0,
       total_inventory: 0,
       requires_shipping: true,
       is_digital: false,
       auto_sync: true,
-      import_status: 'manual_fulfillment_ready',
-      source_import_version: 'supliful_embedded_catalog_v3_live',
+      import_status: verifiedBrandImage ? 'manual_fulfillment_ready' : 'branding_hold',
+      source_import_version: 'supliful_embedded_catalog_v4_brand_gate',
       verification_status: 'verified',
       supplier_info: supplierInfo,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     });
+
+    if (verifiedBrandImage) brandReadySynced += 1;
+    else brandingHeldSynced += 1;
 
     if (!placementIds.has(productId)) {
       placementCandidates.push({ productId, position: nextPosition++ });
@@ -293,9 +320,9 @@ export const handler: Handler = async () => {
     }
   }
 
-  if (liveRows.length) {
-    const { error } = await supabase.from('products').upsert(liveRows, { onConflict: 'id' });
-    if (error) throw new Error(`Supliful live catalog upsert failed: ${error.message}`);
+  if (syncedRows.length) {
+    const { error } = await supabase.from('products').upsert(syncedRows, { onConflict: 'id' });
+    if (error) throw new Error(`Supliful catalog upsert failed: ${error.message}`);
   }
 
   if (unavailableIds.length) {
@@ -322,19 +349,30 @@ export const handler: Handler = async () => {
     if (error) throw new Error(`Loving Nutrition placement insert failed: ${error.message}`);
   }
 
-  const { count: currentCount } = await supabase
-    .from('products')
-    .select('id', { count: 'exact', head: true })
-    .eq('source_platform', 'supliful')
-    .neq('status', 'archived');
+  const [{ count: currentCount }, { count: brandReadyCount }] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('source_platform', 'supliful')
+      .neq('status', 'archived'),
+    supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('source_platform', 'supliful')
+      .eq('is_active', true)
+      .eq('is_promotable', true),
+  ]);
 
   console.log(JSON.stringify({
     ok: true,
     sourceCount: catalog.length,
-    liveRowsSynced: liveRows.length,
+    rowsSynced: syncedRows.length,
+    brandReadySynced,
+    brandingHeldSynced,
     placementsAdded: placementCandidates.length,
     unavailableHeld: unavailableIds.length,
     currentCount: currentCount || 0,
+    brandReadyCount: brandReadyCount || 0,
     sourceErrors: sourceErrors.slice(0, 10),
   }));
 
