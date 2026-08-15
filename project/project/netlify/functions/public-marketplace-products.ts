@@ -81,7 +81,7 @@ const handler: Handler = async () => {
       'track_inventory',
       'inventory_source',
       'category',
-      'category_id',
+      'beezio_category_id',
       'images',
       'commission_rate',
       'affiliate_commission_rate',
@@ -122,7 +122,7 @@ const handler: Handler = async () => {
     );
 
     const categoryIds = Array.from(new Set(
-      candidates.map((product: any) => text(product?.category_id)).filter(Boolean)
+      candidates.map((product: any) => text(product?.beezio_category_id)).filter(Boolean)
     ));
     const categoryMetaById = new Map<string, { name?: string; slug?: string; parent_id?: string | null }>();
     if (categoryIds.length) {
@@ -195,7 +195,8 @@ const handler: Handler = async () => {
     const products = candidates.map((raw: any) => {
       const preview = isLovingNutritionPreview(raw);
       const priced = preview ? { ...raw } : applyCanonicalProductPricing(raw);
-      const categoryMeta = categoryMetaById.get(text(raw?.category_id)) || {};
+      const categoryId = text(raw?.beezio_category_id);
+      const categoryMeta = categoryMetaById.get(categoryId) || {};
       const sellerMeta = sellerMetaById.get(text(raw?.seller_id)) || {};
       const productStorefronts = storefrontsByProductId.get(text(raw?.id)) || [];
       const houseStorefront = productStorefronts.find((storefront: any) =>
@@ -211,11 +212,12 @@ const handler: Handler = async () => {
       const publicRow: any = sanitizeSupplyLineProduct({
         ...priced,
         ...publicCommissionFields(raw),
+        category_id: categoryId || null,
         shipping_cost: 0,
         shipping_price: 0,
         category: text(raw?.category || categoryMeta.name) || null,
         category_name: text(categoryMeta.name || raw?.category) || null,
-        category_slug: text((raw as any)?.category_slug || categoryMeta.slug) || null,
+        category_slug: text(categoryMeta.slug) || null,
         category_parent_id: categoryMeta.parent_id || null,
         storefront_slug: houseStorefront?.slug || null,
         profiles: {
