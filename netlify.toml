@@ -40,6 +40,12 @@
 [functions."cj-merch-quality-kickoff"]
   schedule = "20,50 * * * *"
 
+# Loving Nutrition / Supliful public catalog ingestion. This only creates
+# store-only checkout-locked previews until exact account cost + label mapping
+# are confirmed.
+[functions."supliful-catalog-seed-kickoff"]
+  schedule = "*/5 * * * *"
+
 # Redirect www to non-www
 [[redirects]]
   from = "https://www.beezio.co/*"
