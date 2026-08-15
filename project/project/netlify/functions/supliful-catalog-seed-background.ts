@@ -5,113 +5,86 @@ const CATALOG_URL = 'https://supliful.com/catalog';
 const BRAND_SLUG = 'loving-nutrition';
 const BRAND_NAME = 'Loving Nutrition';
 const BRAND_LOGO = '/loving-nutrition-logo.png';
-const MAX_PAGES = 8;
-const MAX_NEW_PER_RUN = 40;
 
-const decodeHtml = (value: string) => value
-  .replace(/&amp;/g, '&')
-  .replace(/&quot;/g, '"')
-  .replace(/&#39;|&apos;/g, "'")
-  .replace(/&lt;/g, '<')
-  .replace(/&gt;/g, '>')
-  .replace(/&#x2F;/gi, '/')
-  .replace(/&#(\d+);/g, (_m, n) => String.fromCharCode(Number(n)))
-  .trim();
+type CatalogProduct = {
+  id?: string;
+  sku?: string;
+  slug?: string;
+  name?: string;
+  description?: any[];
+  category?: { id?: string; name?: string };
+  productImage?: string;
+  productAlternativeImage?: string;
+  nutritionFactsImage?: string;
+  priceRetail?: number;
+  priceSupliful?: number | null;
+  tierPricing?: Array<{ tier?: number; price?: number }>;
+  availability?: string[];
+  isNew?: boolean;
+  bestseller?: boolean;
+};
 
-const stripTags = (value: string) => decodeHtml(value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
+const text = (value: unknown) => String(value ?? '').trim();
+const money = (value: unknown) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
-function metaContent(html: string, key: string, attr: 'name' | 'property' = 'property') {
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const patterns = [
-    new RegExp(`<meta[^>]+${attr}=["']${escaped}["'][^>]+content=["']([^"']+)["'][^>]*>`, 'i'),
-    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+${attr}=["']${escaped}["'][^>]*>`, 'i'),
-  ];
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match?.[1]) return decodeHtml(match[1]);
+function portableTextToPlainText(value: unknown): string {
+  if (!Array.isArray(value)) return '';
+  return value
+    .flatMap((block: any) => Array.isArray(block?.children) ? block.children : [])
+    .map((child: any) => text(child?.text))
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function imagesFor(product: CatalogProduct): string[] {
+  return Array.from(new Set([
+    text(product.productImage),
+    text(product.productAlternativeImage),
+    text(product.nutritionFactsImage),
+  ].filter((url) => /^https:\/\//i.test(url))));
+}
+
+function tierOneCost(product: CatalogProduct): number {
+  const tier = Array.isArray(product.tierPricing)
+    ? product.tierPricing.find((row) => Number(row?.tier) === 1)
+    : null;
+  return money(tier?.price);
+}
+
+function affiliateTarget(retailPrice: number): number {
+  if (retailPrice < 25) return 5;
+  if (retailPrice < 50) return 7;
+  return 10;
+}
+
+function parseCatalog(html: string): CatalogProduct[] {
+  const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/i);
+  if (!match?.[1]) throw new Error('Supliful embedded catalog data was not found.');
+  const payload = JSON.parse(match[1]);
+  const products = payload?.props?.pageProps?.products;
+  if (!Array.isArray(products) || products.length < 1) {
+    throw new Error('Supliful embedded product array was empty.');
   }
-  return '';
+  return products as CatalogProduct[];
 }
 
-function firstHeading(html: string) {
-  const match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  return match?.[1] ? stripTags(match[1]) : '';
-}
-
-function extractImages(html: string) {
-  const matches = html.match(/https:\/\/cdn\.sanity\.io\/images\/g0smbdlu\/production\/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+/g) || [];
-  return Array.from(new Set(matches.map((url) => decodeHtml(url).replace(/\\u0026/g, '&')))).slice(0, 12);
-}
-
-function extractSlugs(html: string) {
-  const slugs = new Set<string>();
-  for (const match of html.matchAll(/href=["']\/catalog\/([^"'?#/]+)[^"']*["']/gi)) {
-    const slug = String(match[1] || '').trim().toLowerCase();
-    if (slug && !['category', 'search'].includes(slug)) slugs.add(slug);
-  }
-  return Array.from(slugs);
-}
-
-function categoryFor(title: string, description: string) {
-  const hay = `${title} ${description}`.toLowerCase();
-  if (/coffee|matcha|tea\b/.test(hay)) return 'Coffee & Tea';
-  if (/serum|moistur|cream|cleanser|soap|shampoo|conditioner|skin|face|facial|body wash|scrub|tallow/.test(hay)) return 'Skincare & Personal Care';
-  if (/whey|protein blend|protein powder|collagen protein/.test(hay)) return 'Proteins';
-  if (/creatine|pre[- ]?workout|post[- ]?workout|bcaa|electrolyte|hydration powder|amino/.test(hay)) return 'Sports Nutrition';
-  if (/mushroom|reishi|lion.?s mane|cordyceps|chaga/.test(hay)) return 'Mushroom Supplements';
-  if (/sleep|melatonin|relax|calm/.test(hay)) return 'Sleep & Relaxation';
-  if (/joint|bone|cartilage|glucosamine/.test(hay)) return 'Joint & Bone Support';
-  if (/gut|digest|probiotic|enzyme|glp-1|liver/.test(hay)) return 'Digestive Support';
-  if (/brain|cognitive|focus|memory|bacopa|gotu kola|nootropic/.test(hay)) return 'Brain & Cognitive';
-  if (/libido|fertility|reproductive|stamina/.test(hay)) return 'Reproductive Wellness';
-  if (/gumm/.test(hay)) return 'Wellness Gummies';
-  if (/vitamin|mineral|iron|magnesium|zinc|b12|multivitamin/.test(hay)) return 'Vitamins & Minerals';
-  return 'Supplements & Wellness';
-}
-
-function affiliateTarget(category: string) {
-  if (category === 'Proteins' || category === 'Sports Nutrition') return 10;
-  if (category === 'Coffee & Tea') return 5;
-  return 7;
-}
-
-async function fetchHtml(url: string) {
-  const response = await fetch(url, {
+async function fetchCatalog(): Promise<CatalogProduct[]> {
+  const response = await fetch(CATALOG_URL, {
     headers: {
-      'User-Agent': 'Beezio-LovingNutrition-CatalogSync/1.0',
+      'User-Agent': 'Beezio-LovingNutrition-CatalogSync/2.0',
       Accept: 'text/html,application/xhtml+xml',
     },
   });
-  if (!response.ok) throw new Error(`Supliful ${response.status} for ${url}`);
-  return response.text();
-}
-
-async function detailFor(slug: string) {
-  const sourceUrl = `${CATALOG_URL}/${slug}`;
-  const html = await fetchHtml(sourceUrl);
-  const rawTitle = firstHeading(html) || metaContent(html, 'og:title') || slug.replace(/-/g, ' ');
-  const title = rawTitle.replace(/\s+[—|-]\s+.*Supliful.*$/i, '').trim();
-  const description = metaContent(html, 'description', 'name') || metaContent(html, 'og:description') || '';
-  const images = extractImages(html);
-  const category = categoryFor(title, description);
-  return { slug, sourceUrl, title, description, images, category };
-}
-
-async function mapLimit<T, R>(values: T[], limit: number, work: (value: T) => Promise<R>): Promise<R[]> {
-  const result: R[] = [];
-  let cursor = 0;
-  const runners = Array.from({ length: Math.max(1, limit) }, async () => {
-    while (cursor < values.length) {
-      const index = cursor++;
-      result[index] = await work(values[index]);
-    }
-  });
-  await Promise.all(runners);
-  return result;
+  if (!response.ok) throw new Error(`Supliful catalog returned HTTP ${response.status}.`);
+  return parseCatalog(await response.text());
 }
 
 export const handler: Handler = async () => {
   const supabase = createSupabaseAdmin();
+  const catalog = await fetchCatalog();
+
   const { data: storefront, error: storefrontError } = await supabase
     .from('storefronts')
     .select('id,owner_id,slug')
@@ -122,71 +95,99 @@ export const handler: Handler = async () => {
     throw new Error(`Loving Nutrition storefront unavailable: ${storefrontError?.message || 'not found'}`);
   }
 
-  const [{ data: existingRows, error: existingError }, { data: placements }] = await Promise.all([
-    supabase.from('products').select('id,source_url,source_platform').eq('source_platform', 'supliful').limit(1000),
-    supabase.from('storefront_products').select('product_id,position').eq('storefront_id', storefront.id).limit(1000),
+  const [{ data: existingRows, error: existingError }, { data: placementRows, error: placementError }] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id,external_id,vendor_sku,source_url,status,is_promotable,supplier_info')
+      .eq('source_platform', 'supliful')
+      .limit(1000),
+    supabase
+      .from('storefront_products')
+      .select('product_id,position')
+      .eq('storefront_id', storefront.id)
+      .limit(1000),
   ]);
-  if (existingError) throw new Error(`Supliful existing lookup failed: ${existingError.message}`);
+  if (existingError) throw new Error(`Supliful product lookup failed: ${existingError.message}`);
+  if (placementError) throw new Error(`Loving Nutrition placement lookup failed: ${placementError.message}`);
 
-  const existingUrls = new Set((existingRows || []).map((row: any) => String(row?.source_url || '').trim()).filter(Boolean));
-  const existingPlacements = new Set((placements || []).map((row: any) => String(row?.product_id || '').trim()).filter(Boolean));
-  let nextPosition = Math.max(0, ...(placements || []).map((row: any) => Number(row?.position || 0))) + 1;
-
-  const discovered = new Set<string>();
-  const pageErrors: string[] = [];
-  for (let page = 1; page <= MAX_PAGES; page += 1) {
-    try {
-      const html = await fetchHtml(`${CATALOG_URL}?page=${page}`);
-      extractSlugs(html).forEach((slug) => discovered.add(slug));
-    } catch (error) {
-      pageErrors.push(error instanceof Error ? error.message : String(error));
-    }
+  const existingByKey = new Map<string, any>();
+  for (const row of existingRows || []) {
+    const keys = [row?.external_id, row?.vendor_sku, row?.source_url].map(text).filter(Boolean);
+    for (const key of keys) existingByKey.set(key, row);
   }
 
-  const missingSlugs = Array.from(discovered)
-    .filter((slug) => !existingUrls.has(`${CATALOG_URL}/${slug}`))
-    .slice(0, MAX_NEW_PER_RUN);
+  const placementIds = new Set((placementRows || []).map((row: any) => text(row?.product_id)).filter(Boolean));
+  let nextPosition = Math.max(0, ...(placementRows || []).map((row: any) => Number(row?.position || 0))) + 1;
+  const previewRows: any[] = [];
+  const placementCandidates: Array<{ productId: string; position: number }> = [];
+  const sourceErrors: string[] = [];
+  let preservedLive = 0;
 
-  const detailErrors: string[] = [];
-  const details = await mapLimit(missingSlugs, 4, async (slug) => {
-    try { return await detailFor(slug); }
-    catch (error) {
-      detailErrors.push(`${slug}: ${error instanceof Error ? error.message : String(error)}`);
-      return null;
+  for (const product of catalog) {
+    const supplierId = text(product.id);
+    const supplierSku = text(product.sku);
+    const slug = text(product.slug).toLowerCase();
+    const title = text(product.name);
+    const category = text(product.category?.name) || 'Supplements & Wellness';
+    const retailPrice = money(product.priceRetail);
+    const cost = tierOneCost(product);
+    const images = imagesFor(product);
+    const sourceUrl = slug ? `${CATALOG_URL}/${slug}` : '';
+
+    if (!supplierId || !supplierSku || !slug || !title || retailPrice <= 0 || cost <= 0 || images.length < 2) {
+      sourceErrors.push(`${supplierSku || supplierId || slug || title || 'unknown'}: missing required source identity/cost/media`);
+      continue;
     }
-  });
+    if (!Array.isArray(product.availability) || !product.availability.includes('US')) continue;
 
-  let imported = 0;
-  for (const detail of details.filter(Boolean) as Awaited<ReturnType<typeof detailFor>>[]) {
-    const affiliate = affiliateTarget(detail.category);
-    const productId = crypto.randomUUID();
+    const existing = existingByKey.get(supplierId) || existingByKey.get(supplierSku) || existingByKey.get(sourceUrl);
+    if (existing && (existing.status === 'archived' || existing.is_promotable === true)) {
+      preservedLive += existing.is_promotable === true ? 1 : 0;
+      continue;
+    }
+
+    const productId = text(existing?.id) || crypto.randomUUID();
+    const affiliate = affiliateTarget(retailPrice);
+    const existingInfo = existing?.supplier_info && typeof existing.supplier_info === 'object'
+      ? existing.supplier_info
+      : {};
+    const description = portableTextToPlainText(product.description) || `${title} — ${category}.`;
     const supplierInfo = {
+      ...existingInfo,
       supplier: 'Supliful',
       brand: BRAND_NAME,
-      catalog_slug: detail.slug,
-      supplier_product_id: null,
-      supplier_sku: null,
+      supplier_product_id: supplierId,
+      supplier_sku: supplierSku,
+      catalog_slug: slug,
       brand_logo_url: BRAND_LOGO,
       custom_label_required: true,
-      label_status: 'pending_supliful_approval',
-      branding_status: 'pending_supliful_label_approval',
-      base_cost_status: 'pending_account_cost',
-      shipping_status: 'pending_account_quote',
-      pricing_status: 'draft_not_for_sale',
-      activation_rule: 'require_real_supplier_cost_exact_supplier_id_sku_and_approved_label',
+      label_status: existingInfo?.label_status || 'pending_supliful_approval',
+      branding_status: existingInfo?.branding_status || 'pending_supliful_label_approval',
+      base_cost_status: 'conservative_public_tier1_loaded',
+      tier1_supplier_cost: cost,
+      public_supliful_price: product.priceSupliful ?? null,
+      suggested_retail: retailPrice,
+      tier_pricing: product.tierPricing || [],
+      availability: product.availability || [],
+      is_new: Boolean(product.isNew),
+      bestseller: Boolean(product.bestseller),
+      pricing_status: 'preview_not_for_sale',
+      shipping_status: existingInfo?.shipping_status || 'pending_exact_account_quote',
+      activation_rule: 'require_exact_account_cost_shipping_and_approved_loving_nutrition_label',
       affiliate_target: affiliate,
-      source: 'public_supliful_catalog_preview',
+      catalog_data_verified_at: new Date().toISOString(),
     };
 
-    const { error: insertError } = await supabase.from('products').insert({
+    previewRows.push({
       id: productId,
-      title: detail.title,
-      description: detail.description || `${detail.title} from Supliful, being prepared under the Loving Nutrition brand.`,
-      price: 0,
+      title,
+      description,
+      price: retailPrice,
       currency: 'USD',
-      images: detail.images,
-      category: detail.category,
-      product_type: detail.category,
+      images,
+      primary_image_url: images[0],
+      category,
+      product_type: category,
       seller_id: storefront.owner_id,
       status: 'store_only',
       is_active: true,
@@ -196,39 +197,64 @@ export const handler: Handler = async () => {
       source: 'supliful',
       dropship_provider: 'supliful',
       inventory_source: 'supliful',
-      external_id: `supliful-public:${detail.slug}`,
-      source_url: detail.sourceUrl,
-      supplier_cost_amount: 0,
+      is_dropshipped: true,
+      lineage: 'Supliful / Loving Nutrition',
+      external_id: supplierId,
+      external_product_id: supplierId,
+      vendor_sku: supplierSku,
+      sku: supplierSku,
+      source_url: sourceUrl,
+      supplier_cost_amount: cost,
+      base_cost_cents: Math.round(cost * 100),
+      retail_price_cents: Math.round(retailPrice * 100),
       seller_markup_amount: 0,
       affiliate_payout_amount: affiliate,
+      commission_rate: 0,
+      commission_type: 'flat_rate',
+      flat_commission_amount: affiliate,
+      affiliate_commission_type: 'flat',
+      affiliate_commission_value: affiliate,
+      shipping_cost: 0,
+      shipping_price: 0,
       shipping_reserve_amount: 0,
-      calculated_customer_price: 0,
+      calculated_customer_price: retailPrice,
+      seller_ask: cost,
+      seller_ask_price: cost,
       track_inventory: true,
       in_stock: false,
       stock_quantity: 0,
       total_inventory: 0,
       requires_shipping: true,
       is_digital: false,
-      import_status: 'awaiting_supliful_cost_and_label',
-      supplier_info: supplierInfo,
-      api_integration: 'supliful-catalog-preview-v1',
       auto_sync: true,
+      import_status: 'awaiting_supliful_account_price_shipping_and_label',
+      source_import_version: 'supliful_embedded_catalog_v2',
+      verification_status: 'needs_review',
+      supplier_info: supplierInfo,
+      updated_at: new Date().toISOString(),
     });
-    if (insertError) {
-      detailErrors.push(`${detail.slug}: DB ${insertError.message}`);
-      continue;
-    }
 
-    if (!existingPlacements.has(productId)) {
-      const { error: placementError } = await supabase.from('storefront_products').insert({
-        storefront_id: storefront.id,
-        product_id: productId,
-        position: nextPosition++,
-      });
-      if (placementError) detailErrors.push(`${detail.slug}: placement ${placementError.message}`);
+    if (!placementIds.has(productId)) {
+      placementCandidates.push({ productId, position: nextPosition++ });
+      placementIds.add(productId);
     }
-    existingUrls.add(detail.sourceUrl);
-    imported += 1;
+  }
+
+  if (previewRows.length) {
+    const { error } = await supabase.from('products').upsert(previewRows, { onConflict: 'id' });
+    if (error) throw new Error(`Supliful catalog upsert failed: ${error.message}`);
+  }
+
+  if (placementCandidates.length) {
+    const { error } = await supabase.from('storefront_products').insert(
+      placementCandidates.map((row) => ({
+        storefront_id: storefront.id,
+        product_id: row.productId,
+        position: row.position,
+        placement_source: 'supliful_catalog_sync',
+      }))
+    );
+    if (error) throw new Error(`Loving Nutrition placement insert failed: ${error.message}`);
   }
 
   const { count: currentCount } = await supabase
@@ -239,12 +265,12 @@ export const handler: Handler = async () => {
 
   console.log(JSON.stringify({
     ok: true,
-    discovered: discovered.size,
-    missingBeforeRun: missingSlugs.length,
-    imported,
+    sourceCount: catalog.length,
+    previewRowsSynced: previewRows.length,
+    placementsAdded: placementCandidates.length,
+    preservedLive,
     currentCount: currentCount || 0,
-    pageErrors: pageErrors.slice(0, 5),
-    detailErrors: detailErrors.slice(0, 10),
+    sourceErrors: sourceErrors.slice(0, 10),
   }));
 
   return { statusCode: 202, body: '' };
