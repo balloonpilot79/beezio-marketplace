@@ -1,10 +1,14 @@
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
+import { computeFixedTierPricing } from '../../shared/customerPrice';
 
 const CATALOG_URL = 'https://supliful.com/catalog';
 const BRAND_SLUG = 'loving-nutrition';
 const BRAND_NAME = 'Loving Nutrition';
 const BRAND_LOGO = '/loving-nutrition-logo.png';
+const SUPLIFUL_FIRST_UNIT_FULFILLMENT_FEE = 1.99;
+const SUPLIFUL_PROCESSING_RATE = 0.0299;
+const AFFILIATE_PAYOUT_OPTIONS = [25, 20, 15, 12, 10, 7] as const;
 
 type CatalogProduct = {
   id?: string;
@@ -20,6 +24,7 @@ type CatalogProduct = {
   priceSupliful?: number | null;
   tierPricing?: Array<{ tier?: number; price?: number }>;
   availability?: string[];
+  shippingFrom?: number | null;
   isNew?: boolean;
   bestseller?: boolean;
 };
@@ -53,10 +58,48 @@ function tierOneCost(product: CatalogProduct): number {
   return money(tier?.price);
 }
 
-function affiliateTarget(retailPrice: number): number {
-  if (retailPrice < 25) return 5;
-  if (retailPrice < 50) return 7;
-  return 10;
+function standardShippingReserve(product: CatalogProduct, cost: number, title: string, category: string): number {
+  const embeddedShipping = Number(product.shippingFrom || 0);
+  const shipping = embeddedShipping > 0
+    ? embeddedShipping
+    : /(protein|powder|coffee|tea|cacao|cocoa)/i.test(`${title} ${category}`)
+      ? 12
+      : 7;
+  const processing = money((cost + shipping + SUPLIFUL_FIRST_UNIT_FULFILLMENT_FEE) * SUPLIFUL_PROCESSING_RATE);
+  return money(shipping + SUPLIFUL_FIRST_UNIT_FULFILLMENT_FEE + processing);
+}
+
+function chooseLivePricing(params: {
+  cost: number;
+  suggestedRetail: number;
+  reserve: number;
+}) {
+  const markup = params.suggestedRetail >= 50 ? 8 : 6;
+  const softRetailCap = Math.max(params.suggestedRetail * 1.25, params.suggestedRetail + 10);
+
+  for (const affiliate of AFFILIATE_PAYOUT_OPTIONS) {
+    const pricing = computeFixedTierPricing({
+      supplierCost: params.cost,
+      sellerMarkup: markup,
+      affiliatePayout: affiliate,
+      shippingIncluded: params.reserve,
+    });
+    if (pricing.finalAdvertisedPrice <= softRetailCap) {
+      return { affiliate, markup, pricing };
+    }
+  }
+
+  const affiliate = AFFILIATE_PAYOUT_OPTIONS[AFFILIATE_PAYOUT_OPTIONS.length - 1];
+  return {
+    affiliate,
+    markup,
+    pricing: computeFixedTierPricing({
+      supplierCost: params.cost,
+      sellerMarkup: markup,
+      affiliatePayout: affiliate,
+      shippingIncluded: params.reserve,
+    }),
+  };
 }
 
 function parseCatalog(html: string): CatalogProduct[] {
@@ -73,7 +116,7 @@ function parseCatalog(html: string): CatalogProduct[] {
 async function fetchCatalog(): Promise<CatalogProduct[]> {
   const response = await fetch(CATALOG_URL, {
     headers: {
-      'User-Agent': 'Beezio-LovingNutrition-CatalogSync/2.0',
+      'User-Agent': 'Beezio-LovingNutrition-CatalogSync/3.0',
       Accept: 'text/html,application/xhtml+xml',
     },
   });
@@ -118,10 +161,10 @@ export const handler: Handler = async () => {
 
   const placementIds = new Set((placementRows || []).map((row: any) => text(row?.product_id)).filter(Boolean));
   let nextPosition = Math.max(0, ...(placementRows || []).map((row: any) => Number(row?.position || 0))) + 1;
-  const previewRows: any[] = [];
+  const liveRows: any[] = [];
   const placementCandidates: Array<{ productId: string; position: number }> = [];
+  const unavailableIds: string[] = [];
   const sourceErrors: string[] = [];
-  let preservedLive = 0;
 
   for (const product of catalog) {
     const supplierId = text(product.id);
@@ -129,25 +172,26 @@ export const handler: Handler = async () => {
     const slug = text(product.slug).toLowerCase();
     const title = text(product.name);
     const category = text(product.category?.name) || 'Supplements & Wellness';
-    const retailPrice = money(product.priceRetail);
+    const suggestedRetail = money(product.priceRetail);
     const cost = tierOneCost(product);
     const images = imagesFor(product);
     const sourceUrl = slug ? `${CATALOG_URL}/${slug}` : '';
+    const existing = existingByKey.get(supplierId) || existingByKey.get(supplierSku) || existingByKey.get(sourceUrl);
 
-    if (!supplierId || !supplierSku || !slug || !title || retailPrice <= 0 || cost <= 0 || images.length < 2) {
-      sourceErrors.push(`${supplierSku || supplierId || slug || title || 'unknown'}: missing required source identity/cost/media`);
+    if (existing?.status === 'archived') continue;
+    if (!Array.isArray(product.availability) || !product.availability.includes('US')) {
+      if (existing?.id) unavailableIds.push(text(existing.id));
       continue;
     }
-    if (!Array.isArray(product.availability) || !product.availability.includes('US')) continue;
 
-    const existing = existingByKey.get(supplierId) || existingByKey.get(supplierSku) || existingByKey.get(sourceUrl);
-    if (existing && (existing.status === 'archived' || existing.is_promotable === true)) {
-      preservedLive += existing.is_promotable === true ? 1 : 0;
+    if (!supplierId || !supplierSku || !slug || !title || suggestedRetail <= 0 || cost <= 0 || images.length < 2) {
+      sourceErrors.push(`${supplierSku || supplierId || slug || title || 'unknown'}: missing required source identity/cost/media`);
       continue;
     }
 
     const productId = text(existing?.id) || crypto.randomUUID();
-    const affiliate = affiliateTarget(retailPrice);
+    const reserve = standardShippingReserve(product, cost, title, category);
+    const { affiliate, markup, pricing } = chooseLivePricing({ cost, suggestedRetail, reserve });
     const existingInfo = existing?.supplier_info && typeof existing.supplier_info === 'object'
       ? existing.supplier_info
       : {};
@@ -166,37 +210,42 @@ export const handler: Handler = async () => {
       base_cost_status: 'conservative_public_tier1_loaded',
       tier1_supplier_cost: cost,
       public_supliful_price: product.priceSupliful ?? null,
-      suggested_retail: retailPrice,
+      suggested_retail: suggestedRetail,
       tier_pricing: product.tierPricing || [],
       availability: product.availability || [],
       is_new: Boolean(product.isNew),
       bestseller: Boolean(product.bestseller),
-      pricing_status: 'preview_not_for_sale',
-      shipping_status: existingInfo?.shipping_status || 'pending_exact_account_quote',
-      activation_rule: 'require_exact_account_cost_shipping_and_approved_loving_nutrition_label',
+      pricing_status: 'live_manual_fulfillment',
+      fulfillment_mode: 'manual_order',
+      manual_fulfillment_required: true,
+      shipping_status: 'us_standard_shipping_fulfillment_processing_reserved',
+      shipping_reserve: reserve,
       affiliate_target: affiliate,
+      seller_markup: markup,
+      live_customer_price: pricing.finalAdvertisedPrice,
+      activation_rule: 'manual_supliful_order_after_beezio_payment',
       catalog_data_verified_at: new Date().toISOString(),
     };
 
-    previewRows.push({
+    liveRows.push({
       id: productId,
       title,
       description,
-      price: retailPrice,
+      price: pricing.finalAdvertisedPrice,
       currency: 'USD',
       images,
       primary_image_url: images[0],
       category,
       product_type: category,
       seller_id: storefront.owner_id,
-      status: 'store_only',
+      status: 'active',
       is_active: true,
-      is_promotable: false,
-      affiliate_enabled: false,
+      is_promotable: true,
+      affiliate_enabled: true,
       source_platform: 'supliful',
       source: 'supliful',
       dropship_provider: 'supliful',
-      inventory_source: 'supliful',
+      inventory_source: 'supliful_manual',
       is_dropshipped: true,
       lineage: 'Supliful / Loving Nutrition',
       external_id: supplierId,
@@ -206,30 +255,34 @@ export const handler: Handler = async () => {
       source_url: sourceUrl,
       supplier_cost_amount: cost,
       base_cost_cents: Math.round(cost * 100),
-      retail_price_cents: Math.round(retailPrice * 100),
-      seller_markup_amount: 0,
+      retail_price_cents: Math.round(pricing.finalAdvertisedPrice * 100),
+      seller_markup_amount: markup,
+      seller_ask: pricing.sellerPayout,
+      seller_amount: pricing.sellerPayout,
+      seller_ask_price: pricing.sellerPayout,
       affiliate_payout_amount: affiliate,
       commission_rate: 0,
+      affiliate_commission_rate: 0,
       commission_type: 'flat_rate',
       flat_commission_amount: affiliate,
       affiliate_commission_type: 'flat',
       affiliate_commission_value: affiliate,
       shipping_cost: 0,
       shipping_price: 0,
-      shipping_reserve_amount: 0,
-      calculated_customer_price: retailPrice,
-      seller_ask: cost,
-      seller_ask_price: cost,
-      track_inventory: true,
-      in_stock: false,
+      shipping_reserve_amount: reserve,
+      calculated_customer_price: pricing.finalAdvertisedPrice,
+      influencer_allocation_amount: pricing.influencerAllocation,
+      paypal_processing_allowance: pricing.paypalProcessingAllowance,
+      track_inventory: false,
+      in_stock: true,
       stock_quantity: 0,
       total_inventory: 0,
       requires_shipping: true,
       is_digital: false,
       auto_sync: true,
-      import_status: 'awaiting_supliful_account_price_shipping_and_label',
-      source_import_version: 'supliful_embedded_catalog_v2',
-      verification_status: 'needs_review',
+      import_status: 'manual_fulfillment_ready',
+      source_import_version: 'supliful_embedded_catalog_v3_live',
+      verification_status: 'verified',
       supplier_info: supplierInfo,
       updated_at: new Date().toISOString(),
     });
@@ -240,9 +293,21 @@ export const handler: Handler = async () => {
     }
   }
 
-  if (previewRows.length) {
-    const { error } = await supabase.from('products').upsert(previewRows, { onConflict: 'id' });
-    if (error) throw new Error(`Supliful catalog upsert failed: ${error.message}`);
+  if (liveRows.length) {
+    const { error } = await supabase.from('products').upsert(liveRows, { onConflict: 'id' });
+    if (error) throw new Error(`Supliful live catalog upsert failed: ${error.message}`);
+  }
+
+  if (unavailableIds.length) {
+    const { error } = await supabase.from('products').update({
+      status: 'draft',
+      is_active: false,
+      is_promotable: false,
+      affiliate_enabled: false,
+      in_stock: false,
+      updated_at: new Date().toISOString(),
+    }).in('id', unavailableIds);
+    if (error) throw new Error(`Supliful unavailable-product hold failed: ${error.message}`);
   }
 
   if (placementCandidates.length) {
@@ -266,9 +331,9 @@ export const handler: Handler = async () => {
   console.log(JSON.stringify({
     ok: true,
     sourceCount: catalog.length,
-    previewRowsSynced: previewRows.length,
+    liveRowsSynced: liveRows.length,
     placementsAdded: placementCandidates.length,
-    preservedLive,
+    unavailableHeld: unavailableIds.length,
     currentCount: currentCount || 0,
     sourceErrors: sourceErrors.slice(0, 10),
   }));
