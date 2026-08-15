@@ -57,8 +57,5 @@ jobs:
         working-directory: project/project
         run: npm ci
 
-      - name: Link Netlify production site
-        run: npx --yes netlify-cli@latest link --id "$NETLIFY_SITE_ID"
-
       - name: Build and deploy production
-        run: npx --yes netlify-cli@latest deploy --build --prod --context production --message "GitHub $GITHUB_SHA"
+        run: npx --yes netlify-cli@latest deploy --site "$NETLIFY_SITE_ID" --build --prod --context production --message "GitHub $GITHUB_SHA"
