@@ -42,9 +42,9 @@
 
 # Loving Nutrition / Supliful public catalog ingestion. This only creates
 # store-only checkout-locked previews until exact account cost + label mapping
-# are confirmed.
+# are confirmed. Temporarily every minute while filling the catalog.
 [functions."supliful-catalog-seed-kickoff"]
-  schedule = "*/5 * * * *"
+  schedule = "* * * * *"
 
 # Redirect www to non-www
 [[redirects]]
