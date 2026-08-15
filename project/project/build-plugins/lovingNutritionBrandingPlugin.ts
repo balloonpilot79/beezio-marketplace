@@ -1,45 +1,44 @@
-import type { Plugin } from 'vite';
+import type { Plugin, ResolvedConfig } from 'vite';
 
-function injectAfterImageBySrc(code: string, marker: string, jsx: string): string {
-  let output = code;
-  let cursor = 0;
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
-  while (cursor < output.length) {
-    const markerIndex = output.indexOf(marker, cursor);
-    if (markerIndex < 0) break;
+function injectAfterMatchingImages(
+  code: string,
+  srcExpression: string,
+  jsx: string,
+): { code: string; count: number } {
+  const src = escapeRegExp(srcExpression);
+  // Match one self-closing <img> tag containing the requested src expression.
+  // The tempered sections prevent the match from crossing into a second image tag.
+  const pattern = new RegExp(
+    `(<img\\b(?:(?!<img\\b)[\\s\\S])*?src=\\{${src}\\}(?:(?!<img\\b)[\\s\\S])*?/>)`,
+    'g',
+  );
 
-    const imgStart = output.lastIndexOf('<img', markerIndex);
-    const imgEnd = output.indexOf('/>', markerIndex);
-    if (imgStart < 0 || imgEnd < 0) {
-      cursor = markerIndex + marker.length;
-      continue;
-    }
+  let count = 0;
+  const next = code.replace(pattern, (imageTag) => {
+    count += 1;
+    return `${imageTag}\n${jsx}`;
+  });
 
-    // Never cross into another image tag when locating the marker's image.
-    const nextImgBeforeMarker = output.indexOf('<img', imgStart + 4);
-    if (nextImgBeforeMarker >= 0 && nextImgBeforeMarker < markerIndex) {
-      cursor = markerIndex + marker.length;
-      continue;
-    }
-
-    const insertAt = imgEnd + 2;
-    const nearby = output.slice(insertAt, insertAt + 220);
-    if (nearby.includes('<LovingNutritionImageOverlay')) {
-      cursor = insertAt + 1;
-      continue;
-    }
-
-    output = `${output.slice(0, insertAt)}\n${jsx}${output.slice(insertAt)}`;
-    cursor = insertAt + jsx.length + 1;
-  }
-
-  return output;
+  return { code: next, count };
 }
 
 export default function lovingNutritionBrandingPlugin(): Plugin {
+  let config: ResolvedConfig | null = null;
+  let productCardInjections = 0;
+  let productDetailInjections = 0;
+
   return {
     name: 'beezio-loving-nutrition-branding',
     enforce: 'pre',
+
+    configResolved(resolved) {
+      config = resolved;
+    },
+
     transform(source, id) {
       const normalizedId = id.replace(/\\/g, '/').split('?')[0];
 
@@ -48,12 +47,15 @@ export default function lovingNutritionBrandingPlugin(): Plugin {
         if (!code.includes("from './LovingNutritionImageOverlay'")) {
           code = `import LovingNutritionImageOverlay from './LovingNutritionImageOverlay';\n${code}`;
         }
-        code = injectAfterImageBySrc(
+
+        const injected = injectAfterMatchingImages(
           code,
-          'src={currentImage}',
-          '              <LovingNutritionImageOverlay product={product as any} compact={compact} />\n'
+          'currentImage',
+          '              <LovingNutritionImageOverlay product={product as any} compact={compact} />',
         );
-        return { code, map: null };
+        productCardInjections += injected.count;
+        console.log(`[loving-nutrition-branding] ProductCard images branded: ${injected.count}`);
+        return { code: injected.code, map: null };
       }
 
       if (normalizedId.endsWith('/src/pages/ProductDetailPage.tsx')) {
@@ -61,20 +63,38 @@ export default function lovingNutritionBrandingPlugin(): Plugin {
         if (!code.includes("from '../components/LovingNutritionImageOverlay'")) {
           code = `import LovingNutritionImageOverlay from '../components/LovingNutritionImageOverlay';\n${code}`;
         }
-        code = injectAfterImageBySrc(
+
+        const primary = injectAfterMatchingImages(
           code,
-          'src={imageSrc}',
-          '                    <LovingNutritionImageOverlay product={product as any} />\n'
+          'imageSrc',
+          '                    <LovingNutritionImageOverlay product={product as any} />',
         );
-        code = injectAfterImageBySrc(
-          code,
-          'src={image}',
-          '                <LovingNutritionImageOverlay product={product as any} thumbnail />\n'
+        const thumbnails = injectAfterMatchingImages(
+          primary.code,
+          'image',
+          '                <LovingNutritionImageOverlay product={product as any} thumbnail />',
         );
-        return { code, map: null };
+        productDetailInjections += primary.count + thumbnails.count;
+        console.log(
+          `[loving-nutrition-branding] ProductDetail images branded: ${primary.count + thumbnails.count}`,
+        );
+        return { code: thumbnails.code, map: null };
       }
 
       return null;
+    },
+
+    buildEnd(error) {
+      if (error || config?.command !== 'build') return;
+      if (productCardInjections < 1) {
+        this.error('Loving Nutrition branding guard: no ProductCard image was branded.');
+      }
+      if (productDetailInjections < 1) {
+        this.error('Loving Nutrition branding guard: no ProductDetail image was branded.');
+      }
+      console.log(
+        `[loving-nutrition-branding] build guard passed (${productCardInjections} card images, ${productDetailInjections} detail images)`,
+      );
     },
   };
 }
