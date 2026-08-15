@@ -1,9 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import lovingNutritionBrandingPlugin from './build-plugins/lovingNutritionBrandingPlugin';
 
 export default defineConfig({
-  plugins: [lovingNutritionBrandingPlugin(), react()],
+  plugins: [react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
