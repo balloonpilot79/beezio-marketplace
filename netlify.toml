@@ -37,6 +37,9 @@
 [functions."cj-price-policy-kickoff"]
   schedule = "*/15 * * * *"
 
+[functions."cj-merch-quality-kickoff"]
+  schedule = "20,50 * * * *"
+
 # Redirect www to non-www
 [[redirects]]
   from = "https://www.beezio.co/*"
