@@ -25,7 +25,8 @@ export default async () => {
 };
 
 export const config: Config = {
-  // Seed runs at :00/:15/:30/:45. Offset audits so both workers do not hammer
-  // CJ's 1 request/second account limit at the same time.
-  schedule: '5,10,20,25,35,40,50,55 * * * *',
+  // Catalog seed: :00/:15/:30/:45. Price policy: :10/:40.
+  // Audit at clean slots between both workers to respect CJ's account-wide
+  // 1 request/second limit and avoid false QPS failures.
+  schedule: '5,20,35,50 * * * *',
 };
