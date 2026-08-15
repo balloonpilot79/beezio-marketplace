@@ -40,11 +40,11 @@
 [functions."cj-merch-quality-kickoff"]
   schedule = "20,50 * * * *"
 
-# Loving Nutrition / Supliful public catalog ingestion. This only creates
-# store-only checkout-locked previews until exact account cost + label mapping
-# are confirmed. Temporarily every minute while filling the catalog.
+# Loving Nutrition / Supliful full-catalog sync. One catalog response carries
+# the complete source dataset, so hourly is enough to keep preview identity,
+# cost baseline, availability, media, and newly added products fresh.
 [functions."supliful-catalog-seed-kickoff"]
-  schedule = "* * * * *"
+  schedule = "15 * * * *"
 
 # Redirect www to non-www
 [[redirects]]
