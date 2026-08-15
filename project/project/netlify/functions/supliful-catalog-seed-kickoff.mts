@@ -8,10 +8,10 @@ export default async () => {
     body: '{}',
   });
   if (response.status !== 202) {
-    console.error('Supliful catalog seed kickoff failed:', response.status);
+    console.error('Supliful catalog sync kickoff failed:', response.status);
   }
 };
 
 export const config: Config = {
-  schedule: '* * * * *',
+  schedule: '15 * * * *',
 };
