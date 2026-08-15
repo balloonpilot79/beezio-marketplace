@@ -1,0 +1,47 @@
+name: Deploy Beezio to Netlify
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: beezio-production-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: project/project/package-lock.json
+
+      - name: Verify Netlify deployment credentials
+        shell: bash
+        run: |
+          test -n "$NETLIFY_AUTH_TOKEN" || { echo "NETLIFY_AUTH_TOKEN is not configured"; exit 1; }
+          test -n "$NETLIFY_SITE_ID" || { echo "NETLIFY_SITE_ID is not configured"; exit 1; }
+
+      - name: Install app dependencies
+        working-directory: project/project
+        run: npm ci
+
+      - name: Link Netlify production site
+        run: npx --yes netlify-cli@latest link --id "$NETLIFY_SITE_ID"
+
+      - name: Build and deploy production
+        run: npx --yes netlify-cli@latest deploy --build --prod --context production --message "GitHub $GITHUB_SHA"
