@@ -26,7 +26,7 @@
 
 # SupplyLine Plus catalog and order automation.
 [functions."cj-seed-25-kickoff"]
-  schedule = "0 * * * *"
+  schedule = "0,15,30,45 * * * *"
 
 [functions."cj-sandbox-order-test-kickoff"]
   schedule = "*/15 * * * *"
@@ -34,8 +34,11 @@
 [functions."cj-auto-pay-kickoff"]
   schedule = "*/5 * * * *"
 
+# Seed runs at :00/:15/:30/:45 and pricing runs at :10/:40.
+# Keep exact live audits in quiet slots so CJ's account-wide 1 QPS limit is
+# not hit by multiple workers at once.
 [functions."cj-live-audit-kickoff"]
-  schedule = "*/5 * * * *"
+  schedule = "5,20,35,50 * * * *"
 
 # Cache control headers
 [[headers]]
