@@ -1,6 +1,11 @@
 import type { Config } from '@netlify/functions';
 
 export default async () => {
+  if (String(process.env.CJ_SANDBOX_AUTOMATION_ENABLED || '').trim().toLowerCase() !== 'true') {
+    console.log('CJ sandbox automation is disabled. Set CJ_SANDBOX_AUTOMATION_ENABLED=true to re-enable it intentionally.');
+    return;
+  }
+
   const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   const siteUrl = String(process.env.URL || 'https://beezio.co').replace(/\/$/, '');
 
