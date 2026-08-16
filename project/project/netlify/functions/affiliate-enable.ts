@@ -74,19 +74,26 @@ export const handler: Handler = async (event) => {
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     const profileId = await resolveOrCreateProfileId(supabaseAdmin, userData.user);
 
-    // Add affiliate role (best-effort across schema variants)
-    try {
-      const { error } = await supabaseAdmin.from('user_roles').insert({
-        user_id: userData.user.id,
-        role: 'affiliate',
-        is_active: true,
-      });
-      if (error && String((error as any).code) !== '23505') {
-        // ignore duplicates, otherwise surface
-        console.warn('affiliate-enable: user_roles insert failed:', error);
+    // Affiliates are also recruiter/influencer eligible. Keep both roles active so
+    // any affiliate can recruit sellers or affiliates and earn the lifetime slot.
+    for (const businessRole of ['affiliate', 'influencer']) {
+      try {
+        const { error } = await supabaseAdmin
+          .from('user_roles')
+          .upsert(
+            {
+              user_id: userData.user.id,
+              role: businessRole,
+              is_active: true,
+            },
+            { onConflict: 'user_id,role' }
+          );
+        if (error) {
+          console.warn(`affiliate-enable: ${businessRole} role upsert failed:`, error);
+        }
+      } catch {
+        // Database trigger also enforces affiliate -> influencer eligibility.
       }
-    } catch {
-      // ignore
     }
 
     // Some schemas store role on profiles; do not override primary_role if set.
@@ -104,7 +111,7 @@ export const handler: Handler = async (event) => {
       // ignore
     }
 
-    return json(200, { ok: true, profileId });
+    return json(200, { ok: true, profileId, recruiterEligible: true });
   } catch (e) {
     return json(500, { error: 'Unexpected error', details: e instanceof Error ? e.message : String(e) });
   }
