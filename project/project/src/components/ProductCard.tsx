@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Heart, ShoppingCart, Star, Award, ExternalLink } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { deriveAskPriceFromFinalPrice } from '../utils/pricingEngine';
 import { DEFAULT_PAYOUT_SETTINGS, PLATFORM_FEE_PERCENT } from '../config/beezioConfig';
 import { getFallbackProductImage, normalizeProductImages } from '../utils/imageHelpers';
@@ -121,7 +121,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const isSellingRole = isSellerRole || isAffiliateRole || canAddAsAffiliate || canAddAsSeller;
   const isStorefrontCtas = ctaMode === 'storefront';
   const showCommissionDisplay = !isStorefrontCtas && hasCommission;
-  const showPurchaseCtas = forcePurchaseCtas || isStorefrontCtas;
+  const showPurchaseCtas =
+    forcePurchaseCtas ||
+    isStorefrontCtas ||
+    product.is_active === true ||
+    product.is_promotable === true ||
+    String(product.status || '').trim().toLowerCase() === 'active';
   const showStoreCta = Boolean(user?.id) && !isStorefrontCtas && isSellingRole;
   const showAffiliateEarnings = !isStorefrontCtas && canAddAsAffiliate;
   const cartAffiliateId = String(affiliateRef || affiliateUid || '').trim() || undefined;
@@ -307,18 +312,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
     console.log('Adding to wishlist:', product.id);
   };
 
-  const handleViewProduct = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const params = new URLSearchParams();
-    if (affiliateRef) params.set('ref', affiliateRef);
-    if (affiliateUid) params.set('uid', affiliateUid);
-    const search = params.toString();
-    const url = search ? `/product/${product.id}?${search}` : `/product/${product.id}`;
-    navigate(url, { state: backState });
-  };
-
   const productTo = (() => {
     const params = new URLSearchParams();
     if (affiliateRef) params.set('ref', affiliateRef);
@@ -331,8 +324,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   const backState = useMemo(
     () => ({ from: `${location.pathname}${location.search}`, product }),
-    [location.pathname, location.search],
+    [location.pathname, location.search, product],
   );
+
+  const handleViewProduct = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(productTo, { state: backState });
+  };
+
+  const handleCardKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    navigate(productTo, { state: backState });
+  };
 
   const fallbackSeed = product.id || product.title;
   const imageCandidates = useMemo(
@@ -359,7 +364,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   if (viewMode === 'list') {
     return (
-      <Link to={productTo} state={backState} className="block">
+      <div
+        role="link"
+        tabIndex={0}
+        onClick={handleViewProduct}
+        onKeyDown={handleCardKeyDown}
+        className="block cursor-pointer rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-400"
+      >
         <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 p-6 transition-all duration-300 hover:border-purple-200 group">
           <div className="flex items-center space-x-6">
             <div className="relative">
@@ -543,12 +554,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
             </div>
           </div>
         </div>
-      </Link>
+      </div>
     );
   }
 
   return (
-    <Link to={productTo} state={backState} className={`block group ${compact ? 'w-40 min-w-40 flex-none sm:w-44 sm:min-w-44 lg:w-48 lg:min-w-48' : ''}`}>
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={handleViewProduct}
+      onKeyDown={handleCardKeyDown}
+      className={`block cursor-pointer rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-400 group ${compact ? 'w-40 min-w-40 flex-none sm:w-44 sm:min-w-44 lg:w-48 lg:min-w-48' : ''}`}
+    >
       <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 overflow-hidden transition-all duration-300 hover:border-purple-200 hover:-translate-y-1">
         <div className="relative">
           <img
@@ -707,18 +724,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     </div>
                   )}
 
-            <Link
-              to={productTo}
-              state={backState}
+            <button
+              type="button"
+              onClick={handleViewProduct}
               className={`w-full bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-all duration-200 flex items-center justify-center border border-gray-200 hover:border-gray-300 ${compact ? 'py-1.5 text-[10px]' : 'py-3'}`}
             >
               <ExternalLink className={`${compact ? 'w-3 h-3 mr-1' : 'w-4 h-4 mr-2'}`} />
               {showStoreCta ? 'View Product' : hasVariants ? 'View Options' : 'View Product'}
-            </Link>
+            </button>
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 };
 
