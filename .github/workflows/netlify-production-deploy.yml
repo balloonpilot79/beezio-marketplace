@@ -12,6 +12,10 @@ concurrency:
   group: beezio-production-deploy
   cancel-in-progress: true
 
+defaults:
+  run:
+    working-directory: project/project
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -34,6 +38,15 @@ jobs:
         run: |
           test -n "$NETLIFY_AUTH_TOKEN" || { echo "NETLIFY_AUTH_TOKEN is not configured"; exit 1; }
 
+      - name: Install app dependencies
+        run: npm ci
+
+      - name: Run production build
+        run: npm run build
+
+      - name: Run unit tests
+        run: npm run test
+
       - name: Discover Beezio Netlify site
         shell: bash
         run: |
@@ -53,9 +66,5 @@ jobs:
           test -n "$site_id" || { echo "Could not find the beezio.co Netlify site"; exit 1; }
           echo "NETLIFY_SITE_ID=$site_id" >> "$GITHUB_ENV"
 
-      - name: Install app dependencies
-        working-directory: project/project
-        run: npm ci
-
-      - name: Build and deploy production
-        run: npx --yes netlify-cli@latest deploy --site "$NETLIFY_SITE_ID" --build --prod --context production --message "GitHub $GITHUB_SHA"
+      - name: Deploy the canonical Beezio application
+        run: npx --yes netlify-cli@latest deploy --site "$NETLIFY_SITE_ID" --build --prod --context production --message "Beezio unified production $GITHUB_SHA"
