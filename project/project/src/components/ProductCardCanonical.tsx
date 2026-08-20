@@ -80,8 +80,24 @@ const CanonicalProductCard: React.FC<Props> = ({
     if (affiliateRef) params.set('ref', affiliateRef);
     if (affiliateUid) params.set('uid', affiliateUid);
     const query = params.toString();
-    return `/product/${product.id}${query ? `?${query}` : ''}`;
-  }, [affiliateRef, affiliateUid, product.id]);
+    const path = location.pathname;
+    let route = `/product/${product.id}`;
+
+    if (ctaMode === 'storefront') {
+      const namedStore = path.match(/^\/(store|seller|partner)\/([^/]+)/);
+      if (namedStore) {
+        route = `/${namedStore[1]}/${namedStore[2]}/product/${product.id}`;
+      } else {
+        const genericStore = path.match(/^\/([^/]+)(?:\/[^/]+)?$/);
+        const reserved = new Set(['marketplace', 'products', 'product', 'dashboard', 'account', 'admin', 'affiliate', 'partner', 'seller', 'store', 'cart', 'checkout', 'search', 'signup', 'login', 'auth']);
+        if (genericStore && !reserved.has(genericStore[1])) {
+          route = `/${genericStore[1]}/product/${product.id}`;
+        }
+      }
+    }
+
+    return `${route}${query ? `?${query}` : ''}`;
+  }, [affiliateRef, affiliateUid, ctaMode, location.pathname, product.id]);
 
   const images = useMemo(() => {
     const source = product.images?.length ? product.images : product.image ? [product.image] : [];
