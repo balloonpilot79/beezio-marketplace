@@ -4,7 +4,10 @@ import { computeFixedTierPricing } from './customerPrice';
 
 describe('fixed-tier Beezio pricing contract', () => {
   it.each([
-    [24.99, 1],
+    [0, 0],
+    [0.01, 2],
+    [19.99, 2],
+    [24.99, 2],
     [25, 2],
     [99.99, 2],
     [100, 4],
@@ -51,6 +54,27 @@ describe('fixed-tier Beezio pricing contract', () => {
     expect(result.estimatedCheckoutTotal).toBe(55.29);
   });
 
+  it('protects the $2 minimum actual Beezio profit on every product below $25', () => {
+    const result = computeFixedTierPricing({
+      sellerPayout: 10,
+      affiliatePayout: 0,
+      shippingIncluded: 0,
+    });
+
+    expect(result.finalAdvertisedPrice).toBeLessThan(25);
+    expect(result.platformFee).toBe(2);
+    // Influencer allocation is a separate pass-through bucket, never Beezio profit.
+    expect(result.influencerAllocation).toBe(1);
+  });
+
+  it('does not count an unused influencer allocation as Beezio profit', () => {
+    const result = computeFixedTierPricing({ sellerPayout: 10 });
+    const actualBeezioProfit = result.platformFee;
+
+    expect(actualBeezioProfit).toBe(2);
+    expect(actualBeezioProfit).not.toBe(result.platformFee + result.influencerAllocation);
+  });
+
   it('allows the seller to offer an affiliate payout larger than the seller payout', () => {
     const result = computeFixedTierPricing({
       supplierCost: 4,
@@ -60,7 +84,7 @@ describe('fixed-tier Beezio pricing contract', () => {
 
     expect(result.sellerPayout).toBe(5);
     expect(result.affiliatePayout).toBe(8);
-    expect(result.finalAdvertisedPrice).toBeGreaterThanOrEqual(13);
+    expect(result.finalAdvertisedPrice).toBeGreaterThanOrEqual(15);
   });
 
   it('does not enforce markup or affiliate minimums', () => {
@@ -75,10 +99,10 @@ describe('fixed-tier Beezio pricing contract', () => {
   });
 
   it('uses $1 total influencer allocation only when the settled price is under $20', () => {
-    const under = computeFixedTierPricing({ sellerPayout: 15 });
+    const under = computeFixedTierPricing({ sellerPayout: 10 });
     const crossed = computeFixedTierPricing({ sellerPayout: 17 });
 
-    expect(under.finalAdvertisedPrice).toBe(18.34);
+    expect(under.finalAdvertisedPrice).toBe(19.38);
     expect(under.influencerAllocation).toBe(1);
     expect(under.influencerPerSlot).toBe(0.5);
     expect(crossed.finalAdvertisedPrice).toBeGreaterThanOrEqual(20);
