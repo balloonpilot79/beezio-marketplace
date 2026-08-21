@@ -6,417 +6,205 @@ interface HomePageProps {
 }
 
 const HomePage: React.FC<HomePageProps> = ({ onOpenAuthModal }) => {
+  const openRegister = () => onOpenAuthModal({ isOpen: true, mode: 'register' });
+  const openLogin = () => onOpenAuthModal({ isOpen: true, mode: 'login' });
+
   return (
-    <div className="min-h-screen bg-gradient-bg">
-      
-      {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-bg text-gray-900">
+      {/* Hero */}
+      <section className="relative overflow-hidden px-4 pb-20 pt-16 sm:px-6 lg:px-8 lg:pt-24">
+        <div className="pointer-events-none absolute inset-0 opacity-60">
+          <div className="absolute left-1/2 top-0 h-72 w-72 -translate-x-1/2 rounded-full bg-yellow-200/40 blur-3xl" />
+          <div className="absolute right-0 top-32 h-64 w-64 rounded-full bg-purple-200/40 blur-3xl" />
+        </div>
+        <div className="relative mx-auto max-w-7xl">
+          <div className="mx-auto max-w-5xl text-center">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur">
+              <span>🐝</span>
+              <span>Sell. Promote. Earn.</span>
+            </div>
+            <h1 className="font-display text-5xl font-bold leading-tight tracking-tight text-gray-900 lg:text-7xl">
+              One platform for people who want to
+              <span className="block text-gradient">sell, promote, and grow.</span>
+            </h1>
+            <p className="mx-auto mt-7 max-w-3xl text-lg leading-relaxed text-gray-600 sm:text-xl">
+              Beezio connects sellers, affiliates, influencers, and buyers in one marketplace.
+              Sellers build stores. Promoters choose what they want to promote. Buyers shop through a simple checkout.
+              Everyone gets clear tracking of the activity that belongs to them.
+            </p>
+            <div className="mt-9 flex flex-col justify-center gap-4 sm:flex-row">
+              <button onClick={openRegister} className="btn-primary px-8 py-4 text-lg">
+                Get Started Free
+              </button>
+              <Link to="/products" className="btn-secondary px-8 py-4 text-center text-lg">
+                Browse the Marketplace
+              </Link>
+            </div>
+            <p className="mt-4 text-sm text-gray-500">No subscription required to start. Earnings are based on qualifying sales and referrals.</p>
+          </div>
+
+          <div className="mx-auto mt-14 grid max-w-6xl gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              ['🏪', 'Sellers', 'Create products and build a branded storefront.'],
+              ['🤝', 'Affiliates', 'Choose products, create promotions, and earn from attributed sales.'],
+              ['📣', 'Influencers', 'Promote products and refer sellers or affiliates for ongoing qualifying earnings.'],
+              ['🛒', 'Buyers', 'Shop products from Beezio and independent storefronts.'],
+            ].map(([icon, title, text]) => (
+              <div key={title} className="rounded-2xl border border-white/80 bg-white/85 p-6 text-center shadow-lg backdrop-blur">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-50 text-3xl">{icon}</div>
+                <h3 className="text-lg font-bold">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-gray-600">{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="border-y border-slate-200 bg-white py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-sm font-bold uppercase tracking-wider text-purple-600">How Beezio works</p>
+            <h2 className="mt-2 text-4xl font-bold">A simple path from product to promotion to purchase.</h2>
+            <p className="mt-4 text-lg text-gray-600">We handle the commerce infrastructure while each participant focuses on what they do best.</p>
+          </div>
+
+          <div className="mt-14 grid gap-6 md:grid-cols-4">
+            {[
+              ['01', 'A product is listed', 'Sellers can create products and manage their own storefronts.'],
+              ['02', 'Someone promotes it', 'Affiliates can add products to their stores or create a single-product promotion.'],
+              ['03', 'A buyer purchases', 'The customer shops through Beezio checkout and the sale is attributed to the correct participants.'],
+              ['04', 'The sale is tracked', 'Earnings, holds, payouts, and transaction history are recorded for the people who earned them.'],
+            ].map(([number, title, text]) => (
+              <div key={number} className="rounded-2xl border border-slate-200 bg-slate-50 p-7">
+                <div className="text-sm font-bold text-purple-600">{number}</div>
+                <h3 className="mt-3 text-xl font-bold">{title}</h3>
+                <p className="mt-3 leading-relaxed text-gray-600">{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Role paths */}
+      <section className="bg-slate-50 py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            
-            {/* Main Hero Content */}
-            <div className="animate-fadeInUp">
-              <h1 className="text-5xl lg:text-7xl font-display font-bold text-gray-900 mb-6 leading-tight">
-                The Platform Where
-                <span className="block text-gradient">Everyone Wins</span>
-              </h1>
-              <p className="text-xl lg:text-2xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed">
-                Launch a custom store, set the amount you want to earn, and let Beezio handle the rest.<br/>
-                <span className="text-lg text-gray-500">Sellers sell, affiliates and influencers earn, and buyers check out through one platform.</span>
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-                <button 
-                  onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
-                  className="btn-primary text-lg px-8 py-4"
-                >
-                  Start Making Money Today
-                </button>
-                <button 
-                  onClick={() => onOpenAuthModal({ isOpen: true, mode: 'login' })}
-                  className="btn-secondary text-lg px-8 py-4"
-                >
-                  Explore The Platform
-                </button>
-              </div>
-              
-              {/* What Beezio Is All About */}
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl max-w-5xl mx-auto">
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <span className="text-3xl">🏪</span>
-                    </div>
-                    <h4 className="font-bold text-gray-900 mb-2">Sellers Profit</h4>
-                    <p className="text-sm text-gray-600">Custom storefronts with seller-owned products</p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <span className="text-3xl">🤝</span>
-                    </div>
-                    <h4 className="font-bold text-gray-900 mb-2">Partners Earn</h4>
-                    <p className="text-sm text-gray-600">Free to join and earn through tracked sales</p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <span className="text-3xl">💝</span>
-                    </div>
-                    <h4 className="font-bold text-gray-900 mb-2">Campaigns Grow</h4>
-                    <p className="text-sm text-gray-600">Commerce-powered support</p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <span className="text-3xl">🛒</span>
-                    </div>
-                    <h4 className="font-bold text-gray-900 mb-2">Buyers Save</h4>
-                    <p className="text-sm text-gray-600">Discounts while supporting causes</p>
-                  </div>
-                </div>
-              </div>
+            <p className="text-sm font-bold uppercase tracking-wider text-purple-600">Choose your path</p>
+            <h2 className="mt-2 text-4xl font-bold">Beezio works differently for every role.</h2>
+          </div>
+          <div className="mt-12 grid gap-7 lg:grid-cols-3">
+            <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+              <div className="text-3xl">🏪</div>
+              <h3 className="mt-5 text-2xl font-bold">For Sellers</h3>
+              <ul className="mt-5 space-y-3 text-gray-600">
+                <li>✓ Create and manage products</li>
+                <li>✓ Build a custom storefront</li>
+                <li>✓ Manage variants, inventory, orders, and customers</li>
+                <li>✓ Set the amount you want to receive from a sale</li>
+                <li>✓ Track sales and earnings from your private dashboard</li>
+              </ul>
+              <Link to="/sellers" className="mt-7 block rounded-xl bg-slate-900 px-6 py-3 text-center font-semibold text-white transition hover:bg-slate-800">Learn About Selling</Link>
+            </div>
+
+            <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+              <div className="text-3xl">🤝</div>
+              <h3 className="mt-5 text-2xl font-bold">For Affiliates</h3>
+              <ul className="mt-5 space-y-3 text-gray-600">
+                <li>✓ Browse the marketplace for products to promote</li>
+                <li>✓ Add products to your custom store</li>
+                <li>✓ Create single-product promotions</li>
+                <li>✓ Use tracked links and promotional tools</li>
+                <li>✓ Track clicks, sales, commissions, holds, and payouts</li>
+              </ul>
+              <Link to="/affiliates" className="mt-7 block rounded-xl bg-green-600 px-6 py-3 text-center font-semibold text-white transition hover:bg-green-700">Explore Affiliate Opportunities</Link>
+            </div>
+
+            <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+              <div className="text-3xl">📣</div>
+              <h3 className="mt-5 text-2xl font-bold">For Influencers & Referrers</h3>
+              <ul className="mt-5 space-y-3 text-gray-600">
+                <li>✓ Promote products with tracked attribution</li>
+                <li>✓ Refer sellers and affiliates</li>
+                <li>✓ Earn the applicable referral reward on qualifying sales</li>
+                <li>✓ Keep your referral relationship connected to the people you bring in</li>
+                <li>✓ See earnings, holds, available funds, and payout history</li>
+              </ul>
+              <button onClick={openRegister} className="mt-7 block w-full rounded-xl bg-purple-600 px-6 py-3 text-center font-semibold text-white transition hover:bg-purple-700">Join Beezio</button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Trust Section */}
-      <section className="py-16 bg-slate-50 border-y border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Built To Be Clear, Not Hype-Heavy</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              The strongest trust signal is specificity. Beezio explains how storefronts, pricing, and payouts actually work.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
-            <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-              <div className="text-sm font-semibold text-slate-900 mb-2">No Monthly Fee To Start</div>
-              <p className="text-sm text-slate-600">
-                Sellers, affiliates, and influencers can create accounts and start using the platform without a subscription wall.
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-              <div className="text-sm font-semibold text-slate-900 mb-2">Seller-Owned Storefronts</div>
-              <p className="text-sm text-slate-600">
-                Every seller gets a custom storefront they can brand, manage, and share.
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-              <div className="text-sm font-semibold text-slate-900 mb-2">Automatic Product Population</div>
-              <p className="text-sm text-slate-600">
-                When a seller adds their own product, it appears in that seller’s storefront automatically.
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-              <div className="text-sm font-semibold text-slate-900 mb-2">Payout-First Pricing</div>
-              <p className="text-sm text-slate-600">
-                Sellers set the amount they want to earn first. Beezio adds platform and payment costs on top of that target.
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-              <div className="text-sm font-semibold text-slate-900 mb-2">Trackable Orders And Earnings</div>
-              <p className="text-sm text-slate-600">
-                Storefronts, checkout, links, and earnings reporting all run through the same system.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* What Makes Beezio Different */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">What Makes Beezio Different?</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Unlike other platforms that only serve one type of user, Beezio is designed for everyone to succeed together
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">🏪</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Sellers Make Money</h3>
-              <p className="text-gray-600">Every seller gets a custom storefront, and products you add populate into that store automatically.</p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">🤝</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Partners Earn Big</h3>
-              <p className="text-gray-600">Join free, share storefronts and product links, and earn on tracked activity without a subscription fee.</p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">💝</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Campaigns Powered by Commerce</h3>
-              <p className="text-gray-600">Generate support from attributed purchases instead of direct asks. Higher conversion.</p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">🛒</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Buyers Save Money</h3>
-              <p className="text-gray-600">Buy through partner links and get cashback while shopping smart.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How Everyone Wins */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">How Everyone Wins on Beezio</h2>
-            <p className="text-xl text-gray-600">An ecosystem where every participant benefits</p>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-12">
-            
-            {/* Sellers Section */}
-            <div className="bg-white p-8 rounded-lg shadow-sm border">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
-                <span className="text-2xl">🏪</span>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">For Sellers</h3>
-              
-              <div className="space-y-4 mb-6">
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Printful Integration:</strong> Seamlessly connect your print-on-demand business</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Shopify Store Import:</strong> Bring your existing store over in minutes</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Custom Storefront Included:</strong> Every seller gets a store they can brand and share</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Automatic Store Population:</strong> Add your own product and it appears in your storefront automatically</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Keep What You Set:</strong> If you want $25, you get $25. Platform and payment costs are added on top.</span>
-                </div>
-              </div>
-              
-              <Link
-                to="/sellers"
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200 block text-center"
-              >
-                Start Selling
-              </Link>
-            </div>
-
-            {/* Partners Section */}
-            <div className="bg-white p-8 rounded-lg shadow-sm border">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-6">
-                <span className="text-2xl">🤝</span>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">For Partners</h3>
-              
-              <div className="space-y-4 mb-6">
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Free To Join:</strong> Start promoting without paying a monthly subscription</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Self-Purchase Rewards:</strong> Buy products and get your commission back</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Trackable Earnings:</strong> Use storefronts, links, and reporting to see what your activity generates</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Built For Real Selling:</strong> Promote active marketplace products inside a live checkout flow</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Multiple Earning Paths:</strong> Affiliates and influencers can both start free and earn from attributed activity</span>
-                </div>
-              </div>
-              
-              <Link
-                to="/affiliates"
-                className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors duration-200 block text-center"
-              >
-                Become Partner
-              </Link>
-            </div>
-
-            {/* Campaigns Section */}
-            <div className="bg-white p-8 rounded-lg shadow-sm border">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-6">
-                <span className="text-2xl">💝</span>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">For Campaigns</h3>
-              
-              <div className="space-y-4 mb-6">
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Commerce-Powered:</strong> Earn support from attributed product purchases</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Higher Success:</strong> People prefer getting value for their money</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Transparent Fees:</strong> Support is derived from commerce and attribution</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Built-in Promotion:</strong> Our partners help spread your products</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 mr-3"></div>
-                  <span className="text-gray-700"><strong>Global Reach:</strong> Supporters worldwide can help</span>
-                </div>
-              </div>
-              
-              <Link
-                to="/campaigns"
-                className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors duration-200 block text-center"
-              >
-                Launch a Campaign
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* The Smart Shopping Revolution */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+      {/* Economics without trade secrets */}
+      <section className="bg-white py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">Why The Model Is Different</h2>
-              <p className="text-xl text-gray-600 mb-8">
-                Beezio works best when the economics are clear up front instead of hidden behind vague promises.
+              <p className="text-sm font-bold uppercase tracking-wider text-purple-600">Clear economics</p>
+              <h2 className="mt-2 text-4xl font-bold">Simple for users. Powerful behind the scenes.</h2>
+              <p className="mt-5 text-lg leading-relaxed text-gray-600">
+                Beezio keeps the complicated commerce, attribution, accounting, and payout infrastructure behind the scenes.
+                Users see the information that matters to them without exposing private platform logic.
               </p>
-              
-              <div className="space-y-6">
-                <div className="flex items-start">
-                  <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-4 mt-1">
-                    <span className="text-orange-600 font-bold">💰</span>
+              <div className="mt-7 space-y-4">
+                {[
+                  ['Seller-first payouts', 'The seller payout they establish is protected by Beezio pricing rules.'],
+                  ['Promotion earnings', 'Affiliate and referral earnings are tracked separately from seller earnings.'],
+                  ['Transparent status', 'Dashboards show earnings, money on hold, available funds, and payout history.'],
+                  ['Protected checkout', 'Orders and attribution are recorded through one checkout and ledger system.'],
+                ].map(([title, text]) => (
+                  <div key={title} className="flex gap-4 rounded-2xl bg-slate-50 p-5">
+                    <div className="mt-1 text-green-600">✓</div>
+                    <div><h4 className="font-bold">{title}</h4><p className="mt-1 text-sm text-gray-600">{text}</p></div>
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-lg mb-2">Sellers Choose Their Earnings First</h4>
-                    <p className="text-gray-600">Beezio is built so the seller payout target stays intact and required costs are layered on top of that number.</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-4 mt-1">
-                    <span className="text-blue-600 font-bold">🎯</span>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-lg mb-2">Storefronts Stay Seller-Owned</h4>
-                    <p className="text-gray-600">Each seller gets a custom store, and each seller-added product is automatically available inside that store.</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4 mt-1">
-                    <span className="text-green-600 font-bold">🔄</span>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-lg mb-2">Specific Beats Hype</h4>
-                    <p className="text-gray-600">No subscription required to start. Clear payouts, live products, trackable activity, and one checkout path.</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
-            
-            <div className="bg-gradient-to-br from-orange-50 to-purple-50 p-8 rounded-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Example: Seller Sets The Payout</h3>
-              
-              <div className="space-y-4">
-                <div className="bg-white p-4 rounded-lg border-l-4 border-blue-500">
-                  <h5 className="font-semibold">📱 Seller wants to earn $25</h5>
-                  <div className="text-sm text-gray-600 mt-2 space-y-1">
-                    <div>• Seller payout target: $25.00</div>
-                    <div>• Platform fee is added on top</div>
-                    <div>• Payment processing is added on top</div>
-                    <div>• Buyer sees the final checkout price before paying</div>
-                  </div>
-                </div>
-                
-                <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-                  <h5 className="font-semibold">🤝 What affiliates and influencers see</h5>
-                  <div className="text-sm text-gray-600 mt-2 space-y-1">
-                    <div>• Free account creation</div>
-                    <div>• Share storefronts and tracked links</div>
-                    <div>• <strong>Earn on attributed activity without paying a subscription fee</strong></div>
-                  </div>
-                </div>
+
+            <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 p-8 text-white shadow-xl">
+              <p className="text-sm font-semibold uppercase tracking-wider text-white/70">The Beezio promise</p>
+              <h3 className="mt-3 text-3xl font-bold">You focus on selling or promoting. Beezio handles the machinery.</h3>
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                {['Marketplace', 'Custom storefronts', 'Promotion tools', 'Tracked attribution', 'Order records', 'Earnings ledgers', '14-day holds', 'PayPal payouts'].map((item) => (
+                  <div key={item} className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-medium">✓ {item}</div>
+                ))}
               </div>
-              
-              <div className="mt-6 p-4 bg-gradient-to-r from-green-400 to-blue-500 text-white rounded-lg text-center">
-                <strong>Clear storefronts, clear payouts, clear tracking</strong>
-              </div>
+              <p className="mt-7 text-sm leading-relaxed text-white/70">
+                Beezio does not promise guaranteed income. Earnings depend on actual qualifying sales and referral activity.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-purple-600 to-indigo-600">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl font-display font-bold text-white mb-6">
-            Ready to Join the Beezio Ecosystem?
-          </h2>
-          <p className="text-xl text-white/90 mb-8">
-            Whether you want to sell, promote, or launch a storefront, Beezio is built to make the economics clear.
-            Start without a subscription and grow with seller-owned storefronts, tracked promotion, and live checkout.
+      {/* Trust / privacy */}
+      <section className="border-y border-slate-200 bg-slate-50 py-16">
+        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6">
+          <h2 className="text-3xl font-bold">Built to be clear without exposing the machinery.</h2>
+          <p className="mx-auto mt-4 max-w-3xl text-lg leading-relaxed text-gray-600">
+            Beezio explains what participants can do, how earnings are created, and how orders and payouts are tracked.
+            Proprietary pricing logic, fraud controls, internal platform operations, and other confidential implementation details stay behind the platform.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button 
-              onClick={() => onOpenAuthModal({ isOpen: true, mode: 'register' })}
-              className="bg-white text-purple-600 hover:bg-gray-100 font-semibold px-8 py-4 rounded-lg text-lg transition-colors duration-200 transform hover:-translate-y-1"
-            >
-              🚀 Get Started Now
-            </button>
-            <Link
-              to="/products"
-              className="border-2 border-white text-white hover:bg-white hover:text-purple-600 font-semibold px-8 py-4 rounded-lg text-lg transition-colors duration-200 text-center"
-            >
-              Browse Products
-            </Link>
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link to="/faq" className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-800 transition hover:bg-slate-100">Read the FAQs</Link>
+            <button onClick={openLogin} className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-800 transition hover:bg-slate-100">Sign In</button>
           </div>
-          
-          {/* Stats */}
-          <div className="mt-12 grid grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white">Everyone</div>
-              <div className="text-white/80 text-sm">Wins Together</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white">$0</div>
-              <div className="text-white/80 text-sm">To Start</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white">Global</div>
-              <div className="text-white/80 text-sm">Platform</div>
-            </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl text-center text-white">
+          <div className="text-5xl">🐝</div>
+          <h2 className="mt-5 text-4xl font-bold">Ready to build your Beezio income stream?</h2>
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-white/90">
+            Sell your products, promote products you believe in, build a storefront, or refer people into the ecosystem.
+            Start free and let qualifying sales create the earnings.
+          </p>
+          <div className="mt-9 flex flex-col justify-center gap-4 sm:flex-row">
+            <button onClick={openRegister} className="rounded-xl bg-white px-8 py-4 text-lg font-bold text-purple-700 transition hover:bg-gray-100">Create Your Free Account</button>
+            <Link to="/products" className="rounded-xl border-2 border-white px-8 py-4 text-center text-lg font-bold text-white transition hover:bg-white hover:text-purple-700">Shop the Marketplace</Link>
           </div>
         </div>
       </section>
