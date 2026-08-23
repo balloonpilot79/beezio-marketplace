@@ -1,5 +1,3 @@
-import type { Config } from '@netlify/functions';
-
 export default async () => {
   const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   const siteUrl = String(process.env.URL || 'https://beezio.co').replace(/\/$/, '');
@@ -22,8 +20,4 @@ export default async () => {
     const body = await response.text().catch(() => '');
     console.error('CJ auto-pay background kickoff failed:', response.status, body.slice(0, 300));
   }
-};
-
-export const config: Config = {
-  schedule: '*/5 * * * *',
 };
