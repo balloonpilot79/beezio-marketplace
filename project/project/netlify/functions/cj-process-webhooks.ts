@@ -3,8 +3,6 @@ import { processCJWebhookPayload } from './_lib/cj-webhook-events';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { json } from './_lib/http';
 
-export const config = { schedule: '* * * * *' };
-
 export const handler: Handler = async () => {
   const supabaseAdmin = createSupabaseAdmin();
   const { data: rows, error } = await supabaseAdmin
