@@ -1,5 +1,3 @@
-import type { Config } from '@netlify/functions';
-
 export default async () => {
   const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   const supabaseUrl = String(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
@@ -25,9 +23,4 @@ export default async () => {
     const body = await response.text().catch(() => '');
     console.log('CJ video cleanup complete:', body.slice(0, 300));
   }
-};
-
-export const config: Config = {
-  // CJ catalog seed runs every 15 minutes. Cleanup shortly after each cycle.
-  schedule: '12,27,42,57 * * * *',
 };
