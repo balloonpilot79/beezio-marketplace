@@ -1,5 +1,3 @@
-import type { Config } from '@netlify/functions';
-
 export default async () => {
   if (String(process.env.CJ_SANDBOX_AUTOMATION_ENABLED || '').trim().toLowerCase() !== 'true') {
     console.log('CJ sandbox automation is disabled. Set CJ_SANDBOX_AUTOMATION_ENABLED=true to re-enable it intentionally.');
@@ -29,8 +27,4 @@ export default async () => {
   } else {
     console.log('CJ state-aware sandbox verification background run accepted.');
   }
-};
-
-export const config: Config = {
-  schedule: '*/15 * * * *',
 };
