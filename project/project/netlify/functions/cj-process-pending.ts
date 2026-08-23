@@ -17,8 +17,6 @@ const supabase = createClient(
   SUPABASE_SERVICE_ROLE_KEY || 'missing-service-role-key'
 );
 
-export const config = { schedule: '*/5 * * * *' };
-
 export const handler: Handler = async () => {
   const { data: pending, error } = await supabase
     .from('cj_orders')
