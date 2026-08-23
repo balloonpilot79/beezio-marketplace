@@ -3,8 +3,6 @@ import { json } from './_lib/http';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { syncCJWebhookSubscriptions } from './_lib/cj-webhook-subscriptions';
 
-export const config = { schedule: '@hourly' };
-
 export const handler: Handler = async () => {
   try {
     const result = await syncCJWebhookSubscriptions({
