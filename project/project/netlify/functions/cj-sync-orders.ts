@@ -4,8 +4,6 @@ import { applyCJOrderUpdate, extractCJOrderUpdate } from './_lib/cj-order-status
 import { createSupabaseAdmin } from './_lib/supabase';
 import { json } from './_lib/http';
 
-export const config = { schedule: '*/15 * * * *' };
-
 export const handler: Handler = async () => {
   const supabaseAdmin = createSupabaseAdmin();
   const { data: rows, error } = await supabaseAdmin
