@@ -1,5 +1,3 @@
-import type { Config } from '@netlify/functions';
-
 export default async () => {
   if (String(process.env.CJ_CATALOG_AUTOMATION_ENABLED || '').trim().toLowerCase() !== 'true') {
     console.log('CJ catalog seeding is disabled. Set CJ_CATALOG_AUTOMATION_ENABLED=true to re-enable it intentionally.');
@@ -29,8 +27,4 @@ export default async () => {
   } else {
     console.log('CJ corrected price-tier seed accepted.');
   }
-};
-
-export const config: Config = {
-  schedule: '*/15 * * * *',
 };
