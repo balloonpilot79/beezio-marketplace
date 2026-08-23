@@ -8,43 +8,10 @@
   NODE_VERSION = "20.19.0"
   NPM_FLAGS = "--production=false"
 
-# Explicit CJ schedules. Keep these at repo root because this is the Netlify
-# config that selects the project/project build base.
-[functions."cj-process-webhooks"]
-  schedule = "* * * * *"
-
-[functions."cj-process-pending"]
-  schedule = "*/5 * * * *"
-
-[functions."cj-sync-orders"]
-  schedule = "*/15 * * * *"
-
-[functions."cj-sync-webhook-subscriptions"]
-  schedule = "@hourly"
-
-[functions."cj-seed-25-kickoff"]
-  schedule = "*/15 * * * *"
-
-[functions."cj-sandbox-order-test-kickoff"]
-  schedule = "*/15 * * * *"
-
-[functions."cj-auto-pay-kickoff"]
-  schedule = "*/5 * * * *"
-
-[functions."cj-live-audit-kickoff"]
-  schedule = "*/5 * * * *"
-
-[functions."cj-price-policy-kickoff"]
-  schedule = "*/15 * * * *"
-
-[functions."cj-merch-quality-kickoff"]
-  schedule = "20,50 * * * *"
-
-# Loving Nutrition / Supliful full-catalog sync. One catalog response carries
-# the complete source dataset, so hourly is enough to keep preview identity,
-# cost baseline, availability, media, and newly added products fresh.
-[functions."supliful-catalog-seed-kickoff"]
-  schedule = "15 * * * *"
+# IMPORTANT: No scheduled/background functions in the beta launch build.
+# These jobs were running automatically even when the site was idle and were
+# consuming Functions compute credits. Order/fulfillment functions remain
+# available on demand through their normal endpoints.
 
 # Redirect www to non-www
 [[redirects]]
@@ -75,21 +42,6 @@
   status = 200
 
 [[redirects]]
-  from = "/api/stripe/webhook"
-  to = "/.netlify/functions/stripe-webhook"
-  status = 200
-
-[[redirects]]
-  from = "/api/stripe/account-status"
-  to = "/.netlify/functions/stripe-account-status"
-  status = 200
-
-[[redirects]]
-  from = "/api/stripe/create-embedded-account"
-  to = "/.netlify/functions/stripe-create-embedded-account"
-  status = 200
-
-[[redirects]]
   from = "/api/user-earnings"
   to = "/.netlify/functions/user-earnings"
   status = 200
@@ -106,7 +58,6 @@
   [headers.values]
     Cache-Control = "max-age=31536000, immutable"
 
-# Security headers for main HTML
 [[headers]]
   for = "/*.html"
   [headers.values]
