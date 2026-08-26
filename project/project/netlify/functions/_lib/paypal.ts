@@ -85,6 +85,54 @@ export function paypalRequestId(prefix = 'bzo'): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+export async function refundPayPalCapture(args: {
+  captureId: string;
+  amount?: number | null;
+  currency?: string | null;
+  note?: string | null;
+}): Promise<any> {
+  const captureId = String(args.captureId || '').trim();
+  if (!captureId) throw new Error('Missing PayPal capture ID for refund.');
+
+  const baseUrl = await getPayPalBaseUrl();
+  const token = await getPayPalAccessToken();
+  const amount = Number(args.amount);
+  const currency = String(args.currency || 'USD').trim().toUpperCase() || 'USD';
+
+  const body: Record<string, any> = {};
+  if (Number.isFinite(amount) && amount > 0) {
+    body.amount = {
+      value: amount.toFixed(2),
+      currency_code: currency,
+    };
+  }
+  if (String(args.note || '').trim()) body.note_to_payer = String(args.note).trim().slice(0, 165);
+
+  const res = await fetch(`${baseUrl}/v2/payments/captures/${encodeURIComponent(captureId)}/refund`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'PayPal-Request-Id': paypalRequestId('bzo_refund'),
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = String(
+      (data as any)?.details?.[0]?.description ||
+      (data as any)?.message ||
+      (data as any)?.name ||
+      'PayPal refund failed'
+    );
+    throw new Error(`PayPal refund failed (${res.status}): ${detail}`);
+  }
+
+  return data;
+}
+
 export async function verifyPayPalWebhookSignature(args: {
   headers: Record<string, string | undefined>;
   rawBody: string;
