@@ -41,7 +41,7 @@ jobs:
       - name: Install app dependencies
         run: npm ci
 
-      - name: Run production build
+      - name: Run production build once
         run: npm run build
 
       - name: Run unit tests
@@ -66,5 +66,5 @@ jobs:
           test -n "$site_id" || { echo "Could not find the beezio.co Netlify site"; exit 1; }
           echo "NETLIFY_SITE_ID=$site_id" >> "$GITHUB_ENV"
 
-      - name: Deploy the canonical Beezio application
-        run: npx --yes netlify-cli@latest deploy --site "$NETLIFY_SITE_ID" --build --prod --context production --message "Beezio unified production $GITHUB_SHA"
+      - name: Deploy the already-built canonical Beezio application
+        run: npx --yes netlify-cli@latest deploy --site "$NETLIFY_SITE_ID" --prod --context production --dir dist --message "Beezio unified production $GITHUB_SHA"
