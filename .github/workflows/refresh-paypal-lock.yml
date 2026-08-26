@@ -1,0 +1,37 @@
+name: Refresh PayPal-only lockfile
+
+on:
+  push:
+    branches: [paypal-only-cleanup]
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: project/project
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: paypal-only-cleanup
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: npm
+          cache-dependency-path: project/project/package-lock.json
+      - run: npm install --package-lock-only --ignore-scripts
+      - name: Commit regenerated lockfile
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo 'Lockfile already clean.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          git commit -m 'Regenerate PayPal-only package lockfile'
+          git push origin paypal-only-cleanup
