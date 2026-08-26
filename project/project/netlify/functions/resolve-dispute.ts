@@ -2,6 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { requireAdmin } from './_lib/auth';
 import { json, assertPost, parseJson } from './_lib/http';
+import { refundPayPalCapture } from './_lib/paypal';
 
 type DisputeStatus = 'open' | 'investigating' | 'awaiting_response' | 'resolved' | 'closed';
 type ResolutionType = '' | 'refund_full' | 'refund_partial' | 'replacement' | 'no_action' | 'seller_favor' | 'buyer_favor';
@@ -66,6 +67,36 @@ const restorePayoutsAfterDispute = async (supabaseAdmin: any, orderId: string) =
   }
 };
 
+const cancelPayoutsAfterRefund = async (supabaseAdmin: any, orderId: string) => {
+  const nowIso = new Date().toISOString();
+
+  await supabaseAdmin
+    .from('payout_ledger')
+    .update({ status: 'CANCELED', updated_at: nowIso } as any)
+    .eq('order_id', orderId)
+    .in('status', ['PENDING_HOLD', 'READY_TO_PAY', 'ON_HOLD_DISPUTE']);
+
+  await supabaseAdmin
+    .from('payout_snapshots')
+    .update({ status: 'CANCELED', updated_at: nowIso } as any)
+    .eq('order_id', orderId)
+    .in('status', ['PENDING_HOLD', 'READY_TO_PAY', 'ON_HOLD_DISPUTE']);
+
+  try {
+    await supabaseAdmin.rpc('record_order_money_ledger_reversal', {
+      p_order_id: orderId,
+      p_reason: 'dispute_refund',
+      p_provider_capture_id: null,
+    });
+  } catch {
+    await supabaseAdmin
+      .from('order_money_ledger')
+      .update({ status: 'cancelled', updated_at: nowIso } as any)
+      .eq('order_id', orderId)
+      .in('status', ['held', 'ready', 'on_hold_dispute', 'tracked']);
+  }
+};
+
 export const handler: Handler = async (event) => {
   try {
     assertPost(event.httpMethod);
@@ -76,7 +107,7 @@ export const handler: Handler = async (event) => {
     const status = normalize(body?.status).toLowerCase() as DisputeStatus;
     const resolutionType = normalize(body?.resolutionType).toLowerCase() as ResolutionType;
     const resolution = normalize(body?.resolution);
-    const refundAmount = Number(body?.refundAmount);
+    const refundAmountInput = Number(body?.refundAmount);
 
     if (!disputeId) return json(400, { error: 'Missing disputeId' });
     if (!['open', 'investigating', 'awaiting_response', 'resolved', 'closed'].includes(status)) {
@@ -93,11 +124,74 @@ export const handler: Handler = async (event) => {
     if (!(dispute as any)?.id) return json(404, { error: 'Dispute not found' });
     const orderId = normalize((dispute as any)?.order_id);
 
+    let order: any = null;
+    if (orderId) {
+      const { data: orderRow, error: orderError } = await supabaseAdmin
+        .from('orders')
+        .select('id, payment_provider, provider_capture_id, total_charged, total_amount, currency, payment_status, status')
+        .eq('id', orderId)
+        .maybeSingle();
+      if (orderError) return json(500, { error: 'Failed to load disputed order', details: orderError.message });
+      order = orderRow;
+    }
+
+    const sellerWon = resolutionType === 'seller_favor' || resolutionType === 'no_action' || resolutionType === 'replacement';
+    const buyerWon = resolutionType === 'buyer_favor' || resolutionType === 'refund_full' || resolutionType === 'refund_partial';
+
+    // A buyer-favor resolution must actually refund the PayPal capture before the dispute
+    // is marked resolved. This prevents Beezio from recording a refund that never happened.
+    let providerRefund: any = null;
+    let effectiveRefundAmount: number | null = null;
+
+    if ((status === 'resolved' || status === 'closed') && buyerWon) {
+      const provider = String(order?.payment_provider || '').trim().toUpperCase();
+      const captureId = normalize(order?.provider_capture_id);
+      if (provider !== 'PAYPAL' || !captureId) {
+        return json(400, {
+          error: 'This buyer-favor resolution cannot be completed because the order has no PayPal capture ID.',
+          code: 'PAYPAL_CAPTURE_REQUIRED',
+        });
+      }
+
+      const capturedTotal = Number(order?.total_charged ?? order?.total_amount);
+      if (!(capturedTotal > 0)) {
+        return json(400, { error: 'Unable to determine the captured PayPal amount for this order.', code: 'REFUND_AMOUNT_UNKNOWN' });
+      }
+
+      if (resolutionType === 'refund_partial') {
+        if (!Number.isFinite(refundAmountInput) || refundAmountInput <= 0) {
+          return json(400, { error: 'A positive refundAmount is required for a partial refund.' });
+        }
+        effectiveRefundAmount = roundMoney(refundAmountInput);
+        if (effectiveRefundAmount > roundMoney(capturedTotal)) {
+          return json(400, { error: 'Refund amount cannot exceed the captured order amount.' });
+        }
+      } else {
+        // For a full refund, omit the amount so PayPal refunds the remaining capture balance.
+        effectiveRefundAmount = roundMoney(capturedTotal);
+      }
+
+      try {
+        providerRefund = await refundPayPalCapture({
+          captureId,
+          amount: resolutionType === 'refund_partial' ? effectiveRefundAmount : null,
+          currency: String(order?.currency || 'USD'),
+          note: `Beezio dispute ${disputeId}`,
+        });
+      } catch (refundError) {
+        return json(502, {
+          error: 'PayPal refund failed. The dispute was not marked resolved.',
+          code: 'PAYPAL_REFUND_FAILED',
+          details: refundError instanceof Error ? refundError.message : String(refundError),
+        });
+      }
+    }
+
     const payload: Record<string, any> = {
       status,
       resolution_type: resolutionType || null,
       resolution: resolution || null,
-      refund_amount: Number.isFinite(refundAmount) && refundAmount >= 0 ? roundMoney(refundAmount) : null,
+      refund_amount: effectiveRefundAmount ?? (Number.isFinite(refundAmountInput) && refundAmountInput >= 0 ? roundMoney(refundAmountInput) : null),
       updated_at: new Date().toISOString(),
     };
     if (status === 'resolved' || status === 'closed') {
@@ -115,9 +209,6 @@ export const handler: Handler = async (event) => {
     if (error || !updated) return json(400, { error: 'Failed to update dispute', details: error?.message || null });
 
     if (orderId && (status === 'resolved' || status === 'closed')) {
-      const sellerWon = resolutionType === 'seller_favor' || resolutionType === 'no_action' || resolutionType === 'replacement';
-      const buyerWon = resolutionType === 'buyer_favor' || resolutionType === 'refund_full' || resolutionType === 'refund_partial';
-
       if (sellerWon) {
         await supabaseAdmin
           .from('orders')
@@ -133,9 +224,14 @@ export const handler: Handler = async (event) => {
           .from('orders')
           .update({
             dispute_status: 'LOST',
+            status: 'refunded',
+            payment_status: 'refunded',
+            payment_finalized_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           } as any)
           .eq('id', orderId);
+
+        await cancelPayoutsAfterRefund(supabaseAdmin, orderId);
       } else {
         await supabaseAdmin
           .from('orders')
@@ -147,7 +243,17 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    return json(200, { ok: true, dispute: updated });
+    return json(200, {
+      ok: true,
+      dispute: updated,
+      provider_refund: providerRefund
+        ? {
+            id: providerRefund?.id || null,
+            status: providerRefund?.status || null,
+            amount: providerRefund?.amount || null,
+          }
+        : null,
+    });
   } catch (e) {
     return json(500, { error: 'Unexpected error', details: e instanceof Error ? e.message : String(e) });
   }
