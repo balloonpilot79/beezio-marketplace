@@ -17,7 +17,6 @@ export const handler: Handler = async (event) => {
   try {
     const verified = await verifyPayPalWebhookSignature({ headers: event.headers as any, rawBody });
     if (!verified) {
-      // Security: reject unverifiable webhooks.
       return json(401, { error: 'Invalid webhook signature' });
     }
 
@@ -46,7 +45,6 @@ export const handler: Handler = async (event) => {
       return json(500, { error: insertError.message });
     }
 
-    // Minimal reconciliation handlers (best-effort)
     const resource = payload?.resource || {};
 
     // Capture completed
@@ -109,7 +107,7 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    // Refunds: best-effort freeze/cancel payouts
+    // Refunds: freeze/cancel payouts and let the ledger reversal record the financial change.
     if (eventType === 'PAYMENT.CAPTURE.REFUNDED') {
       const refundLinks = Array.isArray(resource?.links) ? resource.links : [];
       const captureId = String(
@@ -135,13 +133,13 @@ export const handler: Handler = async (event) => {
             .from('payout_ledger')
             .update({ status: 'CANCELED' } as any)
             .eq('order_id', beezioOrderId)
-            .in('status', ['PENDING_HOLD', 'READY_TO_PAY']);
+            .in('status', ['PENDING_HOLD', 'READY_TO_PAY', 'ON_HOLD_DISPUTE']);
 
           await supabaseAdmin
             .from('payout_snapshots')
             .update({ status: 'CANCELED', updated_at: new Date().toISOString() } as any)
             .eq('order_id', beezioOrderId)
-            .in('status', ['PENDING_HOLD', 'READY_TO_PAY']);
+            .in('status', ['PENDING_HOLD', 'READY_TO_PAY', 'ON_HOLD_DISPUTE']);
 
           try {
             await supabaseAdmin.rpc('record_order_money_ledger_reversal', {
@@ -154,25 +152,34 @@ export const handler: Handler = async (event) => {
               .from('order_money_ledger')
               .update({ status: 'cancelled', updated_at: new Date().toISOString() } as any)
               .eq('order_id', beezioOrderId)
-              .in('status', ['held', 'ready', 'tracked']);
+              .in('status', ['held', 'ready', 'tracked', 'on_hold_dispute']);
           }
         }
       }
     }
 
-    // Disputes: freeze payouts
+    // PayPal disputes: create/update an internal dispute and freeze every unpaid ledger entry.
     if (eventType.startsWith('CUSTOMER.DISPUTE.') || eventType.startsWith('RISK.DISPUTE.')) {
       const disputed = Array.isArray(resource?.disputed_transactions) ? resource.disputed_transactions : [];
       const possibleTxnIds = disputed
-        .map((tx: any) => String(tx?.seller_transaction_id || '').trim())
+        .flatMap((tx: any) => [tx?.seller_transaction_id, tx?.capture_id, tx?.transaction_id])
+        .map((value: any) => String(value || '').trim())
         .filter(Boolean);
 
-      // Some dispute payloads use capture/transaction ids; others use order ids.
-      for (const txnId of possibleTxnIds) {
+      // Some dispute payloads expose the order id directly.
+      const directOrderId = String(
+        resource?.supplementary_data?.related_ids?.order_id ||
+        resource?.order_id ||
+        ''
+      ).trim();
+      if (directOrderId) possibleTxnIds.push(directOrderId);
+
+      const uniqueTxnIds = Array.from(new Set(possibleTxnIds));
+      for (const txnId of uniqueTxnIds) {
         const { data: orderRow } = await supabaseAdmin
           .from('orders')
-          .select('id')
-          .or(`provider_capture_id.eq.${txnId},provider_order_id.eq.${txnId}`)
+          .select('id, buyer_id, seller_id')
+          .or(`provider_capture_id.eq.${txnId},provider_order_id.eq.${txnId},id.eq.${txnId}`)
           .maybeSingle();
 
         const beezioOrderId = (orderRow as any)?.id ? String((orderRow as any).id) : null;
@@ -180,12 +187,32 @@ export const handler: Handler = async (event) => {
 
         await supabaseAdmin
           .from('orders')
-          .update({ dispute_status: 'OPEN' } as any)
+          .update({ dispute_status: 'OPEN', updated_at: new Date().toISOString() } as any)
           .eq('id', beezioOrderId);
+
+        // Keep the internal Issue Center in sync with the external PayPal dispute.
+        const { data: existingDispute } = await supabaseAdmin
+          .from('disputes')
+          .select('id')
+          .eq('order_id', beezioOrderId)
+          .in('status', ['open', 'investigating', 'awaiting_response'])
+          .limit(1)
+          .maybeSingle();
+
+        if (!(existingDispute as any)?.id && (orderRow as any)?.buyer_id) {
+          await supabaseAdmin.from('disputes').insert({
+            order_id: beezioOrderId,
+            dispute_type: 'other',
+            filed_by: (orderRow as any).buyer_id,
+            filed_against: (orderRow as any).seller_id || null,
+            description: `PayPal dispute ${eventId} (${eventType}). Review the PayPal event in webhook history and respond through the Beezio Issue Center.`,
+            status: 'open',
+          } as any);
+        }
 
         await supabaseAdmin
           .from('payout_ledger')
-          .update({ status: 'ON_HOLD_DISPUTE' } as any)
+          .update({ status: 'ON_HOLD_DISPUTE', updated_at: new Date().toISOString() } as any)
           .eq('order_id', beezioOrderId)
           .in('status', ['PENDING_HOLD', 'READY_TO_PAY']);
 
