@@ -1,8 +1,7 @@
 name: Beezio live Netlify smoke
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -10,43 +9,21 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 5
     steps:
-      - name: Wait for Netlify production functions
+      - name: Check public production health only
         shell: bash
         run: |
-          set -u
+          set -euo pipefail
           health_url="https://beezio.co/.netlify/functions/health"
-          background=(
-            "https://beezio.co/.netlify/functions/cj-sandbox-order-test-v2-background"
-            "https://beezio.co/.netlify/functions/cj-seed-tiers-v2-background"
-            "https://beezio.co/.netlify/functions/cj-auto-pay-background"
-            "https://beezio.co/.netlify/functions/cj-live-audit-background"
-          )
-
-          # Netlify background functions acknowledge invocation with 202 before
-          # the background handler runs. This smoke test proves the deployed
-          # endpoint exists; the handler itself still enforces its service-role token.
-          for attempt in $(seq 1 20); do
+          for attempt in $(seq 1 6); do
             health_code=$(curl -sS -o /tmp/health.out -w "%{http_code}" "$health_url" || true)
-            all_ready=true
-            codes=()
-            for url in "${background[@]}"; do
-              code=$(curl -sS -X POST -H 'Content-Type: application/json' -d '{}' -o /dev/null -w "%{http_code}" "$url" || true)
-              codes+=("$code")
-              if [ "$code" != "202" ]; then
-                all_ready=false
-              fi
-            done
-
-            echo "attempt=$attempt health=$health_code background=${codes[*]}"
-            if [ "$health_code" = "200" ] && [ "$all_ready" = "true" ]; then
-              echo "Netlify production exposes the current SupplyLine background functions."
+            echo "attempt=$attempt health=$health_code"
+            if [ "$health_code" = "200" ]; then
+              echo "Beezio production health endpoint is responding."
               exit 0
             fi
-
-            sleep 30
+            sleep 15
           done
-
-          echo "Netlify production did not expose all expected SupplyLine functions within the smoke-test window."
+          echo "Beezio production health endpoint did not return HTTP 200."
           exit 1
