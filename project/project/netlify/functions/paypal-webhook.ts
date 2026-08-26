@@ -5,8 +5,10 @@ import { verifyPayPalWebhookSignature } from './_lib/paypal';
 import { getSiteUrl } from './_lib/site';
 import { finalizePayPalOrderPayment } from './_lib/paypal-order-finalization';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const isUuid = (value: unknown) => UUID_REGEX.test(String(value || '').trim());
+
 export const handler: Handler = async (event) => {
-  // PayPal webhooks send POSTs.
   if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
 
   const rawBody = event.isBase64Encoded
@@ -16,19 +18,14 @@ export const handler: Handler = async (event) => {
 
   try {
     const verified = await verifyPayPalWebhookSignature({ headers: event.headers as any, rawBody });
-    if (!verified) {
-      // Security: reject unverifiable webhooks.
-      return json(401, { error: 'Invalid webhook signature' });
-    }
+    if (!verified) return json(401, { error: 'Invalid webhook signature' });
 
     const payload = JSON.parse(rawBody);
     const eventId = String(payload?.id || '').trim();
     const eventType = String(payload?.event_type || '').trim();
     const resourceType = String(payload?.resource_type || '').trim();
-
     if (!eventId) return json(400, { error: 'Missing event id' });
 
-    // Idempotency: insert event row; if duplicate, ignore.
     const { error: insertError } = await supabaseAdmin
       .from('paypal_webhook_events')
       .insert({
@@ -40,16 +37,12 @@ export const handler: Handler = async (event) => {
 
     if (insertError) {
       const msg = String(insertError.message || '').toLowerCase();
-      if (msg.includes('duplicate') || msg.includes('unique')) {
-        return json(200, { ok: true, skipped: true });
-      }
+      if (msg.includes('duplicate') || msg.includes('unique')) return json(200, { ok: true, skipped: true });
       return json(500, { error: insertError.message });
     }
 
-    // Minimal reconciliation handlers (best-effort)
     const resource = payload?.resource || {};
 
-    // Capture completed
     if (eventType === 'PAYMENT.CAPTURE.COMPLETED') {
       const captureId = String(resource?.id || '').trim();
       const orderId = String(resource?.supplementary_data?.related_ids?.order_id || '').trim();
@@ -101,7 +94,7 @@ export const handler: Handler = async (event) => {
                   body: JSON.stringify({ orderID: orderId }),
                 });
               } catch {
-                // Best-effort recovery only. Webhook reconciliation should not fail on this call.
+                // Best-effort recovery only.
               }
             }
           }
@@ -109,7 +102,6 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    // Refunds: best-effort freeze/cancel payouts
     if (eventType === 'PAYMENT.CAPTURE.REFUNDED') {
       const refundLinks = Array.isArray(resource?.links) ? resource.links : [];
       const captureId = String(
@@ -135,13 +127,13 @@ export const handler: Handler = async (event) => {
             .from('payout_ledger')
             .update({ status: 'CANCELED' } as any)
             .eq('order_id', beezioOrderId)
-            .in('status', ['PENDING_HOLD', 'READY_TO_PAY']);
+            .in('status', ['PENDING_HOLD', 'READY_TO_PAY', 'ON_HOLD_DISPUTE']);
 
           await supabaseAdmin
             .from('payout_snapshots')
             .update({ status: 'CANCELED', updated_at: new Date().toISOString() } as any)
             .eq('order_id', beezioOrderId)
-            .in('status', ['PENDING_HOLD', 'READY_TO_PAY']);
+            .in('status', ['PENDING_HOLD', 'READY_TO_PAY', 'ON_HOLD_DISPUTE']);
 
           try {
             await supabaseAdmin.rpc('record_order_money_ledger_reversal', {
@@ -154,38 +146,75 @@ export const handler: Handler = async (event) => {
               .from('order_money_ledger')
               .update({ status: 'cancelled', updated_at: new Date().toISOString() } as any)
               .eq('order_id', beezioOrderId)
-              .in('status', ['held', 'ready', 'tracked']);
+              .in('status', ['held', 'ready', 'tracked', 'on_hold_dispute']);
           }
         }
       }
     }
 
-    // Disputes: freeze payouts
     if (eventType.startsWith('CUSTOMER.DISPUTE.') || eventType.startsWith('RISK.DISPUTE.')) {
       const disputed = Array.isArray(resource?.disputed_transactions) ? resource.disputed_transactions : [];
       const possibleTxnIds = disputed
-        .map((tx: any) => String(tx?.seller_transaction_id || '').trim())
+        .flatMap((tx: any) => [tx?.seller_transaction_id, tx?.capture_id, tx?.transaction_id])
+        .map((value: any) => String(value || '').trim())
         .filter(Boolean);
 
-      // Some dispute payloads use capture/transaction ids; others use order ids.
-      for (const txnId of possibleTxnIds) {
-        const { data: orderRow } = await supabaseAdmin
+      const directOrderId = String(
+        resource?.supplementary_data?.related_ids?.order_id || resource?.order_id || ''
+      ).trim();
+      const uniqueTxnIds = Array.from(new Set(possibleTxnIds));
+      if (directOrderId) uniqueTxnIds.push(directOrderId);
+
+      for (const txnId of Array.from(new Set(uniqueTxnIds))) {
+        let orderRow: any = null;
+
+        const providerLookup = await supabaseAdmin
           .from('orders')
-          .select('id')
+          .select('id, buyer_id, seller_id')
           .or(`provider_capture_id.eq.${txnId},provider_order_id.eq.${txnId}`)
           .maybeSingle();
+        orderRow = providerLookup.data || null;
 
-        const beezioOrderId = (orderRow as any)?.id ? String((orderRow as any).id) : null;
+        // Only query the UUID primary key when the incoming value is actually a UUID.
+        if (!orderRow && isUuid(txnId)) {
+          const { data } = await supabaseAdmin
+            .from('orders')
+            .select('id, buyer_id, seller_id')
+            .eq('id', txnId)
+            .maybeSingle();
+          orderRow = data || null;
+        }
+
+        const beezioOrderId = orderRow?.id ? String(orderRow.id) : null;
         if (!beezioOrderId) continue;
 
         await supabaseAdmin
           .from('orders')
-          .update({ dispute_status: 'OPEN' } as any)
+          .update({ dispute_status: 'OPEN', updated_at: new Date().toISOString() } as any)
           .eq('id', beezioOrderId);
+
+        const { data: existingDispute } = await supabaseAdmin
+          .from('disputes')
+          .select('id')
+          .eq('order_id', beezioOrderId)
+          .in('status', ['open', 'investigating', 'awaiting_response'])
+          .limit(1)
+          .maybeSingle();
+
+        if (!(existingDispute as any)?.id && orderRow?.buyer_id) {
+          await supabaseAdmin.from('disputes').insert({
+            order_id: beezioOrderId,
+            dispute_type: 'other',
+            filed_by: orderRow.buyer_id,
+            filed_against: orderRow.seller_id || null,
+            description: `PayPal dispute ${eventId} (${eventType}). Review the PayPal event in webhook history and respond through the Beezio Issue Center.`,
+            status: 'open',
+          } as any);
+        }
 
         await supabaseAdmin
           .from('payout_ledger')
-          .update({ status: 'ON_HOLD_DISPUTE' } as any)
+          .update({ status: 'ON_HOLD_DISPUTE', updated_at: new Date().toISOString() } as any)
           .eq('order_id', beezioOrderId)
           .in('status', ['PENDING_HOLD', 'READY_TO_PAY']);
 

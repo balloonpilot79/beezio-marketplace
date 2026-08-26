@@ -32,11 +32,10 @@ if (missing.length) {
   process.exit(1);
 }
 
-const paymentKeys = ['VITE_PAYPAL_CLIENT_ID', 'VITE_STRIPE_PUBLISHABLE_KEY'];
-const hasPaymentKey = paymentKeys.some((key) => Boolean(map[key]));
-if (!hasPaymentKey) {
-  console.warn('Env guard: no payment client key found (PayPal/Stripe).');
-  console.warn('If you only use PayPal, set VITE_PAYPAL_CLIENT_ID for client checkout.');
+const paypalKey = Boolean(map.VITE_PAYPAL_CLIENT_ID);
+if (!paypalKey) {
+  console.warn('Env guard: VITE_PAYPAL_CLIENT_ID is not present in the local environment.');
+  console.warn('PayPal client configuration may still be supplied at runtime by the PayPal status endpoint.');
 } else {
-  console.log('Env guard: required keys present.');
+  console.log('Env guard: required Supabase and PayPal keys present.');
 }
