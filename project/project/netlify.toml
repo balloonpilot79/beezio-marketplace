@@ -96,28 +96,10 @@
   status = 200
   force = true
 
-# Existing API routes -> Netlify Functions
+# Legacy checkout endpoint intentionally remains as a compatibility alias to PayPal.
 [[redirects]]
   from = "/api/checkout/create"
   to = "/.netlify/functions/checkout-create"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/stripe/webhook"
-  to = "/.netlify/functions/stripe-webhook"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/stripe/account-status"
-  to = "/.netlify/functions/stripe-account-status"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/stripe/create-embedded-account"
-  to = "/.netlify/functions/stripe-create-embedded-account"
   status = 200
   force = true
 
