@@ -10,8 +10,7 @@ const envFileCandidates = [
 const envFile = envFileCandidates.find(f => fs.existsSync(f));
 const required = [
   'VITE_SUPABASE_URL',
-  'VITE_SUPABASE_ANON_KEY',
-  'VITE_STRIPE_PUBLISHABLE_KEY'
+  'VITE_SUPABASE_ANON_KEY'
 ];
 
 if (!envFile) {
@@ -31,6 +30,11 @@ if (missing.length) {
   console.error('Missing required env vars in .env:', missing.join(', '));
   console.error('Add them to .env or set them in your CI provider.');
   process.exit(1);
+}
+
+if (!map.VITE_PAYPAL_CLIENT_ID) {
+  console.warn('Env guard: VITE_PAYPAL_CLIENT_ID is not present in the local environment.');
+  console.warn('PayPal client configuration may still be supplied at runtime by the PayPal status endpoint.');
 }
 
 console.log('Env guard: required keys present.');
