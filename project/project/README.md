@@ -2,6 +2,12 @@
 
 A modern multi-role marketplace platform built with React, TypeScript, and Supabase.
 
+## Current Production Configuration
+- Authentication and database: Supabase
+- Payments: PayPal only
+- Deployment: Netlify
+- Product catalog: manual product entry for launch
+
 ## Features
 
 ### 🎯 Multi-Role System
@@ -15,7 +21,7 @@ A modern multi-role marketplace platform built with React, TypeScript, and Supab
 - **Real-time Dashboard**: Live updates for orders, earnings, and analytics
 - **Secure Authentication**: Supabase-powered auth with row-level security
 - **Responsive Design**: Works perfectly on desktop and mobile
-- **Payment Integration**: Stripe integration for secure transactions
+- **Payment Integration**: PayPal for secure transactions
 
 ## Tech Stack
 
@@ -23,7 +29,7 @@ A modern multi-role marketplace platform built with React, TypeScript, and Supab
 - **Backend**: Supabase (PostgreSQL, Auth, Real-time)
 - **Build Tool**: Vite
 - **Deployment**: Netlify (automatic deployment from GitHub)
-- **Payment**: Stripe
+- **Payment**: PayPal
 
 ## Getting Started
 
@@ -74,21 +80,12 @@ npm run build
 # Upload the 'dist' folder to your hosting provider
 ```
 
-### Beta Testing with Real Products (Stripe in Test Mode)
+## Launch Configuration
 
-1. **Disable sample catalog data**
-   - Create or update your `.env` file with `VITE_ENABLE_SAMPLE_DATA=false` to switch the storefront over to Supabase-driven products.
-2. **Apply the latest Supabase schema**
-   - Run `supabase db push` (or execute the SQL migrations in `supabase/`) so the `products` table matches the app expectations.
-3. **Load real products**
-   - Add items through the Seller dashboard or import them directly in Supabase (ensure `is_active=true` and at least one image URL).
-4. **Keep Stripe in test mode**
-   - Leave `VITE_STRIPE_PUBLISHABLE_KEY` and server-side Stripe keys pointed at your **test** account.
-   - Use Stripe’s universal test card `4242 4242 4242 4242` with any future expiry and a random CVC/ZIP to smoke test checkout.
-5. **Verify end-to-end flows**
-   - Run `npm run build` followed by a quick smoke test in the deployed preview. Confirm products render, add-to-cart works, and checkout accepts test digits.
-
-When you’re ready for paid beta testers in phase two, swap your Stripe keys to live mode while keeping the real catalog intact.
+1. **Use the rebuilt Supabase project** configured in Netlify environment variables.
+2. **Use PayPal only** for checkout and payouts.
+3. **Enter launch products manually**; supplier API importing is disabled for launch.
+4. **Verify signup, email confirmation, login, role setup, product listing, checkout, and order tracking before beta launch.**
 
 ## Project Structure
 
@@ -98,30 +95,16 @@ src/
 │   ├── Enhanced*Dashboard.tsx  # Role-specific dashboards
 │   ├── UnifiedDashboard.tsx   # Main dashboard wrapper
 │   └── ...
-├── contexts/           # React contexts
-│   ├── AuthContextMultiRole.tsx
-│   └── ...
-├── pages/             # Page components
-├── hooks/             # Custom React hooks
-├── utils/             # Utility functions
-└── types/             # TypeScript type definitions
+├── contexts/           # Authentication and application contexts
+├── pages/              # Application pages
+├── hooks/              # Custom hooks
+├── utils/              # Utility functions
+└── types/              # Type definitions
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ## License
 
 This project is proprietary and confidential.
-
-## Support
-
-For support and questions, please contact [your-email@example.com]
 
 ---
 
