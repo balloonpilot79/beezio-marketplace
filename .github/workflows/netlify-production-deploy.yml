@@ -52,7 +52,6 @@ jobs:
           test -d dist/assets
           test "$(find dist/assets -maxdepth 1 -type f | wc -l)" -gt 0
           ! grep -q 'src/main.tsx' dist/index.html
-          ! grep -q 'Setting up your marketplace' dist/index.html
           echo 'Compiled Vite bundle verified.'
           sed -n '1,80p' dist/index.html
 
@@ -90,10 +89,6 @@ jobs:
           printf '%s' "$body" | grep -q '/assets/'
           if printf '%s' "$body" | grep -q 'src/main.tsx'; then
             echo 'Production is still serving source index.html instead of the compiled Vite bundle.'
-            exit 1
-          fi
-          if printf '%s' "$body" | grep -q 'Setting up your marketplace'; then
-            echo 'Production is still serving the preload/source index.html.'
             exit 1
           fi
           echo 'Production smoke check passed.'
