@@ -4,8 +4,10 @@ import './index.css';
 import App from './App';
 import AppErrorBoundary from './components/AppErrorBoundary';
 
-// Signal to the HTML boot screen that the React bundle successfully loaded.
+// Beezio rebuild boot marker. Changing this forces a fresh production bundle.
+const BEEZIO_REBUILD_BOOT_VERSION = '2026-09-10-1';
 if (typeof window !== 'undefined') {
+  (window as any).__beezioRebuildBootVersion = BEEZIO_REBUILD_BOOT_VERSION;
   (window as any).__beezioBooted = true;
 }
 
