@@ -33,6 +33,7 @@ interface Product {
 
 interface Order {
   id: string;
+  order_number?: string;
   customer_name: string;
   customer_email: string;
   product_title: string;
@@ -40,6 +41,9 @@ interface Order {
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   created_at: string;
   tracking_number?: string;
+  tracking_url?: string;
+  payment_status?: string;
+  isBuyerOrder?: boolean;
 }
 
 interface Commission {
@@ -87,6 +91,7 @@ const UnifiedMegaDashboard: React.FC = () => {
     active_links: 0
   });
   const [loading, setLoading] = useState(false);
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Role derivation with safe fallback
@@ -152,7 +157,7 @@ const UnifiedMegaDashboard: React.FC = () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('seller_id', user.id)
+        .eq('seller_id', profile?.id || user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -167,37 +172,60 @@ const UnifiedMegaDashboard: React.FC = () => {
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            *,
-            products (title)
-          )
-        `)
-        .eq('seller_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      const profileId = profile?.id || user.id;
+      const [buyerResult, sellerResult] = await Promise.all([
+        supabase.from('orders').select('*, order_items(*, products(title, seller_id))')
+          .eq('buyer_id', user.id).order('created_at', { ascending: false }).limit(25),
+        supabase.from('orders').select('*, order_items!inner(*, products(title, seller_id))')
+          .eq('order_items.seller_id', profileId).order('created_at', { ascending: false }).limit(25),
+      ]);
+      if (buyerResult.error && sellerResult.error) throw buyerResult.error;
 
-      if (error) throw error;
-      
-      const formattedOrders = data?.map((order: any) => ({
+      const rows = new Map<string, any>();
+      (buyerResult.data || []).forEach((row: any) => rows.set(row.id, { ...row, isBuyerOrder: true }));
+      (sellerResult.data || []).forEach((row: any) => rows.set(row.id, { ...row, isBuyerOrder: false }));
+      const formattedOrders = Array.from(rows.values()).sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ).slice(0, 50).map((order: any) => ({
         id: order.id,
-        customer_name: order.customer_name || 'Unknown',
+        order_number: order.order_number,
+        customer_name: order.customer_name || order.shipping_address?.name || 'Customer',
         customer_email: order.customer_email || '',
         product_title: order.order_items?.[0]?.products?.title || 'Product',
-        amount: order.total_amount || 0,
-        status: order.status,
+        amount: Number(order.total_amount || 0),
+        status: order.status || 'pending',
+        payment_status: order.payment_status,
         created_at: order.created_at,
-        tracking_number: order.tracking_number
-      })) || [];
-
+        tracking_number: order.tracking_number,
+        tracking_url: order.tracking_url,
+        isBuyerOrder: order.isBuyerOrder,
+      }));
       setOrders(formattedOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
       setOrders([]);
     }
+  };
+
+  const markOrderShipped = async (order: Order) => {
+    const tracking = (trackingInputs[order.id] || '').trim();
+    if (!tracking) {
+      alert('Enter a tracking number before marking this order shipped.');
+      return;
+    }
+    const trackingUrl = tracking.startsWith('http') ? tracking : `https://www.google.com/search?q=${encodeURIComponent(tracking)}`;
+    const { error } = await supabase.from('orders').update({
+      status: 'shipped',
+      tracking_number: tracking,
+      tracking_url: trackingUrl,
+      shipped_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('id', order.id);
+    if (error) {
+      alert(`Unable to update shipment: ${error.message}`);
+      return;
+    }
+    await fetchOrders();
   };
 
   const fetchCommissions = async () => {
@@ -239,8 +267,8 @@ const UnifiedMegaDashboard: React.FC = () => {
       // Fetch seller stats
       const { data: salesData } = await supabase
         .from('orders')
-        .select('total_amount, status')
-        .eq('seller_id', user.id);
+        .select('total_amount, status, order_items!inner(seller_id)')
+        .eq('order_items.seller_id', profile?.id || user.id);
 
       // Fetch affiliate stats
       const { data: commissionData } = await supabase
@@ -471,7 +499,16 @@ const UnifiedMegaDashboard: React.FC = () => {
                         <p className="text-sm text-black/70 mt-1">List a new product for sale</p>
                       </button>
                     )}
-                    
+
+                    <button
+                      onClick={() => navigate('/affiliate/products')}
+                      className="bg-white border-2 border-[#101820] text-[#101820] p-6 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
+                    >
+                      <Link className="w-8 h-8 mb-2" />
+                      <h3 className="text-lg font-bold">Promote Marketplace Products</h3>
+                      <p className="text-sm text-gray-600 mt-1">Add or remove products from your affiliate store</p>
+                    </button>
+
                     <button
                       onClick={() => setActiveTab('store')}
                       className="bg-[#101820] text-[#ffcb05] p-6 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
@@ -612,6 +649,7 @@ const UnifiedMegaDashboard: React.FC = () => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shipment</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                         </tr>
                       </thead>
@@ -640,6 +678,31 @@ const UnifiedMegaDashboard: React.FC = () => {
                               }`}>
                                 {order.status}
                               </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {order.tracking_number ? (
+                                <a className="text-blue-700 underline" href={order.tracking_url || '#'} target="_blank" rel="noreferrer">
+                                  {order.tracking_number}
+                                </a>
+                              ) : order.isBuyerOrder ? (
+                                <span className="text-gray-500">Waiting for seller</span>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    aria-label={`Tracking number for order ${order.id}`}
+                                    value={trackingInputs[order.id] || ''}
+                                    onChange={(e) => setTrackingInputs(prev => ({ ...prev, [order.id]: e.target.value }))}
+                                    placeholder="Tracking #"
+                                    className="w-28 px-2 py-1 border rounded text-xs"
+                                  />
+                                  <button
+                                    onClick={() => markOrderShipped(order)}
+                                    className="px-2 py-1 rounded bg-[#101820] text-[#ffcb05] text-xs font-semibold"
+                                  >
+                                    Mark shipped
+                                  </button>
+                                </div>
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               {new Date(order.created_at).toLocaleDateString()}

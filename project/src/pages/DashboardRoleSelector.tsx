@@ -7,6 +7,7 @@ const ROLE_OPTIONS = [
   { key: 'buyer', title: 'Buyer dashboard', description: 'Orders, account, and saved items.', path: '/dashboard/buyer' },
   { key: 'seller', title: 'Seller dashboard', description: 'Overview, products, orders, store settings.', path: '/dashboard/seller' },
   { key: 'affiliate', title: 'Affiliate dashboard', description: 'Links, earnings, referrals.', path: '/dashboard/affiliate' },
+  { key: 'influencer', title: 'Influencer dashboard', description: 'Promote products, recruit partners, and track lifetime referral earnings.', path: '/dashboard/affiliate' },
   { key: 'fundraiser', title: 'Fundraiser dashboard', description: 'Campaigns, earnings, supporter links.', path: '/dashboard/fundraiser' },
 ];
 
@@ -70,3 +71,4 @@ const DashboardRoleSelector: React.FC = () => {
 };
 
 export default DashboardRoleSelector;
+

@@ -12,7 +12,6 @@ import {
   Filter,
   ExternalLink
 } from 'lucide-react';
-import { products } from '../data/sampleProducts';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useAffiliate } from '../contexts/AffiliateContext';
 import { supabase } from '../lib/supabase';
@@ -46,15 +45,13 @@ const AffiliateProductsPage: React.FC = () => {
         .from('products')
         .select('*')
         .eq('is_active', true)
+        .neq('affiliate_enabled', false)
+        .gt('stock_quantity', 0)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.warn('Error fetching real products, using sample data:', error);
-        // Use sample products as fallback
-        setRealProducts(products.map(product => ({
-          ...product,
-          commission_rate: 20 // Default commission rate
-        })));
+        console.warn('Error fetching marketplace products:', error);
+        setRealProducts([]);
         setLoading(false);
         return;
       }
@@ -74,23 +71,10 @@ const AffiliateProductsPage: React.FC = () => {
         created_at: product.created_at
       }));
 
-      // If no real products, use sample products
-      if (transformedProducts.length === 0) {
-        console.log('No real products found, using sample data');
-        setRealProducts(products.map(product => ({
-          ...product,
-          commission_rate: 20 // Default commission rate
-        })));
-      } else {
-        setRealProducts(transformedProducts);
-      }
+      setRealProducts(transformedProducts);
     } catch (error) {
       console.error('Error in fetchRealProducts, using sample data:', error);
-      // Fallback to sample products on any error
-      setRealProducts(products.map(product => ({
-        ...product,
-        commission_rate: 20 // Default commission rate
-      })));
+      setRealProducts([]);
     } finally {
       setLoading(false);
     }
@@ -125,8 +109,9 @@ const AffiliateProductsPage: React.FC = () => {
     return (price * (commissionRate / 100) * quantity).toFixed(2);
   };
 
-  // Combine sample products and real products
-  const allProducts = [...products, ...realProducts];
+  // The marketplace is the single source of truth. Do not show demo products
+  // that cannot be purchased or fulfilled.
+  const allProducts = realProducts;
 
   // Filter and sort products
   const filteredProducts = allProducts
@@ -420,3 +405,4 @@ const AffiliateProductsPage: React.FC = () => {
 };
 
 export default AffiliateProductsPage;
+
