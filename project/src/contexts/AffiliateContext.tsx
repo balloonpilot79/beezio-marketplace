@@ -87,36 +87,40 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
     fetchReferralCode();
   }, [user, profile]);
 
-  // Load affiliate data from localStorage
+  // Load affiliate data from Supabase. Local storage is only a temporary cache;
+  // selections must follow the member to any device and control the custom store.
   useEffect(() => {
-    if (user) {
-      const savedProducts = localStorage.getItem(`affiliate_products_${user.id}`);
-      const savedStats = localStorage.getItem(`affiliate_stats_${user.id}`);
-      
-      if (savedProducts) {
-        setSelectedProducts(JSON.parse(savedProducts));
-      }
-      
-      if (savedStats) {
-        setAffiliateStats(JSON.parse(savedStats));
-      }
-    }
-  }, [user]);
-
-  // Save to localStorage when data changes
-  useEffect(() => {
-    if (user && selectedProducts.length > 0) {
-      localStorage.setItem(`affiliate_products_${user.id}`, JSON.stringify(selectedProducts));
-    }
-  }, [selectedProducts, user]);
-
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(`affiliate_stats_${user.id}`, JSON.stringify(affiliateStats));
-    }
-  }, [affiliateStats, user]);
+    if (!user || !profile?.id) return;
+    let cancelled = false;
+    const load = async () => {
+      const { data } = await supabase
+        .from('affiliate_products')
+        .select('product_id, created_at')
+        .eq('affiliate_id', profile.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true });
+      if (cancelled) return;
+      setSelectedProducts((data || []).map(row => ({
+        productId: row.product_id,
+        selected: true,
+        dateAdded: row.created_at,
+        totalClicks: 0,
+        totalSales: 0,
+        totalEarnings: 0,
+      })));
+      setAffiliateStats(prev => ({ ...prev, totalProducts: data?.length || 0 }));
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [user, profile?.id]);
 
   const addProduct = (productId: string) => {
+    if (!user || !profile?.id) return;
+    void supabase.from('affiliate_products').upsert({
+      affiliate_id: profile.id,
+      product_id: productId,
+      is_active: true,
+    }, { onConflict: 'affiliate_id,product_id' });
     setSelectedProducts(prev => {
       const exists = prev.find(p => p.productId === productId);
       if (exists) return prev;
@@ -138,6 +142,11 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
   };
 
   const removeProduct = (productId: string) => {
+    if (!user || !profile?.id) return;
+    void supabase.from('affiliate_products')
+      .update({ is_active: false })
+      .eq('affiliate_id', profile.id)
+      .eq('product_id', productId);
     setSelectedProducts(prev => prev.filter(p => p.productId !== productId));
     
     setAffiliateStats(prev => ({
@@ -244,3 +253,4 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
 };
 
 export default AffiliateProvider;
+
