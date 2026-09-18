@@ -116,6 +116,24 @@
   force = true
 
 [[redirects]]
+  from = "/api/signup/send-verification"
+  to = "/.netlify/functions/signup-send-verification"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/signup/check-verification"
+  to = "/.netlify/functions/signup-check-verification"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/signup/confirm-email"
+  to = "/.netlify/functions/signup-confirm-email"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/public/recruit/resolve"
   to = "/.netlify/functions/public-recruit-resolve"
   status = 200

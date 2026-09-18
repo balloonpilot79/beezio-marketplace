@@ -12,7 +12,8 @@ const Dashboard: React.FC = () => {
   const hasRedirected = useRef(false);
 
   const initialSellerTab = useMemo<SellerDashboardTab | undefined>(() => {
-    const raw = String(section || '').toLowerCase();
+    const queryTab = new URLSearchParams(location.search).get('tab');
+    const raw = String(section || queryTab || '').toLowerCase();
     const map: Record<string, SellerDashboardTab> = {
       overview: 'overview',
       products: 'products',
@@ -41,7 +42,7 @@ const Dashboard: React.FC = () => {
       support: 'support',
     };
     return map[raw];
-  }, [section]);
+  }, [location.search, section]);
   const initialSection = useMemo<'buyer' | 'seller' | 'affiliate' | 'influencer' | 'admin' | undefined>(() => {
     const params = new URLSearchParams(location.search);
     const rawParam = String(params.get('section') || '').toLowerCase();
@@ -70,6 +71,15 @@ const Dashboard: React.FC = () => {
       navigate('/dashboard', { replace: true });
     }
   }, [authLoading, initialSellerTab, navigate, section, user, userRoles]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const legacyTab = String(params.get('tab') || '').toLowerCase();
+    if (!['integrations', 'partner-tool', 'partner-tools'].includes(legacyTab)) return;
+
+    params.set('tab', 'products');
+    navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+  }, [location.pathname, location.search, navigate]);
 
   useEffect(() => {
     if (authLoading || !user) return;

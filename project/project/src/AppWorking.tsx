@@ -506,7 +506,7 @@ const AppWorking: React.FC = () => {
         : tabParam === 'earnings' || tabParam === 'payouts'
         ? 'financials'
         : tabParam === 'integrations'
-        ? 'financials'
+        ? 'products'
         : activeDashboardSection === 'admin'
         ? 'admin'
         : tabParam || 'products';

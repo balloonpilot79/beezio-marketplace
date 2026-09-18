@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { PASSWORD_REQUIREMENT_MESSAGE, validatePasswordPolicy } from '../utils/passwordPolicy';
+import { requestBeezioPasswordReset } from '../services/passwordResetClient';
 
 const ResetPasswordPage: React.FC = () => {
   const [password, setPassword] = useState('');
@@ -108,10 +109,7 @@ const ResetPasswordPage: React.FC = () => {
 
     setRequestLoading(true);
     try {
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      const redirectTo = origin ? `${origin}/reset-password` : '/reset-password';
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
-      if (resetError) throw resetError;
+      await requestBeezioPasswordReset(email);
       setRequestSent(true);
     } catch (err: any) {
       setError(err?.message || 'Failed to send password reset email.');

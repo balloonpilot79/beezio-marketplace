@@ -7,7 +7,7 @@ import {
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { sendPasswordResetEmail } from '../services/transactionalEmailClient';
+import { requestBeezioPasswordReset } from '../services/passwordResetClient';
 import { ensureProfileIdForUser } from '../utils/resolveProfileId';
 import { buildDeterministicReferralCode } from '../utils/referralCode';
 import { assignInfluencerReferral } from '../utils/influencerReferrals';
@@ -1139,42 +1139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     try {
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      const redirectUrl = origin ? `${origin}/reset-password` : '/reset-password';
-      console.log('Sending password reset email to:', email, 'with redirect to:', redirectUrl);
-
-      // IMPORTANT: For password reset to work properly, you must configure the redirect URLs in Supabase:
-      // Go to Supabase Dashboard > Authentication > URL Configuration > Redirect URLs
-      // Add: http://localhost:5174/reset-password (for local development)
-      // Add: https://yourdomain.com/reset-password (for production)
-      // Without this, the reset link may not redirect properly and users will just get logged in without being able to change their password.
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectUrl,
-      });
-
-      if (error) {
-        console.error('Supabase resetPasswordForEmail error:', error);
-        throw error;
-      }
-
-      // Optional custom Beezio-branded password reset email (skip if profile lookup fails).
-      try {
-        const { data: userData } = await supabase
-          .from('profiles')
-          .select('user_id, email')
-          .eq('email', email)
-          .maybeSingle();
-        if (userData?.user_id) {
-          const emailSent = await sendPasswordResetEmail(userData.user_id, email, { resetUrl: redirectUrl });
-          if (!emailSent) {
-            console.warn('Failed to send custom password reset email, but Supabase email was sent');
-          }
-        }
-      } catch (emailErr) {
-        console.warn('Custom reset email failed (non-blocking):', emailErr);
-      }
-
-      console.log('Password reset email sent successfully to:', email);
+      await requestBeezioPasswordReset(email);
       return { success: true };
     } catch (error) {
       console.error('Reset password error:', error);

@@ -14,9 +14,18 @@ type ConnectBody = {
   autoSync?: boolean;
 };
 
+const automatedSupplierIntegrationsEnabled = () =>
+  String(process.env.ENABLE_AUTOMATED_SUPPLIER_INTEGRATIONS || '').trim().toLowerCase() === 'true';
+
 export const handler: Handler = async (event) => {
   try {
     assertPost(event.httpMethod);
+
+    if (!automatedSupplierIntegrationsEnabled()) {
+      return json(410, {
+        error: 'Automated supplier integrations are disabled. Add products manually instead.',
+      });
+    }
 
     const authHeader = extractAuthHeader(event);
     if (!authHeader) return json(401, { error: 'Missing authorization header' });

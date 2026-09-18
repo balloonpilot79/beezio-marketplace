@@ -15,6 +15,9 @@ type ImportBody = {
   autoSync?: boolean;
 };
 
+const automatedSupplierIntegrationsEnabled = () =>
+  String(process.env.ENABLE_AUTOMATED_SUPPLIER_INTEGRATIONS || '').trim().toLowerCase() === 'true';
+
 type InsertResult = {
   created: number;
   updated: number;
@@ -90,6 +93,12 @@ function extractMissingColumnName(message: string): string | null {
 const handler: Handler = async (event) => {
   try {
     assertPost(event.httpMethod);
+
+    if (!automatedSupplierIntegrationsEnabled()) {
+      return json(410, {
+        error: 'Automated supplier imports are disabled. Add products manually instead.',
+      });
+    }
 
     const authHeader = extractAuthHeader(event);
     if (!authHeader) return json(401, { error: 'Missing authorization header' });
