@@ -197,7 +197,10 @@ const handler: Handler = async () => {
 
     const products = candidates.map((raw: any) => {
       const preview = isLovingNutritionPreview(raw);
-      const priced = preview ? { ...raw } : applyCanonicalProductPricing(raw);
+      const storedBuyerPrice = Number(raw?.calculated_customer_price ?? 0);
+      const priced = preview || (Number.isFinite(storedBuyerPrice) && storedBuyerPrice > 0)
+        ? { ...raw }
+        : applyCanonicalProductPricing(raw);
       const categoryId = text(raw?.beezio_category_id);
       const categoryMeta = categoryMetaById.get(categoryId) || {};
       const sellerMeta = sellerMetaById.get(text(raw?.seller_id)) || {};
