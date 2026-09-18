@@ -40,6 +40,11 @@ const isUuid = (value: string): boolean =>
 
 const isVisibleStorefrontProduct = (product: any): boolean => {
   const status = String(product?.status || '').trim().toLowerCase();
+  // A stale affiliate_products row must not resurrect a product that the
+  // seller has made store-only or disabled for promotion.
+  if (Object.prototype.hasOwnProperty.call(product || {}, 'affiliate_enabled') && product?.affiliate_enabled === false) {
+    return false;
+  }
   const isActive = product?.is_active === true;
   const isPromotable = product?.is_promotable === true;
   if (status === 'active' || isActive || isPromotable) return true;
@@ -219,7 +224,7 @@ const handler: Handler = async (event) => {
     let productsById = new Map<string, any>();
     if (productIds.length) {
       let selectFields =
-        'id,title,description,price,images,primary_image_url,image_url,category_id,stock_quantity,total_inventory,in_stock,track_inventory,inventory_source,seller_id,is_active,is_promotable,status,created_at,lineage,source_platform,source,dropship_provider,cj_product_id,cj_pid,cj_spu,display_search_code,seller_ask,seller_amount,seller_ask_price,calculated_customer_price,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,shipping_reserve_amount';
+        'id,title,description,price,images,primary_image_url,image_url,category_id,stock_quantity,total_inventory,in_stock,track_inventory,inventory_source,seller_id,is_active,is_promotable,affiliate_enabled,status,created_at,lineage,source_platform,source,dropship_provider,cj_product_id,cj_pid,cj_spu,display_search_code,seller_ask,seller_amount,seller_ask_price,calculated_customer_price,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,shipping_reserve_amount';
 
       let fetchedProducts: any[] = [];
 
@@ -298,7 +303,7 @@ const handler: Handler = async (event) => {
             .eq('seller_id', sharedSellerId),
           supabaseAdmin
             .from('products')
-            .select('id,title,description,price,images,primary_image_url,image_url,category_id,stock_quantity,total_inventory,in_stock,track_inventory,seller_id,is_active,is_promotable,status,created_at,lineage,source_platform,source,dropship_provider,cj_product_id,cj_pid,cj_spu,display_search_code,seller_ask,seller_amount,seller_ask_price,calculated_customer_price,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,shipping_reserve_amount')
+            .select('id,title,description,price,images,primary_image_url,image_url,category_id,stock_quantity,total_inventory,in_stock,track_inventory,seller_id,is_active,is_promotable,affiliate_enabled,status,created_at,lineage,source_platform,source,dropship_provider,cj_product_id,cj_pid,cj_spu,display_search_code,seller_ask,seller_amount,seller_ask_price,calculated_customer_price,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,shipping_reserve_amount')
             .eq('seller_id', sharedSellerId)
             .order('created_at', { ascending: false })
             .limit(200),
