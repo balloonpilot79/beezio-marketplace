@@ -7,7 +7,6 @@ import { apiPost } from '../utils/netlifyApi';
 import { resolveProfileIdForUser } from '../utils/resolveProfileId';
 import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
 import { resolveAffiliateCommission } from '../utils/pricing';
-import UniversalIntegrationsPage from './UniversalIntegrationsPage';
 import SingleProductPromoStudio from './affiliate/SingleProductPromoStudio';
 import StoreCustomization from './StoreCustomization';
 import AccountPayoutDashboard from './AccountPayoutDashboard';
@@ -108,8 +107,7 @@ export type AffiliateDashboardTab =
   | 'earnings'
   | 'community'
   | 'training'
-  | 'payments'
-  | 'integrations';
+  | 'payments';
 
 interface EnhancedAffiliateDashboardProps {
   hideInternalTabs?: boolean;
@@ -195,11 +193,6 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
   const [insuranceRecentEarnings, setInsuranceRecentEarnings] = useState<InsuranceAffiliateEarning[]>([]);
   const insuranceAffiliateComingSoon = 'Insurance affiliate marketing coming soon plus a lot more ways to earn.';
   const [activeTab, setActiveTab] = useState<AffiliateDashboardTab>('overview');
-  useEffect(() => {
-    if (activeTab === 'integrations') {
-      setActiveTab('overview');
-    }
-  }, [activeTab]);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const rawTab = String(params.get('tab') || '').trim().toLowerCase();
@@ -2152,11 +2145,6 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
               </div>
             </div>
           </div>
-        </div>
-      )}
-      {activeTab === 'integrations' && (
-        <div className="space-y-6">
-          <UniversalIntegrationsPage />
         </div>
       )}
       {activeTab === 'earnings' && (

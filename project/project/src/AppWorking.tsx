@@ -88,8 +88,6 @@ const BulkProductUploadPage = lazy(() => import('./pages/BulkProductUploadPage')
 const AdminProductHubPage = lazy(() => import('./pages/AdminProductHubPage'));
 const AdminPayoutsQueuePage = lazy(() => import('./pages/AdminPayoutsQueuePage'));
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
-const AdminPrintfulImportPage = lazy(() => import('./pages/AdminPrintfulImportPage'));
-const AdminHouseSupplierImportPage = lazy(() => import('./pages/AdminHouseSupplierImportPage'));
 const SupportOperationsPage = lazy(() => import('./pages/SupportOperationsPage'));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'));
 const PayPalConnectCallbackPage = lazy(() => import('./pages/PayPalConnectCallbackPage'));
@@ -847,8 +845,8 @@ const AppWorking: React.FC = () => {
                     <Route path="/affiliate-guide" element={<AffiliateGuide />} />
                     <Route path="/admin" element={<AdminRoute><Navigate to="/dashboard/admin" replace /></AdminRoute>} />
                     <Route path="/admin/products" element={<AdminRoute><AdminProductHubPage /></AdminRoute>} />
-                    <Route path="/admin/printful" element={<AdminRoute><AdminPrintfulImportPage /></AdminRoute>} />
-                    <Route path="/admin/suppliers/:supplierId" element={<AdminRoute><AdminHouseSupplierImportPage /></AdminRoute>} />
+                    <Route path="/admin/printful" element={<AdminRoute><Navigate to="/admin/products" replace /></AdminRoute>} />
+                    <Route path="/admin/suppliers/:supplierId" element={<AdminRoute><Navigate to="/admin/products" replace /></AdminRoute>} />
                     <Route path="/admin/bulk-products" element={<AdminRoute><BulkProductUploadPage /></AdminRoute>} />
                     <Route path="/admin/platform" element={<AdminRoute><PlatformAdminDashboard /></AdminRoute>} />
                     <Route path="/admin/payouts" element={<AdminRoute><AdminPayoutsQueuePage /></AdminRoute>} />

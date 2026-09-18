@@ -27,7 +27,6 @@ import {
 import ContentModerationDashboard from './ContentModerationDashboard';
 import ChatSupportDashboard from './ChatSupportDashboard';
 import IssueCenterPage from '../pages/IssueCenterPage';
-import AdminPrintfulImportPage from '../pages/AdminPrintfulImportPage';
 import ManualFulfillmentQueue from './ManualFulfillmentQueue';
 import AdminOrderLedgerPanel from './AdminOrderLedgerPanel';
 import { buildTaxCsv, getCurrentTaxYear, isTaxComplianceTableMissing, type AdminReviewStatus } from '../services/taxCompliance';
@@ -1621,7 +1620,6 @@ export default function PlatformAdminDashboard() {
     { id: 'analytics', label: 'Analytics', detail: 'Performance', icon: BarChart3 },
     { id: 'moderation', label: 'Moderation', detail: 'Marketplace review', icon: ShieldAlert },
     { id: 'support', label: 'Support', detail: 'Customer issues', icon: MessageSquare },
-    { id: 'printful', label: 'Printful', detail: 'Product sync', icon: Store },
     { id: 'tools', label: 'Tools', detail: 'Settings and tests', icon: Settings },
   ];
 
@@ -2358,12 +2356,6 @@ export default function PlatformAdminDashboard() {
 
           {activeTab === 'moderation' && <ContentModerationDashboard />}
 
-          {activeTab === 'printful' && (
-            <div className="mt-4">
-              <AdminPrintfulImportPage embedded />
-            </div>
-          )}
-
           {activeTab === 'fulfillment' && (
             <div className="mt-4">
               <ManualFulfillmentQueue
@@ -2687,89 +2679,6 @@ export default function PlatformAdminDashboard() {
                 {paypalAdminError && (
                   <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                     {paypalAdminError}
-                  </div>
-                )}
-              </section>
-
-              <section className="bg-white rounded-lg shadow-sm p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Printful Diagnostics</h3>
-                    <p className="text-sm text-gray-600">
-                      Quick health check for Printful integration on your admin account.
-                    </p>
-                  </div>
-                  <button
-                    onClick={runPrintfulDiagnostics}
-                    className="bg-emerald-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50"
-                    disabled={printfulDiagLoading}
-                  >
-                    {printfulDiagLoading ? 'Checking...' : 'Run Check'}
-                  </button>
-                </div>
-
-                {printfulDiagError && (
-                  <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {printfulDiagError}
-                  </div>
-                )}
-
-                {printfulDiagnostics ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="rounded-lg border border-gray-200 p-4">
-                      <div className="text-xs uppercase text-gray-500">Profile ID</div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        {printfulDiagnostics.profileId}
-                      </div>
-                      <div className="mt-3 text-xs uppercase text-gray-500">Integration</div>
-                      <div className="text-sm text-gray-900">
-                        {printfulDiagnostics.integrationId ? 'Found' : 'Missing'}
-                      </div>
-                      <div className="mt-2 text-sm text-gray-700">
-                        Status: {printfulDiagnostics.status || 'unknown'} � Active:{' '}
-                        {printfulDiagnostics.isActive === null
-                          ? 'unknown'
-                          : printfulDiagnostics.isActive
-                            ? 'yes'
-                            : 'no'}
-                      </div>
-                      <div className="mt-2 text-sm text-gray-700">
-                        Store ID: {printfulDiagnostics.storeId || 'missing'}
-                      </div>
-                      <div className="mt-2 text-xs text-gray-500">
-                        Connected:{' '}
-                        {printfulDiagnostics.connectedAt
-                          ? new Date(printfulDiagnostics.connectedAt).toLocaleString()
-                          : 'n/a'}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Last Sync:{' '}
-                        {printfulDiagnostics.lastSync
-                          ? new Date(printfulDiagnostics.lastSync).toLocaleString()
-                          : 'n/a'}
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-gray-200 p-4">
-                      <div className="text-xs uppercase text-gray-500">Counts</div>
-                      <div className="mt-2 text-sm text-gray-700">
-                        Products: {printfulDiagnostics.productsCount ?? 'n/a'}
-                      </div>
-                      <div className="mt-2 text-sm text-gray-700">
-                        Variants: {printfulDiagnostics.variantsCount ?? 'n/a'}
-                      </div>
-                      <div className="mt-2 text-sm text-gray-700">
-                        Vendor Orders: {printfulDiagnostics.vendorOrdersCount ?? 'n/a'}
-                      </div>
-                      {printfulDiagnostics.notes.length > 0 && (
-                        <div className="mt-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                          {printfulDiagnostics.notes.join(' ')}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-600">
-                    Run the check to see integration status, counts, and any warnings.
                   </div>
                 )}
               </section>

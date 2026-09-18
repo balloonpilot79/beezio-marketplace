@@ -21,7 +21,6 @@ import { supabase } from '../lib/supabase';
 import { apiPost } from '../utils/netlifyApi';
 import StoreCustomization from './StoreCustomization';
 import UniversalInbox from './UniversalInbox';
-import UniversalIntegrationsPage from './UniversalIntegrationsPage';
 import IssueCenterPage from '../pages/IssueCenterPage';
 import SingleProductPromoStudio from './affiliate/SingleProductPromoStudio';
 import InfluencerDashboard from './InfluencerDashboard';
@@ -47,7 +46,6 @@ export type SellerDashboardTab =
   | 'analytics'
   | 'customers'
   | 'financials'
-  | 'integrations'
   | 'store-customization'
   | 'support'
   | 'messages';
@@ -956,7 +954,6 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
         { id: 'customers', label: 'Customers', icon: Users },
         { id: 'analytics', label: 'Analytics', icon: TrendingUp },
         { id: 'store-customization', label: 'Custom Store', icon: Settings },
-        { id: 'integrations', label: 'Integrations', icon: Settings },
         { id: 'messages', label: 'Messages', icon: Mail },
         { id: 'support', label: 'Support', icon: HelpCircle },
       ]
@@ -969,7 +966,6 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
         { id: 'customers', label: 'Customers', icon: Users },
         { id: 'analytics', label: 'Analytics', icon: TrendingUp },
         { id: 'store-customization', label: 'Custom Store & Branding', icon: Settings },
-        { id: 'integrations', label: 'Integrations', icon: Settings },
         { id: 'messages', label: 'Messages', icon: Mail },
         { id: 'support', label: 'Support', icon: HelpCircle },
       ];
@@ -1518,8 +1514,6 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
                 </div>
               </div>
             )}
-
-            {activeTab === 'integrations' && <UniversalIntegrationsPage />}
 
             {activeTab === 'store-customization' && (
               <div className="space-y-4">

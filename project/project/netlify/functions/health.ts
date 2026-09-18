@@ -34,7 +34,6 @@ const handler: Handler = async (event) => {
     supabaseUrl: hasEnv('SUPABASE_URL', ['VITE_SUPABASE_URL']),
     supabaseAnonKey: hasEnv('SUPABASE_ANON_KEY', ['VITE_SUPABASE_ANON_KEY']),
     supabaseServiceRoleKey: hasEnv('SUPABASE_SERVICE_ROLE_KEY'),
-    cjApiKey: hasEnv('CJ_API_KEY'),
   };
 
   const connectivity: Record<string, any> = {

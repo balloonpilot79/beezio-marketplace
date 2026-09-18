@@ -132,7 +132,6 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
     'bulk-upload',
     'customers',
     'analytics',
-    'integrations',
     'store-customization',
     'messages',
     'support'

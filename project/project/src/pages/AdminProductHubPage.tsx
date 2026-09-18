@@ -12,7 +12,6 @@ import {
   TEST_ITEM_SELLER_AMOUNT,
   TEST_ITEM_TITLE,
 } from '../../shared/testItemPricing';
-import AdminUrlProductImporter from '../components/AdminUrlProductImporter';
 
 type AdminProductRow = {
   id: string;
@@ -297,12 +296,9 @@ const AdminProductHubPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="text-xl font-black text-slate-950">Add products</h2>
-          <p className="mt-1 text-sm text-slate-600">Choose a house-brand supplier, paste a public product URL, add one manually, or upload a spreadsheet.</p>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <p className="mt-1 text-sm text-slate-600">Add one product manually or upload a reviewed spreadsheet. Automated supplier imports are disabled.</p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {[
-              { label: 'Printify', to: '/admin/suppliers/printify' },
-              { label: 'Roastify', to: '/admin/suppliers/roastify' },
-              { label: 'Supliful', to: '/admin/suppliers/supliful' },
               { label: 'Add one', to: '/add-product' },
               { label: 'Spreadsheet', to: '/admin/bulk-products' },
               { label: 'Dashboard', to: '/dashboard?section=admin' },
@@ -312,10 +308,6 @@ const AdminProductHubPage: React.FC = () => {
               </Link>
             ))}
           </div>
-        </div>
-
-        <div id="url-importer">
-          <AdminUrlProductImporter />
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -477,28 +469,11 @@ const AdminProductHubPage: React.FC = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {[
-            { id: 'printify', name: 'Printify', brand: 'Beezio merchandise', detail: 'Approved horse, Christian, eagle, and future designs with provider, mockup, variant, cost, shipping, and storefront review.' },
-            { id: 'roastify', name: 'Roastify', brand: 'RedTail', detail: 'Wholesale coffee lots with protected Roastify SKUs, lot quantities, costs, shipping, markup, and affiliate payouts.' },
-            { id: 'supliful', name: 'Supliful', brand: 'Loving Nutrition', detail: 'Wellness products with ingredients, label images, warnings, costs, and fulfillment review.' },
-          ].map((supplier) => (
-            <div key={supplier.id} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">{supplier.brand}</div>
-              <h2 className="mt-2 text-xl font-black text-slate-950">{supplier.name} Import</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-700">{supplier.detail}</p>
-              <Link to={`/admin/suppliers/${supplier.id}`} className="mt-5 inline-flex rounded-xl bg-[#101820] px-5 py-3 text-sm font-black text-[#ffcb05] hover:bg-black">
-                Open {supplier.name} Import
-              </Link>
-            </div>
-          ))}
-        </div>
-
         <div className="grid grid-cols-1 gap-6">
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Bulk Add Products (Spreadsheet)</h2>
             <p className="text-gray-700 mb-4">
-              Upload many products at once and set affiliate commission per item. Use this for seller-managed or approved supplier products.
+              Upload reviewed products in bulk and set the affiliate commission for each item.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
@@ -518,9 +493,9 @@ const AdminProductHubPage: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Approved Product Sources</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Manual Product Entry</h2>
           <p className="text-gray-700">
-            Printify, Roastify, and Supliful are the launch suppliers. The importer reads public product data when available and falls back to reviewed manual entry for authenticated supplier portals. Printify products must already contain approved artwork and verified provider variants; Roastify products are wholesale lots only; Supliful products require label and claims review. Confirm supplier permission, costs, variants, images, shipping, and fulfillment before publishing.
+            Products are entered and reviewed by a seller or administrator before publishing. CJ, AliExpress, Supliful, Printify, Roastify, and other automated supplier imports are disabled in this fallback.
           </p>
         </div>
       </div>
