@@ -178,10 +178,10 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
     void (async () => {
       try {
         // Prefer DB categories if present so the dropdown matches actual product values.
-        let { data, error } = await supabase.from('categories').select('name').order('sort_order', { ascending: true });
+        let { data, error } = await supabase.from('categories').select('name').eq('is_active', true).order('sort_order', { ascending: true });
         const msg = String((error as any)?.message || '');
         if (error && /sort_order/i.test(msg)) {
-          ({ data, error } = await supabase.from('categories').select('name').order('name', { ascending: true }));
+          ({ data, error } = await supabase.from('categories').select('name').eq('is_active', true).order('name', { ascending: true }));
         }
         if (!cancelled && !error && Array.isArray(data) && data.length) {
           const names = data.map((r: any) => String(r?.name || '').trim()).filter(Boolean);
