@@ -286,6 +286,7 @@ const MarketplacePageDual: React.FC = () => {
         const { data, error } = await supabase
           .from('categories')
           .select('id,name,slug,parent_id')
+          .eq('is_active', true)
           .order('name', { ascending: true });
         if (!error && Array.isArray(data) && isMounted) {
           setCategoryRows(data as CategoryRow[]);
