@@ -45,7 +45,7 @@ const StreamlinedAddProducts: React.FC = () => {
   }, []);
 
   const loadCategories = async () => {
-    const { data } = await supabase.from('categories').select('*').order('name');
+    const { data } = await supabase.from('categories').select('*').eq('is_active', true).order('name');
     setCategories(data || []);
   };
 
