@@ -42,11 +42,14 @@ export async function recordOrderWithPayouts(params: OrderPersistenceParams) {
     lines,
   } = params;
 
+  const { data: authUser } = await supabase.auth.getUser();
+
   // Insert order
   const { data: order, error: orderError } = await supabase
     .from('orders')
     .insert({
       order_number: createBeezioOrderNumber(),
+      user_id: userId,
       buyer_id: userId,
       storefront_id: storefrontId,
       affiliate_id: affiliateId,
@@ -54,7 +57,11 @@ export async function recordOrderWithPayouts(params: OrderPersistenceParams) {
       shipping_amount: summary.shipping,
       tax_amount: summary.tax,
       total_amount: summary.total,
-      platform_percent_at_purchase: PLATFORM_FEE_PERCENT,
+      items_subtotal: summary.subtotal,
+      total_charged: summary.total,
+      subtotal_listing: summary.subtotal,
+      customer_email: authUser.user?.email || null,
+      payment_provider: 'PAYPAL',
       affiliate_commission_percent_at_purchase: lines[0]?.affiliateRate ?? null,
       status: 'paid',
     })
@@ -69,11 +76,27 @@ export async function recordOrderWithPayouts(params: OrderPersistenceParams) {
   const orderItems = lines.map((line) => ({
     order_id: order.id,
     product_id: line.productId,
+    seller_id: line.sellerId,
+    affiliate_id: affiliateId,
     quantity: line.quantity,
-    final_sale_price_per_unit: line.salePrice,
-    seller_ask_price_per_unit: line.sellerAsk,
-    affiliate_commission_percent_at_purchase: line.affiliateRate,
-    platform_percent_at_purchase: PLATFORM_FEE_PERCENT,
+    price: line.salePrice,
+    unit_price: line.salePrice,
+    total_price: line.salePrice * line.quantity,
+    commission_rate: line.affiliateRate,
+    affiliate_commission_rate: line.affiliateRate,
+    shipping_cost: line.shippingCost || 0,
+    seller_ask_amount: line.sellerAsk,
+    partner_rate: line.affiliateRate,
+    computed_listing_price: line.salePrice,
+    product_title_snapshot: line.title,
+    fulfillment_status: 'unfulfilled',
+    seller_markup_amount: 0,
+    supplier_cost_amount: 0,
+    affiliate_payout_amount: line.payout.affiliateAmount,
+    shipping_reserve_amount: line.shippingCost || 0,
+    influencer_allocation_amount: 0,
+    platform_fee_amount: line.payout.platformGrossAmount,
+    paypal_processing_allowance: line.payout.stripePercentAmount + line.payout.stripeFixedFee,
   }));
 
   const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
@@ -83,3 +106,4 @@ export async function recordOrderWithPayouts(params: OrderPersistenceParams) {
 
   return order;
 }
+
