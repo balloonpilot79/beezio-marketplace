@@ -526,19 +526,18 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   // Default categories as fallback
   const defaultCategories = [
     { id: 'electronics', name: 'Electronics' },
-    { id: 'fashion', name: 'Fashion & Apparel' },
-    { id: 'home-garden', name: 'Home & Garden' },
-    { id: 'books-media', name: 'Books & Media' },
+    { id: 'home-kitchen', name: 'Home & Kitchen' },
+    { id: 'beauty-personal-care', name: 'Beauty & Personal Care' },
+    { id: 'apparel', name: 'Apparel' },
     { id: 'sports-outdoors', name: 'Sports & Outdoors' },
     { id: 'beauty-personal-care', name: 'Beauty & Personal Care' },
     { id: 'health-wellness', name: 'Health & Wellness' },
-    { id: 'technology', name: 'Technology' },
-    { id: 'arts-crafts', name: 'Arts & Crafts' },
     { id: 'automotive', name: 'Automotive' },
     { id: 'pet-supplies', name: 'Pet Supplies' },
-    { id: 'toys-games', name: 'Toys & Games' },
-    { id: 'education', name: 'Education & Courses' },
-    DIGITAL_CATEGORY_FALLBACK,
+    { id: 'food-beverage', name: 'Food & Beverage' },
+    { id: 'horse-equestrian', name: 'Horse & Equestrian' },
+    { id: 'christian-gifts', name: 'Christian & Gifts' },
+    { id: 'business-services', name: 'Business & Services' },
     { id: 'services', name: 'Services' },
     { id: 'food-beverages', name: 'Food & Beverages' }
   ];
@@ -680,10 +679,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     (async () => {
       try {
         // Prefer sort_order when present, but fall back to name ordering for older schemas.
-        let { data, error } = await supabase.from('categories').select('id, name').order('sort_order', { ascending: true });
+        let { data, error } = await supabase.from('categories').select('id, name').eq('is_active', true).order('sort_order', { ascending: true });
         const msg = String((error as any)?.message || '');
         if (error && /sort_order/i.test(msg)) {
-          ({ data, error } = await supabase.from('categories').select('id, name').order('name', { ascending: true }));
+          ({ data, error } = await supabase.from('categories').select('id, name').eq('is_active', true).order('name', { ascending: true }));
         }
 
         if (!error && data && data.length > 0) {
@@ -691,7 +690,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
           setCategoriesLoadedFromDatabase(true);
           setCategories(
             dedupeCategories(
-              [...data, DIGITAL_CATEGORY_FALLBACK].map((category) => ({
+              data.map((category) => ({
                 id: String(category?.id || '').trim(),
                 name: String(category?.name || '').trim(),
               }))
