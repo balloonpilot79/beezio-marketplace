@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, ChevronDown, CreditCard, ExternalLink, HelpCircle, Package, Settings, ShoppingCart, Store, UserPlus, Users, Zap } from 'lucide-react';
+import { BarChart3, ChevronDown, CreditCard, ExternalLink, HelpCircle, Package, ShoppingCart, Store, Users, Zap } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContextMultiRole';
 import { CartProvider } from './contexts/CartContext';
 import { AffiliateProvider } from './contexts/AffiliateContext';
@@ -14,7 +14,7 @@ import ScrollToTop from './components/ScrollToTop';
 import CustomDomainHandler from './components/CustomDomainHandler';
 import { initializeReferralTracking } from './utils/referralTracking';
 import { canAccessCJImport } from './utils/cjImportAccess';
-import { getNormalizedAccountRoles, isBuyerOnlyAccount } from './utils/accountRoles';
+import { getNormalizedAccountRoles, hasBusinessAccountAccess, isBuyerOnlyAccount } from './utils/accountRoles';
 
 const ContactSupport = lazy(() => import('./pages/ContactSupport'));
 const UniversalInbox = lazy(() => import('./components/UniversalInbox'));
@@ -252,8 +252,64 @@ const RouteFallback = () => (
   </div>
 );
 
+const BusinessRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, profile, userRoles, loading } = useAuth();
+
+  if (loading) return <RouteFallback />;
+  if (!user) return <Navigate to="/auth/login?next=%2Fbusiness" replace />;
+
+  const roles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role);
+  const isAdmin = roles.includes('admin') || canAccessCJImport(user.email || profile?.email || '');
+
+  if (!isAdmin && !hasBusinessAccountAccess(roles)) {
+    return <Navigate to="/account" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const LegacyDashboardRedirect = () => {
+  const { user, profile, userRoles, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <RouteFallback />;
+
+  if (!user) {
+    const next = location.pathname + location.search;
+    return <Navigate to={'/auth/login?next=' + encodeURIComponent(next)} replace />;
+  }
+
+  const roles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role);
+  const isAdmin = roles.includes('admin') || canAccessCJImport(user.email || profile?.email || '');
+  const params = new URLSearchParams(location.search);
+  const pathSection = location.pathname.startsWith('/dashboard/')
+    ? String(location.pathname.split('/')[2] || '').toLowerCase()
+    : '';
+  const requestedSection = String(params.get('section') || pathSection || '').toLowerCase();
+  const requestedTab = String(params.get('tab') || '').toLowerCase();
+  const tabSuffix = requestedTab ? '?tab=' + encodeURIComponent(requestedTab) : '';
+  const accountTarget = requestedTab ? '/account?tab=' + encodeURIComponent(requestedTab) : '/account';
+
+  if (requestedSection === 'admin') {
+    return <Navigate to={isAdmin ? '/admin/platform' : accountTarget} replace />;
+  }
+
+  if (requestedSection === 'buyer' || (!isAdmin && !hasBusinessAccountAccess(roles))) {
+    return <Navigate to={accountTarget} replace />;
+  }
+
+  const businessSection = ['seller', 'affiliate', 'influencer'].includes(requestedSection)
+    ? requestedSection
+    : '';
+  const sectionSuffix = businessSection
+    ? '?section=' + businessSection + (requestedTab ? '&tab=' + encodeURIComponent(requestedTab) : '')
+    : tabSuffix;
+
+  return <Navigate to={'/business' + sectionSuffix} replace />;
+};
+
 // Store settings now live inside the unified dashboard.
-const StoreSettingsRoute = () => <Navigate to="/dashboard/store" replace />;
+const StoreSettingsRoute = () => <Navigate to="/business?tab=store-customization" replace />;
 
 // Beautiful Home Page Component (DEPRECATED - using HomePageBZO)
 // Removed to avoid build errors - see HomePageBZO.tsx for active homepage
@@ -373,6 +429,7 @@ const AppWorking: React.FC = () => {
       'sellers',
       'seller',
       'dashboard',
+      'business',
       'add-product',
       'admin',
       'signup',
@@ -407,7 +464,7 @@ const AppWorking: React.FC = () => {
   };
 
   const StorefrontChromeGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { user, profile, currentRole, userRoles, hasRole, loading: authLoading } = useAuth();
+    const { user, profile, userRoles, hasRole, loading: authLoading } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [isMobileDashboardSubNavOpen, setIsMobileDashboardSubNavOpen] = useState(false);
@@ -420,9 +477,10 @@ const AppWorking: React.FC = () => {
     const params = new URLSearchParams(location.search);
     const sectionParam = String(params.get('section') || '').toLowerCase();
     const tabParam = String(params.get('tab') || '').toLowerCase();
-    const dashboardPathSection = location.pathname.startsWith('/dashboard/')
-      ? String(location.pathname.split('/')[2] || '').toLowerCase()
-      : '';
+    const dashboardPathSection =
+      location.pathname.startsWith('/dashboard/') || location.pathname.startsWith('/business/')
+        ? String(location.pathname.split('/')[2] || '').toLowerCase()
+        : '';
     const requestedDashboardSection = sectionParam || dashboardPathSection;
     const isAdminDashboardUser = Boolean(
       user &&
@@ -438,13 +496,15 @@ const AppWorking: React.FC = () => {
         ? 'admin'
         : 'seller';
     const customerAccountPath = `/account${tabParam ? `?tab=${encodeURIComponent(tabParam)}` : ''}`;
-    const normalizedAccountRoles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role, currentRole);
+    const normalizedAccountRoles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role);
     const buyerOnlyDashboard = Boolean(user && isBuyerOnlyAccount(normalizedAccountRoles));
-    const isDashboardPath = location.pathname.startsWith('/dashboard');
+    const isDashboardPath = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/business');
     const isProductEditorRoute =
       location.pathname === '/dashboard/products/add' ||
+      location.pathname === '/business/products/add' ||
       location.pathname === '/seller/products/new' ||
-      location.pathname.startsWith('/dashboard/products/edit/');
+      location.pathname.startsWith('/dashboard/products/edit/') ||
+      location.pathname.startsWith('/business/products/edit/');
     const isFallbackBusinessHydration =
       Boolean(user) &&
       Boolean((profile as any)?.__is_fallback) &&
@@ -465,7 +525,7 @@ const AppWorking: React.FC = () => {
       { id: 'financials', label: 'Financials', icon: CreditCard, description: 'Seller, affiliate, and influencer sales data and payout visibility' },
       { id: 'analytics', label: 'Analytics', icon: Zap, description: 'See traffic, sales, and conversion activity' },
       { id: 'support', label: 'Support', icon: HelpCircle, description: 'Get platform help' },
-      ...(isAdminDashboardUser ? [{ id: 'admin', label: 'Admin', icon: Settings, description: 'Platform admin tools' }] : []),
+
     ];
     const dashboardSubNav =
       activeDashboardSection === 'buyer'
@@ -489,6 +549,8 @@ const AppWorking: React.FC = () => {
         ? 'Admin Dashboard'
         : requestedDashboardSection === 'buyer'
         ? 'Buyer Dashboard'
+        : location.pathname.startsWith('/business')
+        ? 'Business Center'
         : 'Seller Dashboard';
 
     const showPersistentDashboardSubNav = Boolean(
@@ -514,6 +576,7 @@ const AppWorking: React.FC = () => {
     const activeDashboardTab =
       dashboardSubNav.find((tab) => tab.id === activeDashboardTabId) ||
       dashboardSubNav.find((tab) => tab.id === defaultDashboardTabId);
+    const dashboardBasePath = location.pathname.startsWith('/business') ? '/business' : '/dashboard';
 
     useEffect(() => {
       setIsMobileDashboardSubNavOpen(false);
@@ -521,7 +584,7 @@ const AppWorking: React.FC = () => {
 
     const handlePersistentDashboardNavClick = (tabId: string) => {
       if (tabId === 'products') {
-        const target = '/dashboard?tab=products';
+        const target = dashboardBasePath + '?tab=products';
         if (location.pathname.startsWith('/dashboard/products/edit/')) {
           window.location.assign(target);
           return;
@@ -530,23 +593,23 @@ const AppWorking: React.FC = () => {
         return;
       }
       if (tabId === 'admin') {
-        navigate('/dashboard?section=admin');
+        navigate('/admin/platform');
         return;
       }
       if (tabId === 'orders') {
-        navigate('/dashboard?tab=orders');
+        navigate(dashboardBasePath + '?tab=orders');
         return;
       }
       if (tabId === 'influencer-promo') {
-        navigate('/dashboard?tab=influencer-promo');
+        navigate(dashboardBasePath + '?tab=influencer-promo');
         return;
       }
 
       if (activeDashboardSection === 'buyer' || activeDashboardSection === 'seller' || activeDashboardSection === 'admin') {
         const target =
           activeDashboardSection === 'buyer'
-            ? `/dashboard?section=buyer&tab=${encodeURIComponent(tabId)}`
-            : `/dashboard?tab=${encodeURIComponent(tabId)}`;
+            ? '/account?tab=' + encodeURIComponent(tabId)
+            : dashboardBasePath + '?tab=' + encodeURIComponent(tabId);
         if (location.pathname.startsWith('/dashboard/products/edit/')) {
           window.location.assign(target);
           return;
@@ -593,7 +656,7 @@ const AppWorking: React.FC = () => {
                   <>
                     <div className="mt-2 mb-2 flex gap-2 overflow-x-auto pb-1">
                       <Link
-                        to="/dashboard/products/add"
+                        to={dashboardBasePath + '/products/add'}
                         onClick={() => setIsMobileDashboardSubNavOpen(false)}
                         className="inline-flex shrink-0 items-center gap-2 rounded-md bg-[#101820] px-3 py-2 text-xs font-semibold text-[#ffcb05]"
                       >
@@ -660,7 +723,7 @@ const AppWorking: React.FC = () => {
                 </nav>
                 <div className="flex shrink-0 items-center gap-2 border-l border-[#d6ab00] pl-3">
                   <Link
-                    to="/dashboard/products/add"
+                    to={dashboardBasePath + '/products/add'}
                     className="inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-[#101820] px-3 py-2 text-sm font-semibold text-[#ffcb05] hover:bg-[#26313f]"
                   >
                     Sell a Product
@@ -787,13 +850,18 @@ const AppWorking: React.FC = () => {
                     <Route path="/affiliate-signup" element={<SignUpPage />} />
                     <Route path="/affiliate/products" element={<AffiliateProductsPage />} />
                     <Route path="/affiliate/dashboard" element={<AffiliateDashboardPage />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/business" element={<BusinessRoute><Dashboard mode="business" /></BusinessRoute>} />
+                    <Route path="/business/products/add" element={<BusinessRoute><SellerProductFormPage /></BusinessRoute>} />
+                    <Route path="/business/products/edit/:id" element={<BusinessRoute><ProductForm editMode={true} /></BusinessRoute>} />
+                    <Route path="/business/:section" element={<BusinessRoute><Dashboard mode="business" /></BusinessRoute>} />
+                    <Route path="/dashboard" element={<LegacyDashboardRedirect />} />
                     <Route path="/dashboard/buyer" element={<Navigate to="/account" replace />} />
-                    <Route path="/dashboard/seller" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/dashboard/affiliate" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/dashboard/:section" element={<Dashboard />} />
+                    <Route path="/dashboard/seller" element={<Navigate to="/business?section=seller" replace />} />
+                    <Route path="/dashboard/affiliate" element={<Navigate to="/business?section=affiliate" replace />} />
+                    <Route path="/dashboard/influencer" element={<Navigate to="/business?section=influencer" replace />} />
+                    <Route path="/dashboard/:section" element={<LegacyDashboardRedirect />} />
                     <Route path="/dashboard/store-settings" element={<StoreSettingsRoute />} />
-                    <Route path="/add-product" element={<SellerProductFormPage />} />
+                    <Route path="/add-product" element={<BusinessRoute><SellerProductFormPage /></BusinessRoute>} />
                     <Route path="/add-product-old" element={<AddProductPage />} />
                     <Route path="/dashboard-preview" element={<DashboardPreview />} />
                     <Route path="/affiliate-dashboard-preview" element={<AffiliateDashboardPreview />} />
@@ -815,15 +883,15 @@ const AppWorking: React.FC = () => {
                     <Route path="/promo/product/:productId" element={<AffiliateSingleProductPromoPage />} />
                     <Route path="/affiliate/promo/:productId" element={<AffiliateSingleProductPromoPage />} />
                     <Route path="/:ownerType/:username/:pageSlug" element={<CustomPageView />} />
-                    <Route path="/dashboard/products/add" element={<SellerProductFormPage />} />
-                    <Route path="/dashboard/products/edit/:id" element={<ProductForm editMode={true} />} />
-                    <Route path="/seller/products" element={<Navigate to="/dashboard?tab=products" replace />} />
-                    <Route path="/dashboard/integrations" element={<Dashboard />} />
-                    <Route path="/seller/products/new" element={<SellerProductFormPage />} />
-                    <Route path="/seller/orders" element={<Navigate to="/dashboard?tab=orders" replace />} />
+                    <Route path="/dashboard/products/add" element={<Navigate to="/business/products/add" replace />} />
+                    <Route path="/dashboard/products/edit/:id" element={<Navigate to="/business/products/edit/:id" replace />} />
+                    <Route path="/seller/products" element={<Navigate to="/business?tab=products" replace />} />
+                    <Route path="/dashboard/integrations" element={<Navigate to="/business?tab=products" replace />} />
+                    <Route path="/seller/products/new" element={<BusinessRoute><SellerProductFormPage /></BusinessRoute>} />
+                    <Route path="/seller/orders" element={<Navigate to="/business?tab=orders" replace />} />
                     <Route path="/buyer/orders" element={<Navigate to="/account?tab=orders" replace />} />
                     <Route path="/profile" element={<ProfileCompletion />} />
-                    <Route path="/earnings" element={<EarningsDashboard />} />
+                    <Route path="/earnings" element={<BusinessRoute><EarningsDashboard /></BusinessRoute>} />
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/debug-sw" element={<DebugServiceWorkerPage />} />
                     <Route path="/privacy" element={<PrivacyPage />} />
@@ -843,7 +911,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/faq/storefronts" element={<StorefrontSetupFAQPage />} />
                     <Route path="/faq/custom-domains" element={<CustomDomainFAQPage />} />
                     <Route path="/affiliate-guide" element={<AffiliateGuide />} />
-                    <Route path="/admin" element={<AdminRoute><Navigate to="/dashboard/admin" replace /></AdminRoute>} />
+                    <Route path="/admin" element={<AdminRoute><Navigate to="/admin/platform" replace /></AdminRoute>} />
                     <Route path="/admin/products" element={<AdminRoute><AdminProductHubPage /></AdminRoute>} />
                     <Route path="/admin/printful" element={<AdminRoute><Navigate to="/admin/products" replace /></AdminRoute>} />
                     <Route path="/admin/suppliers/:supplierId" element={<AdminRoute><Navigate to="/admin/products" replace /></AdminRoute>} />
@@ -866,7 +934,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/checkout/cancel" element={<CheckoutCancelPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/change-password" element={<ChangePasswordPage />} />
-                    <Route path="/orders" element={<OrderManagement />} />
+                    <Route path="/orders" element={<BusinessRoute><OrderManagement /></BusinessRoute>} />
                     <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
                     <Route path="/contact-support" element={<ContactSupport />} />
                     <Route path="/inbox" element={<UniversalInbox />} />
