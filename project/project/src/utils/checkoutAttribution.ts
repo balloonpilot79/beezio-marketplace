@@ -41,6 +41,10 @@ export function resolveCheckoutAttribution(input: CheckoutAttributionInput): Che
     }
   }
 
+  if (!orderSource) {
+    orderSource = affiliate_id ? 'affiliate_link' : 'marketplace_direct';
+  }
+
   return {
     affiliate_id,
     storefront_id,
