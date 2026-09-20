@@ -62,12 +62,12 @@ const OnboardingPage: React.FC = () => {
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-3xl mx-auto px-4 py-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">You're ready to go</h1>
-          <p className="text-gray-600 mb-6">Your buyer account is set up. Head to the dashboard anytime.</p>
+          <p className="text-gray-600 mb-6">Your buyer account is set up. View your orders and support in Shopper Account anytime.</p>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/account')}
             className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-[#ffcb05] text-[#101820] font-semibold"
           >
-            Go to dashboard <ArrowRight className="w-4 h-4" />
+            Open Shopper Account <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -216,7 +216,7 @@ const OnboardingPage: React.FC = () => {
 
             <div className="mt-4 flex items-center gap-2 text-sm text-gray-700">
               <LayoutDashboard className="w-4 h-4" />
-              <span>Go to Dashboard {'->'} Payments when you are ready.</span>
+              <span>Go to Business Center {'->'} Payments when you are ready.</span>
             </div>
           </div>
 
@@ -224,7 +224,7 @@ const OnboardingPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">2) Next steps</h2>
             <div className="space-y-3">
               <button
-                onClick={() => navigate('/dashboard/store')}
+                onClick={() => navigate('/business?tab=store-customization')}
                 className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-3">
@@ -238,7 +238,7 @@ const OnboardingPage: React.FC = () => {
               </button>
 
               <button
-                onClick={() => navigate('/add-product')}
+                onClick={() => navigate('/business/products/add')}
                 className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-3">
@@ -252,13 +252,13 @@ const OnboardingPage: React.FC = () => {
               </button>
 
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/business')}
                 className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-3">
                   <LayoutDashboard className="w-5 h-5 text-gray-800" />
                   <div className="text-left">
-                    <div className="font-semibold text-gray-900">Open your dashboard</div>
+                    <div className="font-semibold text-gray-900">Open Business Center</div>
                     <div className="text-sm text-gray-600">{isAffiliate ? 'Track links, earnings, and the offers you are promoting' : 'Run your store, manage activity, and track earnings'}</div>
                   </div>
                 </div>
@@ -285,7 +285,7 @@ const OnboardingPage: React.FC = () => {
               <ul className="text-sm text-gray-700 space-y-1">
                 <li>You are setting up an affiliate account that can promote mixed offer types.</li>
                 <li>Attribution is tracked by links and system logs.</li>
-                <li>Affiliate earnings are tracked in your dashboard and paid to the payout method you set.</li>
+                <li>Affiliate earnings are tracked in Business Center and paid to the payout method you set.</li>
                 <li>
                   Read the full terms:{' '}
                   <Link to="/terms#partner-commissions" className="text-amber-600 hover:text-amber-700 underline">Partner commissions</Link>
