@@ -11,6 +11,7 @@ import { StorefrontSignature } from '../components/brand/BeezioBrand';
 import { Star, MapPin, Clock, Package, Award, Facebook, Instagram, Twitter, Linkedin, Globe, ShoppingBag, Search } from 'lucide-react';
 import { applyThemeToDocument, getThemeStyles, normalizeThemeName, type ThemeName } from '../utils/themes';
 import { buildSellerStorefrontProducts } from '../utils/storefrontProducts';
+import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
 import { normalizeStorageImagePath } from '../utils/imageHelpers';
 import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 
@@ -880,7 +881,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               >
                 <div className="text-sm font-semibold" style={{ color: textColor }}>{product.title || product.name}</div>
                 <div className="mt-1 text-xs" style={{ color: textColor, opacity: 0.65 }}>{product.category || 'Product'}</div>
-                <div className="mt-3 text-sm font-bold" style={{ color: primaryColor }}>${Number(product.price || 0).toFixed(2)}</div>
+                <div className="mt-3 text-sm font-bold" style={{ color: primaryColor }}>${getBuyerFacingProductPrice(product).toFixed(2)}</div>
               </Link>
             ))}
           </div>

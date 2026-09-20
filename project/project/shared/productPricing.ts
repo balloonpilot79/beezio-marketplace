@@ -88,6 +88,15 @@ export function resolveStoredAffiliateCommission(product: ProductPricingLike): {
   };
 }
 
+/** Public storefronts must preserve the published buyer price, including shipping. */
+export function applyStorefrontProductPricing<T extends ProductPricingLike>(product: T) {
+  const storedBuyerPrice = Number(product?.calculated_customer_price);
+  if (Number.isFinite(storedBuyerPrice) && storedBuyerPrice > 0) {
+    return { ...product, price: storedBuyerPrice, calculated_customer_price: storedBuyerPrice };
+  }
+  return applyCanonicalProductPricing(product);
+}
+
 export function applyCanonicalProductPricing<T extends ProductPricingLike>(product: T): T & {
   price: number;
   calculated_customer_price: number;

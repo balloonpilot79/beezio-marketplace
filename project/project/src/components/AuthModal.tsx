@@ -793,7 +793,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
             <button
               type="submit"
               disabled={loading || Boolean(storeSlugBlockingState)}
-              className="w-full rounded-full bg-amber-500 px-4 py-3 font-semibold text-black shadow-sm transition-colors hover:bg-amber-600 disabled:opacity-50"
+              className="bz-button bz-button-gold w-full disabled:opacity-50"
             >
               {loading ? 'Please wait...' : 
                mode === 'login' ? 'Sign In' : 

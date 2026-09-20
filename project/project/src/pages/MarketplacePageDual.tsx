@@ -624,7 +624,7 @@ const MarketplacePageDual: React.FC = () => {
         </div>
       </section>
 
-      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
+      <section aria-label="Marketplace products" className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
         <div className="mb-4 flex flex-col gap-2 text-sm text-slate-600 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
           <span>
             Showing <strong>{filteredProducts.length}</strong> products
@@ -802,7 +802,7 @@ const MarketplacePageDual: React.FC = () => {
             ))}
           </div>
         )}
-      </main>
+      </section>
     </div>
   );
 };

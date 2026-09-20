@@ -88,9 +88,9 @@ const StorefrontBuyerShell: React.FC<StorefrontBuyerShellProps> = ({
           )}
         </nav>
       </header>
-      <main className="mx-auto min-h-[65vh] max-w-6xl px-4 py-8">
+      <section aria-label="Shopper account" className="mx-auto min-h-[65vh] max-w-6xl px-4 py-8">
         {children}
-      </main>
+      </section>
       <StorefrontSignature />
     </div>
   );
