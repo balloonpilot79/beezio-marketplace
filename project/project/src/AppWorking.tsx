@@ -884,7 +884,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/affiliate/promo/:productId" element={<AffiliateSingleProductPromoPage />} />
                     <Route path="/:ownerType/:username/:pageSlug" element={<CustomPageView />} />
                     <Route path="/dashboard/products/add" element={<Navigate to="/business/products/add" replace />} />
-                    <Route path="/dashboard/products/edit/:id" element={<Navigate to="/business/products/edit/:id" replace />} />
+                    <Route path="/dashboard/products/edit/:id" element={<BusinessRoute><ProductForm editMode={true} /></BusinessRoute>} />
                     <Route path="/seller/products" element={<Navigate to="/business?tab=products" replace />} />
                     <Route path="/dashboard/integrations" element={<Navigate to="/business?tab=products" replace />} />
                     <Route path="/seller/products/new" element={<BusinessRoute><SellerProductFormPage /></BusinessRoute>} />
