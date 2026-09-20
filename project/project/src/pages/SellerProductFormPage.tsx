@@ -10,7 +10,7 @@ const SellerProductFormPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-[#0b1026] via-[#0f1735] to-[#0b132b] py-10">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <button
-          onClick={() => navigate('/seller/products')}
+          onClick={() => navigate('/business?tab=products')}
           className="mb-4 flex items-center text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
