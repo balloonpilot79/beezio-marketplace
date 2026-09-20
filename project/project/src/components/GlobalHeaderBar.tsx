@@ -20,6 +20,7 @@ import {
   getNormalizedAccountRoles,
 } from "../utils/accountRoles";
 import { BeezioMark } from "./brand/BeezioBrand";
+import MarketplaceSearch from "./MarketplaceSearch";
 
 const publicLinks = [
   { label: "Sellers", href: "/sellers" },
@@ -85,16 +86,17 @@ const GlobalHeaderBar: React.FC = () => {
 
   return (
     <>
-      <header className="bz-header fixed inset-x-0 top-0 z-[70] border-b border-slate-200 bg-white text-[#101820]">
+      <header className="bz-header fixed inset-x-0 top-0 z-[70] border-b border-[#e8b900] bg-[#ffcb05] text-[#101820]">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <Link to="/" aria-label="Beezio home">
             <BeezioMark
               subtitle={isBusiness ? "Business Center" : "Sell. Share. Earn."}
             />
           </Link>
+          <MarketplaceSearch className="bz-header-search" />
           <nav
             aria-label="Main navigation"
-            className="hidden items-center gap-6 xl:flex"
+            className="hidden items-center gap-4 2xl:flex"
           >
             {publicLinks.map((link) => (
               <Link
@@ -120,7 +122,7 @@ const GlobalHeaderBar: React.FC = () => {
             ) : (
               <Link
                 to="/signup"
-                className="hidden rounded-lg bg-[#ffcb05] px-3 py-2 text-xs font-semibold text-[#101820] hover:bg-[#ffda45] sm:inline-flex"
+                className="hidden rounded-lg bg-[#142a34] px-3 py-2 text-xs font-semibold text-white hover:bg-[#284550] sm:inline-flex"
               >
                 Start your free website
               </Link>
@@ -241,7 +243,7 @@ const GlobalHeaderBar: React.FC = () => {
               aria-expanded={mobileOpen}
               aria-controls="beezio-mobile-menu"
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="rounded-lg p-2 text-slate-700 xl:hidden"
+              className="rounded-lg p-2 text-slate-700 2xl:hidden"
             >
               {mobileOpen ? (
                 <X className="h-5 w-5" />
@@ -258,13 +260,14 @@ const GlobalHeaderBar: React.FC = () => {
             aria-label="Close navigation backdrop"
             type="button"
             onClick={() => setMobileOpen(false)}
-            className="fixed inset-0 top-14 z-[66] bg-black/20 xl:hidden"
+            className="fixed inset-0 top-14 z-[66] bg-black/20 2xl:hidden"
           />
           <nav
             id="beezio-mobile-menu"
             aria-label="Mobile navigation"
-            className="fixed inset-x-0 top-14 z-[69] grid max-h-[calc(100dvh-8rem)] gap-1 overflow-y-auto border-b border-slate-200 bg-white p-4 xl:hidden"
+            className="fixed inset-x-0 top-14 z-[69] grid max-h-[calc(100dvh-8rem)] gap-1 overflow-y-auto border-b border-slate-200 bg-[#f3f0e8] p-4 2xl:hidden"
           >
+            <MarketplaceSearch />
             {publicLinks.map((link) => (
               <Link
                 key={link.href}

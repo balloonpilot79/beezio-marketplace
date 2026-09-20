@@ -45,12 +45,12 @@ const terms = [
 ];
 
 const Footer: React.FC = () => (
-  <footer className="border-t border-slate-200 bg-[#faf9f5] pb-20 text-slate-600 xl:pb-0">
+  <footer className="border-t border-[#2e464e] bg-[#142a34] pb-20 text-slate-300 xl:pb-0">
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.35fr_1fr_1fr_1fr]">
         <div>
           <Link to="/" aria-label="Beezio home">
-            <BeezioMark />
+            <BeezioMark inverse />
           </Link>
           <p className="mt-5 max-w-xs text-sm leading-6">
             Free custom websites. Sellers, affiliates, and influencers growing
@@ -58,14 +58,14 @@ const Footer: React.FC = () => (
           </p>
           <a
             href="mailto:support@beezio.co"
-            className="mt-4 inline-flex text-xs text-slate-600 hover:text-slate-900"
+            className="mt-4 inline-flex text-xs text-[#ffdb66] hover:text-white"
           >
             support@beezio.co
           </a>
         </div>
         {groups.map((group) => (
           <nav key={group.title} aria-label={group.title}>
-            <h2 className="text-sm font-semibold text-slate-900">
+            <h2 className="text-sm font-semibold text-white">
               {group.title}
             </h2>
             <ul className="mt-4 space-y-3 text-xs">
@@ -73,7 +73,7 @@ const Footer: React.FC = () => (
                 <li key={href}>
                   <Link
                     to={href}
-                    className="text-slate-600 hover:text-slate-900"
+                    className="text-slate-300 hover:text-[#ffdb66]"
                   >
                     {label}
                   </Link>
@@ -83,14 +83,14 @@ const Footer: React.FC = () => (
           </nav>
         ))}
       </div>
-      <div className="mt-10 flex flex-col justify-between gap-4 border-t border-slate-200 pt-6 text-[11px] lg:flex-row">
+      <div className="mt-10 flex flex-col justify-between gap-4 border-t border-[#3a5059] pt-6 text-[11px] lg:flex-row">
         <p>© {new Date().getFullYear()} Beezio. All rights reserved.</p>
         <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-3">
           {terms.map(([label, href]) => (
             <Link
               key={href}
               to={href}
-              className="text-slate-500 hover:text-slate-900"
+              className="text-slate-300 hover:text-[#ffdb66]"
             >
               {label}
             </Link>

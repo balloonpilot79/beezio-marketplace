@@ -1,4 +1,11 @@
 /* Shared Beezio chrome. Store owners' colors and content remain untouched. */
+.bz-market-search { display:flex; align-items:center; background:#fff; border:1px solid #b8c2ba; border-radius:8px; overflow:hidden; min-width:0; height:40px; }
+.bz-market-search input { flex:1; min-width:0; width:100%; padding:10px 13px; background:transparent; color:#142a34; font-size:12px; outline:none; border:0; }
+.bz-market-search:focus-within { outline:2px solid #354f48; outline-offset:2px; }
+.bz-market-search button { display:flex; align-items:center; justify-content:center; align-self:stretch; width:44px; flex-shrink:0; color:#142a34; background:#f3ead0; border:0; }
+.bz-header-search { display:none; }
+.bz-header a[aria-label="Beezio home"]>span>span:first-child { background:#142a34; color:#ffcb05; }
+@media(min-width:1024px) { .bz-header-search { display:flex; flex:1; max-width:440px; } }
 .bz-public {
   color: #101820;
   background: #fff;

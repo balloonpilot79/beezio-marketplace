@@ -1,279 +1,511 @@
-import React from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Check, Globe, Palette, ShoppingBag } from "lucide-react";
-import PublicLayout from "../components/layout/PublicLayout";
 import {
-  AudienceCards,
-  pricingExplanation,
-  WebsiteBenefits,
-  WebsiteInvitation,
-} from "../components/brand/BeezioBrand";
+  ArrowRight,
+  Check,
+  Globe,
+  Megaphone,
+  Package,
+  ShoppingBag,
+  Store,
+} from "lucide-react";
+import MarketplaceSearch from "../components/MarketplaceSearch";
+import { pricingExplanation } from "../components/brand/BeezioBrand";
+import { prepareHomeProducts, type HomeProduct } from "../utils/homeCatalog";
+import "../styles/beezio-home.css";
 
-const storefronts = [
+const money = (amount: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+    amount,
+  );
+
+function ProductImage({
+  product,
+  eager = false,
+}: {
+  product: HomeProduct;
+  eager?: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+  return product.image && !failed ? (
+    <img
+      src={product.image}
+      alt={product.title}
+      loading={eager ? "eager" : "lazy"}
+      onError={() => setFailed(true)}
+    />
+  ) : (
+    <div className="hm-image-placeholder">
+      <Package size={36} aria-hidden="true" />
+      <span>View product details</span>
+    </div>
+  );
+}
+
+const paths = [
   {
-    name: "MareBelle",
-    slug: "marebelle",
-    label: "Equestrian beauty & lifestyle",
-    image: "/marebelle-storefront-example.png",
-    imageClass: "object-cover object-top",
-    background: "#eae2d5",
+    title: "Sell your products.",
+    label: "For sellers",
+    text: "Your free website. No seller fees. Affiliates can help drive your sales.",
+    href: "/sellers",
+    action: "Start selling",
+    icon: Store,
+    tone: "seller",
   },
   {
-    name: "RedTail",
-    slug: "redtail",
-    label: "Fresh-roasted coffee & bold blends",
-    image: "/redtail-ridgeline-homepage.webp?v=20260725",
-    imageClass: "object-contain p-5",
-    background: "#231416",
+    title: "Share great finds. Earn.",
+    label: "For affiliates",
+    text: "Build a free store with products you choose. Earn commissions on your sales.",
+    href: "/affiliates",
+    action: "Become an affiliate",
+    icon: Globe,
+    tone: "affiliate",
   },
   {
-    name: "Loving Nutrition",
-    slug: "loving-nutrition",
-    label: "Nutrition & everyday wellness",
-    image: "/loving-nutrition-logo.png?v=20260723",
-    imageClass: "object-contain p-7",
-    background: "#063c2f",
+    title: "Your influence goes further.",
+    label: "For influencers",
+    text: "Refer sellers and affiliates. Earn on their eligible sales for the life of the referral.",
+    href: "/start-earning",
+    action: "Become an influencer",
+    icon: Megaphone,
+    tone: "influencer",
   },
 ];
 
-const HomePageBZO: React.FC = () => (
-  <PublicLayout
-    className="bz-public bg-white"
-    contentClassName="!py-6 sm:!py-10"
-  >
-    <section className="bz-home-hero grid items-center gap-10 rounded-3xl bg-[#faf9f5] px-6 py-10 sm:p-10 lg:grid-cols-[1.15fr_1fr] lg:p-12">
-      <div>
-        <p className="bz-eyebrow">
-          Built for sellers. Powered by affiliates & influencers.
-        </p>
-        <h1 className="mt-5 text-4xl font-bold leading-[1.08] tracking-[-0.045em] text-[#101820] sm:text-5xl lg:text-[3.6rem]">
-          Your website.
-          <br />
-          <span className="bz-highlight">More ways to earn.</span>
-        </h1>
-        <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
-          Design your free custom website. Sell your products, earn commissions
-          promoting others, or grow the network as an influencer. Together, we
-          give buyers more to discover.
-        </p>
-        <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap">
-          <Link to="/signup" className="bz-button bz-button-gold">
-            Start your free website
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-          <Link to="/marketplace" className="bz-button bz-button-outline">
-            <ShoppingBag className="h-4 w-4" aria-hidden="true" />
-            Shop the marketplace
-          </Link>
+export default function HomePageBZO() {
+  const [products, setProducts] = useState<HomeProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [category, setCategory] = useState("All");
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    const timeout = window.setTimeout(() => controller.abort(), 20000);
+    setLoading(true);
+    setError(false);
+    (async () => {
+      try {
+        let response: Response | null = null;
+        for (const endpoint of [
+          "/api/public/marketplace/products",
+          "/.netlify/functions/public-marketplace-products?limit=50",
+        ]) {
+          const candidate = await fetch(endpoint, {
+            signal: controller.signal,
+          });
+          if (candidate.ok) {
+            response = candidate;
+            break;
+          }
+        }
+        if (!response) throw new Error("Catalog unavailable");
+        const payload = await response.json();
+        if (!Array.isArray(payload.products))
+          throw new Error("Invalid catalog");
+        if (active) setProducts(prepareHomeProducts(payload.products));
+      } catch {
+        if (active) setError(true);
+      } finally {
+        window.clearTimeout(timeout);
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [attempt]);
+  const categories = useMemo(
+    () =>
+      Array.from(new Set(products.map((product) => product.category))).slice(
+        0,
+        7,
+      ),
+    [products],
+  );
+  const selected =
+    category === "All"
+      ? products
+      : products.filter((product) => product.category === category);
+  const spotlight = products.filter((product) => product.available).slice(0, 2);
+
+  return (
+    <div className="hm-page">
+      <div className="hm-discovery">
+        <div className="hm-wrap">
+          <MarketplaceSearch className="hm-mobile-search" />
+          <nav aria-label="Explore Beezio" className="hm-discovery-nav">
+            <Link to="/marketplace">
+              <ShoppingBag size={15} /> All products
+            </Link>
+            <a href="#shop">New arrivals</a>
+            <a href="#categories">Shop by category</a>
+            <a href="#stores">Discover stores</a>
+            <Link to="/how-it-works">
+              How Beezio works <ArrowRight size={14} />
+            </Link>
+          </nav>
         </div>
-        <p className="mt-5 text-xs leading-6 text-slate-500">
-          Just here to shop? You’re in the right place. No business account
-          needed.
-        </p>
       </div>
-      <div className="min-w-0">
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_-30px_rgba(16,24,32,.35)]">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-            <span className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-              <Globe className="h-4 w-4" aria-hidden="true" />
-              Built with Beezio
-            </span>
-            <span className="rounded-full bg-[#fff4bb] px-3 py-1 text-xs font-semibold">
-              Your brand, front and center
-            </span>
-          </div>
-          <Link to="/store/marebelle" className="group block">
-            <div className="aspect-video overflow-hidden bg-[#eae2d5]">
-              <img
-                src="/marebelle-storefront-example.png"
-                alt="MareBelle, an example of a custom website built with Beezio"
-                className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.02]"
-                loading="eager"
-              />
+      <div className="hm-wrap">
+        <section className="hm-hero">
+          <div className="hm-hero-copy">
+            <p className="hm-kicker">Shop. Sell. Share. Earn.</p>
+            <h1>
+              Good finds.
+              <br />
+              <span>Great possibilities.</span>
+            </h1>
+            <p className="hm-hero-description">
+              A marketplace to shop. A place to build your business. Discover
+              independent brands—or bring your own.
+            </p>
+            <div className="hm-actions">
+              <a href="#shop" className="bz-button bz-button-gold">
+                Explore products <ArrowRight size={17} />
+              </a>
+              <Link to="/signup" className="hm-hero-secondary">
+                Build your free website <ArrowRight size={17} />
+              </Link>
             </div>
-            <div className="flex items-center justify-between gap-3 p-5">
-              <div>
-                <span className="text-sm font-semibold text-slate-900">
-                  MareBelle
+            <p className="hm-hero-note">
+              <Check size={14} /> Free websites. No monthly fees. No seller
+              fees.
+            </p>
+          </div>
+          <div className="hm-spotlight">
+            <div className="hm-spotlight-heading">
+              <span>In the spotlight</span>
+              <a href="#shop">
+                Shop the finds <ArrowRight size={15} />
+              </a>
+            </div>
+            {spotlight.length ? (
+              <div className="hm-spotlight-grid">
+                {spotlight.map((product) => (
+                  <Link
+                    key={product.id}
+                    to={`/product/${encodeURIComponent(product.id)}`}
+                    className="hm-spotlight-product"
+                  >
+                    <div className="hm-spotlight-image">
+                      <ProductImage product={product} eager />
+                    </div>
+                    <span>{product.title}</span>
+                    <strong>{money(product.price)}</strong>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <Link to="/store/marebelle" className="hm-brand-feature">
+                <img
+                  src="/marebelle-editorial-hero.png"
+                  alt="Discover MareBelle's beauty and lifestyle collection"
+                />
+                <span>
+                  Independent brands. Made to discover. <ArrowRight size={18} />
                 </span>
-                <p className="mt-1 text-xs text-slate-500">
-                  A Beezio-created storefront
+              </Link>
+            )}
+          </div>
+        </section>
+        <section
+          aria-label="Start your business on Beezio"
+          className="hm-business-paths"
+        >
+          {paths.map(
+            ({ label, title, text, href, action, icon: Icon, tone }) => (
+              <article className={`hm-path hm-path-${tone}`} key={label}>
+                <div className="hm-path-top">
+                  <Icon size={20} aria-hidden="true" />
+                  <p className="hm-kicker">{label}</p>
+                </div>
+                <h2>{title}</h2>
+                <p>{text}</p>
+                <Link to={href}>
+                  {action}
+                  <ArrowRight size={15} />
+                </Link>
+              </article>
+            ),
+          )}
+        </section>
+        <section id="shop" className="hm-shop">
+          <div className="hm-section-heading">
+            <div>
+              <p className="hm-kicker">Find your next favorite</p>
+              <h2>Fresh finds. Ready to discover.</h2>
+              <p>Shop right here on Beezio. No business account needed.</p>
+            </div>
+            <Link to="/marketplace" className="hm-all-link">
+              Shop all products <ArrowRight size={17} />
+            </Link>
+          </div>
+          <div
+            id="categories"
+            className="hm-categories"
+            role="group"
+            aria-label="Filter homepage products by category"
+          >
+            {["All", ...categories].map((name) => (
+              <button
+                key={name}
+                type="button"
+                aria-pressed={category === name}
+                onClick={() => setCategory(name)}
+              >
+                {name === "All" ? "All finds" : name}
+              </button>
+            ))}
+          </div>
+          {loading ? (
+            <div
+              className="hm-product-grid"
+              role="status"
+              aria-label="Loading products"
+            >
+              {Array.from({ length: 5 }, (_, index) => (
+                <div className="hm-skeleton" key={index}>
+                  <div />
+                  <span />
+                  <span />
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <div className="hm-catalog-message" role="status">
+              <Package size={28} />
+              <h3>Let’s get those products loaded.</h3>
+              <p>The catalog is taking a little longer than usual.</p>
+              <button
+                type="button"
+                className="bz-button bz-button-ink"
+                onClick={() => setAttempt((value) => value + 1)}
+              >
+                Try again
+              </button>
+              <Link to="/marketplace">
+                Open the marketplace <ArrowRight size={16} />
+              </Link>
+            </div>
+          ) : selected.length ? (
+            <div className="hm-product-grid">
+              {selected.slice(0, 10).map((product) => (
+                <Link
+                  key={product.id}
+                  to={`/product/${encodeURIComponent(product.id)}`}
+                  className="hm-product-card"
+                >
+                  <div className="hm-product-image">
+                    <ProductImage product={product} />
+                    {!product.available && (
+                      <span className="hm-stock-label">Out of stock</span>
+                    )}
+                  </div>
+                  <div className="hm-product-info">
+                    <p className="hm-product-seller">{product.seller}</p>
+                    <h3>{product.title}</h3>
+                    <div className="hm-product-bottom">
+                      <strong>{money(product.price)}</strong>
+                      <span aria-hidden="true">
+                        <ArrowRight size={17} />
+                      </span>
+                    </div>
+                    <p className="hm-product-detail">
+                      See product & delivery details
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="hm-catalog-message">
+              <h3>New finds are on their way.</h3>
+              <p>Explore our stores, or bring your own products to Beezio.</p>
+              <Link to="/marketplace" className="bz-button bz-button-ink">
+                Explore the marketplace
+              </Link>
+            </div>
+          )}
+          {selected.length > 10 && (
+            <Link
+              to={
+                category === "All"
+                  ? "/marketplace"
+                  : `/marketplace?q=${encodeURIComponent(category)}`
+              }
+              className="bz-button bz-button-ink hm-more"
+            >
+              See more products <ArrowRight size={17} />
+            </Link>
+          )}
+        </section>
+        <section className="hm-earn-banner">
+          <div className="hm-earn-icon">
+            <Globe size={32} aria-hidden="true" />
+          </div>
+          <div>
+            <p className="hm-kicker">Turn recommendations into commissions</p>
+            <h2>Love finding good products? Make it your business.</h2>
+            <p>
+              Choose products, design your free affiliate website, and earn when
+              your recommendations lead to sales.
+            </p>
+          </div>
+          <Link to="/affiliates" className="bz-button bz-button-gold">
+            Explore affiliate stores <ArrowRight size={17} />
+          </Link>
+        </section>
+        <section id="stores" className="hm-stores-section">
+          <div className="hm-section-heading">
+            <div>
+              <p className="hm-kicker">A world of individual brands</p>
+              <h2>Meet the stores. Find your style.</h2>
+            </div>
+            <Link to="/signup" className="hm-all-link">
+              Your brand could be next <ArrowRight size={17} />
+            </Link>
+          </div>
+          <div className="hm-store-grid">
+            <Link to="/store/marebelle" className="hm-store-card hm-marebelle">
+              <img
+                src="/marebelle-editorial-hero.png"
+                alt="MareBelle beauty and equestrian lifestyle collection"
+                loading="lazy"
+              />
+              <div>
+                <span>Beauty & equestrian lifestyle</span>
+                <h3>MareBelle</h3>
+                <p>
+                  Discover the collection <ArrowRight size={16} />
                 </p>
               </div>
-              <span className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                Visit store
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </span>
-            </div>
-          </Link>
-        </div>
-        <div className="mt-4 flex items-center justify-center gap-2 text-xs font-medium text-slate-600">
-          <Palette className="h-4 w-4" aria-hidden="true" />
-          Free websites for sellers AND affiliates. Designed by you.
-        </div>
-      </div>
-    </section>
-
-    <div
-      aria-label="Beezio business benefits"
-      className="grid gap-4 border-b border-slate-200 py-7 text-sm font-semibold sm:grid-cols-3"
-    >
-      {[
-        "Free custom websites",
-        "No monthly or listing fees",
-        "No seller fees",
-      ].map((text) => (
-        <div key={text} className="flex items-center justify-center gap-2">
-          <Check className="h-4 w-4" aria-hidden="true" />
-          {text}
-        </div>
-      ))}
-    </div>
-
-    <section className="py-14 sm:py-20">
-      <div className="mb-8 max-w-2xl">
-        <p className="bz-eyebrow">The people who power Beezio</p>
-        <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-          Sellers. Affiliates. Influencers.
-          <br />
-          Built to grow together.
-        </h2>
-        <p className="mt-4 leading-7 text-slate-600">
-          Sellers bring the products. Affiliates help sell them. Influencers
-          introduce more businesses. That’s how we build a marketplace buyers
-          want to shop.
-        </p>
-      </div>
-      <AudienceCards />
-    </section>
-
-    <section className="grid gap-10 rounded-3xl bg-[#faf9f5] p-6 sm:p-10 lg:grid-cols-2 lg:gap-16">
-      <div>
-        <p className="bz-eyebrow">Not just a listing. Your own website.</p>
-        <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-          Made by you.
-          <br />
-          Built for your next chapter.
-        </h2>
-        <p className="mt-5 leading-7 text-slate-600">
-          Sellers and affiliates both get free custom websites they can design
-          themselves. Start with a template. Add your logo, colors, images,
-          collections, and custom pages. Make it feel like you.
-        </p>
-        <div className="mt-6">
-          <WebsiteBenefits />
-        </div>
-        <Link to="/signup" className="bz-text-link mt-7">
-          Create your website
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </Link>
-      </div>
-      <div className="grid content-center gap-4">
-        {[
-          [
-            "01",
-            "Make it yours",
-            "Choose your look, tell your story, and add custom pages. No coding required.",
-          ],
-          [
-            "02",
-            "Choose what you sell",
-            "List your own products, or curate marketplace products as an affiliate.",
-          ],
-          [
-            "03",
-            "Give people a place to shop",
-            "Share your website and tracked links. Manage your activity in your Business Center.",
-          ],
-        ].map(([number, title, detail]) => (
-          <div key={number} className="bz-panel flex gap-4 p-5">
-            <span className="text-sm font-semibold text-slate-400">
-              {number}
-            </span>
-            <div>
-              <h3 className="text-base font-semibold">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{detail}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-
-    <section className="py-14 sm:py-20">
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="bz-eyebrow">Explore the possibilities</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Different brands. One Beezio.
-          </h2>
-        </div>
-        <Link to="/marketplace" className="bz-text-link">
-          Shop all products
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </Link>
-      </div>
-      <div className="grid gap-5 sm:grid-cols-3">
-        {storefronts.map((store) => (
-          <Link
-            key={store.slug}
-            to={`/store/${store.slug}`}
-            className="bz-panel group overflow-hidden"
-          >
-            <div
-              className="aspect-[4/3] overflow-hidden"
-              style={{ backgroundColor: store.background }}
+            </Link>
+            <Link to="/store/redtail" className="hm-store-card hm-redtail">
+              <img
+                src="/redtail-coffee-hero.png"
+                alt="RedTail coffee"
+                loading="lazy"
+              />
+              <div>
+                <span>For your daily ritual</span>
+                <h3>RedTail</h3>
+                <p>
+                  Explore the brand <ArrowRight size={16} />
+                </p>
+              </div>
+            </Link>
+            <Link
+              to="/store/loving-nutrition"
+              className="hm-store-card hm-nutrition"
             >
               <img
-                src={store.image}
-                alt={`${store.name} storefront`}
+                src="/loving-nutrition-logo.png"
+                alt="Loving Nutrition"
                 loading="lazy"
-                className={`h-full w-full transition duration-300 group-hover:scale-[1.02] ${store.imageClass}`}
               />
-            </div>
-            <div className="flex items-center justify-between gap-3 p-5">
               <div>
-                <h3 className="text-lg font-semibold">{store.name}</h3>
-                <p className="mt-1 text-xs text-slate-500">{store.label}</p>
+                <span>Everyday wellness</span>
+                <h3>Loving Nutrition</h3>
+                <p>
+                  Explore the brand <ArrowRight size={16} />
+                </p>
               </div>
-              <ArrowRight
-                className="h-4 w-4 text-slate-700"
-                aria-hidden="true"
-              />
+            </Link>
+          </div>
+          <p className="hm-store-caption">
+            Beezio-created brands. Individual stores, connected by one
+            marketplace.
+          </p>
+        </section>
+        <section className="hm-build">
+          <div className="hm-build-preview">
+            <div className="hm-browser-bar">
+              <i />
+              <i />
+              <i />
+              <span>Your brand. Your website.</span>
             </div>
+            <img
+              src="/marebelle-storefront-example.png"
+              alt="Example of a custom website built with Beezio"
+              loading="lazy"
+            />
+            <div className="hm-build-stamp">
+              <Globe size={20} />
+              <span>
+                Designed by you.
+                <br />
+                <strong>Powered by Beezio.</strong>
+              </span>
+            </div>
+          </div>
+          <div className="hm-build-copy">
+            <p className="hm-kicker">For sellers & affiliates</p>
+            <h2>
+              Your own website.
+              <br />
+              Your own look.
+              <br />
+              <em>Yours for free.</em>
+            </h2>
+            <p>
+              Choose a template. Add your logo, colors, collections, and custom
+              pages. Sell your own products or build a store around products you
+              recommend.
+            </p>
+            <ul>
+              <li>
+                <Check size={16} /> No monthly or listing fees
+              </li>
+              <li>
+                <Check size={16} /> Affiliates can sell your products through
+                their stores
+              </li>
+              <li>
+                <Check size={16} /> Manage products, orders, and earnings in
+                your Business Center
+              </li>
+            </ul>
+            <Link to="/signup" className="bz-button bz-button-gold">
+              Start your free website <ArrowRight size={17} />
+            </Link>
+            <p className="hm-build-note">
+              Free websites for sellers AND affiliates. Designed by you.
+            </p>
+          </div>
+        </section>
+        <section className="hm-influencer">
+          <div>
+            <p className="hm-kicker">For influencers & community builders</p>
+            <h2>
+              Introduce a business.
+              <br />
+              Grow together.
+            </h2>
+            <p>
+              Bring sellers and affiliates to Beezio. When their eligible sales
+              happen, you earn too—with lifetime referral attribution.
+            </p>
+          </div>
+          <Link to="/start-earning" className="bz-button bz-button-ink">
+            See how influencer earnings work <ArrowRight size={17} />
           </Link>
-        ))}
+        </section>
+        <details className="hm-pricing">
+          <summary>No seller fees. How does that work?</summary>
+          <p>{pricingExplanation}</p>
+          <p>
+            Affiliate and influencer earnings come from eligible sales. Earnings
+            are not guaranteed and are subject to returns and payout terms.
+          </p>
+          <Link to="/how-it-works">
+            Understand the Beezio model <ArrowRight size={16} />
+          </Link>
+        </details>
       </div>
-      <p className="mt-4 text-xs text-slate-500">
-        Beezio-created brands showing what a custom storefront can look like.
-      </p>
-    </section>
-
-    <section className="grid gap-8 border-y border-slate-200 py-10 lg:grid-cols-[.8fr_1.2fr]">
-      <div>
-        <p className="bz-eyebrow">Free to build. Clear on costs.</p>
-        <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
-          No seller fees.
-          <br />
-          Here’s what that means.
-        </h2>
-      </div>
-      <div>
-        <p className="leading-7 text-slate-600">{pricingExplanation}</p>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          Affiliate and influencer earnings come from eligible sales, not
-          signups. Earnings are not guaranteed and are subject to returns and
-          payout terms.
-        </p>
-        <Link to="/how-it-works" className="bz-text-link mt-5">
-          See how Beezio works
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </Link>
-      </div>
-    </section>
-    <div className="pt-14 pb-6">
-      <WebsiteInvitation />
     </div>
-  </PublicLayout>
-);
-
-export default HomePageBZO;
+  );
+}

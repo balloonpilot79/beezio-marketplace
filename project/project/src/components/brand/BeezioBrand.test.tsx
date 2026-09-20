@@ -54,6 +54,9 @@ describe("Beezio public message and account boundaries", () => {
     expect(html).toContain('href="/signup"');
     expect(html).toContain('href="/marketplace"');
     expect(html).toContain("No business account needed.");
+    expect(html).toContain('aria-label="Search products"');
+    expect(html).toContain('aria-label="Filter homepage products by category"');
+    expect(html).toContain('href="#shop"');
     expect(html).toContain("Earnings are not guaranteed");
     expect(html).not.toContain("fixed inset-x");
   });
