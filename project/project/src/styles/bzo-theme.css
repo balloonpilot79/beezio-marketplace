@@ -118,15 +118,12 @@
   box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
 }
 
-/* Strong elevation for white surfaces sitewide */
-.bg-white, .panel-white {
+/* Elevation is opt-in, including on user-designed storefronts. */
+.panel-white {
   box-shadow: var(--shadow-strong);
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-[class*="bg-white/5"], [class*="bg-white/10"], [class*="bg-white/15"], [class*="bg-white/20"] {
-  box-shadow: var(--shadow-strong);
-}
 
 /* BZO Typography */
 .text-bzo-primary {

@@ -448,14 +448,15 @@ const MarketplacePageDual: React.FC = () => {
   const showShelves = selectedCategory === 'All' && !searchTerm.trim();
 
   return (
-    <div className="min-h-screen bg-[#eaeded]">
-      <section className="border-b border-slate-200 bg-slate-950 text-white">
+    <div className="bz-public min-h-screen bg-[#f7f8f8]">
+      <section className="border-b border-slate-200 bg-[#faf9f5] text-[#101820]">
         <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">Beezio product marketplace</p>
-          <h1 className="mt-2 text-2xl font-bold text-white sm:text-4xl">Discover products to promote — or buy direct</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-            Partners can review seller offers, commission terms, and demand signals for their storefronts. Shoppers can also purchase any available product directly from this catalog; when no partner referred the sale, Beezio keeps the affiliate allocation.
+          <p className="bz-eyebrow">The Beezio marketplace</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-4xl">Find something you’ll love.</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+            Discover products from independent sellers and buy right here on Beezio. Just shopping? No business account needed.
           </p>
+          <p className="mt-4 text-xs leading-6 text-slate-500">Want to earn from your recommendations? <Link to="/affiliates" className="font-semibold text-slate-700 underline underline-offset-4">Build a free affiliate website</Link> and promote eligible products.</p>
         </div>
       </section>
       <section className="border-b border-slate-200 bg-white shadow-sm md:sticky md:top-16 md:z-20">
@@ -623,7 +624,7 @@ const MarketplacePageDual: React.FC = () => {
         </div>
       </section>
 
-      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
+      <section aria-label="Marketplace products" className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
         <div className="mb-4 flex flex-col gap-2 text-sm text-slate-600 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
           <span>
             Showing <strong>{filteredProducts.length}</strong> products
@@ -801,7 +802,7 @@ const MarketplacePageDual: React.FC = () => {
             ))}
           </div>
         )}
-      </main>
+      </section>
     </div>
   );
 };

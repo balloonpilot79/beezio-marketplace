@@ -1,7 +1,7 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import { buildStoreInsuranceListings } from './_lib/storeInsurance';
-import { applyCanonicalProductPricing } from '../../shared/productPricing';
+import { applyStorefrontProductPricing } from '../../shared/productPricing';
 import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 import { isSupplyLineProduct, sanitizeSupplyLineProduct } from '../../shared/publicSupplyLineProduct';
 
@@ -400,7 +400,7 @@ const handler: Handler = async (event) => {
       const orderSetting = (orderData || []).find((o: any) => o.product_id === product.id);
       const isDigital = product?.is_digital === true;
       return sanitizeSupplyLineProduct({
-        ...applyCanonicalProductPricing(normalizeLegacyStorefrontProduct(product)),
+        ...applyStorefrontProductPricing(normalizeLegacyStorefrontProduct(product)),
         profiles: { full_name: mergedSeller.full_name },
         storefront_slug: brandStorefront?.slug || storeSlug || null,
         shipping_cost: 0,
@@ -479,7 +479,7 @@ const handler: Handler = async (event) => {
               if (!productId || combinedById.has(productId)) return;
               const order = promotedOrderById.get(productId);
               combinedById.set(productId, sanitizeSupplyLineProduct({
-                ...applyCanonicalProductPricing(normalizeLegacyStorefrontProduct(product)),
+                ...applyStorefrontProductPricing(normalizeLegacyStorefrontProduct(product)),
                 affiliate_id: sharedAffiliateId,
                 display_order: Number.isFinite(Number(order?.display_order)) ? Number(order.display_order) : 999,
                 is_featured: Boolean(order?.is_featured),

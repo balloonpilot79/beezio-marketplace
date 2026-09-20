@@ -6,9 +6,12 @@ import ProductGrid from '../components/ProductGrid';
 import StoreContactModal from '../components/StoreContactModal';
 import AffiliateShareWidget from '../components/AffiliateShareWidget';
 import TrustBadges from '../components/TrustBadges';
-import { Star, MapPin, Clock, Package, Award, Facebook, Instagram, Twitter, Linkedin, Globe, ShoppingBag, Search, User } from 'lucide-react';
+import StorefrontShoppingLinks from '../components/storefront/StorefrontShoppingLinks';
+import { StorefrontSignature } from '../components/brand/BeezioBrand';
+import { Star, MapPin, Clock, Package, Award, Facebook, Instagram, Twitter, Linkedin, Globe, ShoppingBag, Search } from 'lucide-react';
 import { applyThemeToDocument, getThemeStyles, normalizeThemeName, type ThemeName } from '../utils/themes';
 import { buildSellerStorefrontProducts } from '../utils/storefrontProducts';
+import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
 import { normalizeStorageImagePath } from '../utils/imageHelpers';
 import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 
@@ -878,7 +881,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               >
                 <div className="text-sm font-semibold" style={{ color: textColor }}>{product.title || product.name}</div>
                 <div className="mt-1 text-xs" style={{ color: textColor, opacity: 0.65 }}>{product.category || 'Product'}</div>
-                <div className="mt-3 text-sm font-bold" style={{ color: primaryColor }}>${Number(product.price || 0).toFixed(2)}</div>
+                <div className="mt-3 text-sm font-bold" style={{ color: primaryColor }}>${getBuyerFacingProductPrice(product).toFixed(2)}</div>
               </Link>
             ))}
           </div>
@@ -1107,34 +1110,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                 <ShoppingBag className="w-4 h-4" />
                 {products.length > 0 ? 'Start shopping' : 'Explore the brand'}
               </a>
-              {user ? (
-                <Link
-                  to="/account"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors"
-                  style={hasEditorialBrand ? { borderColor: '#ffffff55', color: '#ffffff' } : undefined}
-                  aria-label="Open account"
-                >
-                  <User className="h-4 w-4" />
-                </Link>
-              ) : (
-                <Link
-                  to="/account/login"
-                  className="inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors"
-                  style={hasEditorialBrand ? { borderColor: '#ffffff55', color: '#ffffff' } : undefined}
-                >
-                  Sign In
-                </Link>
-              )}
-              {!isCustomDomain && (
-                <Link
-                  to="/cart"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors"
-                  style={hasEditorialBrand ? { borderColor: '#ffffff55', color: '#ffffff' } : undefined}
-                  aria-label="Open cart"
-                >
-                  <ShoppingBag className="h-4 w-4" />
-                </Link>
-              )}
+              <StorefrontShoppingLinks inverse={hasEditorialBrand} />
             </div>
           </div>
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:hidden">
@@ -1501,6 +1477,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           )}
         </div>
       </footer>
+      <StorefrontSignature />
 
       {/* Contact Modal */}
       <StoreContactModal

@@ -1,0 +1,116 @@
+/* Shared Beezio chrome. Store owners' colors and content remain untouched. */
+.bz-public {
+  color: #101820;
+  background: #fff;
+}
+.bz-public h1,
+.bz-public h2,
+.bz-public h3 {
+  font-family: "Inter", sans-serif;
+  color: #101820;
+}
+.bz-eyebrow {
+  font-size: 0.65rem;
+  line-height: 1.7;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #657078;
+}
+.bz-panel {
+  border: 1px solid #e3e6e7;
+  border-radius: 1rem;
+  background-color: #fff;
+}
+.bz-highlight {
+  background: linear-gradient(
+    transparent 72%,
+    #ffdf61 72%,
+    #ffdf61 93%,
+    transparent 93%
+  );
+}
+.bz-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 48px;
+  padding: 0.85rem 1.2rem;
+  border: 1px solid transparent;
+  border-radius: 0.7rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  font-weight: 600;
+  text-align: center;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.bz-button-ink {
+  background: #101820;
+  color: #fff;
+}
+.bz-button-ink:hover {
+  background: #273440;
+  color: #fff;
+}
+.bz-button-gold {
+  background: #ffcb05;
+  color: #101820;
+}
+.bz-button-gold:hover {
+  background: #ffda45;
+  color: #101820;
+}
+.bz-button-outline {
+  border-color: #d8dde0;
+  color: #101820;
+  background: #fff;
+}
+.bz-button-outline:hover {
+  background: #faf9f5;
+  border-color: #9da7af;
+  color: #101820;
+}
+.bz-text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: #101820;
+}
+.bz-text-link:hover {
+  color: #725700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.bz-public a:focus-visible,
+.bz-button:focus-visible,
+.bz-header a:focus-visible,
+.bz-header button:focus-visible {
+  outline: 3px solid #aa8000;
+  outline-offset: 4px;
+}
+.bz-custom-content {
+  overflow-wrap: anywhere;
+}
+.bz-custom-content img,
+.bz-custom-content video,
+.bz-custom-content iframe {
+  max-width: 100%;
+}
+.bz-custom-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bz-public *,
+  .bz-header * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

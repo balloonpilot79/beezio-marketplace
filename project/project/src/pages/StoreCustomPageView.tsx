@@ -5,6 +5,8 @@ import DOMPurify from 'dompurify';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import ProductGrid from '../components/ProductGrid';
+import StorefrontShoppingLinks from '../components/storefront/StorefrontShoppingLinks';
+import { StorefrontSignature } from '../components/brand/BeezioBrand';
 
 type OwnerType = 'seller' | 'affiliate';
 
@@ -174,7 +176,7 @@ const StoreCustomPageView: React.FC<StoreCustomPageViewProps> = ({ ownerId, owne
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-5xl mx-auto px-4 py-10">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <Link
             to={backPath}
             className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900"
@@ -183,6 +185,7 @@ const StoreCustomPageView: React.FC<StoreCustomPageViewProps> = ({ ownerId, owne
             Back to store
           </Link>
           <div className="flex flex-wrap items-center justify-end gap-3">
+            <StorefrontShoppingLinks />
             <div className="flex items-center gap-2 text-slate-500 text-sm">
               <Store className="w-4 h-4" />
               {owner?.full_name || 'Store'}
@@ -213,16 +216,16 @@ const StoreCustomPageView: React.FC<StoreCustomPageViewProps> = ({ ownerId, owne
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-200 p-8">
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8">
           <h1 className="text-3xl font-bold text-slate-900 mb-4">{page.page_title}</h1>
           <div
-            className="prose prose-slate max-w-none"
+            className="bz-custom-content prose prose-slate max-w-none"
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(page.page_content) }}
           />
         </div>
 
         {pageProducts.length > 0 && (
-          <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
             <h2 className="mb-5 text-2xl font-bold text-slate-900">Shop this page</h2>
             <ProductGrid
               products={pageProducts}
@@ -238,6 +241,7 @@ const StoreCustomPageView: React.FC<StoreCustomPageViewProps> = ({ ownerId, owne
           </div>
         )}
       </div>
+      <StorefrontSignature />
     </div>
   );
 };

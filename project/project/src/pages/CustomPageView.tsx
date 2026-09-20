@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 import { AlertCircle, ArrowLeft, LogOut, Store, UserCircle } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { useAuth } from '../contexts/AuthContextMultiRole';
+import StorefrontShoppingLinks from '../components/storefront/StorefrontShoppingLinks';
+import { StorefrontSignature } from '../components/brand/BeezioBrand';
 
 interface CustomPage {
   id: string;
@@ -208,7 +210,7 @@ export default function CustomPageView() {
       {/* Header */}
       <div className="bg-white border-b shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               {owner.avatar_url && (
                 <img 
@@ -219,12 +221,13 @@ export default function CustomPageView() {
               )}
               <div>
                  <h2 className="text-sm text-gray-600">
-                  {ownerType === 'seller' ? "Seller's" : "Partner's"} Custom Page
+                  Independent storefront
                  </h2>
                 <h1 className="text-2xl font-bold text-gray-900">{owner.full_name}</h1>
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-3">
+              <StorefrontShoppingLinks />
               {user ? (
                 <div className="flex max-w-full flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1">
                   <div className="flex min-w-0 items-center gap-2 px-1">
@@ -266,10 +269,10 @@ export default function CustomPageView() {
 
       {/* Page Content */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-6">{page.page_title}</h1>
           <div 
-            className="custom-page-content prose prose-lg max-w-none"
+            className="bz-custom-content custom-page-content prose prose-lg max-w-none"
             dangerouslySetInnerHTML={{ __html: sanitizeHTML(page.page_content) }}
           />
         </div>
@@ -292,6 +295,7 @@ export default function CustomPageView() {
           </button>
         </div>
       </div>
+      <StorefrontSignature />
     </div>
   );
 }

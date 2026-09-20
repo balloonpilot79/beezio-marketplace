@@ -24,14 +24,18 @@ interface AuthModalProps {
   onClose: () => void;
   mode: 'login' | 'register';
   audience?: 'buyer' | 'business';
+  allowAudienceSwitch?: boolean;
+  presentation?: 'modal' | 'page';
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMode, audience = 'business' }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMode, audience: initialAudience = 'business', allowAudienceSwitch = false, presentation = 'modal' }) => {
   if (process.env.NODE_ENV !== 'production') {
     console.debug('AuthModal: Component rendering, isOpen prop:', isOpen, 'mode:', initialMode);
   }
   
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
+  const [audience, setAudience] = useState(initialAudience);
+  useEffect(() => { setAudience(initialAudience); }, [initialAudience, isOpen]);
   
   // Update internal mode when prop changes
   React.useEffect(() => {
@@ -95,7 +99,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
       ]
     : [
         'Seller, affiliate, and influencer tools in one business account.',
-        'A primary storefront plus affiliate and recruiting access from day one.',
+        'Free custom websites for sellers and affiliates, designed by you.',
         'One dashboard for products, promotions, referrals, and payouts.',
       ];
 
@@ -279,10 +283,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
       } else if (mode === 'login') {
         console.log('AuthModal: Attempting sign in...');
         const result = await signIn(formData.email, formData.password);
-        console.log('AuthModal: Sign in result:', result);
         
         if (result && (result.user || result.session)) {
-          console.log('AuthModal: Login successful, user:', result.user?.email);
           
           // Success! Just close and navigate
           onClose();
@@ -295,7 +297,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
 
           navigate(resolvePostAuthTarget('/business'));
         } else {
-          console.warn('Sign in returned no user/session:', result);
+          console.warn('Sign in returned no user/session.');
           setError('Sign in failed. Please check your credentials and try again.');
         }
         setLoading(false);
@@ -480,39 +482,37 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
 
   if (!isOpen || typeof document === 'undefined') return null;
 
-  return createPortal(
+  const content = (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"
+      className={presentation === 'page' ? 'bz-public mx-auto w-full max-w-lg py-6' : 'bz-public fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm'}
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (presentation === 'modal' && event.target === event.currentTarget) onClose();
       }}
     >
       <div
-        role="dialog"
-        aria-modal="true"
+        role={presentation === 'modal' ? 'dialog' : undefined}
+        aria-modal={presentation === 'modal' ? true : undefined}
         aria-label={mode === 'login' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Reset Password'}
-        className="pointer-events-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-white/80 bg-white shadow-2xl"
+        className={`pointer-events-auto flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white ${presentation === 'modal' ? 'max-h-[90dvh] shadow-xl' : ''}`}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="relative overflow-hidden border-b border-amber-100 bg-gradient-to-br from-amber-50 via-white to-emerald-50 p-6">
-          <div className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-amber-200/45 blur-2xl" />
-          <div className="absolute -left-10 bottom-0 h-28 w-28 rounded-full bg-emerald-200/45 blur-2xl" />
+        <div className="relative border-b border-slate-200 bg-[#faf9f5] p-6">
           <div className="relative flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-700">
-                {isBuyerAudience ? 'Buyer Account' : 'Business Account'}
+                {isBuyerAudience ? 'Shopper Account' : 'Business Center'}
               </p>
-              <h2 className="mt-2 text-3xl font-semibold leading-tight text-slate-950" style={{ fontFamily: 'Fraunces, serif' }}>
+              <h2 className="mt-2 text-3xl font-semibold leading-tight tracking-tight text-slate-950">
                 {mode === 'login'
-                  ? isBuyerAudience ? 'Customer sign in' : 'Business sign in'
+                  ? 'Welcome back.'
                   : mode === 'register'
-                  ? isBuyerAudience ? 'Create buyer account' : 'Create business account'
+                  ? isBuyerAudience ? 'Your shopper account.' : 'Your free website starts here.'
                   : 'Reset password'}
               </h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 {isBuyerAudience
-                  ? 'Use one customer account for checkout, orders, and support across Beezio storefronts.'
-                  : 'Use one Beezio business account for selling, promotions, recruiting, and payouts.'}
+                  ? 'Shop Beezio and every custom storefront. Your orders, receipts, and support stay together.'
+                  : 'Your websites, products, promotions, referrals, and earnings—all in your Business Center.'}
               </p>
             </div>
             <button
@@ -527,6 +527,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         </div>
         <form className="flex-1 overflow-y-auto" onSubmit={handleSubmit}>
           <div className="p-6 space-y-4">
+            {allowAudienceSwitch && mode === 'login' && <div>
+              <div className="grid grid-cols-2 gap-2" aria-label="Choose your account space">
+                {(['business', 'buyer'] as const).map(value => <button key={value} type="button" disabled={loading} aria-pressed={audience === value} onClick={() => { consumePostAuthPath(); setAudience(value); setError(null); }} className={`rounded-lg border px-3 py-3 text-sm font-semibold ${audience === value ? 'border-[#101820] bg-[#101820] text-white' : 'border-slate-200 text-slate-600'}`}>{value === 'business' ? 'Business Center' : 'Shopping'}</button>)}
+              </div><p className="mt-2 text-xs leading-5 text-slate-500">Same login. Choose where you want to go.</p>
+            </div>}
             {error && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
                 {error}
@@ -568,6 +573,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
               <input
                 type="email"
                 name="email"
+                aria-label="Email"
                 value={formData.email}
                 onChange={handleChange}
                 required
@@ -589,7 +595,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                     onChange={handleChange}
                     required
                     minLength={8}
-                    autoComplete="current-password"
+                    aria-label="Password"
+                    autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                   <button
@@ -786,7 +793,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
             <button
               type="submit"
               disabled={loading || Boolean(storeSlugBlockingState)}
-              className="w-full rounded-full bg-amber-500 px-4 py-3 font-semibold text-black shadow-sm transition-colors hover:bg-amber-600 disabled:opacity-50"
+              className="bz-button bz-button-gold w-full disabled:opacity-50"
             >
               {loading ? 'Please wait...' : 
                mode === 'login' ? 'Sign In' : 
@@ -834,7 +841,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                  'Remember your password?'}
                 <button
                   type="button"
-                  onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+                  onClick={() => {
+                    if (mode === 'login' && isBusinessAudience) { onClose(); navigate('/signup'); return; }
+                    setMode(mode === 'login' ? 'register' : 'login');
+                  }}
                   className="ml-1 text-amber-600 hover:text-amber-700 font-medium"
                 >
                   {mode === 'login' ? 'Sign Up' : 'Sign In'}
@@ -844,9 +854,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           </div>
         </form>
       </div>
-    </div>,
-    document.body
+    </div>
   );
+  return presentation === 'page' ? content : createPortal(content, document.body);
 };
 
 export default AuthModal;

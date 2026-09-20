@@ -1,52 +1,49 @@
-import React, { useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import AuthModal from '../components/AuthModal';
-import PublicLayout from '../components/layout/PublicLayout';
-import { setPostAuthPath } from '../utils/storefrontScope';
+import { useEffect } from "react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import AuthModal from "../components/AuthModal";
+import PublicLayout from "../components/layout/PublicLayout";
+import { consumePostAuthPath, setPostAuthPath } from "../utils/storefrontScope";
+import { useAuth } from "../contexts/AuthContextMultiRole";
 
-interface AuthPageProps {
-  mode: 'login' | 'register';
-}
-
-const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
+export default function AuthPage({ mode }: { mode: "login" | "register" }) {
   const location = useLocation();
   const navigate = useNavigate();
-
+  const { user, loading } = useAuth();
+  const params = new URLSearchParams(location.search);
+  const next = String(params.get("next") || "").trim();
+  const audience =
+    params.get("audience") === "buyer" ||
+    /^\/(account|cart|checkout)([/?]|$)/.test(next)
+      ? "buyer"
+      : "business";
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const next = String(params.get('next') || '').trim();
-    if (next) {
-      setPostAuthPath(next);
-    }
-  }, [mode, location.search]);
-
+    consumePostAuthPath();
+    if (next) setPostAuthPath(next);
+  }, [next]);
+  if (mode === "register") return <Navigate to="/join" replace />;
+  // AuthModal owns post-login navigation, including the user's chosen space.
+  // Do not race it with an effect when the auth context changes after submit.
   return (
     <PublicLayout>
+      <h1 className="sr-only">Sign in to Beezio</h1>
       <AuthModal
-        isOpen={true}
-        mode={mode}
-        audience="business"
-        onClose={() => navigate('/', { replace: true })}
+        isOpen
+        mode="login"
+        audience={audience}
+        allowAudienceSwitch
+        presentation="page"
+        onClose={() => navigate("/")}
       />
-      <div className="max-w-xl space-y-4 relative">
-        <a
-          href="/"
-          className="absolute -top-2 right-0 inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-amber-500 bg-white shadow-sm"
-          aria-label="Close and go home"
-        >
-          <span className="text-xl leading-none">×</span>
-        </a>
-        <p className="text-sm font-semibold text-amber-700 uppercase tracking-[0.2em]">Account</p>
-        <h1 className="text-3xl font-semibold text-gray-900">
-          {mode === 'login' ? 'Log in to Beezio' : 'Create your Beezio account'}
-        </h1>
-        <p className="text-gray-700 leading-relaxed">
-          Use the modal to {mode === 'login' ? 'sign in to' : 'join'} the marketplace. Sellers, affiliates, and buyers all share the same transparent
-          checkout and payout system.
-        </p>
-      </div>
+      {user && !loading && (
+        <div className="mx-auto flex max-w-lg flex-wrap justify-center gap-4 pb-5 text-sm">
+          <Link to="/business" className="bz-text-link">
+            Open Business Center
+          </Link>
+          <Link to="/account" className="bz-text-link">
+            Open Shopper Account
+          </Link>
+        </div>
+      )}
     </PublicLayout>
   );
-};
-
-export default AuthPage;
+}

@@ -6,6 +6,8 @@ import AffiliateStoreCustomization from '../components/AffiliateStoreCustomizati
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import StoreContactModal from '../components/StoreContactModal';
 import TrustBadges from '../components/TrustBadges';
+import StorefrontShoppingLinks from '../components/storefront/StorefrontShoppingLinks';
+import { StorefrontSignature } from '../components/brand/BeezioBrand';
 import { User, Star, Globe, ExternalLink, Package } from 'lucide-react';
 import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
 import { applyThemeToDocument, getThemeStyles, normalizeThemeName, type ThemeName } from '../utils/themes';
@@ -670,29 +672,7 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
             >
               <ExternalLink className="w-4 h-4" />
             </button>
-            {user ? (
-              <Link
-                to="/account"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
-                aria-label="Open account"
-              >
-                <User className="w-4 h-4" />
-              </Link>
-            ) : (
-              <Link
-                to="/account/login"
-                className="flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                <span>Sign In</span>
-              </Link>
-            )}
-            <Link
-              to="/cart"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
-              aria-label="Open cart"
-            >
-              <Package className="w-4 h-4" />
-            </Link>
+            <StorefrontShoppingLinks />
             {isOwner && (
               <button
                 onClick={() => setShowCustomization(true)}
@@ -994,6 +974,7 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
           </div>
         </div>
       </footer>
+      <StorefrontSignature />
 
       <StoreContactModal
         isOpen={contactModal}
