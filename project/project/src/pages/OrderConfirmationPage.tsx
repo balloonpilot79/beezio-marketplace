@@ -286,7 +286,7 @@ export default function OrderConfirmationPage() {
           {/* Confirmation Email */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-blue-800">
-              📧 Receipt email destination: <strong>{order.billing_email || 'the email used at checkout'}</strong>. If it does not arrive, you can still view this order in your dashboard.
+              📧 Receipt email destination: <strong>{order.billing_email || 'the email used at checkout'}</strong>. If it does not arrive, you can still view this order in Shopper Account.
             </p>
           </div>
 
