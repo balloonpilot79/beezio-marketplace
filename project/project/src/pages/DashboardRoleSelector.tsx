@@ -6,8 +6,8 @@ import { getBusinessAccountRoles, getNormalizedAccountRoles } from '../utils/acc
 
 const DashboardRoleSelector: React.FC = () => {
   const { user, userRoles, profile } = useAuth();
-  const roles = getNormalizedAccountRoles(userRoles, profile?.role);
-  const isAdmin = roles.includes('admin') || canAccessCJImport(user);
+  const roles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role);
+  const isAdmin = roles.includes('admin') || canAccessCJImport(user.email || profile?.email || '');
   const businessRoles = getBusinessAccountRoles(roles);
 
   if (!user) {
