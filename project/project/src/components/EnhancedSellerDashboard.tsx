@@ -213,6 +213,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
   mode = 'seller',
 }) => {
   const { user, profile, session } = useAuth();
+  const businessSectionPath = '/business?section=' + mode;
   const normalizeTab = React.useCallback(
     (tab: SellerDashboardTab | undefined): SellerDashboardTab => {
       const requested = tab || 'products';
@@ -595,7 +596,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
       if (mode === 'affiliate') {
         const affiliateId = String(affiliateOwnerId || sellerId || '').trim();
         if (!affiliateId) {
-          if (!cancelled) setStorePath('/dashboard?section=affiliate&tab=products');
+          if (!cancelled) setStorePath(businessSectionPath + '&tab=products');
           return;
         }
 
@@ -675,7 +676,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [affiliateOwnerId, mode, sellerId]);
+  }, [affiliateOwnerId, businessSectionPath, mode, sellerId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1298,7 +1299,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <Link
-                        to="/dashboard/products/add"
+                        to="/business/products/add"
                         className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
                       >
                         <Plus className="h-4 w-4" />
@@ -1319,7 +1320,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
                     icon={Plus}
                     title="Sell a Product"
                     text="Use this when the product is yours. It goes to your dashboard, your custom store, and the marketplace."
-                    to="/dashboard/products/add"
+                    to="/business/products/add"
                     cta="Sell a Product"
                   />
                   <SellerActionCard
@@ -1337,7 +1338,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
                         <h3 className="text-lg font-semibold text-gray-900">Products You Sell</h3>
                         <p className="mt-1 text-sm text-gray-600">Products you own and sell directly.</p>
                       </div>
-                      <Link to="/dashboard/products/add" className="shrink-0 text-sm font-semibold text-orange-700 hover:text-orange-800">
+                      <Link to="/business/products/add" className="shrink-0 text-sm font-semibold text-orange-700 hover:text-orange-800">
                         Add another
                       </Link>
                     </div>
@@ -1672,7 +1673,7 @@ const ProductList = ({
                 <div className="font-semibold text-gray-900">{product.title || 'Untitled product'}</div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                   <Link
-                    to={`/dashboard/products/edit/${product.id}`}
+                    to={`/business/products/edit/${product.id}`}
                     onClick={(event) => event.stopPropagation()}
                     className="font-semibold text-blue-700 hover:text-blue-800 hover:underline"
                   >
@@ -1701,13 +1702,13 @@ const ProductList = ({
                 View
               </Link>
               <Link
-                to={`/dashboard/products/edit/${product.id}`}
+                to={`/business/products/edit/${product.id}`}
                 className="inline-flex flex-1 items-center justify-center rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
               >
                 Edit
               </Link>
               <Link
-                to="/dashboard?tab=single-product"
+                to={businessSectionPath + '&tab=single-product'}
                 onClick={(event) => event.stopPropagation()}
                 className="inline-flex flex-1 items-center justify-center rounded-lg border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50"
               >
@@ -1766,7 +1767,7 @@ const ProductList = ({
                     <div className="truncate font-semibold text-gray-900">{product.title || 'Untitled product'}</div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                       <Link
-                        to={`/dashboard/products/edit/${product.id}`}
+                        to={`/business/products/edit/${product.id}`}
                         onClick={(event) => event.stopPropagation()}
                         className="font-semibold text-blue-700 hover:text-blue-800 hover:underline"
                       >
@@ -1790,13 +1791,13 @@ const ProductList = ({
                     View
                   </Link>
                   <Link
-                    to={`/dashboard/products/edit/${product.id}`}
+                    to={`/business/products/edit/${product.id}`}
                     className="rounded-md border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                   >
                     Edit
                   </Link>
                   <Link
-                    to="/dashboard?tab=single-product"
+                    to={businessSectionPath + '&tab=single-product'}
                     onClick={(event) => event.stopPropagation()}
                     className="rounded-md border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-50"
                   >
@@ -1901,7 +1902,7 @@ const AffiliatePromotionList = ({
                   {copiedProductId === product.id ? 'Copied' : 'Copy Link'}
                 </button>
                 <Link
-                  to="/dashboard?tab=single-product"
+                  to={businessSectionPath + '&tab=single-product'}
                   onClick={(event) => event.stopPropagation()}
                   className="inline-flex items-center justify-center rounded-lg border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50"
                 >
@@ -1984,7 +1985,7 @@ const AffiliatePromotionList = ({
                       {copiedProductId === product.id ? 'Copied' : 'Copy Link'}
                     </button>
                     <Link
-                      to="/dashboard?tab=single-product"
+                      to={businessSectionPath + '&tab=single-product'}
                       onClick={(event) => event.stopPropagation()}
                       className="rounded-md border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-50"
                     >
