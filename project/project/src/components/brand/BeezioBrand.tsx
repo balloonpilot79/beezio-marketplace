@@ -63,8 +63,10 @@ export const audiences = [
 
 export function BeezioMark({
   subtitle = "Sell. Share. Earn.",
+  inverse = false,
 }: {
   subtitle?: string;
+  inverse?: boolean;
 }) {
   return (
     <span className="inline-flex min-w-0 items-center gap-2.5">
@@ -75,10 +77,10 @@ export function BeezioMark({
         bz.
       </span>
       <span className="leading-tight">
-        <span className="block text-lg font-bold tracking-tight text-[#101820]">
+        <span className={`block text-lg font-bold tracking-tight ${inverse ? 'text-white' : 'text-[#101820]'}`}>
           beezio
         </span>
-        <span className="block text-[10px] font-medium tracking-wide text-slate-500">
+        <span className={`block text-[10px] font-medium tracking-wide ${inverse ? 'text-slate-300' : 'text-slate-600'}`}>
           {subtitle}
         </span>
       </span>

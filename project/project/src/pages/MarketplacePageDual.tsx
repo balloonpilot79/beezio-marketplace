@@ -340,6 +340,7 @@ const MarketplacePageDual: React.FC = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
+    setSearchTerm(params.get('q') || '');
     const requestedCategory = slugify(params.get('category') || '');
     const nextCategory = requestedCategory;
 
@@ -365,6 +366,8 @@ const MarketplacePageDual: React.FC = () => {
         (product) =>
           product.title.toLowerCase().includes(term) ||
           product.description?.toLowerCase().includes(term) ||
+          String(product.category || '').toLowerCase().includes(term) ||
+          String((product as any).category_name || '').toLowerCase().includes(term) ||
           String((product as any).derivedCategory || '').toLowerCase().includes(term)
       );
     }
