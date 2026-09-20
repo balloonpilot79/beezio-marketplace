@@ -294,7 +294,9 @@ const handler: Handler = async (event) => {
           .maybeSingle(),
       ]);
       const name = String((seller as any)?.full_name || '').trim();
+      const storeName = String((settings as any)?.store_name || '').trim();
       if (name) sellerName = name;
+      else if (storeName) sellerName = storeName;
       storeSettings = settings || null;
     }
 
@@ -328,6 +330,7 @@ const handler: Handler = async (event) => {
       product: {
         ...(normalizedProduct as any),
         profiles: sellerName ? { full_name: sellerName } : undefined,
+        seller_name: sellerName || null,
         storefront_slug: productStorefront?.slug || null,
         shipping_cost: 0,
         shipping_price: 0,

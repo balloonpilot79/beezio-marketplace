@@ -238,8 +238,13 @@ const MarketplacePageDual: React.FC = () => {
       hasRole('affiliate') ||
       hasRole('partner') ||
       canUseStoreTools(normalizedRoles));
-  const affiliateRef = (profile as any)?.id || user?.id || null;
-  const affiliateUid = user?.id || affiliateRef;
+  const isAffiliateViewer = Boolean(user?.id) && (
+    activeRole === 'affiliate' ||
+    hasRole('affiliate') ||
+    hasRole('partner')
+  );
+  const affiliateRef = isAffiliateViewer ? ((profile as any)?.id || user?.id || null) : null;
+  const affiliateUid = isAffiliateViewer ? (user?.id || affiliateRef) : null;
   const viewerState = useMemo(() => extractUsStateFromLocation((profile as any)?.location || ''), [profile]);
 
   useEffect(() => {
@@ -446,10 +451,10 @@ const MarketplacePageDual: React.FC = () => {
     <div className="min-h-screen bg-[#eaeded]">
       <section className="border-b border-slate-200 bg-slate-950 text-white">
         <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">Business product marketplace</p>
-          <h1 className="mt-2 text-2xl font-bold text-white sm:text-4xl">Find products for your storefront</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">Beezio product marketplace</p>
+          <h1 className="mt-2 text-2xl font-bold text-white sm:text-4xl">Discover products to promote — or buy direct</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-            Review seller offers, commission terms, and demand signals. Add the products you want to your branded storefront, then promote the store or any product with your tracked business links.
+            Partners can review seller offers, commission terms, and demand signals for their storefronts. Shoppers can also purchase any available product directly from this catalog; when no partner referred the sale, Beezio keeps the affiliate allocation.
           </p>
         </div>
       </section>
