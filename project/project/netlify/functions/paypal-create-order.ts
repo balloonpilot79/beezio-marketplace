@@ -1729,7 +1729,9 @@ export const handler: Handler = async (event) => {
         seller_markup_amount: round2(Math.max(0, Number(
           isCjItem ? variant?.seller_markup_amount : product?.seller_markup_amount ?? 0
         ))),
-        affiliate_payout_amount: partnerId ? it.affiliatePayoutUnit : 0,
+        // The advertised price includes the seller's fixed affiliate allocation.
+        // If no partner referred the sale, the ledger retains that amount for Beezio.
+        affiliate_payout_amount: it.affiliatePayoutUnit,
         shipping_reserve_amount: it.shippingReserveUnit,
         influencer_allocation_amount: it.influencerAllocationUnit,
         platform_fee_amount: it.platformFeeGrossUnit,
