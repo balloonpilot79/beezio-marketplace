@@ -286,7 +286,7 @@ export default function OrderConfirmationPage() {
           {/* Confirmation Email */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-blue-800">
-              📧 Receipt email destination: <strong>{order.billing_email || 'the email used at checkout'}</strong>. If it does not arrive, you can still view this order in your dashboard.
+              📧 Receipt email destination: <strong>{order.billing_email || 'the email used at checkout'}</strong>. If it does not arrive, you can still view this order in Shopper Account.
             </p>
           </div>
 
@@ -441,7 +441,7 @@ export default function OrderConfirmationPage() {
           
           {user && (
             <button
-              onClick={() => navigate('/dashboard?section=buyer&tab=orders')}
+              onClick={() => navigate('/account?tab=orders')}
               className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 font-medium"
             >
               View Buyer Orders

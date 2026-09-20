@@ -4,7 +4,12 @@ import { useAuth } from '../contexts/AuthContextMultiRole';
 import UnifiedDashboard from './UnifiedDashboard';
 import type { SellerDashboardTab } from './EnhancedSellerDashboard';
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  mode?: 'legacy' | 'business';
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ mode = 'legacy' }) => {
+  const isBusinessMode = mode === 'business';
   const { user, loading: authLoading, userRoles } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -49,9 +54,11 @@ const Dashboard: React.FC = () => {
     const rawPath = String(section || '').toLowerCase();
     const normalized = rawParam || rawPath;
     if (normalized === 'buyer' || normalized === 'admin') return normalized;
-    if (normalized === 'partner' || normalized === 'seller' || normalized === 'affiliate' || normalized === 'influencer') return 'seller';
+    if (normalized === 'partner') return 'affiliate';
+    if (normalized === 'seller' || normalized === 'affiliate' || normalized === 'influencer') return normalized;
     return undefined;
   }, [location.search, section]);
+  const dashboardBasePath = isBusinessMode ? '/business' : '/dashboard';
 
   // If no user and done loading, redirect home (only once)
   useEffect(() => {
@@ -68,9 +75,9 @@ const Dashboard: React.FC = () => {
     const roleAliases = new Set(['buyer', 'seller', 'affiliate', 'influencer', 'admin']);
 
     if (raw && !roleAliases.has(raw) && !initialSellerTab) {
-      navigate('/dashboard', { replace: true });
+      navigate(dashboardBasePath, { replace: true });
     }
-  }, [authLoading, initialSellerTab, navigate, section, user, userRoles]);
+  }, [authLoading, dashboardBasePath, initialSellerTab, navigate, section, user, userRoles]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -104,7 +111,14 @@ const Dashboard: React.FC = () => {
 
   // Show dashboard if we have a user
   if (user) {
-    return <UnifiedDashboard initialSellerTab={initialSellerTab} initialSection={initialSection} />;
+    return (
+      <UnifiedDashboard
+        initialSellerTab={initialSellerTab}
+        initialSection={initialSection}
+        businessOnly={isBusinessMode}
+        basePath={dashboardBasePath}
+      />
+    );
   }
 
   return null;

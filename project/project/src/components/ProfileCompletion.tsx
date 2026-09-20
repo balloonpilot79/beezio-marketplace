@@ -23,7 +23,7 @@ const ProfileCompletion: React.FC = () => {
   React.useEffect(() => {
     if (profile?.role) {
       const role = String(profile.role || '').toLowerCase();
-      navigate(role === 'buyer' ? '/account' : '/dashboard');
+      navigate(role === 'buyer' ? '/account' : '/business');
     }
   }, [profile, navigate]);
 
@@ -46,7 +46,7 @@ const ProfileCompletion: React.FC = () => {
 
       if (updateError) throw updateError;
 
-      navigate('/dashboard');
+      navigate('/business');
     } catch (err: any) {
       setError(err.message);
     } finally {

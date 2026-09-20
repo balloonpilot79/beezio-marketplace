@@ -3,12 +3,12 @@ import { supabase } from '../lib/supabase';
 export const getPayoutSettingsHref = (role: string): string => {
   const normalizedRole = String(role || '').trim().toLowerCase();
   if (normalizedRole === 'affiliate' || normalizedRole === 'partner') {
-    return '/dashboard?section=affiliate&tab=financials#payouts';
+    return '/business?section=affiliate&tab=financials#payouts';
   }
   if (normalizedRole === 'influencer') {
-    return '/dashboard?section=influencer#payouts';
+    return '/business?section=influencer#payouts';
   }
-  return '/dashboard?section=seller&tab=financials#payouts';
+  return '/business?section=seller&tab=financials#payouts';
 };
 
 export const hasStoredPayoutEmail = async (ownerIds: Array<string | null | undefined>): Promise<boolean> => {

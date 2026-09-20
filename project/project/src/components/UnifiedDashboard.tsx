@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { canAccessCJImport } from '../utils/cjImportAccess';
 import { copyTextToClipboard } from '../utils/clipboard';
@@ -18,6 +18,8 @@ import PlatformAdminDashboard from './PlatformAdminDashboard';
 interface UnifiedDashboardProps {
   initialSellerTab?: SellerDashboardTab;
   initialSection?: 'buyer' | 'seller' | 'affiliate' | 'influencer' | 'admin';
+  businessOnly?: boolean;
+  basePath?: '/dashboard' | '/business';
 }
 
 type DashboardSection = 'buyer' | 'seller' | 'affiliate' | 'influencer' | 'admin';
@@ -28,10 +30,11 @@ type SellerFulfillmentAlert = {
   total: number;
 };
 
-const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, initialSection }) => {
-  const { user, profile, userRoles, currentRole, addRole, loading: authLoading } = useAuth();
+const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, initialSection, businessOnly = false, basePath = '/dashboard' }) => {
+  const { user, profile, userRoles, addRole, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const businessBasePath = businessOnly ? '/business' : basePath;
 
   const normalizedProfileRole = String(profile?.primary_role || profile?.role || '').toLowerCase();
   const normalizedUserRoles = (userRoles || []).map((role) => String(role || '').toLowerCase());
@@ -43,8 +46,6 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
 
   const effectiveRoles = useMemo(() => {
     const activeRoles = new Set<string>();
-    const normalizedCurrentRole = String(currentRole || '').toLowerCase();
-    if (normalizedCurrentRole) activeRoles.add(normalizedCurrentRole);
     if (normalizedProfileRole) activeRoles.add(normalizedProfileRole);
     normalizedUserRoles.forEach((role) => activeRoles.add(role));
     if (activeRoles.has('partner')) {
@@ -53,10 +54,10 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
     }
     if (isAdminUser) activeRoles.add('admin');
     return Array.from(activeRoles);
-  }, [currentRole, isAdminUser, normalizedProfileRole, normalizedUserRoles]);
+  }, [isAdminUser, normalizedProfileRole, normalizedUserRoles]);
 
   const visibleRoles = useMemo<DashboardSection[]>(() => {
-    const roles = new Set<DashboardSection>(['buyer']);
+    const roles = new Set<DashboardSection>(businessOnly ? [] : ['buyer']);
     if (effectiveRoles.includes('seller')) roles.add('seller');
     if (effectiveRoles.includes('affiliate')) roles.add('affiliate');
     if (effectiveRoles.includes('influencer')) roles.add('influencer');
@@ -67,7 +68,7 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
       roles.add('admin');
     }
     return Array.from(roles);
-  }, [effectiveRoles, isAdminUser]);
+  }, [businessOnly, effectiveRoles, isAdminUser]);
 
   const hasBusinessSectionAccess = (section: string): section is BusinessDashboardSection => {
     if (section !== 'seller' && section !== 'affiliate' && section !== 'influencer') return false;
@@ -82,12 +83,13 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
   }, [visibleRoles]);
 
   const defaultSection = useMemo<DashboardSection>(() => {
+    if (businessOnly) return 'seller';
     if (initialSection === 'buyer') return 'buyer';
     if (initialSection === 'admin' && visibleRoles.includes('admin')) return 'admin';
     if (initialSection && hasBusinessSectionAccess(initialSection)) return 'seller';
     if (firstBusinessSection) return 'seller';
     return 'buyer';
-  }, [firstBusinessSection, initialSection, visibleRoles]);
+  }, [businessOnly, firstBusinessSection, initialSection, visibleRoles]);
 
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const requestedSection = String(searchParams.get('section') || '').toLowerCase();
@@ -99,20 +101,22 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
     Boolean((profile as any)?.__is_fallback) &&
     isUnauthorizedBusinessSectionRequest;
   const businessSectionForShell = requestedBusinessSection || firstBusinessSection;
-  const activeSection: DashboardSection =
-    requestedSection === 'buyer'
-      ? 'buyer'
-      : requestedSection === 'admin' && visibleRoles.includes('admin')
-      ? 'admin'
-      : isFallbackBusinessHydration
-      ? 'seller'
-      : isUnauthorizedBusinessSectionRequest && !requestedBusinessSection
-      ? 'buyer'
-      : requestedBusinessSection
-      ? 'seller'
-      : defaultSection;
+  const activeSection: DashboardSection = businessOnly
+    ? 'seller'
+    : requestedSection === 'buyer'
+    ? 'buyer'
+    : requestedSection === 'admin' && visibleRoles.includes('admin')
+    ? 'admin'
+    : isFallbackBusinessHydration
+    ? 'seller'
+    : isUnauthorizedBusinessSectionRequest && !requestedBusinessSection
+    ? 'buyer'
+    : requestedBusinessSection
+    ? 'seller'
+    : defaultSection;
 
   const requestedTab = String(searchParams.get('tab') || '').toLowerCase();
+  const businessRoleOptions = (['seller', 'affiliate', 'influencer'] as BusinessDashboardSection[]).filter((role) => visibleRoles.includes(role));
 
   const [sellerTab, setSellerTab] = useState<SellerDashboardTab>(initialSellerTab || 'products');
   const [buyerTab, setBuyerTab] = useState<BuyerDashboardTab>('overview');
@@ -202,21 +206,34 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
 
   useEffect(() => {
     if (authLoading || isFallbackBusinessHydration) return;
+
+    if (businessOnly) {
+      if (!businessSectionForShell) {
+        navigate('/account', { replace: true });
+        return;
+      }
+      if (requestedSection && requestedSection !== businessSectionForShell) {
+        const tabSuffix = requestedTab ? '&tab=' + encodeURIComponent(requestedTab) : '';
+        navigate(businessBasePath + '?section=' + businessSectionForShell + tabSuffix, { replace: true });
+      }
+      return;
+    }
+
     if (!requestedSection || activeSection === requestedSection) return;
     const requestedBusiness =
       requestedSection === 'seller' || requestedSection === 'affiliate' || requestedSection === 'influencer';
     if (requestedBusiness && !requestedBusinessSection) {
-      navigate('/dashboard?section=buyer&tab=orders', { replace: true });
+      navigate('/account?tab=orders', { replace: true });
       return;
     }
     if (activeSection === 'buyer') {
-      navigate(`/dashboard?section=buyer${requestedTab ? `&tab=${encodeURIComponent(requestedTab)}` : ''}`, { replace: true });
+      navigate('/account' + (requestedTab ? '?tab=' + encodeURIComponent(requestedTab) : ''), { replace: true });
       return;
     }
     if (activeSection === 'seller' && businessSectionForShell) {
-      navigate(`/dashboard?section=${businessSectionForShell}${requestedTab ? `&tab=${encodeURIComponent(requestedTab)}` : ''}`, { replace: true });
+      navigate(businessBasePath + '?section=' + businessSectionForShell + (requestedTab ? '&tab=' + encodeURIComponent(requestedTab) : ''), { replace: true });
     }
-  }, [activeSection, authLoading, businessSectionForShell, isFallbackBusinessHydration, navigate, requestedBusinessSection, requestedSection, requestedTab]);
+  }, [activeSection, authLoading, basePath, businessBasePath, businessOnly, businessSectionForShell, isFallbackBusinessHydration, navigate, requestedBusinessSection, requestedSection, requestedTab]);
 
   useEffect(() => {
     if (!user || !visibleRoles.includes('seller')) {
@@ -422,18 +439,18 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
     if (activeSection === 'seller') {
       const next = tab as SellerDashboardTab;
       setSellerTab(next);
-      navigate(`/dashboard?section=${businessSectionForShell || 'seller'}&tab=${encodeURIComponent(next)}`);
+      navigate(businessBasePath + '?section=' + (businessSectionForShell || 'seller') + '&tab=' + encodeURIComponent(next));
       return;
     }
     if (activeSection === 'buyer') {
       const next = tab as BuyerDashboardTab;
       setBuyerTab(next);
-      navigate(`/dashboard?section=buyer&tab=${encodeURIComponent(next)}`);
+      navigate('/account?tab=' + encodeURIComponent(next));
       return;
     }
   };
 
-  const sellerOrdersRoute = '/dashboard?section=seller&tab=orders';
+  const sellerOrdersRoute = businessBasePath + '?section=seller&tab=orders';
 
   const openSellerOrders = () => {
     setSellerTab('orders');
@@ -456,6 +473,39 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
   return (
     <div className="dashboard-theme min-h-screen bg-gray-50">
       <main>
+        {businessOnly && (
+          <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+            <div className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Beezio Business Center</p>
+                  <h1 className="mt-1 text-2xl font-bold text-slate-900">{sellerDashboardCopy.title}</h1>
+                  <p className="mt-1 max-w-2xl text-sm text-slate-600">
+                    Selling, promoting, recruiting, and payouts live here. Personal purchases and order support live in Shopper Account.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {businessRoleOptions.map((role) => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => navigate(businessBasePath + '?section=' + role)}
+                      className={businessSectionForShell === role ? 'rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white' : 'rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50'}
+                    >
+                      {role === 'seller' ? 'Seller' : role === 'affiliate' ? 'Affiliate' : 'Influencer'}
+                    </button>
+                  ))}
+                  <Link to="/account" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    Shopper Account
+                  </Link>
+                  <Link to="/marketplace" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    Marketplace
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
         {sellerFulfillmentAlert && !sellerFulfillmentAlertDismissed && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
             <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
@@ -530,7 +580,7 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
             </div>
           </div>
         )}
-        {activeSection === 'buyer' && (
+        {!businessOnly && activeSection === 'buyer' && (
           <EnhancedBuyerDashboard
             key={`buyer-${buyerTab}`}
             activeTabOverride={buyerTab}

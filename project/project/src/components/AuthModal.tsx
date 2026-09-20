@@ -288,12 +288,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           onClose();
 
           if (isBuyerAudience) {
-            navigate(resolvePostAuthTarget('/dashboard?section=buyer'));
+            navigate(resolvePostAuthTarget('/account'));
             setLoading(false);
             return;
           }
 
-          navigate(resolvePostAuthTarget('/dashboard'));
+          navigate(resolvePostAuthTarget('/business'));
         } else {
           console.warn('Sign in returned no user/session:', result);
           setError('Sign in failed. Please check your credentials and try again.');
@@ -442,9 +442,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           onClose();
           if (isBusinessAudience) {
             const hasPayout = String((formData as any).paypalEmail || '').trim().length > 0 && Boolean((formData as any).paypalConfirmed);
-            navigate(hasPayout ? '/dashboard' : '/onboarding');
+            navigate(hasPayout ? '/business' : '/onboarding');
           } else {
-            navigate(resolvePostAuthTarget('/dashboard?section=buyer'));
+            navigate(resolvePostAuthTarget('/account'));
           }
         }
         setLoading(false);
