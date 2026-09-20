@@ -496,7 +496,8 @@ const ProductDetailPage: React.FC = () => {
     searchParams.get('code') ||
     searchParams.get('promo') === '1'
   );
-  const showBuyerCtas = isStorefrontProductView || isCustomDomainHost || isTrackedPromotion;
+  const isMainMarketplaceProductView = !isStorefrontProductView && !isCustomDomainHost;
+  const showBuyerCtas = isMainMarketplaceProductView || isStorefrontProductView || isCustomDomainHost || isTrackedPromotion;
   const showStoreAddCtas = Boolean(user?.id) && isSellingRole && !isStorefrontProductView && !isStorefrontScope && !isCustomDomainHost;
 
   const isAdminRole = useMemo(() => {
@@ -506,6 +507,13 @@ const ProductDetailPage: React.FC = () => {
   }, [effectiveRole, hasRole, profile?.primary_role, profile?.role]);
 
   const sellerProfileId = (profile as any)?.id as string | undefined;
+  const sellerDisplayName = String(
+    sellerStoreSettings?.store_name ||
+      product?.profiles?.full_name ||
+      (product as any)?.seller_name ||
+      (product as any)?.seller ||
+      ''
+  ).trim() || 'Beezio Seller';
 
   useEffect(() => {
     let cancelled = false;
@@ -703,7 +711,7 @@ const ProductDetailPage: React.FC = () => {
     if (isSellingRole) return affiliateEarnings;
     return null;
   }, [affiliateEarnings, isSellingRole]);
-  const showAffiliatePayoutPreview = isAffiliateRole && !showBuyerCtas;
+  const showAffiliatePayoutPreview = isAffiliateRole && !isStorefrontProductView && !isCustomDomainHost;
 
   const displayDescription = useMemo(() => {
     return sanitizeDescriptionForDisplay(product?.description, product?.lineage);
@@ -1002,7 +1010,7 @@ const ProductDetailPage: React.FC = () => {
       return [PLACEHOLDER_IMAGE];
     };
     const images = normalizeImages(rawImages, fallbackImage);
-    const sellerName = normalizedPricing?.profiles?.full_name || normalizedPricing?.seller || normalizedPricing?.seller_name || '';
+    const sellerName = normalizedPricing?.profiles?.full_name || normalizedPricing?.seller || normalizedPricing?.seller_name || normalizedPricing?.store_name || normalizedPricing?.storeName || normalizedPricing?.seller_store_name || '';
     return {
       ...(normalizedPricing as any),
       seller_id: sellerId || normalizedPricing?.seller_id,
@@ -1427,7 +1435,7 @@ const ProductDetailPage: React.FC = () => {
         quantity: quantity,
           image: (selectedVariant?.image_url ? resolveImageUrl(selectedVariant.image_url) : '') || product.images[0] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=800',
         sellerId: product.seller_id,
-        sellerName: sellerStoreSettings?.store_name || product.profiles?.full_name || 'Unknown Seller',
+        sellerName: sellerDisplayName,
         shippingCost: 0,
         maxQuantity: typeof computedMaxQuantity === 'number' ? computedMaxQuantity : undefined,
         affiliateId: cartAffiliateId,
@@ -1468,7 +1476,7 @@ const ProductDetailPage: React.FC = () => {
         quantity: 1,
         image: (selectedVariant?.image_url ? resolveImageUrl(selectedVariant.image_url) : '') || product.images[0] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=800',
         sellerId: product.seller_id,
-        sellerName: sellerStoreSettings?.store_name || product.profiles?.full_name || 'Unknown Seller',
+        sellerName: sellerDisplayName,
         shippingCost: 0,
         maxQuantity: 1,
         affiliateId: cartAffiliateId,
@@ -2449,7 +2457,7 @@ const ProductDetailPage: React.FC = () => {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  Sold by {sellerStoreSettings?.store_name || product.profiles?.full_name || 'Unknown Seller'}
+                  Sold by {sellerDisplayName}
                 </h3>
                 <p className="text-sm text-gray-600">
                   Returns and support are handled directly by the seller.
