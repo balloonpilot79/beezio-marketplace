@@ -6,7 +6,7 @@ describe('resolveCheckoutAttribution', () => {
     expect(resolveCheckoutAttribution({ referralAffiliateId: null, storeScope: null })).toEqual({
       affiliate_id: null,
       storefront_id: null,
-      orderSource: null,
+      orderSource: 'marketplace_direct',
     });
   });
 
@@ -14,7 +14,7 @@ describe('resolveCheckoutAttribution', () => {
     expect(resolveCheckoutAttribution({ referralAffiliateId: 'affiliate-1', storeScope: null })).toEqual({
       affiliate_id: 'affiliate-1',
       storefront_id: null,
-      orderSource: null,
+      orderSource: 'affiliate_link',
     });
   });
 
@@ -52,7 +52,7 @@ describe('resolveCheckoutAttribution', () => {
     ).toEqual({
       affiliate_id: 'affiliate-3',
       storefront_id: null,
-      orderSource: null,
+      orderSource: 'affiliate_link',
     });
   });
 
@@ -66,7 +66,7 @@ describe('resolveCheckoutAttribution', () => {
     ).toEqual({
       affiliate_id: null,
       storefront_id: null,
-      orderSource: null,
+      orderSource: 'marketplace_direct',
     });
   });
 });
