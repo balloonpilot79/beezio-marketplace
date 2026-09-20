@@ -58,6 +58,12 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/api/public/product/get"
+  to = "/.netlify/functions/public-product-get"
+  status = 200
+  force = true
+
 # PayPal runtime + checkout routes
 [[redirects]]
   from = "/api/paypal/status"
