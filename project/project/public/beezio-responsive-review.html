@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Beezio responsive preview</title>
+    <style>
+      body { margin: 0; padding: 20px; color: #101820; background: #eef0f1; font: 14px system-ui; }
+      nav { display: flex; flex-wrap: wrap; gap: 16px; margin: 0 0 18px; }
+      a { color: #101820; }
+      section { display: flex; gap: 24px; align-items: flex-start; }
+      iframe { display: block; border: 1px solid #bfc7cb; background: #fff; border-radius: 12px; }
+      h1 { font-size: 18px; } h2 { font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <h1>Mobile and tablet layout review</h1>
+    <nav aria-label="Preview pages">
+      <a href="/" target="phone">Homepage</a>
+      <a href="/signup" target="phone">Free website signup</a>
+      <a href="/join" target="phone">Account choices</a>
+      <a href="/auth/login" target="phone">Sign in</a>
+      <a href="/marketplace" target="phone">Marketplace</a>
+      <a href="/store/marebelle" target="phone">Custom store</a>
+    </nav>
+    <section>
+      <div><h2>Phone · 390 × 844</h2><iframe title="Phone preview" name="phone" src="/" width="390" height="844"></iframe></div>
+      <div><h2>Tablet · 768 × 1024</h2><iframe title="Tablet preview" name="tablet" src="/" width="768" height="1024"></iframe></div>
+    </section>
+  </body>
+</html>

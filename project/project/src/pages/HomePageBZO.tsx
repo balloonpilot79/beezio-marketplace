@@ -46,7 +46,7 @@ const HomePageBZO: React.FC = () => (
         <p className="bz-eyebrow">
           Built for sellers. Powered by affiliates & influencers.
         </p>
-        <h1 className="mt-5 text-4xl font-bold leading-[1.08] tracking-[-0.045em] text-[#101820] sm:text-6xl lg:text-[4.25rem]">
+        <h1 className="mt-5 text-4xl font-bold leading-[1.08] tracking-[-0.045em] text-[#101820] sm:text-5xl lg:text-[3.6rem]">
           Your website.
           <br />
           <span className="bz-highlight">More ways to earn.</span>
@@ -83,11 +83,11 @@ const HomePageBZO: React.FC = () => (
             </span>
           </div>
           <Link to="/store/marebelle" className="group block">
-            <div className="aspect-[4/3] overflow-hidden bg-[#eae2d5]">
+            <div className="aspect-video overflow-hidden bg-[#eae2d5]">
               <img
                 src="/marebelle-storefront-example.png"
                 alt="MareBelle, an example of a custom website built with Beezio"
-                className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.02]"
+                className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.02]"
                 loading="eager"
               />
             </div>
