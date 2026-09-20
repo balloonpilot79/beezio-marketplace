@@ -580,17 +580,17 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-3 py-8 sm:px-4">
-      <div className="mb-6 rounded-[28px] border border-stone-200 bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.18),_transparent_32%),linear-gradient(135deg,_#fff9ec_0%,_#ffffff_45%,_#f7f7f4_100%)] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+    <div className="bz-public mx-auto max-w-7xl px-3 py-8 sm:px-4">
+      <div className="mb-6 rounded-2xl border border-slate-200 bg-[#faf9f5] p-6">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-amber-800">
               <Zap className="h-3.5 w-3.5" />
-              Simplified custom site
+              Your free seller website
             </div>
-            <h2 className="text-3xl font-black tracking-tight text-stone-950">One dashboard, live preview, cleaner store setup</h2>
+            <h2 className="text-3xl font-semibold tracking-tight text-stone-950">Design a website that feels like you.</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
-              This editor keeps the existing store/cart/payment behavior but removes the scattered tab experience. Brand the store, arrange the layout, edit content, and publish from one workspace.
+              Choose your look, add your branding, arrange products, and create custom pages. Preview your changes before publishing your free website.
             </p>
             <div className="mt-4 flex flex-wrap gap-3 text-sm">
               <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-stone-700">
@@ -600,7 +600,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                 Public URL: <span className="break-all font-semibold text-stone-950">{publicStoreUrl}</span>
               </div>
               <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-stone-700">
-                Checkout: <span className="font-semibold text-stone-950">Unchanged</span>
+                Beezio checkout: <span className="font-semibold text-stone-950">Included</span>
               </div>
             </div>
           </div>

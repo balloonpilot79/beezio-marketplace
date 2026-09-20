@@ -15,6 +15,13 @@ export interface StorefrontBranding {
 const SCOPE_KEY = 'beezio-store-scope';
 const POST_AUTH_PATH_KEY = 'beezio-post-auth-path';
 
+/** Redirects must stay inside Beezio, never protocol-relative or external. */
+export function safePostAuthPath(path: unknown): string | null {
+  const value = String(path || '').trim();
+  if (!value.startsWith('/') || value.startsWith('//') || /[\\\u0000-\u001f]/.test(value)) return null;
+  return value;
+}
+
 export function readStoredStorefrontScope(): StorefrontScope | null {
   if (typeof window === 'undefined') return null;
 
@@ -39,14 +46,14 @@ export function hasStoredStorefrontScope(): boolean {
 
 export function setPostAuthPath(path: string) {
   if (typeof window === 'undefined') return;
-  const normalized = String(path || '').trim() || '/account';
+  const normalized = safePostAuthPath(path) || '/account';
   window.sessionStorage.setItem(POST_AUTH_PATH_KEY, normalized);
 }
 
 export function readPostAuthPath(): string | null {
   if (typeof window === 'undefined') return null;
   const value = String(window.sessionStorage.getItem(POST_AUTH_PATH_KEY) || '').trim();
-  return value || null;
+  return safePostAuthPath(value);
 }
 
 export function consumePostAuthPath(): string | null {
@@ -54,18 +61,18 @@ export function consumePostAuthPath(): string | null {
   const value = String(window.sessionStorage.getItem(POST_AUTH_PATH_KEY) || '').trim();
   if (!value) return null;
   window.sessionStorage.removeItem(POST_AUTH_PATH_KEY);
-  return value;
+  return safePostAuthPath(value);
 }
 
 export async function loadStorefrontBranding(scope: StorefrontScope | null): Promise<StorefrontBranding> {
   if (!scope) {
     return {
       kind: 'generic',
-      name: 'Your Account',
+      name: 'Beezio',
       tagline: 'Orders, receipts, and support in one place.',
       logoUrl: null,
       backgroundImageUrl: null,
-      homePath: '/',
+      homePath: '/marketplace',
     };
   }
 

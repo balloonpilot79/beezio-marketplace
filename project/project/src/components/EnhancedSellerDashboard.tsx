@@ -1343,6 +1343,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
                       </Link>
                     </div>
                     <ProductList
+                      businessSectionPath={businessSectionPath}
                       products={products}
                       removingProductId={removingSellerProductId}
                       onRemove={removeSellerProduct}
@@ -1359,6 +1360,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
                       <span className="text-sm text-gray-500">{promotedProducts.length} total</span>
                     </div>
                     <AffiliatePromotionList
+                      businessSectionPath={businessSectionPath}
                       products={promotedProducts}
                       copiedProductId={copiedAffiliateProductId}
                       unlistingProductId={unlistingAffiliateProductId}
@@ -1628,11 +1630,13 @@ const SellerActionCard = ({
 };
 
 const ProductList = ({
+  businessSectionPath,
   products,
   removingProductId,
   onRemove,
 }: {
   products: Product[];
+  businessSectionPath: string;
   removingProductId: string;
   onRemove: (productId: string) => void;
 }) => {
@@ -1826,6 +1830,7 @@ const ProductList = ({
 };
 
 const AffiliatePromotionList = ({
+  businessSectionPath,
   products,
   copiedProductId,
   unlistingProductId,
@@ -1834,6 +1839,7 @@ const AffiliatePromotionList = ({
 }: {
   products: Product[];
   copiedProductId: string;
+  businessSectionPath: string;
   unlistingProductId: string;
   onCopyLink: (productId: string) => void;
   onUnlist: (productId: string) => void;

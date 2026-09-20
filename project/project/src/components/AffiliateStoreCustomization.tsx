@@ -847,13 +847,14 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
   const curatedProductIds = new Set(curatedProducts.map((p: any) => p.product_id).filter(Boolean));
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="bz-public max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-8 text-white">
-        <div className="flex items-start justify-between">
+      <div className="rounded-2xl border border-slate-200 bg-[#faf9f5] p-6 text-slate-900 sm:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-5">
           <div>
-            <h2 className="text-3xl font-extrabold mb-2 tracking-tight">Affiliate Store Customization</h2>
-            <p className="text-lg text-purple-100">Personalize your affiliate store to attract more customers</p>
+            <p className="bz-eyebrow mb-3">Your free affiliate website</p>
+            <h2 className="text-3xl font-semibold mb-2 tracking-tight">Your recommendations. Your design.</h2>
+            <p className="max-w-xl text-sm leading-6 text-slate-600">Choose your look, add your branding and custom pages, and curate products for your audience.</p>
           </div>
           <div className="flex items-center gap-4">
             {hasUnsavedChanges && (
@@ -865,7 +866,7 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
               href={storeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-5 py-3 border border-purple-200 rounded-xl bg-white/20 hover:bg-white/30 text-white font-semibold shadow transition-all"
+              className="bz-button bz-button-outline"
             >
               <Eye className="w-5 h-5" />
               <span>Preview Store</span>

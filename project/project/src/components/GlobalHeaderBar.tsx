@@ -1,393 +1,329 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronDown,
   DollarSign,
-  Home,
   LayoutDashboard,
   LogOut,
   Menu,
-  Settings,
+  ShoppingBag,
   ShoppingCart,
   Store,
   User,
-  Users,
-  X
-} from 'lucide-react';
-import { useAuth } from '../contexts/AuthContextMultiRole';
-import { useCart } from '../contexts/CartContext';
-import { canAccessCJImport } from '../utils/cjImportAccess';
-import { getBusinessAccountRoles, getNormalizedAccountRoles } from '../utils/accountRoles';
+  X,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContextMultiRole";
+import { useCart } from "../contexts/CartContext";
+import { canAccessCJImport } from "../utils/cjImportAccess";
+import {
+  getBusinessAccountRoles,
+  getNormalizedAccountRoles,
+} from "../utils/accountRoles";
+import { BeezioMark } from "./brand/BeezioBrand";
 
-interface GlobalHeaderBarProps {
-  onOpenAuth?: () => void;
-  onOpenSignup?: () => void;
-}
+const publicLinks = [
+  { label: "Sellers", href: "/sellers" },
+  { label: "Affiliates", href: "/affiliates" },
+  { label: "Influencers", href: "/start-earning" },
+  { label: "Shop marketplace", href: "/marketplace" },
+];
 
-const GlobalHeaderBar: React.FC<GlobalHeaderBarProps> = ({ onOpenAuth, onOpenSignup }) => {
-  const { user, profile, userRoles, hasRole, signOut } = useAuth();
+const GlobalHeaderBar: React.FC = () => {
+  const { user, profile, userRoles, signOut } = useAuth();
   const { getTotalItems } = useCart();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const menuRef = useRef<HTMLDivElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const accountMenuRef = useRef<HTMLDivElement>(null);
-  const normalizedRole = String(profile?.primary_role || profile?.role || '').toLowerCase();
-  const isAdminUser = Boolean(
-    normalizedRole === 'admin' ||
-    userRoles?.some((role) => String(role || '').toLowerCase() === 'admin') ||
-    hasRole?.('admin') ||
-    canAccessCJImport(user?.email || profile?.email || '')
+  const roles = getNormalizedAccountRoles(
+    userRoles,
+    profile?.primary_role,
+    profile?.role,
   );
-  const normalizedAccountRoles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role);
-  const businessRoles = getBusinessAccountRoles(normalizedAccountRoles);
-  const hasBusinessAccess = isAdminUser || businessRoles.length > 0;
-  const isBusinessSurface =
-    location.pathname.startsWith('/business') ||
-    location.pathname.startsWith('/dashboard') ||
-    location.pathname.startsWith('/admin');
-
-  const navLinks = [
-    { label: 'Home', href: '/', description: 'Start here' },
-    { label: 'Product Marketplace', href: '/marketplace', description: 'Find products to add to your storefront and promote' },
-    { label: 'How It Works', href: '/how-it-works', description: 'See how selling, partner payouts, and checkout work' },
-    ...(user && hasBusinessAccess
-      ? [{ label: 'Business Center', href: '/business', description: 'Manage products, promotions, orders, and payouts' }]
-      : []),
-    ...(user
-      ? [{ label: 'Shopper Account', href: '/account', description: 'View your purchases, receipts, and order support' }]
-      : [])
+  const isAdmin =
+    roles.includes("admin") ||
+    canAccessCJImport(user?.email || profile?.email || "");
+  const hasBusinessAccess = Boolean(
+    user && (isAdmin || getBusinessAccountRoles(roles).length),
+  );
+  const isBusiness = /^\/(business|dashboard|admin)(\/|$)/.test(
+    location.pathname,
+  );
+  const count = getTotalItems();
+  const mobileLinks = [
+    { label: "Shop", href: "/marketplace", icon: ShoppingBag },
+    hasBusinessAccess
+      ? { label: "Business", href: "/business", icon: LayoutDashboard }
+      : { label: "Sell & earn", href: "/start-earning", icon: Store },
+    { label: "Account", href: user ? "/account" : "/auth/login", icon: User },
+    { label: "Cart", href: "/cart", icon: ShoppingCart },
   ];
-  const leftNavLinks = navLinks.filter((link) => link.label === 'Home');
-  const centerNavLinks = navLinks.filter((link) => link.label !== 'Home');
-
-  const payoutsShortcutHref = useMemo(() => {
-    if (!user) return null;
-    if (!hasBusinessAccess) return null;
-    return '/business?tab=financials#payouts';
-  }, [hasBusinessAccess, user]);
-
-  const itemCount = getTotalItems();
-  const mobilePrimaryActions = user
-    ? [
-        { label: 'Home', href: '/', icon: Home },
-        { label: 'Market', href: '/marketplace', icon: Store },
-        hasBusinessAccess
-          ? { label: 'Business', href: '/business', icon: LayoutDashboard }
-          : { label: 'Account', href: '/account', icon: User },
-        { label: 'Cart', href: '/cart', icon: ShoppingCart },
-      ]
-    : [
-        { label: 'Home', href: '/', icon: Home },
-        { label: 'Market', href: '/marketplace', icon: Store },
-        { label: 'How', href: '/how-it-works', icon: Users },
-        { label: 'Sign in', href: '/auth/login', icon: User },
-      ];
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent | TouchEvent | PointerEvent) => {
-      if (accountOpen && accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
-        setAccountOpen(false);
-      }
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setAccountOpen(false);
-      }
-    };
-
-    const handleScroll = () => {
-      setAccountOpen(false);
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    document.addEventListener('pointerdown', handleClickOutside);
-    window.addEventListener('keydown', handleEscape);
-    window.addEventListener('scroll', handleScroll, true);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-      document.removeEventListener('pointerdown', handleClickOutside);
-      window.removeEventListener('keydown', handleEscape);
-      window.removeEventListener('scroll', handleScroll, true);
-    };
-  }, [accountOpen]);
-
-  useEffect(() => {
+    setAccountOpen(false);
     setMobileOpen(false);
-    setAccountOpen(false);
-  }, [location.pathname, location.search, location.hash]);
-
-  const handleSignOut = async () => {
-    setAccountOpen(false);
-    await signOut?.();
-    navigate('/');
-  };
+  }, [location.pathname, location.search]);
+  useEffect(() => {
+    const outside = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node))
+        setAccountOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAccountOpen(false);
+        setMobileOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, []);
 
   return (
     <>
-      <div className="fixed left-0 right-0 top-0 z-[70] pointer-events-none">
-        <header className="pointer-events-auto w-full border-b border-black/20 bg-[#ffcb05] text-black shadow-md">
-          <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 h-12 sm:h-14 flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2 lg:gap-3">
-              <Link to="/" className="flex items-center gap-2 min-w-0">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black text-[#ffcb05] text-sm sm:text-base font-black flex items-center justify-center shadow-sm">
-                  BZ
-                </div>
-                <div className="flex flex-col leading-tight">
-                  <span className="text-[13px] sm:text-sm font-semibold uppercase tracking-wide">Beezio</span>
-                  <span className="text-[10px] sm:text-xs text-black/70">{isBusinessSurface ? 'Business Center' : 'Marketplace'}</span>
-                </div>
-              </Link>
-
-              <nav className="hidden xl:flex items-center gap-3 text-sm font-semibold">
-                {leftNavLinks.map((link) => (
-                  <Link key={link.href} to={link.href} className="hover:text-black/70 whitespace-nowrap" title={link.description}>
-                    {link.label}
-                  </Link>
-                ))}
-                {centerNavLinks.map((link) => (
-                  <Link key={link.href} to={link.href} className="hover:text-black/70 whitespace-nowrap" title={link.description}>
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                className="xl:hidden inline-flex items-center justify-center rounded-full bg-white text-black border border-black/10 p-2 shadow hover:bg-white/90"
-                onClick={() => setMobileOpen(!mobileOpen)}
-                aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
+      <header className="bz-header fixed inset-x-0 top-0 z-[70] border-b border-slate-200 bg-white text-[#101820]">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+          <Link to="/" aria-label="Beezio home">
+            <BeezioMark
+              subtitle={isBusiness ? "Business Center" : "Sell. Share. Earn."}
+            />
+          </Link>
+          <nav
+            aria-label="Main navigation"
+            className="hidden items-center gap-6 xl:flex"
+          >
+            {publicLinks.map((link) => (
+              <Link
+                key={link.href}
+                to={link.href}
+                aria-current={
+                  location.pathname === link.href ? "page" : undefined
+                }
+                className={`text-sm hover:text-slate-900 ${location.pathname === link.href ? "font-semibold text-slate-950" : "text-slate-600"}`}
               >
-                {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-
-              {user && payoutsShortcutHref && (
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {hasBusinessAccess ? (
+              <Link
+                to="/business"
+                className="hidden rounded-lg bg-[#faf9f5] px-3 py-2 text-xs font-semibold text-slate-800 sm:inline-flex"
+              >
+                Business Center
+              </Link>
+            ) : (
+              <Link
+                to="/signup"
+                className="hidden rounded-lg bg-[#ffcb05] px-3 py-2 text-xs font-semibold text-[#101820] hover:bg-[#ffda45] sm:inline-flex"
+              >
+                Start your free website
+              </Link>
+            )}
+            <Link
+              to="/cart"
+              aria-label={`Cart${count ? `, ${count} items` : ""}`}
+              className="relative inline-flex items-center gap-1 rounded-lg p-2 text-slate-700 hover:bg-slate-50"
+            >
+              <ShoppingCart className="h-5 w-5" aria-hidden="true" />
+              {count > 0 && (
+                <span className="rounded-full bg-[#ffcb05] px-1.5 text-xs font-semibold text-[#101820]">
+                  {count}
+                </span>
+              )}
+            </Link>
+            {user ? (
+              <div className="relative" ref={menuRef}>
                 <button
                   type="button"
-                  onClick={() => navigate(payoutsShortcutHref)}
-                  className="hidden sm:inline-flex items-center gap-1 rounded-full border border-[#101820] bg-white px-3 py-1.5 text-xs font-semibold text-[#101820] hover:bg-[#fff2b7]"
+                  onClick={() => setAccountOpen(!accountOpen)}
+                  aria-label="Account menu"
+                  aria-expanded={accountOpen}
+                  aria-controls="beezio-account-menu"
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 p-2 text-slate-700"
                 >
-                  <DollarSign className="h-3.5 w-3.5" />
-                  Payouts
+                  <User className="h-4 w-4" />
+                  <ChevronDown className="h-3 w-3" />
                 </button>
-              )}
-
-              {user && (
+                {accountOpen && (
+                  <nav
+                    id="beezio-account-menu"
+                    aria-label="Your account"
+                    className="absolute right-0 mt-3 w-64 rounded-xl border border-slate-200 bg-white p-2 text-sm shadow-lg"
+                  >
+                    <p className="truncate border-b border-slate-100 px-3 py-3 font-semibold">
+                      {profile?.full_name || "Your account"}
+                    </p>
+                    <Link
+                      to="/account"
+                      className="block rounded-lg px-3 py-3 text-slate-700 hover:bg-slate-50"
+                    >
+                      Shopper Account
+                    </Link>
+                    {hasBusinessAccess && (
+                      <Link
+                        to="/business"
+                        className="block rounded-lg px-3 py-3 text-slate-700 hover:bg-slate-50"
+                      >
+                        Business Center
+                      </Link>
+                    )}
+                    {hasBusinessAccess && (
+                      <Link
+                        to="/business?tab=financials#payouts"
+                        className="flex items-center gap-2 rounded-lg px-3 py-3 text-slate-700 hover:bg-slate-50"
+                      >
+                        <DollarSign className="h-4 w-4" />
+                        Earnings & payouts
+                      </Link>
+                    )}
+                    {!hasBusinessAccess && (
+                      <Link
+                        to="/signup"
+                        className="block rounded-lg px-3 py-3 text-slate-700 hover:bg-slate-50"
+                      >
+                        Create your free website
+                      </Link>
+                    )}
+                    <Link
+                      to="/profile"
+                      className="block rounded-lg px-3 py-3 text-slate-700 hover:bg-slate-50"
+                    >
+                      Profile & settings
+                    </Link>
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        className="block rounded-lg px-3 py-3 text-slate-700 hover:bg-slate-50"
+                      >
+                        Admin
+                      </Link>
+                    )}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await signOut();
+                        setAccountOpen(false);
+                        navigate("/");
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-3 text-left text-slate-700 hover:bg-slate-50"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign out
+                    </button>
+                  </nav>
+                )}
+              </div>
+            ) : (
+              <div className="hidden items-center gap-3 sm:flex">
                 <Link
-                  to="/cart"
-                  className="relative inline-flex items-center justify-center rounded-full bg-white text-black border border-black/10 px-3 py-1.5 text-sm font-semibold shadow hover:bg-white/90"
+                  to="/auth/login"
+                  className="text-xs font-semibold text-slate-700 hover:text-slate-900"
                 >
-                  <ShoppingCart className="w-4 h-4 sm:mr-1.5" aria-hidden="true" />
-                  <span className="hidden sm:inline">Cart</span>
-                  {itemCount > 0 && (
-                    <span className="ml-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-black text-[#ffcb05] text-xs px-1">
-                      {itemCount}
-                    </span>
-                  )}
+                  Sign in
                 </Link>
-              )}
-
-              {user ? (
-                <div className="relative" ref={accountMenuRef}>
-                  <button
-                    onClick={() => setAccountOpen(!accountOpen)}
-                    className="inline-flex items-center gap-2 bg-white text-black border border-black/10 px-3 py-1.5 rounded-full font-semibold shadow hover:bg-white/90"
-                  >
-                    <User className="w-4 h-4" aria-hidden="true" />
-                    <span className="hidden sm:inline max-w-[140px] truncate">
-                      {profile?.full_name || user.email?.split('@')[0] || 'Account'}
-                    </span>
-                    <ChevronDown className="w-4 h-4" aria-hidden="true" />
-                  </button>
-                  {accountOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white text-black border border-black/10 rounded-lg shadow-lg py-2 text-sm z-[90]">
-                      <div className="px-3 py-2 border-b border-black/10">
-                        <div className="font-semibold text-gray-900 truncate">{profile?.full_name || 'User'}</div>
-                        <div className="text-xs text-gray-600 truncate">{profile?.email || user.email}</div>
-                      </div>
-                      {hasBusinessAccess && (
-                        <Link
-                          to="/business"
-                          className="flex items-center gap-2 px-3 py-2 hover:bg-[#ffcb05] hover:text-black"
-                          onClick={() => setAccountOpen(false)}
-                        >
-                          <LayoutDashboard className="w-4 h-4" aria-hidden="true" /> Business Center
-                        </Link>
-                      )}
-                      <Link
-                        to="/account"
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-[#ffcb05] hover:text-black"
-                        onClick={() => setAccountOpen(false)}
-                      >
-                        <User className="w-4 h-4" aria-hidden="true" /> Shopper Account
-                      </Link>
-                      <Link
-                        to="/profile"
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-[#ffcb05] hover:text-black"
-                        onClick={() => setAccountOpen(false)}
-                      >
-                        <User className="w-4 h-4" aria-hidden="true" /> Profile & Settings
-                      </Link>
-                      {isAdminUser && (
-                        <Link
-                          to="/admin"
-                          className="flex items-center gap-2 px-3 py-2 hover:bg-[#ffcb05] hover:text-black"
-                          onClick={() => setAccountOpen(false)}
-                        >
-                          <Settings className="w-4 h-4" aria-hidden="true" /> Admin
-                        </Link>
-                      )}
-                      <button
-                        onClick={handleSignOut}
-                        className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-[#ffcb05] hover:text-black"
-                      >
-                        <LogOut className="w-4 h-4" aria-hidden="true" /> Sign out
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <Link
+                  to="/join"
+                  className="text-xs font-semibold text-slate-700 hover:text-slate-900"
+                >
+                  Sign up
+                </Link>
+              </div>
+            )}
+            <button
+              type="button"
+              aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
+              aria-expanded={mobileOpen}
+              aria-controls="beezio-mobile-menu"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="rounded-lg p-2 text-slate-700 xl:hidden"
+            >
+              {mobileOpen ? (
+                <X className="h-5 w-5" />
               ) : (
-                <div className="hidden sm:flex items-center gap-2">
-                  <button
-                    onClick={() => (onOpenAuth ? onOpenAuth() : navigate('/auth/login'))}
-                    className="inline-flex items-center gap-2 bg-white text-black border border-black/10 px-4 py-1.5 rounded-full font-semibold shadow hover:bg-white/90"
-                  >
-                    <User className="w-4 h-4" aria-hidden="true" />
-                    Sign in
-                  </button>
-                  <button
-                    onClick={() => (onOpenSignup ? onOpenSignup() : navigate('/signup'))}
-                    className="inline-flex items-center gap-2 bg-black text-[#ffcb05] border border-black/10 px-4 py-1.5 rounded-full font-semibold shadow hover:bg-black/90"
-                  >
-                    Sign up
-                  </button>
-                </div>
+                <Menu className="h-5 w-5" />
               )}
-            </div>
+            </button>
           </div>
-        </header>
-      </div>
-
+        </div>
+      </header>
       {mobileOpen && (
         <>
           <button
-            type="button"
             aria-label="Close navigation backdrop"
-            className="fixed inset-x-0 bottom-0 top-12 sm:top-14 z-[66] xl:hidden bg-black/10"
+            type="button"
             onClick={() => setMobileOpen(false)}
+            className="fixed inset-0 top-14 z-[66] bg-black/20 xl:hidden"
           />
-          <div className="fixed inset-x-0 top-12 sm:top-14 z-[69] xl:hidden max-h-[calc(100vh-6.5rem)] sm:max-h-[calc(100vh-7.5rem)] overflow-y-auto border-t border-black/10 bg-[#ffe459] text-black shadow-sm">
-            <nav className="px-4 py-3 grid gap-2 font-semibold text-sm">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  className="rounded-lg border border-black/10 bg-white px-3 py-3 hover:bg-[#ffcb05] hover:text-black"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <div className="font-semibold text-black">{link.label}</div>
+          <nav
+            id="beezio-mobile-menu"
+            aria-label="Mobile navigation"
+            className="fixed inset-x-0 top-14 z-[69] grid max-h-[calc(100dvh-8rem)] gap-1 overflow-y-auto border-b border-slate-200 bg-white p-4 xl:hidden"
+          >
+            {publicLinks.map((link) => (
+              <Link
+                key={link.href}
+                to={link.href}
+                className="rounded-lg px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link
+              to="/how-it-works"
+              className="rounded-lg px-4 py-3 text-sm font-semibold text-slate-700"
+            >
+              How Beezio works
+            </Link>
+            <Link
+              to={hasBusinessAccess ? "/business" : "/signup"}
+              className="bz-button bz-button-gold mt-2"
+            >
+              {hasBusinessAccess
+                ? "Business Center"
+                : "Start your free website"}
+            </Link>
+            {user ? (
+              <Link to="/account" className="bz-button bz-button-outline">
+                Shopper Account
+              </Link>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <Link to="/auth/login" className="bz-button bz-button-outline">
+                  Sign in
                 </Link>
-              ))}
-
-              {user && (
-                <div className="pt-2 mt-1 border-t border-black/10 grid gap-2">
-                  {payoutsShortcutHref && (
-                    <button
-                      onClick={() => {
-                        setMobileOpen(false);
-                        navigate(payoutsShortcutHref);
-                      }}
-                      className="w-full inline-flex items-center justify-center gap-2 bg-white text-black border border-black/10 px-4 py-2 rounded-lg font-semibold shadow hover:bg-white/90"
-                    >
-                      <DollarSign className="w-4 h-4" aria-hidden="true" />
-                      Payouts
-                    </button>
-                  )}
-                  {isAdminUser && (
-                    <Link
-                      to="/admin"
-                      onClick={() => setMobileOpen(false)}
-                      className="w-full inline-flex items-center justify-center gap-2 bg-white text-black border border-black/10 px-4 py-2 rounded-lg font-semibold shadow hover:bg-white/90"
-                    >
-                      <Settings className="w-4 h-4" aria-hidden="true" />
-                      Admin
-                    </Link>
-                  )}
-                </div>
-              )}
-
-              {!user && (
-                <div className="pt-2 mt-1 border-t border-black/10 grid gap-2">
-                  <button
-                    onClick={() => {
-                      setMobileOpen(false);
-                      if (onOpenAuth) onOpenAuth();
-                      else navigate('/auth/login');
-                    }}
-                    className="w-full inline-flex items-center justify-center gap-2 bg-white text-black border border-black/10 px-4 py-2 rounded-lg font-semibold shadow hover:bg-white/90"
-                  >
-                    <User className="w-4 h-4" aria-hidden="true" />
-                    Sign in
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMobileOpen(false);
-                      if (onOpenSignup) onOpenSignup();
-                      else navigate('/signup');
-                    }}
-                    className="w-full inline-flex items-center justify-center gap-2 bg-black text-[#ffcb05] border border-black/10 px-4 py-2 rounded-lg font-semibold shadow hover:bg-black/90"
-                  >
-                    Sign up
-                  </button>
-                </div>
-              )}
-            </nav>
-          </div>
+                <Link to="/join" className="bz-button bz-button-outline">
+                  Sign up
+                </Link>
+              </div>
+            )}
+          </nav>
         </>
       )}
-
-      <div className="xl:hidden fixed bottom-0 left-0 right-0 z-[65] pointer-events-none">
-        <div className="pointer-events-auto border-t border-black/10 bg-white/95 backdrop-blur">
-          <div
-            className="grid gap-1 px-1.5 py-1.5"
-            style={{ gridTemplateColumns: `repeat(${mobilePrimaryActions.length}, minmax(0, 1fr))` }}
+      <nav
+        aria-label="Quick navigation"
+        className="fixed inset-x-0 bottom-0 z-[65] grid grid-cols-4 border-t border-slate-200 bg-white px-2 pt-2 pb-[max(.5rem,env(safe-area-inset-bottom))] xl:hidden"
+      >
+        {mobileLinks.map(({ label, href, icon: Icon }) => (
+          <Link
+            key={href}
+            to={href}
+            aria-current={
+              location.pathname.startsWith(href) ? "page" : undefined
+            }
+            className={`flex flex-col items-center gap-1 rounded-lg px-1 py-1 text-[10px] font-semibold ${location.pathname.startsWith(href) ? "bg-[#fff4bb] text-[#101820]" : "text-slate-600"}`}
           >
-            {mobilePrimaryActions.map((item) => {
-              const Icon = item.icon;
-              const isActive =
-                (item.href === '/business' || item.href === '/account')
-                  ? location.pathname.startsWith(item.href)
-                  : item.href === '/'
-                  ? location.pathname === '/'
-                  : location.pathname.startsWith(item.href);
-              const badgeCount = item.href === '/cart' ? itemCount : 0;
-
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={`relative flex flex-col items-center justify-center gap-0.5 rounded-xl px-1.5 py-1.5 text-[10px] font-semibold ${
-                    isActive ? 'bg-[#101820] text-[#ffcb05]' : 'text-[#101820]'
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{item.label}</span>
-                  {badgeCount > 0 && (
-                    <span className="absolute right-2 top-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#ffcb05] px-1 text-[10px] font-bold text-black">
-                      {badgeCount}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+            <Icon className="h-4 w-4" aria-hidden="true" />
+            {label}
+            {href === "/cart" && count > 0 ? ` (${count})` : ""}
+          </Link>
+        ))}
+      </nav>
     </>
   );
 };

@@ -9,6 +9,7 @@ import AuthModal from './components/AuthModal';
 import SimpleSignupModal from './components/SimpleSignupModal';
 import PaymentForm from './components/PaymentForm';
 import Footer from './components/Footer';
+import { businessPath, legacyDashboardTarget, showBusinessNavigation } from './utils/businessNavigation';
 import GlobalHeaderBar from './components/GlobalHeaderBar';
 import ScrollToTop from './components/ScrollToTop';
 import CustomDomainHandler from './components/CustomDomainHandler';
@@ -22,12 +23,10 @@ const HomePageBZO = lazy(() => import('./pages/HomePageBZO'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const ProductForm = lazy(() => import('./components/ProductForm'));
 const AddProductPage = lazy(() => import('./pages/AddProductPage'));
-const HowItWorksPage = lazy(() => import('./pages/HowItWorksPage'));
-const SellersPage = lazy(() => import('./pages/SellersPage'));
-const AffiliatePageNew = lazy(() => import('./pages/AffiliatePageNew'));
+const BusinessLandingPage = lazy(() => import('./pages/BusinessLandingPage'));
+const JoinPage = lazy(() => import('./pages/JoinPage'));
 const AffiliateProductsPage = lazy(() => import('./pages/AffiliateProductsPage'));
 const AffiliateDashboardPage = lazy(() => import('./pages/AffiliateDashboardPage'));
-const StartEarningPage = lazy(() => import('./pages/StartEarningPageNew'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const CheckoutSuccessPage = lazy(() => import('./pages/CheckoutSuccessPage'));
 const CheckoutCancelPage = lazy(() => import('./pages/CheckoutCancelPage'));
@@ -281,31 +280,7 @@ const LegacyDashboardRedirect = () => {
 
   const roles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role);
   const isAdmin = roles.includes('admin') || canAccessCJImport(user.email || profile?.email || '');
-  const params = new URLSearchParams(location.search);
-  const pathSection = location.pathname.startsWith('/dashboard/')
-    ? String(location.pathname.split('/')[2] || '').toLowerCase()
-    : '';
-  const requestedSection = String(params.get('section') || pathSection || '').toLowerCase();
-  const requestedTab = String(params.get('tab') || '').toLowerCase();
-  const tabSuffix = requestedTab ? '?tab=' + encodeURIComponent(requestedTab) : '';
-  const accountTarget = requestedTab ? '/account?tab=' + encodeURIComponent(requestedTab) : '/account';
-
-  if (requestedSection === 'admin') {
-    return <Navigate to={isAdmin ? '/admin/platform' : accountTarget} replace />;
-  }
-
-  if (requestedSection === 'buyer' || (!isAdmin && !hasBusinessAccountAccess(roles))) {
-    return <Navigate to={accountTarget} replace />;
-  }
-
-  const businessSection = ['seller', 'affiliate', 'influencer'].includes(requestedSection)
-    ? requestedSection
-    : '';
-  const sectionSuffix = businessSection
-    ? '?section=' + businessSection + (requestedTab ? '&tab=' + encodeURIComponent(requestedTab) : '')
-    : tabSuffix;
-
-  return <Navigate to={'/business' + sectionSuffix} replace />;
+  return <Navigate to={legacyDashboardTarget(location.pathname, location.search, hasBusinessAccountAccess(roles), isAdmin)} replace />;
 };
 
 // Store settings now live inside the unified dashboard.
@@ -394,7 +369,7 @@ const AppWorking: React.FC = () => {
     const { user } = useAuth();
     // IMPORTANT: logged-in users should still be able to view the homepage.
     // The dashboard is always available at /dashboard.
-    return <HomePageBZO onOpenSimpleSignup={() => setShowSimpleSignup(true)} />;
+    return <HomePageBZO />;
   };
 
   const isStorefrontPath = (pathname: string) => {
@@ -433,6 +408,7 @@ const AppWorking: React.FC = () => {
       'add-product',
       'admin',
       'signup',
+      'join',
       'get-started',
       'cart',
       'checkout',
@@ -494,6 +470,8 @@ const AppWorking: React.FC = () => {
         ? 'buyer'
         : requestedDashboardSection === 'admin' && isAdminDashboardUser
         ? 'admin'
+        : requestedDashboardSection === 'affiliate' || requestedDashboardSection === 'influencer'
+        ? requestedDashboardSection
         : 'seller';
     const customerAccountPath = `/account${tabParam ? `?tab=${encodeURIComponent(tabParam)}` : ''}`;
     const normalizedAccountRoles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role);
@@ -519,7 +497,7 @@ const AppWorking: React.FC = () => {
     const businessDashboardSubNav = [
       { id: 'products', label: 'Products', icon: Package, description: 'Add your products and manage promoted marketplace items' },
       { id: 'orders', label: 'Orders', icon: ShoppingCart, description: 'Review sales, shipping, and fulfillment status' },
-      { id: 'store-customization', label: 'Custom Store', icon: Store, description: 'Edit your storefront and branding' },
+      { id: 'store-customization', label: 'Your Website', icon: Store, description: 'Design your free website, branding, collections, and custom pages' },
       { id: 'single-product', label: 'Single Product', icon: ExternalLink, description: 'Create focused single-item promotions' },
       { id: 'influencer-promo', label: 'Influencer Promo', icon: Users, description: 'Create influencer recruiting promotional pages' },
       { id: 'financials', label: 'Financials', icon: CreditCard, description: 'Seller, affiliate, and influencer sales data and payout visibility' },
@@ -553,12 +531,7 @@ const AppWorking: React.FC = () => {
         ? 'Business Center'
         : 'Seller Dashboard';
 
-    const showPersistentDashboardSubNav = Boolean(
-      user &&
-      !hidePlatformChrome &&
-      !isProductEditorRoute &&
-      dashboardSubNav.length > 0
-    );
+    const showPersistentDashboardSubNav = showBusinessNavigation(location.pathname, Boolean(user), hidePlatformChrome, isProductEditorRoute) && dashboardSubNav.length > 0;
     const isMarketplaceChromeRoute = location.pathname === '/marketplace' || location.pathname === '/products';
     const activeDashboardTabId =
       tabParam === 'fulfillment'
@@ -583,56 +556,21 @@ const AppWorking: React.FC = () => {
     }, [location.pathname, location.search]);
 
     const handlePersistentDashboardNavClick = (tabId: string) => {
-      if (tabId === 'products') {
-        const target = dashboardBasePath + '?tab=products';
-        if (location.pathname.startsWith('/dashboard/products/edit/')) {
-          window.location.assign(target);
-          return;
-        }
-        navigate(target);
-        return;
-      }
-      if (tabId === 'admin') {
-        navigate('/admin/platform');
-        return;
-      }
-      if (tabId === 'orders') {
-        navigate(dashboardBasePath + '?tab=orders');
-        return;
-      }
-      if (tabId === 'influencer-promo') {
-        navigate(dashboardBasePath + '?tab=influencer-promo');
-        return;
-      }
-
-      if (activeDashboardSection === 'buyer' || activeDashboardSection === 'seller' || activeDashboardSection === 'admin') {
-        const target =
-          activeDashboardSection === 'buyer'
-            ? '/account?tab=' + encodeURIComponent(tabId)
-            : dashboardBasePath + '?tab=' + encodeURIComponent(tabId);
-        if (location.pathname.startsWith('/dashboard/products/edit/')) {
-          window.location.assign(target);
-          return;
-        }
-        navigate(target);
-        return;
-      }
+      if (tabId === 'admin') { navigate('/admin/platform'); return; }
+      navigate(activeDashboardSection === 'buyer' ? '/account?tab=' + encodeURIComponent(tabId) : businessPath(requestedDashboardSection, tabId));
     };
 
     return (
       <div className={hidePlatformChrome ? 'min-h-screen' : 'min-h-screen bg-bzo-gradient'}>
         {!hidePlatformChrome && (
-          <GlobalHeaderBar
-            onOpenAuth={() => setAuthModal({ isOpen: true, mode: 'login' })}
-            onOpenSignup={() => setShowSimpleSignup(true)}
-          />
+          <GlobalHeaderBar />
         )}
 
         {showPersistentDashboardSubNav && (
-          <div className="mt-14 border-b border-[#d6ab00] bg-[#ffe37a] xl:sticky xl:top-14 xl:z-40">
+          <div className="mt-14 border-b border-slate-200 bg-[#faf9f5] xl:sticky xl:top-14 xl:z-40">
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
               <div className="xl:hidden py-2">
-                <div className="flex items-center justify-between gap-3 rounded-xl bg-[#fff4b8] px-3 py-2">
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2">
                   <div className="min-w-0">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-[#6b4f00]">
                       {dashboardSectionLabel}
@@ -830,7 +768,8 @@ const AppWorking: React.FC = () => {
                     <Route path="/i/:code" element={<InfluencerRedirectPage />} />
                     <Route path="/promo/join/:code" element={<InfluencerRecruitPromoPage />} />
                     <Route path="/promo/beezio/:code" element={<InfluencerRecruitPromoPage />} />
-                    <Route path="/how-it-works" element={<HowItWorksPage />} />
+                    <Route path="/how-it-works" element={<BusinessLandingPage audience="overview" />} />
+                    <Route path="/join" element={<JoinPage />} />
                     <Route path="/auth" element={<Navigate to="/auth/login" replace />} />
                     <Route path="/auth/login" element={<AuthPage mode="login" />} />
                     <Route path="/auth/register" element={<AuthPage mode="register" />} />
@@ -841,11 +780,11 @@ const AppWorking: React.FC = () => {
                     <Route path="/account/signup" element={<StorefrontAuthPage mode="register" />} />
                     <Route path="/onboarding" element={<OnboardingPage />} />
                     <Route path="/paypal/connect/callback" element={<PayPalConnectCallbackPage />} />
-                    <Route path="/start-earning" element={<StartEarningPage onOpenAuthModal={setAuthModal} onOpenSimpleSignup={() => setShowSimpleSignup(true)} />} />
-                    <Route path="/sellers" element={<SellersPage />} />
+                    <Route path="/start-earning" element={<BusinessLandingPage audience="influencer" />} />
+                    <Route path="/sellers" element={<BusinessLandingPage audience="seller" />} />
                     <Route path="/seller/signup" element={<SignUpPage />} />
-                    <Route path="/affiliates" element={<AffiliatePageNew />} />
-                    <Route path="/affiliate" element={<AffiliatePageNew />} />
+                    <Route path="/affiliates" element={<BusinessLandingPage audience="affiliate" />} />
+                    <Route path="/affiliate" element={<BusinessLandingPage audience="affiliate" />} />
                     <Route path="/affiliate/signup" element={<SignUpPage />} />
                     <Route path="/affiliate-signup" element={<SignUpPage />} />
                     <Route path="/affiliate/products" element={<AffiliateProductsPage />} />

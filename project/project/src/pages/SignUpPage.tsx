@@ -572,7 +572,7 @@ const SignUpPage: React.FC = () => {
             if (skipPayoutSetup) {
               navigate('/onboarding');
             } else {
-              navigate('/dashboard');
+              navigate('/business');
             }
 
             try {
@@ -718,14 +718,14 @@ const SignUpPage: React.FC = () => {
           ) : (
           <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => navigate(shouldOnboard ? '/onboarding' : '/dashboard')}
+              onClick={() => navigate(shouldOnboard ? '/onboarding' : '/business')}
               className="inline-flex items-center justify-center px-5 py-3 rounded-lg bg-amber-500 text-black font-semibold hover:bg-amber-600 transition-colors"
             >
               {shouldOnboard ? 'Continue onboarding' : 'Go to dashboard'}
             </button>
             {shouldOnboard ? (
               <button
-                onClick={() => navigate('/dashboard/store')}
+                onClick={() => navigate('/business?tab=store-customization')}
                 className="inline-flex items-center justify-center px-5 py-3 rounded-lg border border-amber-300 text-amber-700 font-semibold hover:bg-amber-50 transition-colors"
               >
                 Go to store setup
@@ -761,8 +761,8 @@ const SignUpPage: React.FC = () => {
   ];
 
   const businessWhatYouGet = [
-    'A seller storefront and checkout-ready business profile.',
-    'Affiliate tools to share marketplace offers and track earnings.',
+    'Free custom websites for sellers and affiliates, designed by you.',
+    'Templates, your branding, product collections, and custom pages.',
     'Influencer recruiting links tied to the same business account.',
     'One dashboard for products, promotions, referrals, and payouts.',
   ];
@@ -791,7 +791,7 @@ const SignUpPage: React.FC = () => {
       : 'border-gray-200 bg-gray-50 text-gray-700';
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-6 px-4 sm:py-12 relative">
+    <div className="bz-public min-h-screen flex items-center justify-center bg-[#faf9f5] py-6 px-4 sm:py-12 relative">
       <Link
         to="/"
         className="absolute top-4 right-4 inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-amber-500 bg-white shadow-sm"
@@ -799,11 +799,13 @@ const SignUpPage: React.FC = () => {
       >
         <span className="text-xl leading-none">×</span>
       </Link>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-4 sm:p-6 md:p-8">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 text-center">Open Your Beezio Business Account</h2>
+      <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl p-4 sm:p-6 md:p-8">
+        <p className="bz-eyebrow mb-3 text-center">Sellers · Affiliates · Influencers</p>
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-2 text-center">Your free website starts here.</h1>
         <p className="mb-4 text-center text-sm text-gray-600">
-          This signup gives you one business account with seller, affiliate, and influencer access already turned on. You will get a primary storefront, affiliate promotion tools, influencer recruit links, and one place to manage payouts.
+          Sellers and affiliates get free custom websites they design themselves. One business account includes selling, affiliate promotion, influencer referral tools, and your Business Center. No monthly fees, listing fees, or seller fees.
         </p>
+        <p className="mb-6 text-center text-xs text-slate-500">Just shopping? <Link to="/account/signup" className="font-semibold text-slate-700 underline underline-offset-4">Create a shopper account</Link> instead. Already registered? <Link to="/auth/login?audience=business" className="font-semibold text-slate-700 underline underline-offset-4">Sign in</Link>.</p>
 
         <div className="mb-4 sm:mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">What You Get</p>
@@ -837,7 +839,7 @@ const SignUpPage: React.FC = () => {
           <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Business account snapshot</h3>
           <ul className="text-sm text-gray-700 space-y-1">
             <li>Your signup creates seller, affiliate, and influencer access together.</li>
-            <li>You get one branded storefront for both your own products and the marketplace products you promote.</li>
+            <li>Design your seller and affiliate websites from the website tools in your Business Center.</li>
             <li>Seller payouts, affiliate earnings, and influencer payouts all use the same PayPal email you provide.</li>
             <li>Invite links, recruit attribution, storefront tools, and payout history stay in one dashboard.</li>
             <li>

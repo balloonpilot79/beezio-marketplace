@@ -28,9 +28,9 @@ jobs:
         working-directory: project/project
         run: npm ci
 
-      - name: Exact variant safety test
+      - name: Variant, account navigation, storefront and attribution safety tests
         working-directory: project/project
-        run: npm test -- src/services/productService.variant.test.ts
+        run: npm test -- --maxWorkers=2 src/services/productService.variant.test.ts src/utils/accountRoles.test.ts src/utils/businessNavigation.test.ts src/utils/checkoutAttribution.test.ts src/components/brand/BeezioBrand.test.tsx
 
       - name: Vite production build
         working-directory: project/project

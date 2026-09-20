@@ -92,7 +92,7 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
   }, [businessOnly, firstBusinessSection, initialSection, visibleRoles]);
 
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const requestedSection = String(searchParams.get('section') || '').toLowerCase();
+  const requestedSection = String(searchParams.get('section') || initialSection || '').toLowerCase();
   const requestedBusinessSection = hasBusinessSectionAccess(requestedSection) ? requestedSection : null;
   const isUnauthorizedBusinessSectionRequest =
     requestedSection === 'seller' || requestedSection === 'affiliate' || requestedSection === 'influencer';
@@ -177,7 +177,10 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
       setSellerTab('financials');
       return;
     }
-    if (!sellerTabList.includes(requestedTab as SellerDashboardTab)) return;
+    if (!sellerTabList.includes(requestedTab as SellerDashboardTab)) {
+      setSellerTab('products');
+      return;
+    }
     setSellerTab(requestedTab as SellerDashboardTab);
   }, [activeSection, initialSellerTab, requestedTab]);
 
@@ -475,13 +478,13 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
       <main>
         {businessOnly && (
           <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
-            <div className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-[#faf9f5] p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Beezio Business Center</p>
                   <h1 className="mt-1 text-2xl font-bold text-slate-900">{sellerDashboardCopy.title}</h1>
                   <p className="mt-1 max-w-2xl text-sm text-slate-600">
-                    Selling, promoting, recruiting, and payouts live here. Personal purchases and order support live in Shopper Account.
+                    Your websites, products, promotions, referrals, and earnings live here. Personal purchases and order support live in Shopper Account.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
