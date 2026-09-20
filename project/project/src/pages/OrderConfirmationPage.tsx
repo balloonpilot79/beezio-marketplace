@@ -441,7 +441,7 @@ export default function OrderConfirmationPage() {
           
           {user && (
             <button
-              onClick={() => navigate('/dashboard?section=buyer&tab=orders')}
+              onClick={() => navigate('/account?tab=orders')}
               className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 font-medium"
             >
               View Buyer Orders
