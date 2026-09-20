@@ -25,8 +25,8 @@ const SellerProductFormPage: React.FC = () => {
         </div>
 
         <ProductForm
-          onSuccess={() => navigate('/dashboard?section=seller&tab=products')}
-          onCancel={() => navigate('/seller/products')}
+          onSuccess={() => navigate('/business?section=seller&tab=products')}
+          onCancel={() => navigate('/business?tab=products')}
         />
       </div>
     </div>
