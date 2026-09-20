@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useCart } from '../contexts/CartContext';
 import { canAccessCJImport } from '../utils/cjImportAccess';
+import { getBusinessAccountRoles, getNormalizedAccountRoles } from '../utils/accountRoles';
 
 interface GlobalHeaderBarProps {
   onOpenAuth?: () => void;
@@ -38,13 +39,23 @@ const GlobalHeaderBar: React.FC<GlobalHeaderBarProps> = ({ onOpenAuth, onOpenSig
     hasRole?.('admin') ||
     canAccessCJImport(user?.email || profile?.email || '')
   );
+  const normalizedAccountRoles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role);
+  const businessRoles = getBusinessAccountRoles(normalizedAccountRoles);
+  const hasBusinessAccess = isAdminUser || businessRoles.length > 0;
+  const isBusinessSurface =
+    location.pathname.startsWith('/business') ||
+    location.pathname.startsWith('/dashboard') ||
+    location.pathname.startsWith('/admin');
 
   const navLinks = [
     { label: 'Home', href: '/', description: 'Start here' },
     { label: 'Product Marketplace', href: '/marketplace', description: 'Find products to add to your storefront and promote' },
     { label: 'How It Works', href: '/how-it-works', description: 'See how selling, partner payouts, and checkout work' },
+    ...(user && hasBusinessAccess
+      ? [{ label: 'Business Center', href: '/business', description: 'Manage products, promotions, orders, and payouts' }]
+      : []),
     ...(user
-      ? [{ label: 'Dashboard', href: '/dashboard', description: 'Manage products, orders, payouts, and store setup' }]
+      ? [{ label: 'Shopper Account', href: '/account', description: 'View your purchases, receipts, and order support' }]
       : [])
   ];
   const leftNavLinks = navLinks.filter((link) => link.label === 'Home');
@@ -52,15 +63,18 @@ const GlobalHeaderBar: React.FC<GlobalHeaderBarProps> = ({ onOpenAuth, onOpenSig
 
   const payoutsShortcutHref = useMemo(() => {
     if (!user) return null;
-    return '/dashboard?tab=financials#payouts';
-  }, [user]);
+    if (!hasBusinessAccess) return null;
+    return '/business?tab=financials#payouts';
+  }, [hasBusinessAccess, user]);
 
   const itemCount = getTotalItems();
   const mobilePrimaryActions = user
     ? [
         { label: 'Home', href: '/', icon: Home },
         { label: 'Market', href: '/marketplace', icon: Store },
-        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        hasBusinessAccess
+          ? { label: 'Business', href: '/business', icon: LayoutDashboard }
+          : { label: 'Account', href: '/account', icon: User },
         { label: 'Cart', href: '/cart', icon: ShoppingCart },
       ]
     : [
@@ -125,7 +139,7 @@ const GlobalHeaderBar: React.FC<GlobalHeaderBarProps> = ({ onOpenAuth, onOpenSig
                 </div>
                 <div className="flex flex-col leading-tight">
                   <span className="text-[13px] sm:text-sm font-semibold uppercase tracking-wide">Beezio</span>
-                  <span className="text-[10px] sm:text-xs text-black/70">Business Platform</span>
+                  <span className="text-[10px] sm:text-xs text-black/70">{isBusinessSurface ? 'Business Center' : 'Marketplace'}</span>
                 </div>
               </Link>
 
@@ -196,12 +210,21 @@ const GlobalHeaderBar: React.FC<GlobalHeaderBarProps> = ({ onOpenAuth, onOpenSig
                         <div className="font-semibold text-gray-900 truncate">{profile?.full_name || 'User'}</div>
                         <div className="text-xs text-gray-600 truncate">{profile?.email || user.email}</div>
                       </div>
+                      {hasBusinessAccess && (
+                        <Link
+                          to="/business"
+                          className="flex items-center gap-2 px-3 py-2 hover:bg-[#ffcb05] hover:text-black"
+                          onClick={() => setAccountOpen(false)}
+                        >
+                          <LayoutDashboard className="w-4 h-4" aria-hidden="true" /> Business Center
+                        </Link>
+                      )}
                       <Link
-                        to="/dashboard"
+                        to="/account"
                         className="flex items-center gap-2 px-3 py-2 hover:bg-[#ffcb05] hover:text-black"
                         onClick={() => setAccountOpen(false)}
                       >
-                        <LayoutDashboard className="w-4 h-4" aria-hidden="true" /> Dashboard
+                        <User className="w-4 h-4" aria-hidden="true" /> Shopper Account
                       </Link>
                       <Link
                         to="/profile"
@@ -212,7 +235,7 @@ const GlobalHeaderBar: React.FC<GlobalHeaderBarProps> = ({ onOpenAuth, onOpenSig
                       </Link>
                       {isAdminUser && (
                         <Link
-                          to="/dashboard?section=admin"
+                          to="/admin"
                           className="flex items-center gap-2 px-3 py-2 hover:bg-[#ffcb05] hover:text-black"
                           onClick={() => setAccountOpen(false)}
                         >
@@ -287,7 +310,7 @@ const GlobalHeaderBar: React.FC<GlobalHeaderBarProps> = ({ onOpenAuth, onOpenSig
                   )}
                   {isAdminUser && (
                     <Link
-                      to="/dashboard?section=admin"
+                      to="/admin"
                       onClick={() => setMobileOpen(false)}
                       className="w-full inline-flex items-center justify-center gap-2 bg-white text-black border border-black/10 px-4 py-2 rounded-lg font-semibold shadow hover:bg-white/90"
                     >
@@ -337,8 +360,8 @@ const GlobalHeaderBar: React.FC<GlobalHeaderBarProps> = ({ onOpenAuth, onOpenSig
             {mobilePrimaryActions.map((item) => {
               const Icon = item.icon;
               const isActive =
-                item.href === '/dashboard'
-                  ? location.pathname.startsWith('/dashboard')
+                (item.href === '/business' || item.href === '/account')
+                  ? location.pathname.startsWith(item.href)
                   : item.href === '/'
                   ? location.pathname === '/'
                   : location.pathname.startsWith(item.href);
