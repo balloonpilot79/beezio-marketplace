@@ -18,8 +18,8 @@ const Footer: React.FC = () => {
             <Link to="/marketplace" className="rounded-full border border-black/10 px-3 py-1.5 text-black">
               Shop
             </Link>
-            <Link to="/dashboard" className="rounded-full border border-black/10 px-3 py-1.5 text-black">
-              Dashboard
+            <Link to="/business" className="rounded-full border border-black/10 px-3 py-1.5 text-black">
+              Business Center
             </Link>
           </div>
         </div>
