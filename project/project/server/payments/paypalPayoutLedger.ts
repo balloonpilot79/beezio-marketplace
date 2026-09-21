@@ -52,6 +52,7 @@ export type BuildPayPalLedgerPlanInput = {
   paypalPercent?: number;
   paypalFixed?: number;
   paypalFeeAmount?: number | null;
+  affiliateSource?: 'beezio' | 'external' | 'seller_self' | null;
 };
 
 export type PayeeSnapshotPlan = {
@@ -135,6 +136,11 @@ export type PayoutSummary = {
 };
 
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+const sameProfileId = (left: string | null | undefined, right: string | null | undefined) => {
+  const normalizedLeft = String(left || '').trim();
+  const normalizedRight = String(right || '').trim();
+  return Boolean(normalizedLeft && normalizedRight && normalizedLeft === normalizedRight);
+};
 
 export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPalLedgerPlan {
   const items = Array.isArray(input.items) ? input.items : [];
@@ -258,8 +264,11 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     : round2(totalCharged * paypalPercent + paypalFixed);
   const beezioFeeGrossTotal = round2(platformFeeGrossTotal);
   const beezioFeeNetTotal = beezioFeeGrossTotal;
+  const sellerSelfSale = sameProfileId(input.sellerId, input.partnerId);
   const affiliatePayoutPaidTotal = input.partnerId ? partnerTotal : 0;
   const affiliatePayoutRetainedTotal = input.partnerId ? 0 : partnerTotal;
+  const sellerEarningsTotal = round2(askTotal + shippingReserveTotal + (sellerSelfSale ? partnerTotal : 0));
+  const partnerEarningsTotal = sellerSelfSale ? 0 : affiliatePayoutPaidTotal;
   const processorAllowanceRemainder = round2(paypalAllowanceTotal - paypalFeeEstimate);
   const pricingRoundingRemainder = round2(
     listingSubtotal -
@@ -284,7 +293,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     const payeeBreakdown = {
       seller_amount: round2(askTotal),
       shipping_reserve_amount: round2(shippingReserveTotal),
-      seller_payable_amount: round2(askTotal + shippingReserveTotal),
+      seller_payable_amount: sellerEarningsTotal,
       partner_amount: round2(affiliatePayoutPaidTotal),
       affiliate_payout_paid_total: round2(affiliatePayoutPaidTotal),
       affiliate_payout_retained_total: round2(affiliatePayoutRetainedTotal),
@@ -349,8 +358,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     });
   };
 
-  pushPayee(input.sellerId, 'SELLER', round2(askTotal + shippingReserveTotal));
-  pushPayee(input.partnerId, 'PARTNER', partnerTotal);
+  pushPayee(input.sellerId, 'SELLER', sellerEarningsTotal);
+  if (!sellerSelfSale) pushPayee(input.partnerId, 'PARTNER', partnerTotal);
 
   const influencerAmounts = new Map<string, number>();
   const addInfluencerAmount = (payeeUserId: string | null | undefined, amount: number) => {
@@ -477,6 +486,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       beezio_operating_profit: beezioProfitTotal,
       affiliate_payout_paid_total: affiliatePayoutPaidTotal,
       affiliate_payout_retained_total: affiliatePayoutRetainedTotal,
+      affiliate_payout_paid_to_seller_total: sellerSelfSale ? partnerTotal : 0,
+      affiliate_source: input.affiliateSource || (sellerSelfSale ? 'seller_self' : input.partnerId ? 'external' : 'beezio'),
       platform_fee_gross: platformFeeGrossTotal,
       influencer_bonus_pool_total: influencerReserveTotal,
       influencer_bonus_paid_total: influencerTotal,
@@ -536,8 +547,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       partnerId: input.partnerId,
       influencerId: selectedInfluencerId,
       grossAmount: listingSubtotal,
-      sellerEarnings: round2(askTotal + shippingReserveTotal),
-      partnerEarnings: affiliatePayoutPaidTotal,
+      sellerEarnings: sellerEarningsTotal,
+      partnerEarnings: partnerEarningsTotal,
       influencerEarnings: round2(influencerTotal),
       beezioFeeGross: beezioFeeGrossTotal,
       beezioFeeNet: beezioFeeNetTotal,
@@ -556,6 +567,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         `influencer_bonus_retained_total=${unusedInfluencerReserveTotal.toFixed(2)}`,
         `affiliate_payout_paid_total=${affiliatePayoutPaidTotal.toFixed(2)}`,
         `affiliate_payout_retained_total=${affiliatePayoutRetainedTotal.toFixed(2)}`,
+        `affiliate_payout_paid_to_seller_total=${(sellerSelfSale ? partnerTotal : 0).toFixed(2)}`,
+        `affiliate_source=${input.affiliateSource || (sellerSelfSale ? 'seller_self' : input.partnerId ? 'external' : 'beezio')}`,
         `pricing_rounding_remainder=${pricingRoundingRemainder.toFixed(2)}`,
         `shipping_reserve_total=${shippingReserveTotal.toFixed(2)}`,
         `paypal_processing_allowance_total=${paypalAllowanceTotal.toFixed(2)}`,
