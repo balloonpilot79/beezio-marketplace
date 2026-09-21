@@ -30,11 +30,16 @@ const sameProfileId = (left: string | null | undefined, right: string | null | u
 
 const stripBuyerCommissionRoles = (
   plan: ReturnType<typeof buildPayPalLedgerPlan>,
-  buyerId: string | null
+  buyerId: string | null,
+  allowSellerSelfSale = false
 ) => {
   if (!buyerId) return plan;
 
-  if (sameProfileId(plan.aggregate.partnerId, buyerId)) {
+  const sellerSelfSale = allowSellerSelfSale
+    && sameProfileId(plan.aggregate.sellerId, buyerId)
+    && sameProfileId(plan.aggregate.partnerId, buyerId);
+
+  if (sameProfileId(plan.aggregate.partnerId, buyerId) && !sellerSelfSale) {
     plan.aggregate.partnerId = null;
     plan.aggregate.partnerEarnings = 0;
     plan.payees = plan.payees.filter((row) => !(row.payeeRole === 'PARTNER' && sameProfileId(row.payeeUserId, buyerId)));
@@ -723,6 +728,7 @@ export async function finalizePayPalOrderPayment(params: {
       'beezio_fee_amount',
       'platform_fee',
       'processing_fee_amount',
+      'source',
     ],
     'id',
     orderId
@@ -737,7 +743,10 @@ export async function finalizePayPalOrderPayment(params: {
   const buyerId = String((orderRow as any)?.buyer_id || '').trim() || null;
   const sellerId = String((orderRow as any)?.seller_id || '').trim() || null;
   const rawPartnerId = String((orderRow as any)?.partner_id || '').trim() || null;
-  const partnerId = sameProfileId(rawPartnerId, buyerId) ? null : rawPartnerId;
+  const orderSource = String((orderRow as any)?.source || '').trim() || null;
+  const sellerSelfSale = sameProfileId(sellerId, buyerId)
+    && (sameProfileId(rawPartnerId, sellerId) || orderSource === 'seller_self_sale');
+  const partnerId = sellerSelfSale ? sellerId : (sameProfileId(rawPartnerId, buyerId) ? null : rawPartnerId);
   const sellerRecruiterInfluencerIdRaw = await resolveRecruiterInfluencerId(supabaseAdmin, sellerId, 'seller');
   const partnerRecruiterInfluencerIdRaw = await resolveRecruiterInfluencerId(supabaseAdmin, partnerId, 'affiliate');
   const sellerRecruiterInfluencerId = sameProfileId(sellerRecruiterInfluencerIdRaw, buyerId) ? null : sellerRecruiterInfluencerIdRaw;
@@ -781,6 +790,7 @@ export async function finalizePayPalOrderPayment(params: {
       holdReleaseAt,
       sellerId,
       partnerId,
+      affiliateSource: sellerSelfSale ? 'seller_self' : partnerId ? 'external' : 'beezio',
       sellerInfluencerId,
       partnerInfluencerId,
       subtotalListing: Number((orderRow as any)?.subtotal_listing || 0),
@@ -807,7 +817,7 @@ export async function finalizePayPalOrderPayment(params: {
     }),
     existingLedger,
     orderRow,
-  }), buyerId), paidAt, holdReleaseAt);
+  }), buyerId, sellerSelfSale), paidAt, holdReleaseAt);
 
   const runLegacyFinanceMirror = async () => {
     try {
