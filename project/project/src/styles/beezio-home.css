@@ -296,6 +296,7 @@
   margin-bottom: 20px;
 }
 .hm-categories button {
+  flex: 0 0 auto;
   border: 1px solid #d4d5cb;
   border-radius: 30px;
   padding: 9px 15px;
@@ -304,6 +305,7 @@
   font-size: 11px;
   font-weight: 600;
   min-height: 38px;
+  white-space: nowrap;
 }
 .hm-categories button[aria-pressed="true"] {
   background: #172e36;
