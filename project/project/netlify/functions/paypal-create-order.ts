@@ -487,6 +487,7 @@ type CreateOrderBody = {
     store_id?: string | null;
     source?: string | null;
     campaign?: string | null;
+    seller_self_sale?: boolean;
   };
   customer?: {
     email?: string;
@@ -819,17 +820,13 @@ export const handler: Handler = async (event) => {
       return json(400, { error: 'Your cart contains items from multiple sellers. Please checkout one seller at a time.' });
     }
     const sellerId = sellerIds[0];
-    if (sameProfileId(buyerId, sellerId)) {
-      return json(400, {
-        error: 'Buyer cannot be the seller on the same checkout.',
-        code: 'BUYER_SELLER_CONFLICT',
-      });
-    }
     if (requestedSellerId && requestedSellerId !== sellerId) {
       return json(400, { error: 'Seller mismatch for cart items.' });
     }
 
-    const partnerId = sameProfileId(rawPartnerId, buyerId) ? null : rawPartnerId;
+    const sellerSelfSale = sameProfileId(buyerId, sellerId);
+    const partnerId = sellerSelfSale ? sellerId : (sameProfileId(rawPartnerId, buyerId) ? null : rawPartnerId);
+    const effectiveOrderSource = sellerSelfSale ? 'seller_self_sale' : resolvedOrderSource;
 
     const sellerRecruiterInfluencerIdRaw = await resolveRecruiterInfluencerId(supabaseAdmin, sellerId, 'seller');
     const partnerRecruiterInfluencerIdRaw = await resolveRecruiterInfluencerId(supabaseAdmin, partnerId, 'affiliate');
@@ -1647,7 +1644,8 @@ export const handler: Handler = async (event) => {
       referrer_id: influencerId,
       storefront_id: resolvedStorefrontId,
       store_id: resolvedStorefrontId,
-      source: resolvedOrderSource,
+      source: effectiveOrderSource,
+      seller_self_sale: sellerSelfSale,
       campaign: orderCampaign,
       currency,
       status: 'created',
