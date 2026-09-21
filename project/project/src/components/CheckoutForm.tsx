@@ -919,7 +919,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
     const cancel_url = `${origin}/checkout/cancel`;
 
     const requestedBuyerId = String((profile as any)?.id || currentUser?.id || '').trim() || null;
-    const effectiveBuyerId = requestedBuyerId && requestedBuyerId === sellerId ? null : requestedBuyerId;
+    const sellerSelfSale = Boolean(requestedBuyerId && requestedBuyerId === sellerId);
 
     return {
       cart: {
@@ -935,13 +935,14 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
       },
       context: {
         seller_id: sellerId,
-        buyer_id: effectiveBuyerId,
+        buyer_id: requestedBuyerId,
         storefront_id,
         store_id: storefront_id,
         affiliate_id,
         referrer_id: null,
         source: orderSource,
         campaign: null,
+        seller_self_sale: sellerSelfSale,
       },
       customer: {
         email: currentBillingDetails.email || currentUser?.email || '',
