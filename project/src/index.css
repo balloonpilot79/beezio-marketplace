@@ -68,7 +68,7 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   line-height: 1.6;
   color: var(--bz-text);
-  background: var(--bz-bg);
+  background: #f7f8fb;
   min-height: 100vh;
   /* Mobile optimizations */
   -webkit-font-smoothing: antialiased;
@@ -76,6 +76,79 @@ body {
   text-rendering: optimizeLegibility;
   /* Prevent horizontal scroll on mobile */
   overflow-x: hidden;
+  overflow-y: auto;
+}
+
+html,
+#root {
+  min-height: 100%;
+  height: auto;
+}
+
+/* Shared Beezio canvas: public pages keep their own hero colors, while the
+   surrounding routed pages inherit the same warm, branded atmosphere. */
+.beezio-app-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 8% 2%, rgba(255, 203, 5, 0.18), transparent 26rem),
+    radial-gradient(circle at 92% 18%, rgba(255, 229, 103, 0.14), transparent 24rem),
+    linear-gradient(180deg, #fffdf3 0%, #f7f8fb 42%, #f4f6f8 100%);
+}
+
+.beezio-main {
+  min-height: calc(100vh - 4rem);
+  isolation: isolate;
+}
+
+.beezio-main > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Older routes used opaque gray/white full-page wrappers. Let those wrappers
+   sit on the shared Beezio canvas so the whole app feels like one product. */
+.beezio-main > .min-h-screen.bg-white,
+.beezio-main > .min-h-screen.bg-gray-50,
+.beezio-main > .min-h-screen.bg-slate-50 {
+  background-color: transparent;
+}
+
+.beezio-public-page {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 203, 5, 0.16), transparent 24rem),
+    linear-gradient(180deg, rgba(255, 253, 243, 0.92), rgba(247, 248, 251, 0.96));
+}
+
+/* The dashboard is a long document, not a viewport-sized panel. This keeps
+   the account information reachable on phones and smaller laptop screens. */
+.beezio-dashboard {
+  min-height: calc(100vh - 4rem);
+  height: auto;
+  overflow: visible;
+  padding-bottom: 3rem;
+  background: transparent;
+}
+
+.beezio-dashboard-content,
+.beezio-dashboard-content > * {
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .beezio-main {
+    min-height: calc(100vh - 3.5rem);
+  }
+
+  .beezio-dashboard {
+    padding-bottom: 5rem;
+  }
+
+  .beezio-dashboard-content table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Mobile-specific improvements */
