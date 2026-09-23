@@ -347,7 +347,7 @@ const UnifiedMegaDashboard: React.FC = () => {
   ].filter(tab => tab.show);
 
   return (
-    <div className="relative min-h-screen bg-white">
+    <div className="beezio-dashboard relative min-h-screen bg-white">
       {loading && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
           <div className="text-center">
@@ -480,7 +480,7 @@ const UnifiedMegaDashboard: React.FC = () => {
           </div>
 
           {/* Tab Content */}
-          <div className="p-8">
+          <div className="beezio-dashboard-content min-w-0 p-4 sm:p-6 lg:p-8">
             {/* OVERVIEW TAB */}
             {activeTab === 'overview' && (
               <div className="space-y-8">
@@ -908,4 +908,3 @@ const UnifiedMegaDashboard: React.FC = () => {
 };
 
 export default UnifiedMegaDashboard;
-
