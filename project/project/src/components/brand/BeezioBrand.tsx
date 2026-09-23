@@ -33,9 +33,9 @@ export const audiences = [
     id: "affiliate",
     icon: Globe,
     label: "For affiliates",
-    title: "Your picks. Your payday.",
+    title: "Your recommendations drive growth.",
     description:
-      "Design your free website, fill it with marketplace products, and earn commissions on the sales you generate.",
+      "Affiliates are at the heart of Beezio: helping shoppers discover products and sellers reach new customers. Build your free store, share your picks, and earn commissions on qualifying sales you generate.",
     action: "Explore affiliate stores",
     href: "/affiliates",
   },
@@ -43,9 +43,9 @@ export const audiences = [
     id: "influencer",
     icon: Users,
     label: "For influencers",
-    title: "Your audience. New possibilities.",
+    title: "Refer once. Earn as they sell.",
     description:
-      "Introduce sellers and affiliates to Beezio and earn on their eligible sales through lifetime referral attribution.",
+      "When a seller or affiliate signs up with your referral code or link, earn commission on every qualifying sale they make on Beezio—with lifetime referral attribution. Turn your connections into ongoing earning potential.",
     action: "Explore influencer earnings",
     href: "/start-earning",
   },

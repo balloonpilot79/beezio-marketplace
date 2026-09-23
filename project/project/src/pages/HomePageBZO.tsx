@@ -51,18 +51,18 @@ const paths = [
     tone: "seller",
   },
   {
-    title: "Share great finds. Earn.",
+    title: "Your recommendations drive growth.",
     label: "For affiliates",
-    text: "Build a free store with products you choose. Earn commissions on your sales.",
+    text: "Affiliates are at the heart of Beezio. Connect shoppers with great products, help sellers reach new customers, and earn commissions on qualifying sales through your free store and tracked links.",
     href: "/affiliates",
     action: "Become an affiliate",
     icon: Globe,
     tone: "affiliate",
   },
   {
-    title: "Your influence goes further.",
+    title: "Refer once. Earn as they sell.",
     label: "For influencers",
-    text: "Refer sellers and affiliates. Earn on their eligible sales for the life of the referral.",
+    text: "Sellers and affiliates sign up with your code or link. You earn commission on every qualifying sale they make—with lifetime referral attribution.",
     href: "/start-earning",
     action: "Become an influencer",
     icon: Megaphone,
@@ -330,10 +330,12 @@ export default function HomePageBZO() {
           </div>
           <div>
             <p className="hm-kicker">Turn recommendations into commissions</p>
-            <h2>Love finding good products? Make it your business.</h2>
+            <h2>Affiliates are at the heart of Beezio.</h2>
             <p>
-              Choose products, design your free affiliate website, and earn when
-              your recommendations lead to sales.
+              Your recommendations connect shoppers with great products and
+              help sellers reach new customers. Build your free affiliate
+              website, share products you believe in, and earn commissions on
+              qualifying sales. No inventory to buy or orders to ship.
             </p>
           </div>
           <Link to="/affiliates" className="bz-button bz-button-gold">
@@ -463,13 +465,21 @@ export default function HomePageBZO() {
           <div>
             <p className="hm-kicker">For influencers & community builders</p>
             <h2>
-              Introduce a business.
+              Your connections.
               <br />
-              Grow together.
+              Ongoing earning potential.
             </h2>
             <p>
-              Bring sellers and affiliates to Beezio. When their eligible sales
-              happen, you earn too—with lifetime referral attribution.
+              When a seller or affiliate signs up with your referral code or
+              link, you earn commission on every qualifying sale they make on
+              Beezio. Lifetime referral attribution means your opportunity
+              continues beyond their first sale.
+            </p>
+            <p>
+              Build a network of active sellers and affiliates, and grow your
+              earning potential as their sales grow. No inventory to buy or
+              orders to ship. Commissions come from qualifying sales, not
+              signups; income is not guaranteed.
             </p>
           </div>
           <Link to="/start-earning" className="bz-button bz-button-ink">
