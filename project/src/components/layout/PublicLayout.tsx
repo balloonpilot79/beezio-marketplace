@@ -7,8 +7,8 @@ interface PublicLayoutProps {
 
 const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-white text-gray-900">
-      <main className="max-w-6xl mx-auto px-4 py-10">{children}</main>
+    <div className="beezio-public-page min-h-screen text-gray-900">
+      <main className="max-w-6xl mx-auto px-4 py-8 sm:py-10">{children}</main>
     </div>
   );
 };
