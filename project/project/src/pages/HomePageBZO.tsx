@@ -6,10 +6,8 @@ import {
   Globe,
   Megaphone,
   Package,
-  ShoppingBag,
   Store,
 } from "lucide-react";
-import MarketplaceSearch from "../components/MarketplaceSearch";
 import { pricingExplanation } from "../components/brand/BeezioBrand";
 import { prepareHomeProducts, type HomeProduct } from "../utils/homeCatalog";
 import "../styles/beezio-home.css";
@@ -133,22 +131,6 @@ export default function HomePageBZO() {
 
   return (
     <div className="hm-page">
-      <div className="hm-discovery">
-        <div className="hm-wrap">
-          <MarketplaceSearch className="hm-mobile-search" />
-          <nav aria-label="Explore Beezio" className="hm-discovery-nav">
-            <Link to="/marketplace">
-              <ShoppingBag size={15} /> All products
-            </Link>
-            <a href="#shop">New arrivals</a>
-            <a href="#categories">Shop by category</a>
-            <a href="#stores">Discover stores</a>
-            <Link to="/how-it-works">
-              How Beezio works <ArrowRight size={14} />
-            </Link>
-          </nav>
-        </div>
-      </div>
       <div className="hm-wrap">
         <section className="hm-hero">
           <div className="hm-hero-copy">
