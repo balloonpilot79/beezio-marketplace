@@ -6,6 +6,37 @@
 .bz-header-search { display:none; }
 .bz-header a[aria-label="Beezio home"]>span>span:first-child { background:#142a34; color:#ffcb05; }
 @media(min-width:1024px) { .bz-header-search { display:flex; flex:1; max-width:440px; } }
+.bz-shopping-nav {
+  height: 46px;
+  background: #152933;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.bz-shopping-nav > div {
+  min-height: 46px;
+  scrollbar-width: none;
+}
+.bz-shopping-nav > div::-webkit-scrollbar { display: none; }
+.bz-shopping-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 12px 0;
+  color: #e7eced;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.bz-shopping-link:hover,
+.bz-shopping-link[aria-current="page"] { color: #ffdb55; }
+.bz-shopping-link-accent { margin-left: auto; color: #ffdb55; }
+@media(max-width: 640px) {
+  .bz-shopping-nav > div { gap: 24px; }
+  .bz-shopping-link { font-size: 13px; }
+  .bz-shopping-link-accent { margin-left: 0; }
+}
 .bz-public {
   color: #101820;
   background: #fff;
