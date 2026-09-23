@@ -254,18 +254,48 @@ const GlobalHeaderBar: React.FC = () => {
           </div>
         </div>
       </header>
+      <nav
+        aria-label="Shop Beezio"
+        className="bz-shopping-nav fixed inset-x-0 top-14 z-[68]"
+      >
+        <div className="mx-auto flex max-w-7xl items-center gap-7 overflow-x-auto px-4 sm:px-6 lg:px-8">
+          <Link
+            to="/marketplace"
+            aria-current={location.pathname === "/marketplace" ? "page" : undefined}
+            className="bz-shopping-link"
+          >
+            <ShoppingBag className="h-5 w-5" aria-hidden="true" />
+            All products
+          </Link>
+          <Link
+            to="/marketplace?sort=newest"
+            className="bz-shopping-link"
+          >
+            New arrivals
+          </Link>
+          <Link
+            to="/marketplace#categories"
+            className="bz-shopping-link"
+          >
+            Shop by category
+          </Link>
+          <Link to="/stores" className="bz-shopping-link bz-shopping-link-accent">
+            Discover stores
+          </Link>
+        </div>
+      </nav>
       {mobileOpen && (
         <>
           <button
             aria-label="Close navigation backdrop"
             type="button"
             onClick={() => setMobileOpen(false)}
-            className="fixed inset-0 top-14 z-[66] bg-black/20 2xl:hidden"
+            className="fixed inset-0 top-[6.375rem] z-[66] bg-black/20 2xl:hidden"
           />
           <nav
             id="beezio-mobile-menu"
             aria-label="Mobile navigation"
-            className="fixed inset-x-0 top-14 z-[69] grid max-h-[calc(100dvh-8rem)] gap-1 overflow-y-auto border-b border-slate-200 bg-[#f3f0e8] p-4 2xl:hidden"
+            className="fixed inset-x-0 top-[6.375rem] z-[69] grid max-h-[calc(100dvh-10.375rem)] gap-1 overflow-y-auto border-b border-slate-200 bg-[#f3f0e8] p-4 2xl:hidden"
           >
             <MarketplaceSearch />
             {publicLinks.map((link) => (
