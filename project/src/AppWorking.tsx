@@ -165,9 +165,9 @@ const AppWorking: React.FC = () => {
               <Router>
               <ScrollToTop />
               <CustomDomainHandler>
-              <div className="min-h-screen bg-bzo-gradient">
+              <div className="beezio-app-shell min-h-screen bg-bzo-gradient">
                 <GlobalHeaderBar onOpenAuth={() => setAuthModal({ isOpen: true, mode: 'login' })} />
-                <main className="pt-16">
+                <main className="beezio-main pt-16">
                   <Routes>
                     <Route path="/" element={<HomeOrDashboard />} />
                     <Route path="/home" element={<HomeOrDashboard />} />
