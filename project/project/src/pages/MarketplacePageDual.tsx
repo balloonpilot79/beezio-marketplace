@@ -341,6 +341,7 @@ const MarketplacePageDual: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     setSearchTerm(params.get('q') || '');
+    setSortBy(params.get('sort') === 'newest' ? 'newest' : 'featured');
     const requestedCategory = slugify(params.get('category') || '');
     const nextCategory = requestedCategory;
 
@@ -462,7 +463,7 @@ const MarketplacePageDual: React.FC = () => {
           <p className="mt-4 text-xs leading-6 text-slate-500">Want to earn from your recommendations? <Link to="/affiliates" className="font-semibold text-slate-700 underline underline-offset-4">Build a free affiliate website</Link> and promote eligible products.</p>
         </div>
       </section>
-      <section className="border-b border-slate-200 bg-white shadow-sm md:sticky md:top-16 md:z-20">
+      <section id="categories" className="border-b border-slate-200 bg-white shadow-sm md:sticky md:top-[6.375rem] md:z-20">
         <div className="mx-auto max-w-7xl px-3 py-3 sm:px-6 sm:py-5 lg:px-8">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
             <div className="relative flex-1">
