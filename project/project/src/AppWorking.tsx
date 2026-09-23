@@ -532,7 +532,6 @@ const AppWorking: React.FC = () => {
         : 'Seller Dashboard';
 
     const showPersistentDashboardSubNav = showBusinessNavigation(location.pathname, Boolean(user), hidePlatformChrome, isProductEditorRoute) && dashboardSubNav.length > 0;
-    const isMarketplaceChromeRoute = location.pathname === '/marketplace' || location.pathname === '/products';
     const activeDashboardTabId =
       tabParam === 'fulfillment'
         ? 'orders'
@@ -567,7 +566,7 @@ const AppWorking: React.FC = () => {
         )}
 
         {showPersistentDashboardSubNav && (
-          <div className="mt-14 border-b border-slate-200 bg-[#faf9f5] xl:sticky xl:top-14 xl:z-40">
+          <div className="mt-[6.375rem] border-b border-slate-200 bg-[#faf9f5] xl:sticky xl:top-[6.375rem] xl:z-40">
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
               <div className="xl:hidden py-2">
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2">
@@ -682,7 +681,7 @@ const AppWorking: React.FC = () => {
           <Navigate to={customerAccountPath} replace />
         ) : null}
 
-        <main className={hidePlatformChrome ? '' : showPersistentDashboardSubNav ? 'pb-16 pt-0 xl:pb-0' : isMarketplaceChromeRoute ? 'pb-16 pt-12 sm:pt-14 xl:pb-0' : 'pb-20 pt-16 xl:pb-0'}>
+        <main className={hidePlatformChrome ? '' : showPersistentDashboardSubNav ? 'pb-16 pt-0 xl:pb-0' : 'pb-20 pt-[6.375rem] xl:pb-0'}>
           {children}
         </main>
 
