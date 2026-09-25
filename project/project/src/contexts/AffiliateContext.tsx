@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { buildDeterministicReferralCode } from '../utils/referralCode';
+import { addAffiliateProduct } from '../api/affiliateStore';
 
 export interface AffiliateProduct {
   productId: string;
@@ -173,6 +174,46 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
     };
   }, [user, profile]);
 
+  // Hydrate product selections from the server so dashboard/store state survives
+  // across devices and is not limited to localStorage.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const loadServerSelections = async () => {
+      const affiliateId = String(profile?.id || user.id || '').trim();
+      if (!affiliateId) return;
+      const { data, error } = await supabase
+        .from('affiliate_products')
+        .select('product_id, is_active, is_featured, created_at, total_clicks, total_sales, total_earnings')
+        .eq('affiliate_id', affiliateId)
+        .eq('is_active', true);
+      if (cancelled || error || !Array.isArray(data)) return;
+      const serverProducts = data.map((row: any) => ({
+        productId: String(row.product_id),
+        selected: true,
+        dateAdded: row.created_at || new Date().toISOString(),
+        totalClicks: Number(row.total_clicks || 0),
+        totalSales: Number(row.total_sales || 0),
+        totalEarnings: Number(row.total_earnings || 0),
+      }));
+      setSelectedProducts(serverProducts);
+      setAffiliateStats((prev) => ({
+        ...prev,
+        totalProducts: serverProducts.length,
+        totalClicks: serverProducts.reduce((sum, item) => sum + (item.totalClicks || 0), 0),
+        totalSales: serverProducts.reduce((sum, item) => sum + (item.totalSales || 0), 0),
+        totalEarnings: serverProducts.reduce((sum, item) => sum + (item.totalEarnings || 0), 0),
+      }));
+    };
+    void loadServerSelections();
+    const refresh = () => { void loadServerSelections(); };
+    window.addEventListener('affiliate-products-changed', refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('affiliate-products-changed', refresh);
+    };
+  }, [user, profile?.id]);
+
   // Load affiliate data from localStorage
   useEffect(() => {
     if (user) {
@@ -203,24 +244,18 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
   }, [affiliateStats, user]);
 
   const addProduct = (productId: string) => {
-    setSelectedProducts(prev => {
-      const exists = prev.find(p => p.productId === productId);
-      if (exists) return prev;
-      
-      return [...prev, {
-        productId,
-        selected: true,
-        dateAdded: new Date().toISOString(),
-        totalClicks: 0,
-        totalSales: 0,
-        totalEarnings: 0
-      }];
+    const trimmedId = String(productId || '').trim();
+    if (!trimmedId) return;
+    // Persist first; optimistic UI keeps the dashboard responsive while the
+    // server creates the affiliate_products row and storefront listing.
+    void addAffiliateProduct(trimmedId).catch((error) => {
+      console.warn('[AffiliateContext] Failed to persist product selection:', error);
     });
-
-    setAffiliateStats(prev => ({
-      ...prev,
-      totalProducts: prev.totalProducts + 1
-    }));
+    setSelectedProducts(prev => {
+      if (prev.some(p => p.productId === trimmedId)) return prev;
+      return [...prev, { productId: trimmedId, selected: true, dateAdded: new Date().toISOString(), totalClicks: 0, totalSales: 0, totalEarnings: 0 }];
+    });
+    setAffiliateStats(prev => ({ ...prev, totalProducts: prev.totalProducts + 1 }));
   };
 
   const removeProduct = (productId: string) => {
