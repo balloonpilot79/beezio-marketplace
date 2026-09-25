@@ -102,6 +102,20 @@
   status = 200
   force = true
 
+# Public affiliate storefront API (must be above the SPA fallback)
+[[redirects]]
+  from = "/api/public/affiliate/store/get"
+  to = "/.netlify/functions/public-affiliate-store-get"
+  status = 200
+  force = true
+
+# Legacy affiliate add-product alias
+[[redirects]]
+  from = "/api/affiliate/products/add"
+  to = "/.netlify/functions/affiliate-add-product"
+  status = 200
+  force = true
+
 # Legacy checkout endpoint intentionally remains as a compatibility alias to PayPal.
 [[redirects]]
   from = "/api/checkout/create"
