@@ -1,6 +1,5 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
-import { getPayPalEnv } from './_lib/paypal';
 
 function json(statusCode: number, body: unknown) {
   return {
@@ -194,14 +193,9 @@ const handler: Handler = async (event) => {
       return json(500, { error: 'Failed to load product', details: productError.message });
     }
     if (!product?.id) return json(404, { error: 'Product not found' });
-    if (String(product?.seller_id || '') === affiliateId || String(product?.seller_id || '') === user.id) {
-      const paypalEnv = await getPayPalEnv();
-      const allowSelfPromoInSandbox =
-        String(process.env.ALLOW_SELF_PROMO_SANDBOX || 'true').trim().toLowerCase() === 'true';
-      if (!(paypalEnv === 'sandbox' && allowSelfPromoInSandbox)) {
-        return json(400, { error: 'You cannot promote your own product' });
-      }
-    }
+    // Affiliates may promote products they own or products from another seller.
+    // Ownership affects payout attribution at checkout; it is not a reason to
+    // block a valid affiliate storefront selection.
     const productVisible = isSelectableProduct(product) && product?.affiliate_enabled !== false;
     if (!productVisible) return json(400, { error: 'Product is inactive' });
 
