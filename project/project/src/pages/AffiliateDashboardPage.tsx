@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   TrendingUp, 
@@ -12,11 +12,37 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useAffiliate } from '../contexts/AffiliateContext';
-import { products } from '../data/sampleProducts';
+import { products as sampleProducts } from '../data/sampleProducts';
+import { supabase } from '../lib/supabase';
 
 const AffiliateDashboardPage: React.FC = () => {
   const { user, profile, loading: authLoading } = useAuth();
   const { selectedProducts, affiliateStats, generateAffiliateLink } = useAffiliate();
+  const [dashboardProducts, setDashboardProducts] = useState<any[]>(sampleProducts as any[]);
+
+  useEffect(() => {
+    const ids = selectedProducts.map((item) => String(item.productId || '').trim()).filter(Boolean);
+    if (!ids.length) return;
+    let cancelled = false;
+    const loadProducts = async () => {
+      const { data } = await supabase.from('products').select('*').in('id', ids);
+      if (cancelled || !Array.isArray(data)) return;
+      const normalized = data.map((row: any) => ({
+        ...row,
+        id: row.id,
+        name: row.name || row.title || 'Product',
+        title: row.title || row.name || 'Product',
+        image: row.image || row.image_url || row.primary_image_url || (Array.isArray(row.images) ? row.images[0] : ''),
+        category: row.category || row.category_name || 'Marketplace',
+        rating: Number(row.rating || row.average_rating || 0),
+        commission_rate: Number(row.commission_rate || row.affiliate_commission_rate || 0),
+        price: Number(row.price || row.calculated_customer_price || 0),
+      }));
+      setDashboardProducts(normalized);
+    };
+    void loadProducts();
+    return () => { cancelled = true; };
+  }, [selectedProducts]);
 
   if (authLoading) {
     return (
@@ -45,7 +71,7 @@ const AffiliateDashboardPage: React.FC = () => {
   const selectedProductsData = selectedProducts
     .filter(sp => sp.selected)
     .map(sp => {
-      const product = products.find(p => p.id === sp.productId);
+      const product = dashboardProducts.find(p => p.id === sp.productId) || sampleProducts.find(p => p.id === sp.productId);
       return { ...sp, product };
     })
     .filter(item => item.product);
