@@ -79,7 +79,7 @@ export const handler: Handler = async (event) => {
     const bundleBusinessRoles = Boolean(metadata.bundle_business_roles ?? body.bundleBusinessRoles);
     const role = safeRole(metadata.role ?? body.role);
     const isBuyerSignup = role === 'buyer' && !bundleBusinessRoles;
-    const primaryRole = isBuyerSignup ? 'buyer' : role;
+    const primaryRole = isBuyerSignup ? 'buyer' : role === 'influencer' ? 'seller' : role;
     // Preserve the role selected during signup. Business accounts may opt into
     // the full seller/affiliate/influencer bundle, but an affiliate signup must
     // not be silently converted to a seller.
