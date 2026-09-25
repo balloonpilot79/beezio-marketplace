@@ -79,8 +79,15 @@ export const handler: Handler = async (event) => {
     const bundleBusinessRoles = Boolean(metadata.bundle_business_roles ?? body.bundleBusinessRoles);
     const role = safeRole(metadata.role ?? body.role);
     const isBuyerSignup = role === 'buyer' && !bundleBusinessRoles;
-    const primaryRole = isBuyerSignup ? 'buyer' : 'seller';
-    const assignedRoles = isBuyerSignup ? ['buyer'] : uniqueRoles(['seller', 'affiliate', 'influencer']);
+    const primaryRole = isBuyerSignup ? 'buyer' : role;
+    // Preserve the role selected during signup. Business accounts may opt into
+    // the full seller/affiliate/influencer bundle, but an affiliate signup must
+    // not be silently converted to a seller.
+    const assignedRoles = isBuyerSignup
+      ? ['buyer']
+      : bundleBusinessRoles
+        ? uniqueRoles(['seller', 'affiliate', 'influencer'])
+        : uniqueRoles([role]);
     const fullName = String(metadata.full_name || body.fullName || email.split('@')[0] || 'User').trim();
     const storeName = String(metadata.store_name || body.storeName || fullName || email.split('@')[0] || 'My Store').trim();
     const requestedSlug = cleanSlug(metadata.store_slug || body.storeSlug || storeName || email.split('@')[0]);
