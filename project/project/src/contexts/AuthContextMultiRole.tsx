@@ -1248,15 +1248,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // Add role to user_roles table
+      // Influencer capability is intentionally bundled with seller and affiliate
+      // capabilities so an influencer can create products and promote any product.
+      const rolesToGrant = normalizedRole === 'influencer'
+        ? ['seller', 'affiliate', 'influencer']
+        : [normalizedRole];
       const { error } = await supabase
         .from('user_roles')
         .upsert(
-          {
-            user_id: user.id,
-            role: normalizedRole,
-            is_active: true
-          } as any,
+          rolesToGrant.map((role) => ({ user_id: user.id, role, is_active: true })) as any,
           { onConflict: 'user_id,role' }
         );
 
@@ -1265,10 +1265,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      // Update local state
-      setUserRoles((prev) => (prev.includes(normalizedRole) ? prev : [...prev, normalizedRole]));
+      // Keep a combined account's stores available when capabilities are added
+      // after signup (not only during initial bootstrap).
+      const currentProfileId = String((profile as any)?.id || '').trim() || user.id;
+      const storeName = String((profile as any)?.full_name || user.email?.split('@')[0] || 'My Store').trim();
+      if (rolesToGrant.includes('seller')) {
+        await supabase.from('store_settings').upsert(
+          { seller_id: currentProfileId, store_name: storeName },
+          { onConflict: 'seller_id' }
+        );
+      }
+      if (rolesToGrant.includes('affiliate')) {
+        await supabase.from('affiliate_store_settings').upsert(
+          { affiliate_id: currentProfileId, store_name: storeName, is_active: true },
+          { onConflict: 'affiliate_id' }
+        );
+      }
 
-      if (normalizedRole === 'seller' || normalizedRole === 'affiliate') {
+      // Update local state
+      setUserRoles((prev) => Array.from(new Set([...prev, ...rolesToGrant])));
+
+      if (rolesToGrant.includes('seller') || rolesToGrant.includes('affiliate')) {
         const currentProfileId = String((profile as any)?.id || '').trim() || user.id;
         const recruitedByInfluencerId = String((profile as any)?.recruited_by_influencer_id || '').trim();
         if (currentProfileId && recruitedByInfluencerId && currentProfileId !== recruitedByInfluencerId) {
