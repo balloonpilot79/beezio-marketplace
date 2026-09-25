@@ -1243,16 +1243,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addRole = async (role: string) => {
     const normalizedRole = String(role || '').toLowerCase();
-    if (!user || !normalizedRole || userRoles.map((r) => String(r || '').toLowerCase()).includes(normalizedRole)) {
+    const rolesToGrant = normalizedRole === 'influencer'
+      ? ['seller', 'affiliate', 'influencer']
+      : [normalizedRole];
+    const existingRoleSet = new Set(userRoles.map((r) => String(r || '').toLowerCase()));
+    if (!user || !normalizedRole || rolesToGrant.every((candidate) => existingRoleSet.has(candidate))) {
       return false;
     }
 
     try {
       // Influencer capability is intentionally bundled with seller and affiliate
       // capabilities so an influencer can create products and promote any product.
-      const rolesToGrant = normalizedRole === 'influencer'
-        ? ['seller', 'affiliate', 'influencer']
-        : [normalizedRole];
       const { error } = await supabase
         .from('user_roles')
         .upsert(
