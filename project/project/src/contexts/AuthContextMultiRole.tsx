@@ -1286,17 +1286,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserRoles((prev) => Array.from(new Set([...prev, ...rolesToGrant])));
 
       if (rolesToGrant.includes('seller') || rolesToGrant.includes('affiliate')) {
-        const currentProfileId = String((profile as any)?.id || '').trim() || user.id;
         const recruitedByInfluencerId = String((profile as any)?.recruited_by_influencer_id || '').trim();
         if (currentProfileId && recruitedByInfluencerId && currentProfileId !== recruitedByInfluencerId) {
-          try {
-            await assignInfluencerReferral({
-              recruitedProfileId: currentProfileId,
-              recruitedRole: normalizedRole as 'seller' | 'affiliate',
-              influencerProfileId: recruitedByInfluencerId,
-            });
-          } catch (referralError) {
-            console.warn('[AuthContext] addRole influencer referral attachment failed (non-fatal):', referralError);
+          for (const recruitedRole of rolesToGrant.filter((value): value is 'seller' | 'affiliate' => value === 'seller' || value === 'affiliate')) {
+            try {
+              await assignInfluencerReferral({
+                recruitedProfileId: currentProfileId,
+                recruitedRole,
+                influencerProfileId: recruitedByInfluencerId,
+              });
+            } catch (referralError) {
+              console.warn('[AuthContext] addRole influencer referral attachment failed (non-fatal):', referralError);
+            }
           }
         }
       }
