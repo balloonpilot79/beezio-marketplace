@@ -85,7 +85,7 @@ export const handler: Handler = async (event) => {
     // not be silently converted to a seller.
     const assignedRoles = isBuyerSignup
       ? ['buyer']
-      : bundleBusinessRoles
+      : bundleBusinessRoles || role === 'influencer'
         ? uniqueRoles(['seller', 'affiliate', 'influencer'])
         : uniqueRoles([role]);
     const fullName = String(metadata.full_name || body.fullName || email.split('@')[0] || 'User').trim();
