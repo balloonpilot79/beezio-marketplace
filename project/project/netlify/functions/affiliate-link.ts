@@ -120,10 +120,10 @@ async function resolveProfileId(supabaseAdmin: any, userId: string): Promise<str
   }
 }
 
-async function isAffiliateUser(supabaseAdmin: any, userId: string, profileId: string | null): Promise<boolean> {
+async function isPromoterUser(supabaseAdmin: any, userId: string, profileId: string | null): Promise<boolean> {
   try {
     const { data: roles } = await supabaseAdmin.from('user_roles').select('role').eq('user_id', userId);
-    if (Array.isArray(roles) && roles.some((r: any) => String(r?.role || '').toLowerCase() === 'affiliate')) return true;
+    if (Array.isArray(roles) && roles.some((r: any) => ['affiliate', 'partner', 'seller'].includes(String(r?.role || '').toLowerCase()))) return true;
   } catch {
     // ignore
   }
@@ -137,7 +137,7 @@ async function isAffiliateUser(supabaseAdmin: any, userId: string, profileId: st
         .maybeSingle();
       const primary = String((data as any)?.primary_role || '').toLowerCase();
       const role = String((data as any)?.role || '').toLowerCase();
-      if (primary === 'affiliate' || role === 'affiliate') return true;
+      if (['affiliate', 'partner', 'seller'].includes(primary) || ['affiliate', 'partner', 'seller'].includes(role)) return true;
     }
   } catch {
     // ignore
@@ -178,7 +178,7 @@ export const handler: Handler = async (event) => {
     const profileId = await resolveProfileId(supabaseAdmin, userData.user.id);
     if (!profileId) return json(400, { error: 'Missing profile id for user' });
 
-    const allowed = await isAffiliateUser(supabaseAdmin, userData.user.id, profileId);
+    const allowed = await isPromoterUser(supabaseAdmin, userData.user.id, profileId);
     if (!allowed) return json(403, { error: 'Not an affiliate' });
 
     const origin = buildOrigin(event);
