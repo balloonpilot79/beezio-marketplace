@@ -68,8 +68,10 @@ async function resolveAffiliateProfileId(supabaseClient: any, rawCandidate: stri
     const hasAffiliateRole =
       role === 'affiliate' ||
       role === 'partner' ||
+      role === 'seller' ||
       primaryRole === 'affiliate' ||
-      primaryRole === 'partner';
+      primaryRole === 'partner' ||
+      primaryRole === 'seller';
 
     if (hasAffiliateRole || String((affiliateSettingsRow as any)?.affiliate_id || '').trim()) {
       return resolvedId;
@@ -203,7 +205,10 @@ async function resolveAffiliateIdFromToken(affiliateRef: string): Promise<string
 
     if (linkRow?.affiliate_id) {
       localStorage.setItem('affiliate_referral_code', affiliateRef);
-      return await resolveAffiliateProfileId(supabase, String(linkRow.affiliate_id));
+      const resolvedLinkOwner = await resolveAffiliateProfileId(supabase, String(linkRow.affiliate_id));
+      // A seller's own product share is also a valid tracked promoter link.
+      // The link was created by an authenticated seller/affiliate server-side.
+      return resolvedLinkOwner || String(linkRow.affiliate_id).trim() || null;
     }
   } catch (e) {
     console.warn('[Referral] Affiliate link lookup failed (non-fatal):', e);
