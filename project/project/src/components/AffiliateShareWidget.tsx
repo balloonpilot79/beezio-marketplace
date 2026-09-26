@@ -85,7 +85,15 @@ export default function AffiliateShareWidget(props: Props) {
   const [busyChannel, setBusyChannel] = useState<ShareChannel | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const isAffiliate = Boolean(user && (hasRole('affiliate') || hasRole('admin') || profile?.primary_role === 'affiliate'));
+  const isPromoter = Boolean(
+    user && (
+      hasRole('affiliate') ||
+      hasRole('seller') ||
+      hasRole('admin') ||
+      profile?.primary_role === 'affiliate' ||
+      profile?.primary_role === 'seller'
+    )
+  );
 
   const canonicalTargetUrl = useMemo(() => {
     const origin = buildOrigin();
@@ -106,7 +114,7 @@ export default function AffiliateShareWidget(props: Props) {
 
   const getTrackedLink = async (channel: ShareChannel): Promise<LinkResponse> => {
     if (!user) throw new Error('Please sign in to share');
-    if (!isAffiliate) throw new Error('Become a partner to get tracked links');
+    if (!isPromoter) throw new Error('A seller or affiliate account is required for tracked links');
     const token = session?.access_token;
     if (!token) throw new Error('Missing auth session');
 
@@ -154,7 +162,7 @@ export default function AffiliateShareWidget(props: Props) {
       ? window.open('', '_blank', 'noopener,noreferrer,width=720,height=640')
       : null;
     try {
-      if (!isAffiliate) {
+      if (!isPromoter) {
         window.location.assign(buildSignupUrl(canonicalTargetUrl));
         return;
       }
@@ -230,7 +238,7 @@ export default function AffiliateShareWidget(props: Props) {
           <Share2 className="w-4 h-4 text-gray-700" />
           Share
         </div>
-        {!isAffiliate && (
+        {!isPromoter && (
           <a
             href={buildSignupUrl(canonicalTargetUrl)}
             className="text-xs text-amber-700 hover:text-amber-800 font-semibold"
@@ -289,7 +297,7 @@ export default function AffiliateShareWidget(props: Props) {
       </div>
 
       {error && <div className="mt-2 text-xs text-red-700">{error}</div>}
-      {!user && <div className="mt-2 text-xs text-gray-500">Sign in to share with tracked links.</div>}
+      {!user && <div className="mt-2 text-xs text-gray-500">Sign in as a seller or affiliate to share with tracked links.</div>}
     </div>
   );
 }
