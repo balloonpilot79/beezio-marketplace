@@ -394,8 +394,10 @@ const resolveAffiliateProfileId = async (supabaseAdmin: any, rawProfileOrUserId:
     const hasAffiliateRole =
       role === 'affiliate' ||
       role === 'partner' ||
+      role === 'seller' ||
       primaryRole === 'affiliate' ||
-      primaryRole === 'partner';
+      primaryRole === 'partner' ||
+      primaryRole === 'seller';
 
     let hasActiveAffiliateRole = false;
     try {
