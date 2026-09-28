@@ -3,7 +3,7 @@ import { CreditCard, DollarSign } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { apiPost } from '../utils/netlifyApi';
 import PayPalPayoutSettingsCard from './PayPalPayoutSettingsCard';
-import PayoutHistoryCard from './PayoutHistoryCard';
+import PayoutHistoryCard, { type LedgerRow, type PayoutItemRow } from './PayoutHistoryCard';
 import PayoutTimingNotice from './PayoutTimingNotice';
 import TaxComplianceCard from './TaxComplianceCard';
 
@@ -19,6 +19,14 @@ type EarningsSummary = {
   dispute_hold_balance?: number;
   next_release_at?: string | null;
 };
+
+type EarningsPayload = {
+  earnings?: EarningsSummary;
+  earnings_history?: LedgerRow[];
+  payout_history?: PayoutItemRow[];
+};
+
+const MINIMUM_PAYOUT = 25;
 
 const money = (value: unknown) =>
   Number(value || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -55,16 +63,23 @@ export default function AccountPayoutDashboard() {
     affiliate: {},
     influencer: {},
   });
+  const [histories, setHistories] = useState<Record<RoleKey, { ledger: LedgerRow[]; items: PayoutItemRow[] }>>({
+    seller: { ledger: [], items: [] },
+    affiliate: { ledger: [], items: [] },
+    influencer: { ledger: [], items: [] },
+  });
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
     const load = async () => {
       setLoading(true);
+      setLoadError(null);
       try {
         const [seller, affiliate, influencer] = await Promise.allSettled([
-          apiPost<any>('/api/user-earnings', session ?? null, { role: 'seller' }),
-          apiPost<any>('/api/user-earnings', session ?? null, { role: 'affiliate' }),
-          apiPost<any>('/api/user-earnings', session ?? null, { role: 'influencer' }),
+          apiPost<EarningsPayload>('/api/user-earnings', session ?? null, { role: 'seller' }),
+          apiPost<EarningsPayload>('/api/user-earnings', session ?? null, { role: 'affiliate' }),
+          apiPost<EarningsPayload>('/api/user-earnings', session ?? null, { role: 'influencer' }),
         ]);
 
         const nextSummaries: Record<RoleKey, EarningsSummary> = {
@@ -75,6 +90,14 @@ export default function AccountPayoutDashboard() {
 
         if (!alive) return;
         setSummaries(nextSummaries);
+        setHistories({
+          seller: seller.status === 'fulfilled' ? { ledger: seller.value?.earnings_history || [], items: seller.value?.payout_history || [] } : { ledger: [], items: [] },
+          affiliate: affiliate.status === 'fulfilled' ? { ledger: affiliate.value?.earnings_history || [], items: affiliate.value?.payout_history || [] } : { ledger: [], items: [] },
+          influencer: influencer.status === 'fulfilled' ? { ledger: influencer.value?.earnings_history || [], items: influencer.value?.payout_history || [] } : { ledger: [], items: [] },
+        });
+        if ([seller, affiliate, influencer].some((result) => result.status === 'rejected')) {
+          setLoadError('Some financial history could not be loaded. Refresh the page to try again.');
+        }
       } finally {
         if (alive) setLoading(false);
       }
@@ -106,8 +129,13 @@ export default function AccountPayoutDashboard() {
       .sort((a, b) => a.getTime() - b.getTime());
     return candidates.length ? candidates[0].toISOString() : null;
   }, [summaries]);
-  const nextPayoutDate = useMemo(() => getReferencePayoutDate(totals.ready, nextReleaseAt), [nextReleaseAt, totals.ready]);
-  const nextExpectedPayment = totals.ready;
+  const isPayoutEligible = totals.ready >= MINIMUM_PAYOUT;
+  const nextPayoutDate = useMemo(
+    () => (isPayoutEligible ? getReferencePayoutDate(totals.ready, nextReleaseAt) : null),
+    [isPayoutEligible, nextReleaseAt, totals.ready]
+  );
+  const nextExpectedPayment = isPayoutEligible ? totals.ready : 0;
+  const amountToMinimum = Math.max(0, MINIMUM_PAYOUT - totals.ready);
   const roleCards = [
     {
       label: 'Seller',
@@ -143,7 +171,9 @@ export default function AccountPayoutDashboard() {
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
             <div className="text-xs font-semibold uppercase text-emerald-700">Next expected payment</div>
             <div className="mt-1 text-lg font-bold text-emerald-950">{loading ? '...' : money(nextExpectedPayment)}</div>
-            <div className="mt-1 text-xs text-emerald-800">{formatPayoutDate(nextPayoutDate)}</div>
+            <div className="mt-1 text-xs text-emerald-800">
+              {nextPayoutDate ? formatPayoutDate(nextPayoutDate) : `Not scheduled — ${money(amountToMinimum)} more needed`}
+            </div>
           </div>
           {[
             ['Ready next payday', totals.ready],
@@ -156,6 +186,14 @@ export default function AccountPayoutDashboard() {
             </div>
           ))}
         </div>
+      </div>
+
+      {loadError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{loadError}</div>
+      ) : null}
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        Beezio pays eligible balances through PayPal on the 15th and the last calendar day of each month. Earnings must clear the 14-day hold and the combined available balance must reach {money(MINIMUM_PAYOUT)}.
       </div>
 
       <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
@@ -218,9 +256,13 @@ export default function AccountPayoutDashboard() {
       <PayoutTimingNotice />
 
       <div className="space-y-4">
-        <PayoutHistoryCard role="SELLER" title="Seller Payout History" />
-        <PayoutHistoryCard role="PARTNER" title="Affiliate Payout History" />
-        <PayoutHistoryCard role="INFLUENCER" title="Influencer Payout History" />
+        <div>
+          <h3 className="text-xl font-bold text-gray-900">Complete earnings and payout history</h3>
+          <p className="mt-1 text-sm text-gray-600">Every held earning, cleared balance, paid order, and PayPal transfer is separated by the role that earned it.</p>
+        </div>
+        <PayoutHistoryCard role="SELLER" title="Seller Earnings & Payout History" ledger={histories.seller.ledger} items={histories.seller.items} loading={loading} error={loadError} />
+        <PayoutHistoryCard role="PARTNER" title="Affiliate Earnings & Payout History" ledger={histories.affiliate.ledger} items={histories.affiliate.items} loading={loading} error={loadError} />
+        <PayoutHistoryCard role="INFLUENCER" title="Influencer Earnings & Payout History" ledger={histories.influencer.ledger} items={histories.influencer.items} loading={loading} error={loadError} />
       </div>
 
       <div className="space-y-4">

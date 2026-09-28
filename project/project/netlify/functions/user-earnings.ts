@@ -94,7 +94,7 @@ const handler: Handler = async (event) => {
           : 'PARTNER';
     const { data: snapshotRows, error: snapshotError } = await supabaseAdmin
       .from('payout_snapshots')
-      .select('payee_user_id, payee_role, amount, status, hold_release_at, paid_at, updated_at, created_at')
+      .select('id, order_id, ledger_id, payee_user_id, payee_role, amount, status, hold_release_at, paid_at, updated_at, created_at, snapshot_json')
       .eq('payee_user_id', profileId)
       .eq('payee_role', payeeRole)
       .order('created_at', { ascending: false })
@@ -104,6 +104,7 @@ const handler: Handler = async (event) => {
 
     const summary = summarizePayeeSnapshots((snapshotRows as any[]) || [], profileId, payeeRole);
     const latestRow = Array.isArray(snapshotRows) && snapshotRows.length > 0 ? snapshotRows[0] : null;
+    const lastPaidRow = ((snapshotRows as any[]) || []).find((row: any) => Boolean(row?.paid_at));
 
     let requests: any[] = [];
     try {
@@ -113,7 +114,7 @@ const handler: Handler = async (event) => {
         .eq('user_id', profileId)
         .eq('role', requestedRole)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(100);
       requests = (data as any[]) || [];
     } catch {
       requests = [];
@@ -129,12 +130,30 @@ const handler: Handler = async (event) => {
       held_balance: summary.pending + summary.onHold,
       pending_hold_balance: summary.pending,
       dispute_hold_balance: summary.onHold,
-      last_payout_at: (latestRow as any)?.paid_at || null,
+      last_payout_at: (lastPaidRow as any)?.paid_at || null,
       updated_at: (latestRow as any)?.updated_at || null,
       next_release_at: summary.nextReleaseAt,
     };
 
-    return json(200, { profileId, earnings, payout_requests: requests || [] });
+    const { data: payoutItems, error: payoutItemsError } = await supabaseAdmin
+      .from('payout_items')
+      .select('id, ledger_id, recipient, amount, status, payee_role, provider_item_id, error_message, created_at, updated_at')
+      .eq('payee_user_id', profileId)
+      .eq('payee_role', payeeRole)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (payoutItemsError) {
+      return json(500, { error: 'Failed to load payout transfer history', details: payoutItemsError.message });
+    }
+
+    return json(200, {
+      profileId,
+      earnings,
+      earnings_history: ((snapshotRows as any[]) || []).slice(0, 100),
+      payout_history: (payoutItems as any[]) || [],
+      payout_requests: requests || [],
+    });
   } catch (e) {
     return json(500, { error: 'Unexpected error', details: e instanceof Error ? e.message : String(e) });
   }

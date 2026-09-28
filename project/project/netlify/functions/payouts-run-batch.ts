@@ -236,7 +236,7 @@ export const handler: Handler = async (event) => {
     const eligibleRows = rows.filter((row) => eligibleLedgerIds.has(String(row.id)));
     if (!eligibleRows.length) return json(200, { ok: true, message: 'No payouts eligible after insurance/order checks' });
 
-    const minimumPayout = getEnvNumber('PAYOUTS_MINIMUM', getEnvNumber('PAYPAL_MIN_PAYOUT', 0.01));
+    const minimumPayout = Math.max(25, getEnvNumber('PAYOUTS_MINIMUM', getEnvNumber('PAYPAL_MIN_PAYOUT', 25)));
 
     const legacyLedgerIdByOrderId = new Map<string, string>();
     for (const row of eligibleRows) {

@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
-import { ensureProfileIdForUser } from '../utils/resolveProfileId';
+import { apiPost } from '../utils/netlifyApi';
 
 type PayeeRole = 'SELLER' | 'PARTNER' | 'INFLUENCER';
 
-type LedgerRow = {
+export type LedgerRow = {
   id: string;
   order_id: string | null;
   ledger_id?: string | null;
@@ -22,7 +21,7 @@ type LedgerRow = {
   } | null;
 };
 
-type PayoutItemRow = {
+export type PayoutItemRow = {
   id: string;
   ledger_id: string | null;
   recipient: string;
@@ -66,80 +65,53 @@ export default function PayoutHistoryCard({
   role,
   title = 'Payout History',
   description = 'Track holds, ready-to-pay amounts, and completed transfers.',
+  ledger: controlledLedger,
+  items: controlledItems,
+  loading: controlledLoading,
+  error: controlledError,
 }: {
   role: PayeeRole;
   title?: string;
   description?: string;
+  ledger?: LedgerRow[];
+  items?: PayoutItemRow[];
+  loading?: boolean;
+  error?: string | null;
 }) {
-  const { user, profile } = useAuth();
-  const [profileId, setProfileId] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [ledger, setLedger] = useState<LedgerRow[]>([]);
-  const [items, setItems] = useState<PayoutItemRow[]>([]);
+  const { session } = useAuth();
+  const [localLedger, setLocalLedger] = useState<LedgerRow[]>([]);
+  const [localItems, setLocalItems] = useState<PayoutItemRow[]>([]);
+  const [localLoading, setLocalLoading] = useState(controlledLedger === undefined);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const isControlled = controlledLedger !== undefined && controlledItems !== undefined;
+  const ledger = controlledLedger ?? localLedger;
+  const items = controlledItems ?? localItems;
+  const loading = controlledLoading ?? localLoading;
+  const error = controlledError ?? localError;
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const u = user || undefined;
-      const pid = String((profile as any)?.id || '').trim();
-      if (pid) {
-        if (!cancelled) setProfileId(pid);
-        return;
-      }
-      if (!u) return;
-      const resolved = await ensureProfileIdForUser(u as any);
-      if (!cancelled) setProfileId(String(resolved || u.id));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, (profile as any)?.id]);
-
-  useEffect(() => {
+    if (isControlled) return;
     let alive = true;
-    const load = async () => {
-      if (!profileId) return;
-      setLoading(true);
-      setError(null);
-
-      try {
-        const { data: ledgerRows, error: ledgerError } = await supabase
-          .from('payout_snapshots')
-          .select('id, order_id, ledger_id, status, hold_release_at, paid_at, amount, created_at, snapshot_json')
-          .eq('payee_user_id', profileId)
-          .eq('payee_role', role)
-          .order('created_at', { ascending: false })
-          .limit(50);
-
-        if (ledgerError) throw ledgerError;
-
-        const { data: payoutItems, error: itemsError } = await supabase
-          .from('payout_items')
-          .select('id, ledger_id, recipient, amount, status, payee_role, provider_item_id, error_message, created_at, updated_at')
-          .eq('payee_user_id', profileId)
-          .eq('payee_role', role)
-          .order('created_at', { ascending: false })
-          .limit(50);
-
-        if (itemsError) throw itemsError;
-
+    const roleKey = role === 'SELLER' ? 'seller' : role === 'INFLUENCER' ? 'influencer' : 'affiliate';
+    setLocalLoading(true);
+    setLocalError(null);
+    void apiPost<any>('/api/user-earnings', session ?? null, { role: roleKey })
+      .then((payload) => {
         if (!alive) return;
-        setLedger((ledgerRows as any[]) as LedgerRow[]);
-        setItems((payoutItems as any[]) as PayoutItemRow[]);
-      } catch (e: any) {
+        setLocalLedger(Array.isArray(payload?.earnings_history) ? payload.earnings_history : []);
+        setLocalItems(Array.isArray(payload?.payout_history) ? payload.payout_history : []);
+      })
+      .catch((loadError) => {
         if (!alive) return;
-        setError(e?.message || 'Failed to load payout history');
-      } finally {
-        if (alive) setLoading(false);
-      }
-    };
-
-    void load();
+        setLocalError(loadError instanceof Error ? loadError.message : 'Failed to load payout history');
+      })
+      .finally(() => {
+        if (alive) setLocalLoading(false);
+      });
     return () => {
       alive = false;
     };
-  }, [profileId, role]);
+  }, [isControlled, role, session]);
 
   const ledgerAmountForRole = (row: LedgerRow) => Number(row.amount || 0);
 
