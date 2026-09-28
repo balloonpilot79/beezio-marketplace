@@ -1,7 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { requireEnv } from './env';
 
-function getSecretKey() {
+export function getSecretKey() {
+  // Keep the server-side admin client on the same Supabase project as the
+  // production URL. Beezio's production service-role key is the canonical
+  // credential; older SUPABASE_SECRET_KEY values may belong to a previous
+  // project and otherwise make auth.admin lookups return "User not found".
+  const serviceRole = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  if (serviceRole) return serviceRole;
+
   const direct = String(process.env.SUPABASE_SECRET_KEY || '').trim();
   if (direct) return direct;
 
@@ -14,13 +21,13 @@ function getSecretKey() {
     } catch {}
   }
 
-  return String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  return '';
 }
 
 export function createSupabaseAdmin() {
   const supabaseUrl = requireEnv('SUPABASE_URL', ['VITE_SUPABASE_URL']);
   const secretKey = getSecretKey();
-  if (!secretKey) throw new Error('Missing SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY)');
+  if (!secretKey) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY)');
   return createClient(supabaseUrl, secretKey);
 }
 
