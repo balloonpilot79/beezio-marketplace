@@ -1,5 +1,5 @@
 import type { Handler } from '@netlify/functions';
-import { createClient } from '@supabase/supabase-js';
+import { findSupabaseAdminForUser } from './_lib/supabase';
 
 function json(statusCode: number, body: unknown) {
   return {
@@ -9,13 +9,6 @@ function json(statusCode: number, body: unknown) {
   };
 }
 
-function requireEnv(name: string, fallbacks: string[] = []): string {
-  for (const key of [name, ...fallbacks]) {
-    const value = String(process.env[key] || '').trim();
-    if (value) return value;
-  }
-  throw new Error(`Missing ${name}`);
-}
 
 function safeRole(value: unknown) {
   const role = String(value || '').trim().toLowerCase();
@@ -59,14 +52,8 @@ export const handler: Handler = async (event) => {
     const email = String(body.email || '').trim().toLowerCase();
     if (!userId || !email) return json(400, { error: 'Missing userId or email' });
 
-    const supabaseUrl = requireEnv('SUPABASE_URL', ['VITE_SUPABASE_URL']);
-    const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const authUser = userData?.user;
-    if (userError || !authUser) return json(404, { error: 'Auth user not found', details: userError?.message });
-    if (String(authUser.email || '').trim().toLowerCase() !== email) return json(403, { error: 'Email mismatch' });
+    const { supabaseAdmin, authUser, error: userError } = await findSupabaseAdminForUser(userId, email);
+    if (!supabaseAdmin || !authUser) return json(404, { error: 'Auth user not found', details: userError?.message });
     if (!authUser.email_confirmed_at) {
       return json(403, { error: 'Email must be confirmed before account setup can complete' });
     }
