@@ -19,10 +19,11 @@ export const handler: Handler = async (event) => {
     if (authUser.email_confirmed_at) return json(200, { ok: true, alreadyConfirmed: true });
     const verifyToken = issueSignupVerifyToken({ userId, email, exp: Date.now() + 24 * 60 * 60 * 1000 });
     const redirectTo = `${getSiteUrl()}/auth/verify?flow=signup&email=${encodeURIComponent(email)}&verify_token=${encodeURIComponent(verifyToken)}`;
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({ type: 'magiclink', email, options: { redirectTo } });
-    if (linkError) return json(500, { error: 'Failed to generate verification link.', details: linkError.message });
-    const actionLink = String((linkData as any)?.properties?.action_link || '').trim() || String((linkData as any)?.action_link || '').trim();
-    if (!actionLink) return json(500, { error: 'Verification link was not created.' });
+    // Link directly to Beezio. The signed one-time-purpose token is verified by
+    // signup-confirm-email, which then confirms the user through the exact
+    // Supabase admin client that found the account. This avoids an obsolete
+    // Supabase project's magic-link endpoint intercepting the confirmation.
+    const actionLink = redirectTo;
     const safeName = fullName || String(authUser.user_metadata?.full_name || email.split('@')[0] || 'there').trim();
     const emailResult = await sendTransactionalEmail({ to: email, subject: 'Verify your Beezio email', html: `<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;padding:24px;"><h2>Verify your Beezio email</h2><p>Hi ${safeName}, click below to verify your email and activate your Beezio account.</p><p><a href="${actionLink}" style="display:inline-block;background:#f59e0b;color:#111827;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700;">Verify Email</a></p><p>If the button does not work, use this link:</p><p style="word-break:break-all"><a href="${actionLink}">${actionLink}</a></p></div>` });
     if (!emailResult.sent) return json(502, { error: 'Verification email delivery failed.', reason: emailResult.reason || 'unknown' });
