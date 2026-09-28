@@ -78,7 +78,7 @@ export const handler: Handler = async (event) => {
 
     const payoutsPaused = getEnvBool('PAYOUTS_PAUSED', false);
     const payoutsEnabled = getEnvBool('PAYOUTS_ENABLED', getEnvBool('PAYPAL_PAYOUTS_API_ENABLED', false));
-    const minimumPayout = Math.max(25, getEnvNumber('PAYOUTS_MINIMUM', getEnvNumber('PAYPAL_MIN_PAYOUT', 25)));
+    const minimumPayout = 5;
     const scheduledEnabled = getEnvBool('PAYOUTS_SCHEDULED_ENABLED', false);
 
     const { data: snapshotRows, error: snapshotError } = await supabaseAdmin

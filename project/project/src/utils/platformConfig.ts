@@ -16,7 +16,7 @@ export const PLATFORM_CONFIG = {
   MAX_AFFILIATE_COMMISSION: Number.MAX_SAFE_INTEGER,
   
   // Payout thresholds
-  MINIMUM_PAYOUT_AMOUNT: 25.00, // $25 minimum payout
+  MINIMUM_PAYOUT_AMOUNT: 5.00, // $5 minimum payout
   
   // Revenue types
   REVENUE_TYPES: {

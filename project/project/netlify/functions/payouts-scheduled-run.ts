@@ -268,7 +268,7 @@ export const handler: Handler = async () => {
     };
   }
 
-  const minimumPayout = Math.max(25, getEnvNumber('PAYOUTS_MINIMUM', getEnvNumber('PAYPAL_MIN_PAYOUT', 25)));
+  const minimumPayout = 5;
 
   const legacyLedgerIdByOrderId = new Map<string, string>();
   for (const row of eligibleRows) {
