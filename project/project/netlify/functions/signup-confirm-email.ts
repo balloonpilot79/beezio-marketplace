@@ -1,6 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { assertPost, json, parseJson } from './_lib/http';
-import { createSupabaseAdmin } from './_lib/supabase';
+import { findSupabaseAdminForUser } from './_lib/supabase';
 import { verifySignupVerifyToken } from './_lib/signup-verify-token';
 
 type Body = {
@@ -15,16 +15,11 @@ export const handler: Handler = async (event) => {
     if (!token) return json(400, { error: 'Verification token is required.' });
 
     const parsed = verifySignupVerifyToken(token);
-    const supabaseAdmin = createSupabaseAdmin();
-    const { data: userResult, error: userError } = await supabaseAdmin.auth.admin.getUserById(parsed.userId);
-    const authUser = userResult?.user;
-    if (userError || !authUser) {
+    const { supabaseAdmin, authUser, error: userError } = await findSupabaseAdminForUser(parsed.userId, parsed.email);
+    if (!supabaseAdmin || !authUser) {
       return json(404, { error: 'User not found.', details: userError?.message || null });
     }
 
-    if (String(authUser.email || '').trim().toLowerCase() !== parsed.email) {
-      return json(403, { error: 'Email mismatch.' });
-    }
 
     if (!authUser.email_confirmed_at) {
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(parsed.userId, {
