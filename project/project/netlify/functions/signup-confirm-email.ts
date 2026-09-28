@@ -20,7 +20,6 @@ export const handler: Handler = async (event) => {
       return json(404, { error: 'User not found.', details: userError?.message || null });
     }
 
-
     if (!authUser.email_confirmed_at) {
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(parsed.userId, {
         email_confirm: true,
@@ -30,7 +29,16 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    return json(200, { ok: true, confirmed: true });
+    return json(200, {
+      ok: true,
+      confirmed: true,
+      user: {
+        id: authUser.id,
+        email: authUser.email,
+        email_confirmed_at: authUser.email_confirmed_at || new Date().toISOString(),
+        user_metadata: authUser.user_metadata || {},
+      },
+    });
   } catch (e: any) {
     return json(Number(e?.statusCode) || 500, { error: e instanceof Error ? e.message : 'Unexpected error' });
   }
