@@ -24,9 +24,7 @@ type EarningsPayload = {
   earnings?: EarningsSummary;
   earnings_history?: LedgerRow[];
   payout_history?: PayoutItemRow[];
-};
-
-const MINIMUM_PAYOUT = 25;
+};const MINIMUM_PAYOUT = 5;
 
 const money = (value: unknown) =>
   Number(value || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
