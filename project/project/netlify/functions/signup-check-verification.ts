@@ -1,6 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { assertPost, json, parseJson } from './_lib/http';
-import { createSupabaseAdmin } from './_lib/supabase';
+import { findSupabaseAdminForUser } from './_lib/supabase';
 
 type Body = {
   userId?: string;
@@ -18,17 +18,11 @@ export const handler: Handler = async (event) => {
       return json(400, { error: 'Valid userId and email are required.' });
     }
 
-    const supabaseAdmin = createSupabaseAdmin();
-    const { data: userResult, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const authUser = userResult?.user;
-    if (userError || !authUser) {
+    const { authUser, error: userError } = await findSupabaseAdminForUser(userId, email);
+    if (!authUser) {
       return json(404, { error: 'User not found.', details: userError?.message || null });
     }
 
-    const authEmail = String(authUser.email || '').trim().toLowerCase();
-    if (authEmail !== email) {
-      return json(403, { error: 'Email mismatch.' });
-    }
 
     return json(200, {
       ok: true,
