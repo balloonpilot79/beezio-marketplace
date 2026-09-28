@@ -276,7 +276,7 @@ const AffiliateDashboard: React.FC = () => {
         <button
           className="mt-4 bg-amber-500 text-white py-2 px-6 rounded-lg hover:bg-amber-600 transition-colors font-medium"
           onClick={handleRequestPayout}
-          disabled={requestingPayout || Math.max((earnings?.current_balance || 0), (earnings?.pending_payout || 0)) < 25}
+          disabled={requestingPayout || Math.max((earnings?.current_balance || 0), (earnings?.pending_payout || 0)) < 5}
         >
           {requestingPayout ? 'Requesting...' : 'Add payout request'}
         </button>
