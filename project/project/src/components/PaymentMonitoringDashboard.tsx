@@ -258,7 +258,7 @@ export const PaymentMonitoringDashboard: React.FC = () => {
             <div className="text-sm text-gray-600 space-y-2">
               <div className="flex justify-between">
                 <span>Minimum payout:</span>
-                <span className="font-medium">$25.00</span>
+                <span className="font-medium">$5.00</span>
               </div>
               <div className="flex justify-between">
                 <span>Processing time:</span>
