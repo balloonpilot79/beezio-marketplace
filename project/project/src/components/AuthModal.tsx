@@ -8,6 +8,7 @@ import { buildDeterministicReferralCode } from '../utils/referralCode';
 import { consumePostAuthPath } from '../utils/storefrontScope';
 import { PASSWORD_REQUIREMENT_MESSAGE, validatePasswordPolicy } from '../utils/passwordPolicy';
 import { sendSignupVerificationEmail } from '../services/signupVerificationClient';
+import { isBeezioEmailVerified } from '../utils/emailVerification';
 
 // Runtime check for Vite env vars (will be inlined at build time)
 const RUNTIME_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
@@ -117,7 +118,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || typeof document === 'undefined') return;
+    if (!isOpen || presentation !== 'modal' || typeof document === 'undefined') return;
 
     const { body } = document;
     const previousOverflow = body.style.overflow;
@@ -384,7 +385,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         if (result && result.user) {
           // Supabase: If email confirmation is required, session will be null.
           // Switch the UI immediately instead of waiting on profile setup work.
-          if (!result.session) {
+          if (!result.session || !isBeezioEmailVerified(result.user)) {
             let emailSent = false;
             let sendError = '';
             try {
@@ -463,6 +464,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
       } else if (msg.includes('Invalid login credentials') || msg.includes('Invalid login')) {
         setError('Invalid email or password. Please check your credentials and try again.');
       } else if (msg.includes('Email not confirmed') || msg.includes('email_not_confirmed')) {
+        setPendingVerificationEmail(String(formData.email || '').trim().toLowerCase());
         setError('Please check your email and click the confirmation link before signing in.');
       } else if (msg.includes('Too many requests')) {
         setError('Too many login attempts. Please wait a few minutes before trying again.');
@@ -484,7 +486,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
 
   const content = (
     <div
-      className={presentation === 'page' ? 'bz-public mx-auto w-full max-w-lg py-6' : 'bz-public fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm'}
+      className={presentation === 'page' ? 'bz-public mx-auto min-h-0 w-full max-w-lg py-6' : 'bz-public fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm'}
       onMouseDown={(event) => {
         if (presentation === 'modal' && event.target === event.currentTarget) onClose();
       }}

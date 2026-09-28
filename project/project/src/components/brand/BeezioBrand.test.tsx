@@ -7,6 +7,7 @@ import JoinPage from "../../pages/JoinPage";
 import BusinessLandingPage from "../../pages/BusinessLandingPage";
 import GlobalHeaderBar from "../GlobalHeaderBar";
 import StorefrontShoppingLinks from "../storefront/StorefrontShoppingLinks";
+import StorefrontBuyerShell from "../storefront/StorefrontBuyerShell";
 import DashboardRoleSelector from "../../pages/DashboardRoleSelector";
 import { audiences, websiteBenefits } from "./BeezioBrand";
 
@@ -97,6 +98,28 @@ describe("Beezio public message and account boundaries", () => {
       expect(html).toContain('href="/account"');
     },
   );
+  it("gives business users a dashboard route from the shopper account shell", () => {
+    state.user = { id: "seller", email: "seller@example.invalid" };
+    state.profile = { role: "seller" };
+    state.userRoles = ["seller"];
+    const html = render(
+      <StorefrontBuyerShell
+        branding={{
+          kind: "generic",
+          name: "Your Account",
+          tagline: "Orders and receipts.",
+          logoUrl: null,
+          backgroundImageUrl: null,
+          homePath: "/",
+        }}
+      >
+        <div>Account content</div>
+      </StorefrontBuyerShell>,
+      "/account",
+    );
+    expect(html).toContain('href="/business"');
+    expect(html).toContain("Business Center");
+  });
   it("uses shopper-only links on custom pages and preserves the return path", () => {
     const html = render(<StorefrontShoppingLinks />, "/store/marebelle/about");
     expect(html).toContain("/account/login?next=%2Fstore%2Fmarebelle%2Fabout");

@@ -1,8 +1,13 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { LayoutDashboard, LogOut } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContextMultiRole";
 import type { StorefrontBranding } from "../../utils/storefrontScope";
+import { canAccessCJImport } from "../../utils/cjImportAccess";
+import {
+  getBusinessAccountRoles,
+  getNormalizedAccountRoles,
+} from "../../utils/accountRoles";
 import { BeezioMark, StorefrontSignature } from "../brand/BeezioBrand";
 import StorefrontShoppingLinks from "./StorefrontShoppingLinks";
 
@@ -15,8 +20,19 @@ const StorefrontBuyerShell: React.FC<StorefrontBuyerShellProps> = ({
   branding,
   children,
 }) => {
-  const { user, signOut } = useAuth();
+  const { user, profile, userRoles, signOut } = useAuth();
   const navigate = useNavigate();
+  const roles = getNormalizedAccountRoles(
+    userRoles,
+    profile?.primary_role,
+    profile?.role,
+  );
+  const hasBusinessAccess = Boolean(
+    user &&
+      (getBusinessAccountRoles(roles).length ||
+        roles.includes("admin") ||
+        canAccessCJImport(user.email || profile?.email || "")),
+  );
   return (
     <div className="min-h-screen bg-[#faf9f5] text-slate-900">
       <header className="border-b border-slate-200 bg-white">
@@ -61,6 +77,15 @@ const StorefrontBuyerShell: React.FC<StorefrontBuyerShellProps> = ({
           </Link>
           {user && (
             <>
+              {hasBusinessAccess && (
+                <Link
+                  to="/business"
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#101820] px-3 py-2 text-[#ffcb05] hover:text-white"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Business Center
+                </Link>
+              )}
               <Link
                 to="/account?tab=orders"
                 className="text-slate-600 hover:text-slate-900"

@@ -16,7 +16,9 @@ export const handler: Handler = async (event) => {
     if (!userId || !email || !email.includes('@')) return json(400, { error: 'Valid userId and email are required.' });
     const { supabaseAdmin, authUser, error: userError } = await findSupabaseAdminForUser(userId, email);
     if (!supabaseAdmin || !authUser) return json(404, { error: 'User not found.', details: userError?.message || null });
-    if (authUser.email_confirmed_at) return json(200, { ok: true, alreadyConfirmed: true });
+    if (authUser.app_metadata?.beezio_email_verified === true) {
+      return json(200, { ok: true, alreadyConfirmed: true });
+    }
     const verifyToken = issueSignupVerifyToken({ userId, email, exp: Date.now() + 24 * 60 * 60 * 1000 });
     const redirectTo = `${getSiteUrl()}/auth/verify?flow=signup&email=${encodeURIComponent(email)}&verify_token=${encodeURIComponent(verifyToken)}`;
     // Link directly to Beezio. The signed one-time-purpose token is verified by

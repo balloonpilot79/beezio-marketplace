@@ -15,6 +15,8 @@ import {
   clearPendingRecruitAttributionForUser,
   getPendingRecruitAttributionsForUser,
 } from '../utils/recruitAttribution';
+import { sendSignupVerificationEmail } from '../services/signupVerificationClient';
+import { isBeezioEmailVerified } from '../utils/emailVerification';
 
 const PENDING_SIGNUP_KEY = 'beezio-pending-signup-bootstrap';
 const AUTH_RESTRICTION_KEY = 'beezio-auth-restriction';
@@ -92,6 +94,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const lastAuthHydrationAttemptRef = useRef<{ userId: string; at: number } | null>(null);
   const lastHydratedAuthRef = useRef<{ userId: string; at: number } | null>(null);
   const lastProfileTimeoutRef = useRef<number>(0);
+
+  const rememberPendingVerification = (authUser: User) => {
+    try {
+      const existing = JSON.parse(localStorage.getItem(PENDING_SIGNUP_KEY) || '{}');
+      localStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify({
+        ...existing,
+        userId: authUser.id,
+        email: String(authUser.email || existing.email || '').trim().toLowerCase(),
+        fullName: String(authUser.user_metadata?.full_name || existing.fullName || '').trim(),
+        savedAt: Date.now(),
+      }));
+    } catch {
+      // The verification screen can still explain the required next step.
+    }
+  };
+
+  const clearAuthenticatedState = () => {
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    setUserRoles([]);
+    setCurrentRole('buyer');
+  };
 
   const storeRestrictionNotice = (userId: string, restriction: ActiveUserRestriction | null) => {
     try {
@@ -703,6 +728,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         console.log('AuthContext: Session loaded:', session?.user?.email || 'No user');
+        if (session?.user && !isBeezioEmailVerified(session.user)) {
+          rememberPendingVerification(session.user);
+          clearAuthenticatedState();
+          await supabase.auth.signOut({ scope: 'local' });
+          initialSessionHandledRef.current = true;
+          setLoading(false);
+          return;
+        }
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -736,6 +769,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
           
+          if (session?.user && !isBeezioEmailVerified(session.user)) {
+            rememberPendingVerification(session.user);
+            clearAuthenticatedState();
+            setLoading(false);
+            void supabase.auth.signOut({ scope: 'local' });
+            return;
+          }
+
           setSession(session);
           setUser(session?.user ?? null);
           
@@ -842,6 +883,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             independent_contractor_acknowledged: independentContractorAcknowledged,
             tax_delivery_acknowledged: taxDeliveryAcknowledged,
             tax_compliance_version: TAX_COMPLIANCE_VERSION,
+            beezio_verification_required: true,
           },
         },
       });
@@ -849,6 +891,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('[AuthContext] SignUp error:', error);
         throw error;
+      }
+
+      if (data.user && data.session && !isBeezioEmailVerified(data.user)) {
+        rememberPendingVerification(data.user);
+        await supabase.auth.signOut({ scope: 'local' });
+        data.session = null;
+        clearAuthenticatedState();
       }
 
       if (data.user) {
@@ -1094,6 +1143,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data?.user) {
+        if (!isBeezioEmailVerified(data.user)) {
+          rememberPendingVerification(data.user);
+          await supabase.auth.signOut({ scope: 'local' });
+          clearAuthenticatedState();
+          const verificationError: any = new Error('Email not confirmed. Verify your Beezio email before signing in.');
+          verificationError.code = 'email_not_confirmed';
+          throw verificationError;
+        }
         await hydrateAuthenticatedSession(data.user, 'direct sign-in');
         const restrictionNotice = getStoredRestrictionNotice();
         if (restrictionNotice?.userId === data.user.id) {
@@ -1121,16 +1178,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Email address is required.');
       }
 
-      const { data, error } = await supabase.auth.resend({
-        type: 'signup',
-        email: trimmedEmail,
-        options: {
-          emailRedirectTo: getEmailVerificationRedirectUrl(),
-        },
-      });
+      const pending = JSON.parse(localStorage.getItem(PENDING_SIGNUP_KEY) || '{}');
+      const pendingEmail = String(pending?.email || '').trim().toLowerCase();
+      const pendingUserId = String(pending?.userId || '').trim();
+      if (!pendingUserId || pendingEmail !== trimmedEmail.toLowerCase()) {
+        throw new Error('Sign in again with this email, then use Resend verification email.');
+      }
 
-      if (error) throw error;
-      return data;
+      return sendSignupVerificationEmail({
+        userId: pendingUserId,
+        email: trimmedEmail,
+        fullName: String(pending?.fullName || '').trim(),
+      });
     } catch (error) {
       console.error('Resend verification email error:', error);
       throw error;

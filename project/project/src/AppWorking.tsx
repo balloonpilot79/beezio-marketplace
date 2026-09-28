@@ -375,7 +375,9 @@ const AppWorking: React.FC = () => {
   const isStorefrontPath = (pathname: string) => {
     const clean = String(pathname || '/');
     if (clean === '/' || clean === '') return false;
-    if (clean.startsWith('/account')) return true;
+    // Shopper accounts remain part of the main app and need the shared mobile
+    // header and bottom quick-navigation bar.
+    if (clean.startsWith('/account')) return false;
 
     // Explicit storefront namespaces
     if (clean.startsWith('/store/')) return true;

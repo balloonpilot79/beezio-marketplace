@@ -23,10 +23,9 @@ export const handler: Handler = async (event) => {
       return json(404, { error: 'User not found.', details: userError?.message || null });
     }
 
-
     return json(200, {
       ok: true,
-      confirmed: Boolean(authUser.email_confirmed_at),
+      confirmed: authUser.app_metadata?.beezio_email_verified === true,
       confirmedAt: authUser.email_confirmed_at || null,
     });
   } catch (e: any) {

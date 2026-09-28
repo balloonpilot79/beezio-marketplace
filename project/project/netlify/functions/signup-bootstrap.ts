@@ -53,7 +53,7 @@ export const handler: Handler = async (event) => {
 
     const { supabaseAdmin, authUser, error: userError } = await findSupabaseAdminForUser(userId, email);
     if (!supabaseAdmin || !authUser) return json(404, { error: 'Auth user not found', details: userError?.message });
-    if (!authUser.email_confirmed_at) {
+    if (authUser.app_metadata?.beezio_email_verified !== true) {
       return json(403, { error: 'Email must be confirmed before account setup can complete' });
     }
 

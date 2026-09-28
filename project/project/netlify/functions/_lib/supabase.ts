@@ -37,6 +37,10 @@ function configuredSupabaseUrls() {
 }
 
 export function getSecretKey() {
+  // Keep the server-side admin client on the same Supabase project as the
+  // production URL. Beezio's production service-role key is the canonical
+  // credential; older SUPABASE_SECRET_KEY values may belong to a previous
+  // project and otherwise make auth.admin lookups return "User not found".
   const serviceRole = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   if (serviceRole) return serviceRole;
 
