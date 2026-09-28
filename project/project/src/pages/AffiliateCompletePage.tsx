@@ -156,7 +156,7 @@ const AffiliateCompletePage: React.FC = () => {
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <h3 className="text-xl font-semibold mb-3">💳 Fast Payments</h3>
               <p className="text-gray-600">
-                Payouts are issued after the standard review period to the PayPal email on file. Minimum payout is $25.
+                Payouts are issued after the standard review period to the PayPal email on file. Minimum payout is $5.
               </p>
             </div>
             
@@ -266,7 +266,7 @@ const AffiliateCompletePage: React.FC = () => {
             <details className="bg-white p-6 rounded-lg shadow-sm border">
               <summary className="font-semibold cursor-pointer">How do I get paid?</summary>
               <p className="mt-3 text-gray-600">
-                Payouts are issued after the standard review period to the PayPal email on file. Minimum payout is $25.
+                Payouts are issued after the standard review period to the PayPal email on file. Minimum payout is $5.
               </p>
             </details>
             
