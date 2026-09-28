@@ -9,7 +9,6 @@ function json(statusCode: number, body: unknown) {
   };
 }
 
-
 function safeRole(value: unknown) {
   const role = String(value || '').trim().toLowerCase();
   return ['buyer', 'seller', 'affiliate', 'influencer', 'fundraiser'].includes(role) ? role : 'buyer';
@@ -59,7 +58,9 @@ export const handler: Handler = async (event) => {
     }
 
     const createdAt = new Date(String(authUser.created_at || 0)).getTime();
-    const recentEnough = Number.isFinite(createdAt) && Date.now() - createdAt < 60 * 60 * 1000;
+    // Match the 24-hour verification-token lifetime so a delayed email or a
+    // support/debugging delay does not make an otherwise valid signup fail.
+    const recentEnough = Number.isFinite(createdAt) && Date.now() - createdAt < 24 * 60 * 60 * 1000;
     if (!recentEnough) return json(403, { error: 'Signup bootstrap window expired' });
 
     const metadata = (authUser.user_metadata || {}) as Record<string, unknown>;
