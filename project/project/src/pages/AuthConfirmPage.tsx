@@ -224,6 +224,19 @@ const AuthConfirmPage: React.FC = () => {
           Boolean(authParams.get('refresh_token')) ||
           code.length > 0;
 
+        // Custom signup verification links return directly to Beezio. Confirm
+        // the signed token server-side, then bootstrap the account from the
+        // verified auth user's metadata without requiring a Supabase session.
+        if (verifyToken && !hasTokenPayload) {
+          const confirmation = await confirmSignupEmail(verifyToken);
+          if (!confirmation?.user) {
+            finalizeError('We could not load the verified account. Request a new confirmation email.');
+            return;
+          }
+          await completeConfirmedSignup(confirmation.user);
+          return;
+        }
+
         if (!hasTokenPayload) {
           const { data } = await supabase.auth.getSession();
           if (data.session?.user?.email_confirmed_at) {
