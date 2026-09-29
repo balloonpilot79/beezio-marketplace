@@ -14,6 +14,7 @@ import {
 import EnhancedSellerDashboard, { type SellerDashboardTab } from './EnhancedSellerDashboard';
 import EnhancedBuyerDashboard, { type BuyerDashboardTab } from './EnhancedBuyerDashboard';
 import PlatformAdminDashboard from './PlatformAdminDashboard';
+import ReferralShareActions from './ReferralShareActions';
 
 interface UnifiedDashboardProps {
   initialSellerTab?: SellerDashboardTab;
@@ -564,20 +565,27 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
                   </div>
                   <p className="mt-1 text-xs text-emerald-800">Share this link to refer sellers and affiliates. Eligible referral bonuses are earned on their completed sales.</p>
                 </div>
-                <div className="flex w-full sm:w-auto gap-2">
-                  <input
-                    readOnly
-                    value={recruiterInviteLink}
-                    className="w-full sm:w-[420px] rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs sm:text-sm text-gray-900"
+                <div className="flex w-full flex-col gap-2 sm:w-auto">
+                  <div className="flex w-full gap-2">
+                    <input
+                      readOnly
+                      value={recruiterInviteLink}
+                      className="w-full sm:w-[420px] rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs sm:text-sm text-gray-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyInviteLink}
+                      className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-800"
+                    >
+                      <Copy className="w-4 h-4" />
+                      {copiedInvite ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                  <ReferralShareActions
+                    referralUrl={recruiterInviteLink}
+                    message="Join Beezio through my invite to start selling products or earning as an affiliate."
+                    className="sm:justify-end"
                   />
-                  <button
-                    type="button"
-                    onClick={handleCopyInviteLink}
-                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-800"
-                  >
-                    <Copy className="w-4 h-4" />
-                    {copiedInvite ? 'Copied' : 'Copy'}
-                  </button>
                 </div>
               </div>
             </div>
