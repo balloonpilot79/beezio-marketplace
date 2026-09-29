@@ -6,6 +6,7 @@ import { copyTextToClipboard } from '../utils/clipboard';
 import InfluencerRecruitPromoStudio from './InfluencerRecruitPromoStudio';
 import { getInfluencerPublicCode } from '../utils/promoLinks';
 import PayoutHistoryCard from './PayoutHistoryCard';
+import ReferralShareActions from './ReferralShareActions';
 
 type InfluencerStatsRow = {
   profile_id: string;
@@ -183,6 +184,14 @@ const InfluencerDashboard: React.FC = () => {
         <div className="mt-4 text-xs text-gray-500">
           Your code: <span className="font-semibold">{codeForLink || '-'}</span>
         </div>
+        <ReferralShareActions
+          referralUrl={signupLink}
+          message="Join Beezio through my invite to start selling products or earning as an affiliate."
+          className="mt-4"
+        />
+        <p className="mt-2 text-xs text-gray-500">
+          Text invite opens your SMS app. Messenger copies the complete tracked invite before opening Messenger.
+        </p>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
