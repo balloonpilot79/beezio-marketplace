@@ -883,7 +883,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             independent_contractor_acknowledged: independentContractorAcknowledged,
             tax_delivery_acknowledged: taxDeliveryAcknowledged,
             tax_compliance_version: TAX_COMPLIANCE_VERSION,
-            beezio_verification_required: true,
           },
         },
       });

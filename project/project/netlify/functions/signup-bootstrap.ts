@@ -53,13 +53,9 @@ export const handler: Handler = async (event) => {
 
     const { supabaseAdmin, authUser, error: userError } = await findSupabaseAdminForUser(userId, email);
     if (!supabaseAdmin || !authUser) return json(404, { error: 'Auth user not found', details: userError?.message });
-    if (authUser.app_metadata?.beezio_email_verified !== true) {
-      return json(403, { error: 'Email must be confirmed before account setup can complete' });
-    }
-
     const createdAt = new Date(String(authUser.created_at || 0)).getTime();
-    // Match the 24-hour verification-token lifetime so a delayed email or a
-    // support/debugging delay does not make an otherwise valid signup fail.
+    // Keep bootstrap limited to newly created accounts while allowing enough
+    // time for a user to finish the signup form or recover from a brief delay.
     const recentEnough = Number.isFinite(createdAt) && Date.now() - createdAt < 24 * 60 * 60 * 1000;
     if (!recentEnough) return json(403, { error: 'Signup bootstrap window expired' });
 

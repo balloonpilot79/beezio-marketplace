@@ -10,9 +10,9 @@ const user = (overrides: Record<string, unknown> = {}) => ({
 }) as any;
 
 describe('Beezio email verification', () => {
-  it('does not trust Supabase auto-confirmation for new accounts', () => {
-    expect(requiresBeezioEmailVerification(user())).toBe(true);
-    expect(isBeezioEmailVerified(user())).toBe(false);
+  it('does not require email verification for new accounts', () => {
+    expect(requiresBeezioEmailVerification(user())).toBe(false);
+    expect(isBeezioEmailVerified(user())).toBe(true);
   });
 
   it('accepts the server-only Beezio verification marker', () => {
@@ -23,10 +23,10 @@ describe('Beezio email verification', () => {
     expect(isBeezioEmailVerified(user({ created_at: '2026-01-01T00:00:00.000Z' }))).toBe(true);
   });
 
-  it('requires verification when signup explicitly requests it', () => {
+  it('does not re-enable verification from stale signup metadata', () => {
     expect(isBeezioEmailVerified(user({
       created_at: '2026-01-01T00:00:00.000Z',
       user_metadata: { beezio_verification_required: true },
-    }))).toBe(false);
+    }))).toBe(true);
   });
 });
