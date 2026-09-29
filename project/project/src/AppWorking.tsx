@@ -83,6 +83,7 @@ const AuthPage = lazy(() => import('./pages/AuthPage'));
 const AuthConfirmPage = lazy(() => import('./pages/AuthConfirmPage'));
 const StorefrontAuthPage = lazy(() => import('./pages/StorefrontAuthPage'));
 const StorefrontBuyerAccountPage = lazy(() => import('./pages/StorefrontBuyerAccountPage'));
+const AccountHubPage = lazy(() => import('./pages/AccountHubPage'));
 const BulkProductUploadPage = lazy(() => import('./pages/BulkProductUploadPage'));
 const AdminProductHubPage = lazy(() => import('./pages/AdminProductHubPage'));
 const AdminPayoutsQueuePage = lazy(() => import('./pages/AdminPayoutsQueuePage'));
@@ -775,7 +776,8 @@ const AppWorking: React.FC = () => {
                     <Route path="/auth/login" element={<AuthPage mode="login" />} />
                     <Route path="/auth/register" element={<AuthPage mode="register" />} />
                     <Route path="/auth/signup" element={<AuthPage mode="register" />} />
-                    <Route path="/account" element={<StorefrontBuyerAccountPage />} />
+                    <Route path="/account" element={<AccountHubPage />} />
+                    <Route path="/account/buyer" element={<StorefrontBuyerAccountPage />} />
                     <Route path="/account/login" element={<StorefrontAuthPage mode="login" />} />
                     <Route path="/account/register" element={<StorefrontAuthPage mode="register" />} />
                     <Route path="/account/signup" element={<StorefrontAuthPage mode="register" />} />
