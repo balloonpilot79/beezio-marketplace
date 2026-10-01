@@ -15,7 +15,7 @@ vi.mock('@supabase/supabase-js', () => ({
     },
   }),
 }));
-import { handler } from './public-product-get';
+import { handler } from '../../netlify/functions/public-product-get';
 
 describe('public product details', () => {
   beforeEach(() => {
