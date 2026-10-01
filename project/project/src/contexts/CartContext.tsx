@@ -1,3 +1,6 @@
+import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
+import { refreshCartPublishedPrices } from '../utils/cartPublishedPrices';
+import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -186,7 +189,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         LEGACY_CART_KEY,
       ];
       const loaded = loadCartFromKeys(candidateKeys, true);
-      setItems(loaded.items);
+      setItems(loaded.items.filter(item => !isPublicTestProduct({ id: item.productId })));
 
       // Migrate guest/legacy/previous-scope carts into the current signed-in scope key.
       if (loaded.found && loaded.sourceKey && loaded.sourceKey !== userCartKey) {
@@ -202,7 +205,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         LEGACY_CART_KEY,
       ];
       const loaded = loadCartFromKeys(candidateKeys, true);
-      setItems(loaded.items);
+      setItems(loaded.items.filter(item => !isPublicTestProduct({ id: item.productId })));
 
       // Keep guest cart aligned to current scope for stable refresh behavior.
       if (loaded.found && loaded.sourceKey && loaded.sourceKey !== guestCartKey) {
@@ -213,6 +216,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadStoredShippingOption(userId, storeScope);
     setIsCartHydrated(true);
   }, [currentUserId, storeScope]);
+
+  const baseProductIds = Array.from(new Set(items.filter(item => !item.variantId && !item.isSample).map(item => item.productId))).sort().join(',');
+  useEffect(() => {
+    if (!isCartHydrated || !baseProductIds) return;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
+    Promise.all(baseProductIds.split(',').map(async productId => {
+      try {
+        const response = await fetch(`/api/public/product/get?id=${encodeURIComponent(productId)}&pricing=published`, { signal: controller.signal });
+        if (!response.ok) return null;
+        const payload = await response.json();
+        return payload?.product ? [productId, getBuyerFacingProductPrice(payload.product)] as const : null;
+      } catch { return null; }
+    })).then(results => {
+      if (controller.signal.aborted) return;
+      const prices = new Map<string, number>();
+      for (const row of results) if (row) prices.set(row[0], row[1]);
+      setItems(current => refreshCartPublishedPrices(current, prices));
+    }).finally(() => window.clearTimeout(timeout));
+    return () => { controller.abort(); window.clearTimeout(timeout); };
+  }, [baseProductIds, currentUserId, storeScope, isCartHydrated]);
 
   // Save cart to localStorage whenever items change - PER USER + STORE
   useEffect(() => {
@@ -260,11 +284,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (maxQuantity !== null && newQuantity > maxQuantity) {
           updatedItems[existingItemIndex] = {
             ...existingItem,
+            price: newItem.price,
             quantity: maxQuantity
           };
         } else {
           updatedItems[existingItemIndex] = {
             ...existingItem,
+            price: newItem.price,
             quantity: newQuantity
           };
         }

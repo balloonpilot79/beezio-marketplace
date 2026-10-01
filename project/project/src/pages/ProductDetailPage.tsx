@@ -1059,7 +1059,7 @@ const ProductDetailPage: React.FC = () => {
         const controller = new AbortController();
         const timeout = window.setTimeout(() => controller.abort(), PRODUCT_FETCH_TIMEOUT_MS);
         try {
-          const resp = await fetch(`/api/public/product/get?id=${encodeURIComponent(String(productId))}`, {
+          const resp = await fetch(`/api/public/product/get?id=${encodeURIComponent(String(productId))}&pricing=published`, {
             signal: controller.signal,
           });
           if (!resp.ok) return null;
