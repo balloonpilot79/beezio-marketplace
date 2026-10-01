@@ -1,3 +1,4 @@
+import { isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -19,17 +20,7 @@ interface AffiliateStorePageProps {
   storeSlug?: string;
 }
 
-const isVisibleStorefrontProduct = (product: any): boolean => {
-  const status = String(product?.status || '').trim().toLowerCase();
-  const isActive = product?.is_active === true;
-  const isPromotable = product?.is_promotable === true;
-  if (status === 'active' || isActive || isPromotable) return true;
-  const hasExplicitFlags =
-    Object.prototype.hasOwnProperty.call(product || {}, 'is_active') ||
-    Object.prototype.hasOwnProperty.call(product || {}, 'is_promotable') ||
-    status.length > 0;
-  return !hasExplicitFlags;
-};
+const isVisibleStorefrontProduct = isPublicAffiliateProduct;
 
 const isProductInStock = (product: any): boolean => {
   if (product?.track_inventory === false) return true;

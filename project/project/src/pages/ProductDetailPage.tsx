@@ -1,3 +1,4 @@
+import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { DEFAULT_PHYSICAL_RETURN_POLICY } from '../utils/returnPolicy';
 import React, { useState, useEffect, useMemo } from 'react';
 import { flushSync } from 'react-dom';
@@ -1604,7 +1605,7 @@ const ProductDetailPage: React.FC = () => {
     );
   }
 
-  if (!product) {
+  if (!product || !isPublicStoreProduct(product)) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h1>

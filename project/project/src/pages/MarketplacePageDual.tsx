@@ -1,3 +1,4 @@
+import { isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Grid, List, Search, SlidersHorizontal } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
@@ -72,22 +73,7 @@ const CATEGORY_KEYWORDS: Array<{ category: string; keywords: string[] }> = [
   { category: 'Automotive', keywords: ['car', 'auto', 'vehicle', 'truck', 'tire'] },
 ];
 
-const isMarketplaceVisible = (row: any) => {
-  const status = String(row?.status || '').trim().toLowerCase();
-  if (status === 'draft' || status === 'archived' || status === 'store_only') {
-    return false;
-  }
-  const promotable = row?.is_promotable === true;
-  const active = row?.is_active === true;
-  const hasExplicitVisibilityState =
-    Object.prototype.hasOwnProperty.call(row || {}, 'is_active') ||
-    Object.prototype.hasOwnProperty.call(row || {}, 'is_promotable') ||
-    status.length > 0;
-  if (status === 'active' || promotable || active) {
-    return true;
-  }
-  return !hasExplicitVisibilityState;
-};
+const isMarketplaceVisible = isPublicAffiliateProduct;
 
 const slugify = (value: string) =>
   String(value || '')

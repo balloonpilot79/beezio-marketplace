@@ -1,3 +1,4 @@
+import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
@@ -281,7 +282,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                 setCanonicalSellerId(String(payload.seller_id));
                 setCanonicalStorefrontId(payload.storefront_id ? String(payload.storefront_id) : null);
                 setSeller(resolvedStorefrontSeller);
-                setProducts(Array.isArray(payload.products) ? payload.products : []);
+                setProducts(Array.isArray(payload.products) ? payload.products.filter(isPublicStoreProduct) : []);
                 setInsuranceListings(Array.isArray(payload.insurance_listings) ? payload.insurance_listings : []);
                 setCustomPages(Array.isArray(payload.custom_pages) ? payload.custom_pages : []);
                 setStoreCollections(Array.isArray(payload.collections) ? payload.collections : []);

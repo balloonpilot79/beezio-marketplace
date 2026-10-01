@@ -1,3 +1,4 @@
+import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -245,7 +246,7 @@ const SearchPage: React.FC = () => {
         // Best-effort: if the RPC returns is_active, filter out unlisted items.
         // (If is_active isn't returned, we can't filter reliably here.)
         const filtered = (searchData || []).filter((row: any) => row?.is_active !== false);
-        setResults(filtered);
+        setResults(filtered.filter(isPublicStoreProduct));
       } catch (rpcError) {
         console.warn('Advanced search function not available, using basic search:', rpcError);
         
@@ -326,7 +327,7 @@ const SearchPage: React.FC = () => {
           relevance_score: 1.0
         })) || [];
 
-        setResults(transformedData);
+        setResults(transformedData.filter(isPublicStoreProduct));
       }
 
     } catch (error) {
@@ -378,7 +379,7 @@ const SearchPage: React.FC = () => {
             <div className="flex justify-center">
               <VisualSearch
                 onResultsFound={(products) => {
-                  setResults(products);
+                  setResults(products.filter(isPublicStoreProduct));
                   setTotalCount(products.length);
                   setCurrentPage(1);
                 }}
