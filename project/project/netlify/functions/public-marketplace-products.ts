@@ -1,3 +1,4 @@
+import { isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
@@ -11,7 +12,7 @@ function json(statusCode: number, body: unknown) {
     statusCode,
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=15, s-maxage=15, stale-while-revalidate=30',
+      'Cache-Control': 'no-store',
     },
     body: JSON.stringify(body),
   };
@@ -123,7 +124,7 @@ const handler: Handler = async () => {
     }
 
     const candidates = (Array.isArray(data) ? data : []).filter(
-      (product: any) => !isPublicTestProduct(product) && (isLiveMarketplaceProduct(product) || isLovingNutritionPreview(product))
+      (product: any) => isPublicAffiliateProduct(product) && isLiveMarketplaceProduct(product)
     );
 
     const categoryIds = Array.from(new Set(

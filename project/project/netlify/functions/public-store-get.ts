@@ -1,3 +1,4 @@
+import { isPublicStoreProduct, isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import { buildStoreInsuranceListings } from './_lib/storeInsurance';
@@ -5,31 +6,13 @@ import { applyStorefrontProductPricing } from '../../shared/productPricing';
 import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 import { isSupplyLineProduct, sanitizeSupplyLineProduct } from '../../shared/publicSupplyLineProduct';
 
-type CacheEntry = { expiresAt: number; value: any };
-const memCache = new Map<string, CacheEntry>();
-
-function getFromCache<T = any>(key: string): T | null {
-  const hit = memCache.get(key);
-  if (!hit) return null;
-  if (Date.now() >= hit.expiresAt) {
-    memCache.delete(key);
-    return null;
-  }
-  return hit.value as T;
-}
-
-function setCache(key: string, value: any, ttlMs: number) {
-  memCache.set(key, { expiresAt: Date.now() + ttlMs, value });
-}
-
 function json(statusCode: number, body: unknown) {
   return {
     statusCode,
     headers: {
       'Content-Type': 'application/json',
-      // Cache at the CDN to avoid repeated Supabase round-trips.
       // stale-while-revalidate smooths over cold starts.
-      'Cache-Control': 'public, max-age=5, s-maxage=15, stale-while-revalidate=30',
+      'Cache-Control': 'no-store',
     },
     body: JSON.stringify(body),
   };
@@ -91,18 +74,7 @@ async function selectMaybeSingleResilient(
   return { data: null, error: lastError };
 }
 
-function isVisibleStorefrontProduct(product: any): boolean {
-  const status = String(product?.status || '').trim().toLowerCase();
-  if (status === 'draft' || status === 'archived') return false;
-  const isActive = product?.is_active === true;
-  const isPromotable = product?.is_promotable === true;
-  if (status === 'active' || isActive || isPromotable) return true;
-  const hasExplicitFlags =
-    Object.prototype.hasOwnProperty.call(product || {}, 'is_active') ||
-    Object.prototype.hasOwnProperty.call(product || {}, 'is_promotable') ||
-    status.length > 0;
-  return !hasExplicitFlags;
-}
+const isVisibleStorefrontProduct = (product: any): boolean => isPublicStoreProduct(product);
 
 function looksLikeCjProduct(product: any): boolean {
   return isSupplyLineProduct(product);
@@ -190,9 +162,6 @@ const handler: Handler = async (event) => {
     const storeRaw = String(event.queryStringParameters?.store || event.queryStringParameters?.sellerId || event.queryStringParameters?.id || '').trim();
     if (!storeRaw) return json(400, { ok: false, error: 'Missing store' });
 
-    const cacheKey = `public-store-get:v4:${storeRaw.toLowerCase()}`;
-    const cached = getFromCache(cacheKey);
-    if (cached) return json(200, cached);
 
     const supabaseUrl = requireEnv('SUPABASE_URL', ['VITE_SUPABASE_URL']);
     const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
@@ -342,7 +311,7 @@ const handler: Handler = async (event) => {
 
     // Conservative public fields only; tolerate schema drift by retrying when a column is missing.
     let selectFields =
-      'id,title,description,price,currency,images,videos,category,category_id,shipping_cost,shipping_price,shipping_options,shipping_reserve_amount,requires_shipping,is_digital,stock_quantity,total_inventory,in_stock,track_inventory,inventory_source,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,supplier_cost_amount,seller_markup_amount,influencer_allocation_amount,paypal_processing_allowance,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status,lineage,source_platform,source,dropship_provider,cj_product_id,cj_pid,cj_spu,display_search_code,seller_ask,seller_amount,seller_ask_price,calculated_customer_price';
+      'id,title,description,price,currency,images,videos,category,category_id,shipping_cost,shipping_price,shipping_options,shipping_reserve_amount,requires_shipping,is_digital,stock_quantity,total_inventory,in_stock,track_inventory,affiliate_enabled,inventory_source,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,supplier_cost_amount,seller_markup_amount,influencer_allocation_amount,paypal_processing_allowance,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status,lineage,source_platform,source,dropship_provider,cj_product_id,cj_pid,cj_spu,display_search_code,seller_ask,seller_amount,seller_ask_price,calculated_customer_price';
 
     let sellerOwnedProducts: any[] = [];
     let curatedProducts: any[] = [];
@@ -389,7 +358,7 @@ const handler: Handler = async (event) => {
     }
 
     const productsById = new Map<string, any>();
-    [...sellerOwnedProducts, ...curatedProducts]
+    [...sellerOwnedProducts, ...curatedProducts.filter((product: any) => sellerAliases.includes(String(product.seller_id)) || isPublicAffiliateProduct(product))]
       .filter((product: any) => isVisibleStorefrontProduct(product))
       .forEach((product: any) => {
         const productId = String(product?.id || '').trim();
@@ -473,7 +442,7 @@ const handler: Handler = async (event) => {
           });
 
           (promotedProducts || [])
-            .filter((product: any) => isVisibleStorefrontProduct(product))
+            .filter((product: any) => isPublicAffiliateProduct(product))
             .forEach((product: any) => {
               const productId = String(product?.id || '').trim();
               if (!productId || combinedById.has(productId)) return;
@@ -542,8 +511,6 @@ const handler: Handler = async (event) => {
       product_placements: placementsData || [],
     };
 
-    // Cache hot stores briefly in-memory to avoid repeat Supabase calls.
-    setCache(cacheKey, responseBody, 5_000);
 
     return json(200, responseBody);
   } catch (e) {

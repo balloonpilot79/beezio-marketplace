@@ -208,7 +208,7 @@ const handler: Handler = async (event) => {
 
     if (productIds.length) {
       let selectFields =
-        'id,title,name,description,price,seller_ask,seller_amount,seller_ask_price,seller_id,commission_rate,affiliate_commission_rate,commission_type,affiliate_commission_type,flat_commission_amount,affiliate_commission_value,category,image_url,images,is_active,is_promotable,affiliate_enabled,status,created_at';
+        'id,title,name,description,price,seller_ask,seller_amount,seller_ask_price,seller_id,commission_rate,affiliate_commission_rate,commission_type,affiliate_commission_type,flat_commission_amount,affiliate_commission_value,category,image_url,images,stock_quantity,total_inventory,in_stock,track_inventory,is_active,is_promotable,affiliate_enabled,status,created_at';
       let productRows: any[] = [];
 
       for (let attempt = 0; attempt < 16; attempt++) {
@@ -229,7 +229,7 @@ const handler: Handler = async (event) => {
         return json(500, { ok: false, error: 'Failed to load product details', details: (error as any)?.message || String(error) });
       }
 
-      const visibleProducts = productRows.filter(isVisibleProduct);
+      const visibleProducts = productRows;
       const sellerIds = Array.from(new Set(visibleProducts.map((product: any) => String(product?.seller_id || '').trim()).filter(Boolean)));
       const sellerNameById = new Map<string, string>();
       if (sellerIds.length) {
