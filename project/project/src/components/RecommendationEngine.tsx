@@ -1,3 +1,5 @@
+import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
+import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -126,6 +128,7 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
             id,
             title,
             price,
+            calculated_customer_price,
             images,
             average_rating,
             review_count,
@@ -139,10 +142,11 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
         if (prodError) throw prodError;
 
         // Combine recommendation data with product details
-        const enrichedRecommendations = products?.map(product => {
+        const enrichedRecommendations = products?.filter(product => !isPublicTestProduct(product)).map(product => {
           const recData = data.find((r: any) => r.product_id === product.id);
           return {
             ...product,
+            price: getBuyerFacingProductPrice(product),
             recommendation_score: recData?.recommendation_score || 0,
             recommendation_reason: recData?.recommendation_reason || 'recommended'
           };
@@ -172,6 +176,7 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           id,
           title,
           price,
+          calculated_customer_price,
           images,
           average_rating,
           review_count,
@@ -185,8 +190,9 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
 
       if (error) throw error;
 
-      const fallbackRecommendations = data?.map(product => ({
+      const fallbackRecommendations = data?.filter(product => !isPublicTestProduct(product)).map(product => ({
         ...product,
+        price: getBuyerFacingProductPrice(product),
         recommendation_score: product.average_rating || 0,
         recommendation_reason: 'popular'
       })) || [];
@@ -337,12 +343,6 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
     }).format(price);
   };
 
-  const calculateCommission = (product: RecommendedProduct) => {
-    if (product.commission_type === 'percentage') {
-      return (product.price * product.commission_rate) / 100;
-    }
-    return product.flat_commission_amount;
-  };
 
   const nextSlide = () => {
     setCurrentIndex((prev) => (prev + 1) % Math.max(1, recommendations.length - 3));
@@ -419,10 +419,9 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           >
             {recommendations.map((product) => {
               const images = productImages[product.id] || [];
-              const commission = calculateCommission(product);
               
               return (
-                <div key={product.id} className="w-1/4 flex-shrink-0 px-2">
+                <div key={product.id} className="w-full sm:w-1/2 lg:w-1/4 flex-shrink-0 px-2">
                   <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 group">
                     <Link
                       to={`/product/${product.id}`}
@@ -449,13 +448,6 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
                           <div className="absolute top-2 left-2 bg-primary-500 bg-opacity-90 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center space-x-1">
                             {getReasonIcon(product.recommendation_reason)}
                             <span className="hidden sm:inline">{getReasonText(product.recommendation_reason)}</span>
-                          </div>
-                        )}
-
-                        {/* Commission Badge */}
-                        {commission > 0 && (
-                          <div className="absolute bottom-2 right-2 bg-secondary-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                            ${commission.toFixed(2)} 💰
                           </div>
                         )}
                       </div>
@@ -489,14 +481,14 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
                       {/* Recommendation Score */}
                       {showReasons && (
                         <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>Match: {Math.round(product.recommendation_score * 100)}%</span>
-                          <button
-                            onClick={() => trackBehavior('cart_add', product.id)}
+                          <span>{personalizedRecommendationsEnabled && product.recommendation_score > 0 ? getReasonText(product.recommendation_reason) : 'Free shipping'}</span>
+                          <Link
+                            to={`/product/${product.id}`}
                             className="flex items-center space-x-1 text-primary-600 hover:text-primary-700"
                           >
                             <ShoppingCart className="w-3 h-3" />
-                            <span>Add</span>
-                          </button>
+                            <span>View product</span>
+                          </Link>
                         </div>
                       )}
                     </div>
@@ -509,7 +501,6 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
 
         {variant === 'grid' && recommendations.map((product) => {
           const images = productImages[product.id] || [];
-          const commission = calculateCommission(product);
           
           return (
             <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 group">
@@ -538,13 +529,6 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
                     <div className="absolute top-2 left-2 bg-primary-500 bg-opacity-90 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center space-x-1">
                       {getReasonIcon(product.recommendation_reason)}
                       <span>{getReasonText(product.recommendation_reason)}</span>
-                    </div>
-                  )}
-
-                  {/* Commission Badge */}
-                  {commission > 0 && (
-                    <div className="absolute bottom-2 right-2 bg-secondary-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                      ${commission.toFixed(2)} 💰
                     </div>
                   )}
                 </div>
@@ -578,14 +562,14 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
                 {/* Recommendation Score */}
                 {showReasons && (
                   <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>Match: {Math.round(product.recommendation_score * 100)}%</span>
-                    <button
-                      onClick={() => trackBehavior('cart_add', product.id)}
+                    <span>{personalizedRecommendationsEnabled && product.recommendation_score > 0 ? getReasonText(product.recommendation_reason) : 'Free shipping'}</span>
+                    <Link
+                      to={`/product/${product.id}`}
                       className="flex items-center space-x-1 text-primary-600 hover:text-primary-700"
                     >
                       <ShoppingCart className="w-3 h-3" />
-                      <span>Add</span>
-                    </button>
+                      <span>View product</span>
+                    </Link>
                   </div>
                 )}
               </div>

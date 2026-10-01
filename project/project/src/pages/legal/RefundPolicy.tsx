@@ -14,7 +14,7 @@ const RefundPolicy: React.FC = () => (
       <h2 className="text-xl font-semibold text-gray-900">2. Return Windows</h2>
       <ul className="list-disc list-inside space-y-2">
         <li>Sellers must provide a clear return window in their listings.</li>
-        <li>Returns should be initiated within the seller’s stated timeframe.</li>
+        <li>Request physical-product returns within 14 days of delivery. Any exclusions must be clearly disclosed on the product page before purchase. Supplements, cosmetics, and personal-care products must be unopened with seals intact. Damaged, incorrect, or defective items can be reported through order support within 14 days.</li>
       </ul>
     </section>
     <section>

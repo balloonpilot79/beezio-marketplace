@@ -1,3 +1,4 @@
+import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { applyCanonicalProductPricing } from '../../shared/productPricing';
@@ -122,7 +123,7 @@ const handler: Handler = async () => {
     }
 
     const candidates = (Array.isArray(data) ? data : []).filter(
-      (product: any) => isLiveMarketplaceProduct(product) || isLovingNutritionPreview(product)
+      (product: any) => !isPublicTestProduct(product) && (isLiveMarketplaceProduct(product) || isLovingNutritionPreview(product))
     );
 
     const categoryIds = Array.from(new Set(

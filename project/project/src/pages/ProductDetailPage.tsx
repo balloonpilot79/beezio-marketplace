@@ -1,3 +1,4 @@
+import { DEFAULT_PHYSICAL_RETURN_POLICY } from '../utils/returnPolicy';
 import React, { useState, useEffect, useMemo } from 'react';
 import { flushSync } from 'react-dom';
 import { useParams, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -2462,9 +2463,9 @@ const ProductDetailPage: React.FC = () => {
                 <p className="text-sm text-gray-600">
                   Returns and support are handled directly by the seller.
                 </p>
-                {sellerStoreSettings?.return_policy && (
+                {!product.is_digital && (
                   <p className="text-sm text-gray-600 mt-1">
-                    Return policy: {sellerStoreSettings.return_policy}
+                    Return policy: {sellerStoreSettings?.return_policy || DEFAULT_PHYSICAL_RETURN_POLICY}
                   </p>
                 )}
               </div>

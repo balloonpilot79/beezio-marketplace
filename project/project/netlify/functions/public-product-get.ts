@@ -1,6 +1,7 @@
+import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
-import { applyCanonicalProductPricing } from '../../shared/productPricing';
+import { applyStorefrontProductPricing } from '../../shared/productPricing';
 import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 import { sanitizeSupplyLineProduct } from '../../shared/publicSupplyLineProduct';
 
@@ -151,7 +152,7 @@ const normalizeLegacyProduct = (product: any) => {
 
 const isPublicProduct = (product: any) => {
   const status = String(product?.status || '').trim().toLowerCase();
-  return product?.is_active === true && status !== 'draft' && status !== 'archived';
+  return !isPublicTestProduct(product) && product?.is_active === true && status !== 'draft' && status !== 'archived';
 };
 
 const handler: Handler = async (event) => {
@@ -318,7 +319,7 @@ const handler: Handler = async (event) => {
       };
     }
 
-    let normalizedProduct = applyCanonicalProductPricing(normalizeLegacyProduct(product));
+    let normalizedProduct = applyStorefrontProductPricing(normalizeLegacyProduct(product));
     const isSupplyLinePlus = looksLikeCjProduct(normalizedProduct);
     if (isSupplyLinePlus) {
       normalizedProduct = sanitizeSupplyLineProduct(normalizedProduct);

@@ -33,16 +33,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
   if (process.env.NODE_ENV !== 'production') {
     console.debug('AuthModal: Component rendering, isOpen prop:', isOpen, 'mode:', initialMode);
   }
-  
+
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
   const [audience, setAudience] = useState(initialAudience);
   useEffect(() => { setAudience(initialAudience); }, [initialAudience, isOpen]);
-  
+
   // Update internal mode when prop changes
   React.useEffect(() => {
     setMode(initialMode);
   }, [initialMode]);
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +96,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
     ? [
         'One buyer account that works across every Beezio storefront.',
         'Your orders, receipts, and support history stay in one place.',
-        'Email confirmation keeps the account verified before sign-in.',
+        'Start shopping immediately—no email confirmation step.',
       ]
     : [
         'Seller, affiliate, and influencer tools in one business account.',
@@ -284,9 +284,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
       } else if (mode === 'login') {
         console.log('AuthModal: Attempting sign in...');
         const result = await signIn(formData.email, formData.password);
-        
+
         if (result && (result.user || result.session)) {
-          
+
           // Success! Just close and navigate
           onClose();
 
@@ -314,26 +314,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         }
         if (isNonBuyer && !String(formData.fullName || '').trim()) {
           setError('Full name is required.');
-          setLoading(false);
-          return;
-        }
-        if (isNonBuyer && !String(formData.phone || '').trim()) {
-          setError('Phone number is required.');
-          setLoading(false);
-          return;
-        }
-        if (isNonBuyer && !String((formData as any).streetAddress || '').trim()) {
-          setError('Street address is required.');
-          setLoading(false);
-          return;
-        }
-        if (isNonBuyer && !String(formData.city || '').trim()) {
-          setError('City is required.');
-          setLoading(false);
-          return;
-        }
-        if (isNonBuyer && !String(formData.state || '').trim()) {
-          setError('State is required.');
           setLoading(false);
           return;
         }
@@ -381,7 +361,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           paypalEmail: isNonBuyer ? String((formData as any).paypalEmail || '').trim() : '',
           paypalConfirmed: isNonBuyer ? Boolean((formData as any).paypalConfirmed) : false,
         });
-        
+
         if (result && result.user) {
           // Supabase: If email confirmation is required, session will be null.
           // Switch the UI immediately instead of waiting on profile setup work.
@@ -439,7 +419,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           } catch (codeErr) {
             console.warn('Referral code ensure failed (non-blocking):', codeErr);
           }
-          
+
           // Success! Just close and navigate
           console.log('AuthModal: Signup successful, user:', result.user?.email);
           onClose();
@@ -722,6 +702,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                     </label>
                   </div>
                 )}
+                {isBusinessAudience && (
+                  <details className="space-y-3">
+                    <summary className="cursor-pointer text-sm font-semibold">Contact and address (optional)</summary>
+                    <p className="text-xs text-gray-600">You can complete these details in your Business Center.</p>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Phone
@@ -731,7 +715,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    required={isBusinessAudience}
+
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
@@ -744,7 +728,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                     name="streetAddress"
                     value={(formData as any).streetAddress || ''}
                     onChange={handleChange}
-                    required={isBusinessAudience}
+
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
@@ -758,7 +742,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                       name="city"
                       value={formData.city}
                       onChange={handleChange}
-                      required={isBusinessAudience}
+
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -771,7 +755,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                       name="state"
                       value={formData.state}
                       onChange={handleChange}
-                      required={isBusinessAudience}
+
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -788,6 +772,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
+                  </details>
+                )}
               </React.Fragment>
             )}
           </div>
@@ -797,12 +783,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
               disabled={loading || Boolean(storeSlugBlockingState)}
               className="bz-button bz-button-gold w-full disabled:opacity-50"
             >
-              {loading ? 'Please wait...' : 
-               mode === 'login' ? 'Sign In' : 
-               mode === 'register' ? 'Create Account' : 
+              {loading ? 'Please wait...' :
+               mode === 'login' ? 'Sign In' :
+               mode === 'register' ? 'Create Account' :
                'Send Reset Email'}
             </button>
-            
+
             {mode === 'login' && (
               <div className="mt-3 text-center space-y-2">
                 <button
@@ -835,11 +821,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                 </button>
               </div>
             )}
-            
+
             <div className="mt-4 text-center">
               <p className="text-gray-600 text-sm">
-                {mode === 'login' ? "Don't have an account?" : 
-                 mode === 'register' ? 'Already have an account?' : 
+                {mode === 'login' ? "Don't have an account?" :
+                 mode === 'register' ? 'Already have an account?' :
                  'Remember your password?'}
                 <button
                   type="button"

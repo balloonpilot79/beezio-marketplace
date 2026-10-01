@@ -2,7 +2,7 @@ import React from 'react';
 import LegalPageLayout from './LegalPageLayout';
 
 const PayoutPolicy: React.FC = () => (
-  <LegalPageLayout title="Payout Policy" updated="July 13, 2026">
+  <LegalPageLayout title="Payout Policy" updated="September 30, 2026">
     <section>
       <p>
         Standard seller, affiliate, and influencer earnings are held for 14 days after order completion. Beezio
@@ -13,7 +13,9 @@ const PayoutPolicy: React.FC = () => (
       <h2 className="text-xl font-semibold text-gray-900">Payout Schedule and Eligibility</h2>
       <ul className="list-disc list-inside space-y-2">
         <li>Eligible payouts are processed on the 15th and the last calendar day of each month.</li>
-        <li>A valid payout destination must be on file before funds can be released.</li>
+        <li>Payouts are sent through PayPal only. A valid, confirmed PayPal payout email must be on file.</li>
+        <li>The minimum payout is $5 in eligible earnings. Smaller balances carry forward until the minimum is reached.</li>
+        <li>Complete any required payout and tax information in your Business Center before funds can be released.</li>
         <li>Amounts and recipients are recorded in the order ledger at the time of sale.</li>
         <li>Payouts are not released during the standard hold.</li>
         <li>Orders that require shipping are not eligible for seller payout until valid tracking is on file.</li>

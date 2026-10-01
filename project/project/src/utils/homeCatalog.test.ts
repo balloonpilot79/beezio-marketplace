@@ -32,6 +32,7 @@ describe("homepage live catalog", () => {
     { catalog_preview: true },
     { is_active: false },
     { id: "" },
+    { id: "721f1a14-645b-4aee-97b2-ec9ae780eeca" },
     { title: "" },
     { price: 0, calculated_customer_price: 0 },
   ])(

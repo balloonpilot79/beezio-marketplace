@@ -38,7 +38,7 @@ const SignUpPage: React.FC = () => {
     useState(false);
   const [acceptedTaxDelivery, setAcceptedTaxDelivery] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [skipPayoutSetup, setSkipPayoutSetup] = useState(false);
+  const [skipPayoutSetup, setSkipPayoutSetup] = useState(true);
   const [paypalEmail, setPaypalEmail] = useState("");
   const [paypalConfirmed, setPaypalConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -425,40 +425,8 @@ const SignUpPage: React.FC = () => {
       return;
     }
 
-    if (!acceptedTaxDelivery) {
-      setError(
-        "You must agree to receive tax compliance notices in your dashboard and email.",
-      );
-      setLoading(false);
-      return;
-    }
-
     if (!String(formData.fullName || "").trim()) {
       setError("Full name is required.");
-      setLoading(false);
-      return;
-    }
-
-    if (!String(formData.phone || "").trim()) {
-      setError("Phone number is required.");
-      setLoading(false);
-      return;
-    }
-
-    if (!String(formData.streetAddress || "").trim()) {
-      setError("Street address is required.");
-      setLoading(false);
-      return;
-    }
-
-    if (!String(formData.city || "").trim()) {
-      setError("City is required.");
-      setLoading(false);
-      return;
-    }
-
-    if (!String(formData.state || "").trim()) {
-      setError("State is required.");
       setLoading(false);
       return;
     }
@@ -1164,6 +1132,9 @@ const SignUpPage: React.FC = () => {
               )}
             </div>
           )}
+          <details className="space-y-4">
+            <summary className="cursor-pointer text-sm font-semibold">Contact and address (optional)</summary>
+            <p className="text-sm text-gray-600">Complete these later in your Business Center.</p>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Phone
@@ -1175,7 +1146,6 @@ const SignUpPage: React.FC = () => {
               autoComplete="tel"
               value={formData.phone}
               onChange={handleChange}
-              required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -1190,7 +1160,6 @@ const SignUpPage: React.FC = () => {
               autoComplete="street-address"
               value={formData.streetAddress}
               onChange={handleChange}
-              required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -1206,8 +1175,7 @@ const SignUpPage: React.FC = () => {
                 autoComplete="address-level2"
                 value={formData.city}
                 onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
             <div>
@@ -1221,8 +1189,7 @@ const SignUpPage: React.FC = () => {
                 autoComplete="address-level1"
                 value={formData.state}
                 onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
           </div>
@@ -1240,6 +1207,7 @@ const SignUpPage: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
+          </details>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-semibold">
@@ -1309,11 +1277,9 @@ const SignUpPage: React.FC = () => {
           </div>
 
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-            <p className="font-semibold">Tax and contractor acknowledgement</p>
+            <p className="font-semibold">Business account acknowledgement</p>
             <p className="mt-2 text-amber-900">
-              Beezio business accounts use independent contractor status. Your
-              dashboard will hold your tax profile, payout reporting, and any
-              year-end 1099 delivery status.
+              You operate your own business. Payout and tax details can be completed in your Business Center before funds are released.
             </p>
             <div className="mt-3 space-y-3">
               <label className="flex items-start gap-2">
@@ -1338,7 +1304,7 @@ const SignUpPage: React.FC = () => {
                   className="mt-1 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
                 />
                 <span>
-                  I agree that Beezio may place my tax forms, reporting notices,
+                  Optional: I agree that Beezio may place my tax forms, reporting notices,
                   and year-end documents in my dashboard and send alerts to my
                   email.
                 </span>
@@ -1412,7 +1378,6 @@ const SignUpPage: React.FC = () => {
               loading ||
               !acceptedTerms ||
               !acceptedIndependentContractor ||
-              !acceptedTaxDelivery ||
               (inviteLinkPresent && referralValidationLoading) ||
               storeSlugBlockingState
             }

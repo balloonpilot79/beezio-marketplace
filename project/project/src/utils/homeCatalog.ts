@@ -1,3 +1,4 @@
+import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import { getBuyerFacingProductPrice } from "./buyerPrice";
 import { normalizeProductImages } from "./imageHelpers";
 
@@ -18,6 +19,7 @@ export function prepareHomeProducts(rows: any[]): HomeProduct[] {
       const status = String(row?.status || "").toLowerCase();
       if (
         !row?.id ||
+        isPublicTestProduct(row) ||
         seen.has(String(row.id)) ||
         !row.title ||
         row.is_digital === true ||

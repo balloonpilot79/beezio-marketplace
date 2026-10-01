@@ -374,10 +374,10 @@ export default function HomePageBZO() {
                 loading="lazy"
               />
               <div>
-                <span>For your daily ritual</span>
+                <span>Coffee collection coming soon</span>
                 <h3>RedTail</h3>
                 <p>
-                  Explore the brand <ArrowRight size={16} />
+                  Preview the brand <ArrowRight size={16} />
                 </p>
               </div>
             </Link>
