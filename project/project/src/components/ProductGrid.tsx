@@ -1,3 +1,4 @@
+import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 ﻿import React, { useMemo, useState, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -156,7 +157,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 
   useEffect(() => {
     if (externalProducts) {
-      setProducts(externalProducts);
+      setProducts(externalProducts.filter(isPublicStoreProduct));
       setLoading(false);
       setError(null);
     } else {
@@ -190,7 +191,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
         console.log('ProductGrid: Supabase error (no sample fallback):', error);
         setError('Unable to load products yet.');
       } else {
-        setProducts(data || []);
+        setProducts((data || []).filter(isPublicStoreProduct));
         setError(null);
       }
     } catch (error) {
