@@ -1,4 +1,3 @@
-const fetch = require('node-fetch');
 const crypto = require('crypto');
 
 exports.handler = async function (event, context) {

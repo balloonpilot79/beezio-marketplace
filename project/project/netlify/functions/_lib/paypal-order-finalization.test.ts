@@ -130,6 +130,7 @@ describe('finalizePayPalOrderPayment', () => {
       orders: [
         {
           id: 'order-1',
+          status: 'shipped',
           seller_id: 'seller-1',
           partner_id: null,
           influencer_id: null,
@@ -179,7 +180,8 @@ describe('finalizePayPalOrderPayment', () => {
     expect(result.idempotent).toBe(true);
     expect(result.repaired).toBe(true);
     expect(supabase.rpcCalls).toHaveLength(0);
-    expect(supabase.store.orders[0].status).toBe('completed');
+    expect(supabase.store.orders[0].status).toBe('shipped');
+    expect(supabase.store.orders[0].total_charged).toBe(100);
     expect(supabase.store.payout_snapshots).toHaveLength(1);
     expect(supabase.store.order_money_ledger.length).toBeGreaterThan(1);
   });

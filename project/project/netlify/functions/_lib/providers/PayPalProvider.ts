@@ -32,8 +32,7 @@ export class PayPalProvider implements PaymentProvider {
 
   private extractCaptureId(payload: any): string | null {
     return String(
-      payload?.purchase_units?.[0]?.payments?.captures?.[0]?.id ||
-      payload?.id ||
+      payload?.purchase_units?.[0]?.payments?.captures?.find((capture: any) => capture?.status === 'COMPLETED')?.id ||
       ''
     ).trim() || null;
   }
@@ -187,6 +186,14 @@ export class PayPalProvider implements PaymentProvider {
     }
 
     const captureId = this.extractCaptureId(data);
+    if (!captureId || String(data?.status || '').toUpperCase() !== 'COMPLETED') {
+      throw new PayPalProviderError({
+        message: 'Payment is still being verified. Do not place another order. Check this payment again or contact support with your checkout reference.',
+        statusCode: 409,
+        code: 'PAYMENT_NOT_COMPLETED',
+        raw: data,
+      });
+    }
 
     return {
       providerOrderId,

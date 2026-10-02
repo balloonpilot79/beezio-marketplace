@@ -1,3 +1,4 @@
+import { isConfirmedPaidOrder, isRefundedPayment } from '../../shared/accountingStatus';
 ﻿import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -358,7 +359,7 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
             order_number: order.order_number || null,
             product_title: order.order_items?.[0]?.products?.title || 'Product',
             seller_id: order.order_items?.[0]?.products?.seller_id || null,
-            amount: order.total_amount,
+            amount: order.total_charged ?? order.total_amount,
             status: buyerStatus,
             payment_status: order.payment_status || null,
             fulfillment_status: order.fulfillment_status || null,
@@ -447,7 +448,9 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
     }
   };
 
-  const totalPurchases = orders.length;
+  const totalPurchases = orders.filter(order => isConfirmedPaidOrder(order) || isRefundedPayment(order)).length;
+  const totalPaid = orders.filter(isConfirmedPaidOrder).reduce((sum, order) => sum + Math.round(Number(order.amount || 0) * 100), 0) / 100;
+  const totalRefunded = orders.filter(isRefundedPayment).reduce((sum, order) => sum + Math.round(Number(order.amount || 0) * 100), 0) / 100;
   const totalSavings = watchlist.reduce((sum, item) => sum + Number(item.price_drop || 0), 0);
   const watchlistSavings = watchlist.reduce((sum, item) => sum + Math.max(0, Number(item.original_price || 0) - Number(item.current_price || 0)), 0);
 
@@ -497,7 +500,9 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
             <div>
               <p className="text-sm font-medium text-gray-600">Total Purchases</p>
               <p className="text-2xl font-bold text-gray-900">{totalPurchases}</p>
-              <p className="text-sm text-gray-600 mt-1">From completed checkout orders</p>
+              <p className="text-sm text-gray-600 mt-1">Paid purchases, including refunded purchases</p>
+              <p className="mt-2 text-sm">Current paid orders: {formatMoney(totalPaid)}</p>
+              <p className="text-sm">Refunded order totals: {formatMoney(totalRefunded)}</p>
             </div>
             <Package className="w-8 h-8 text-blue-600" />
           </div>

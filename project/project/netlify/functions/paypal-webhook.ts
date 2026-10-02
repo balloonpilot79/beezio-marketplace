@@ -2,8 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { json } from './_lib/http';
 import { verifyPayPalWebhookSignature } from './_lib/paypal';
-import { getSiteUrl } from './_lib/site';
-import { finalizePayPalOrderPayment } from './_lib/paypal-order-finalization';
+import { recoverCompletedPayPalPayment } from './_lib/paypal-payment-recovery';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const isUuid = (value: unknown) => UUID_REGEX.test(String(value || '').trim());
@@ -37,69 +36,19 @@ export const handler: Handler = async (event) => {
 
     if (insertError) {
       const msg = String(insertError.message || '').toLowerCase();
-      if (msg.includes('duplicate') || msg.includes('unique')) return json(200, { ok: true, skipped: true });
-      return json(500, { error: insertError.message });
+      // Receipt is not proof of successful processing. A failed completion must
+      // remain replayable when PayPal redelivers the same signed event.
+      if (insertError.code === '23505' || msg.includes('duplicate') || msg.includes('unique')) {
+        if (eventType !== 'PAYMENT.CAPTURE.COMPLETED') return json(200, { ok: true, skipped: true });
+      } else {
+        return json(500, { error: insertError.message });
+      }
     }
 
     const resource = payload?.resource || {};
 
     if (eventType === 'PAYMENT.CAPTURE.COMPLETED') {
-      const captureId = String(resource?.id || '').trim();
-      const orderId = String(resource?.supplementary_data?.related_ids?.order_id || '').trim();
-      const rawPayPalFee = Number(resource?.seller_receivable_breakdown?.paypal_fee?.value);
-      const paypalFeeAmount = Number.isFinite(rawPayPalFee) && rawPayPalFee >= 0
-        ? Math.round((rawPayPalFee + Number.EPSILON) * 100) / 100
-        : null;
-
-      if (orderId) {
-        const { data: existingOrder } = await supabaseAdmin
-          .from('orders')
-          .select('id, paid_at')
-          .eq('provider_order_id', orderId)
-          .maybeSingle();
-        const existingPaidAt = String((existingOrder as any)?.paid_at || '').trim();
-        const paidAt = existingPaidAt || new Date().toISOString();
-
-        const { data: updatedOrders } = await supabaseAdmin
-          .from('orders')
-          .update({
-            payment_provider: 'PAYPAL',
-            provider_order_id: orderId,
-            provider_capture_id: captureId || null,
-            payment_status: 'paid',
-            status: 'completed',
-            ...(existingPaidAt ? {} : { paid_at: paidAt }),
-          } as any)
-          .eq('provider_order_id', orderId)
-          .select('id');
-
-        const beezioOrderId = String((updatedOrders as any)?.[0]?.id || '').trim();
-        if (beezioOrderId) {
-          try {
-            await finalizePayPalOrderPayment({
-              supabaseAdmin,
-              orderId: beezioOrderId,
-              providerOrderId: orderId,
-              providerCaptureId: captureId || null,
-              paypalFeeAmount,
-              paidAt,
-            });
-          } catch {
-            const siteUrl = getSiteUrl();
-            if (siteUrl) {
-              try {
-                await fetch(`${siteUrl.replace(/\/$/, '')}/.netlify/functions/paypal-capture-order`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ orderID: orderId }),
-                });
-              } catch {
-                // Best-effort recovery only.
-              }
-            }
-          }
-        }
-      }
+      await recoverCompletedPayPalPayment({ supabaseAdmin, resource });
     }
 
     if (eventType === 'PAYMENT.CAPTURE.REFUNDED') {

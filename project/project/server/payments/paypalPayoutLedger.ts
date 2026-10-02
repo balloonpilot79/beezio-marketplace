@@ -118,6 +118,7 @@ export type PayPalLedgerPlan = {
 };
 
 export type PayoutSnapshotLike = {
+  accounting_reversed?: boolean;
   payee_user_id?: string | null;
   payee_role?: PayeeRole | null;
   amount?: number | null;
@@ -267,7 +268,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
   const sellerSelfSale = sameProfileId(input.sellerId, input.partnerId);
   const affiliatePayoutPaidTotal = input.partnerId ? partnerTotal : 0;
   const affiliatePayoutRetainedTotal = input.partnerId ? 0 : partnerTotal;
-  const sellerEarningsTotal = round2(askTotal + shippingReserveTotal + (sellerSelfSale ? partnerTotal : 0));
+  const sellerEarningsTotal = round2(askTotal + shippingReserveTotal + Number(input.shippingAmount || 0) + (sellerSelfSale ? partnerTotal : 0));
   const partnerEarningsTotal = sellerSelfSale ? 0 : affiliatePayoutPaidTotal;
   const processorAllowanceRemainder = round2(paypalAllowanceTotal - paypalFeeEstimate);
   const pricingRoundingRemainder = round2(
@@ -283,7 +284,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     beezioFeeGrossTotal +
       affiliatePayoutRetainedTotal +
       unusedInfluencerReserveTotal +
-      Math.max(0, processorAllowanceRemainder) +
+      processorAllowanceRemainder +
       pricingRoundingRemainder
   );
 
@@ -389,7 +390,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     });
   };
 
-  for (const line of lineSnapshots) {
+  for (const [lineIndex, line] of lineSnapshots.entries()) {
     const itemKey = String(line.order_item_id || line.product_id || `line-${moneyEntries.length}`);
 
     pushMoneyEntry({
@@ -397,8 +398,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       orderItemId: line.order_item_id,
       payeeType: 'seller',
       payeeId: input.sellerId,
-      grossAmount: round2(line.seller_line_total),
-      netAmount: round2(line.seller_line_total),
+      grossAmount: round2(line.seller_line_total + (lineIndex === 0 ? Number(input.shippingAmount || 0) : 0)),
+      netAmount: round2(line.seller_line_total + (lineIndex === 0 ? Number(input.shippingAmount || 0) : 0)),
       status: 'held',
       holdUntil: input.holdReleaseAt,
       metadata: {
@@ -517,7 +518,9 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     payeeType: 'shipping',
     payeeId: input.sellerId,
     grossAmount: shippingReserveTotal,
-    netAmount: shippingReserveTotal,
+    // Shipping is already payable inside SELLER. Keep the reserve as an
+    // informational gross amount without booking the same money twice.
+    netAmount: 0,
     status: 'tracked',
     holdUntil: null,
     metadata: { basis: 'product_shipping_reserve_baked_into_advertised_price' },
@@ -594,6 +597,7 @@ export function summarizePayeeSnapshots(rows: PayoutSnapshotLike[], payeeUserId?
   let nextReleaseAt: string | null = null;
 
   for (const row of filtered) {
+    if (row.accounting_reversed) continue;
     const amount = round2(Number(row?.amount || 0));
     const status = String(row?.status || '').toUpperCase();
 
