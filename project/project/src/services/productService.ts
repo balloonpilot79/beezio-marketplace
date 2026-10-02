@@ -1,3 +1,4 @@
+import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { supabase, isSupabaseConfigured, supabaseUrl } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
 import type { SampleProduct } from '../data/sampleProducts';
@@ -107,7 +108,7 @@ export const resolveImageUrl = (path?: string | null) => {
 };
 
 const mapProductRowToMarketplaceProduct = (row: ProductRowWithJoins): MarketplaceProduct | null => {
-  if (!row.id || !row.title) {
+  if (!row.id || !row.title || !isPublicStoreProduct(row)) {
     return null;
   }
 

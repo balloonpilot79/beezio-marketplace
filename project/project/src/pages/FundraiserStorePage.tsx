@@ -1,3 +1,4 @@
+import { isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -71,6 +72,7 @@ const FundraiserStorePage: React.FC<FundraiserStorePageProps> = ({ fundraiserId:
                 images,
                 category_id,
                 stock_quantity,
+                is_active, status, is_promotable, affiliate_enabled, total_inventory, in_stock, track_inventory,
                 seller_id,
                 profiles!products_seller_id_fkey (full_name)
               )
@@ -87,7 +89,7 @@ const FundraiserStorePage: React.FC<FundraiserStorePageProps> = ({ fundraiserId:
           });
         }
 
-        const buyerFacingProducts = productRows?.map((row: any) => ({
+        const buyerFacingProducts = productRows?.filter((row: any) => isPublicAffiliateProduct(row.products)).map((row: any) => ({
           id: row.products.id,
           title: row.products.title,
           description: row.custom_description || row.products.description,

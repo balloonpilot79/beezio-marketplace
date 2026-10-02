@@ -1,3 +1,4 @@
+import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
@@ -983,7 +984,7 @@ export const handler: Handler = async (event) => {
           },
         });
       }
-      if (isPublicTestProduct(prod) || prod?.is_active === false || ['draft', 'archived'].includes(String(prod?.status || '').toLowerCase())) {
+      if (!isPublicStoreProduct(prod)) {
         return json(409, { error: 'This product is no longer available. Please remove it from your cart.', code: 'PRODUCT_UNAVAILABLE' });
       }
       const cjItem = isCJProduct(prod, variant);

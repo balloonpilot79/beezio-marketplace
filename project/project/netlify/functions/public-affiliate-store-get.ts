@@ -1,3 +1,4 @@
+import { isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import { buildStoreInsuranceListings } from './_lib/storeInsurance';
@@ -9,7 +10,7 @@ function json(statusCode: number, body: unknown) {
     statusCode,
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=5, s-maxage=15, stale-while-revalidate=30',
+      'Cache-Control': 'no-store',
     },
     body: JSON.stringify(body),
   };
@@ -38,22 +39,8 @@ function extractMissingColumnName(message: string): string | null {
 const isUuid = (value: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
-const isVisibleStorefrontProduct = (product: any): boolean => {
-  const status = String(product?.status || '').trim().toLowerCase();
-  // A stale affiliate_products row must not resurrect a product that the
-  // seller has made store-only or disabled for promotion.
-  if (Object.prototype.hasOwnProperty.call(product || {}, 'affiliate_enabled') && product?.affiliate_enabled === false) {
-    return false;
-  }
-  const isActive = product?.is_active === true;
-  const isPromotable = product?.is_promotable === true;
-  if (status === 'active' || isActive || isPromotable) return true;
-  const hasExplicitFlags =
-    Object.prototype.hasOwnProperty.call(product || {}, 'is_active') ||
-    Object.prototype.hasOwnProperty.call(product || {}, 'is_promotable') ||
-    status.length > 0;
-  return !hasExplicitFlags;
-};
+const isVisibleStorefrontProduct = (product: any): boolean => isPublicAffiliateProduct(product);
+
 
 const sortStorefrontRows = (rows: any[]) =>
   rows.sort((a: any, b: any) => {

@@ -1,3 +1,4 @@
+import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import { getBuyerFacingProductPrice } from "./buyerPrice";
 import { normalizeProductImages } from "./imageHelpers";
@@ -18,6 +19,7 @@ export function prepareHomeProducts(rows: any[]): HomeProduct[] {
     .filter((row) => {
       const status = String(row?.status || "").toLowerCase();
       if (
+        !isPublicStoreProduct(row) ||
         !row?.id ||
         isPublicTestProduct(row) ||
         seen.has(String(row.id)) ||

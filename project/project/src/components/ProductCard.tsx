@@ -1,3 +1,4 @@
+import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import ProductCardCanonical from './ProductCardCanonical';
@@ -15,6 +16,8 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode, affiliateRef, affiliateUid, compact = false }) => {
   const location = useLocation();
   const uid = affiliateUid ?? new URLSearchParams(location.search).get('uid');
+
+  if (!isPublicStoreProduct(product)) return null;
 
   return (
     <div className="relative">

@@ -1,3 +1,4 @@
+import { isPublicStoreProduct, isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 export type StorefrontOrderEntry = {
   product_id: string;
   display_order?: number | null;
@@ -21,7 +22,7 @@ export function buildSellerStorefrontProducts(params: {
     if (p?.id) byId.set(String(p.id), p);
   }
   for (const p of params.curatedProducts || []) {
-    if (p?.id) byId.set(String(p.id), p);
+    if (p?.id && (byId.has(String(p.id)) || isPublicAffiliateProduct(p))) byId.set(String(p.id), p);
   }
 
   const orderById = new Map<string, StorefrontOrderEntry>();
@@ -29,7 +30,7 @@ export function buildSellerStorefrontProducts(params: {
     if (entry?.product_id) orderById.set(String(entry.product_id), entry);
   }
 
-  const products = Array.from(byId.values()).map((product) => {
+  const products = Array.from(byId.values()).filter(isPublicStoreProduct).map((product) => {
     const order = orderById.get(String(product.id));
     return {
       ...product,

@@ -44,4 +44,12 @@ describe('public product details', () => {
     const result: any = await handler({ queryStringParameters: { id: state.product.id } } as any, {} as any, () => {});
     expect(result.statusCode).toBe(404);
   });
+  it.each([{ stock_quantity: 0 }, { in_stock: false }, { is_active: false, is_promotable: true }, { status: 'inactive', is_promotable: true }, { status: 'archived', is_active: true }])('direct links cannot expose unavailable items: %j', async (override) => {
+    Object.assign(state.product, override);
+    const result: any = await handler({ queryStringParameters: { id: state.product.id } } as any, {} as any, () => {});
+    expect(result.statusCode).toBe(404);
+    expect(JSON.parse(result.body).product).toBeUndefined();
+    expect(result.headers['Cache-Control']).toBe('no-store');
+  });
+
 });

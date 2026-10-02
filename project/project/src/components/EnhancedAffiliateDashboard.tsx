@@ -1,3 +1,4 @@
+import { productAvailabilityNotice } from '../../shared/publicProductVisibility';
 import { isEarningSnapshot } from '../../shared/accountingStatus';
 import React, { useMemo, useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -50,6 +51,7 @@ interface Product {
   category: string;
   image_url?: string;
   seller_name: string;
+  availability_notice?: string | null;
 }
 
 interface TrafficSource {
@@ -623,6 +625,11 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
                   category,
                   image_url,
                   images,
+                  stock_quantity,
+                  total_inventory,
+                  in_stock,
+                  track_inventory,
+                  affiliate_enabled,
                   is_active,
                   is_promotable,
                   status,
@@ -656,6 +663,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
                 category: product.category || 'General',
                 seller_name: product.profiles?.full_name || product.seller_name || 'Unknown Seller',
                 image_url: product.image_url || product.images?.[0] || '/api/placeholder/300/200',
+                availability_notice: productAvailabilityNotice(product),
                 display_order: Number(row?.display_order ?? 999),
               } as Product & { display_order?: number };
             })
@@ -2418,6 +2426,7 @@ const AffiliateProductList = ({
                     </div>
                     <div>
                       <div className="font-medium text-gray-900">{product.title}</div>
+                      {product.availability_notice && <div className="mt-1 text-sm font-semibold text-amber-800">{product.availability_notice}</div>}
                       <div className="line-clamp-1 text-xs text-gray-500">{product.description}</div>
                     </div>
                   </div>
@@ -2432,6 +2441,7 @@ const AffiliateProductList = ({
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
+                      disabled={Boolean(product.availability_notice)}
                       onClick={() => onCopyLink(product.id)}
                       className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                     >
@@ -2439,6 +2449,7 @@ const AffiliateProductList = ({
                     </button>
                     <button
                       type="button"
+                      disabled={Boolean(product.availability_notice)}
                       onClick={() => onOpenLinks(product.id)}
                       className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-700"
                     >

@@ -41,7 +41,7 @@ describe("homepage live catalog", () => {
       expect(prepareHomeProducts([{ ...product, ...override }])).toEqual([]);
     },
   );
-  it("deduplicates products and places purchasable products before sold-out products", () => {
+  it("deduplicates products and hides sold-out products", () => {
     const out = { ...product, id: "sold-out", stock_quantity: 0 };
     expect(
       prepareHomeProducts([out, product, product]).map((row) => [
@@ -50,10 +50,9 @@ describe("homepage live catalog", () => {
       ]),
     ).toEqual([
       ["live", true],
-      ["sold-out", false],
     ]);
   });
-  it("respects untracked inventory and existing supplier backorder behavior", () => {
+  it("respects untracked inventory but hides tracked supplier stock at zero", () => {
     expect(
       prepareHomeProducts([
         { ...product, stock_quantity: 0, track_inventory: false },
@@ -62,8 +61,8 @@ describe("homepage live catalog", () => {
     expect(
       prepareHomeProducts([
         { ...product, stock_quantity: 0, dropship_provider: "cj" },
-      ])[0].available,
-    ).toBe(true);
+      ]),
+    ).toEqual([]);
   });
   it("uses a neutral placeholder when there is no actual product image", () => {
     expect(prepareHomeProducts([product])[0].image).toBeNull();

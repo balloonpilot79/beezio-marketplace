@@ -1,3 +1,4 @@
+import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
@@ -5,29 +6,12 @@ import { applyStorefrontProductPricing } from '../../shared/productPricing';
 import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 import { sanitizeSupplyLineProduct } from '../../shared/publicSupplyLineProduct';
 
-type CacheEntry = { expiresAt: number; value: any };
-const memCache = new Map<string, CacheEntry>();
-
-function getFromCache<T = any>(key: string): T | null {
-  const hit = memCache.get(key);
-  if (!hit) return null;
-  if (Date.now() >= hit.expiresAt) {
-    memCache.delete(key);
-    return null;
-  }
-  return hit.value as T;
-}
-
-function setCache(key: string, value: any, ttlMs: number) {
-  memCache.set(key, { expiresAt: Date.now() + ttlMs, value });
-}
-
 function json(statusCode: number, body: unknown) {
   return {
     statusCode,
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=30, s-maxage=300, stale-while-revalidate=86400',
+      'Cache-Control': 'no-store',
     },
     body: JSON.stringify(body),
   };
@@ -152,7 +136,7 @@ const normalizeLegacyProduct = (product: any) => {
 
 const isPublicProduct = (product: any) => {
   const status = String(product?.status || '').trim().toLowerCase();
-  return !isPublicTestProduct(product) && product?.is_active === true && status !== 'draft' && status !== 'archived';
+  return isPublicStoreProduct(product);
 };
 
 const handler: Handler = async (event) => {
@@ -161,9 +145,6 @@ const handler: Handler = async (event) => {
     if (!productIdRaw) return json(400, { ok: false, error: 'Missing id' });
     if (!isUuid(productIdRaw)) return json(400, { ok: false, error: 'Invalid id' });
 
-    const cacheKey = `public-product-get:v4:${productIdRaw}`;
-    const cached = getFromCache(cacheKey);
-    if (cached) return json(200, cached);
 
     const supabaseUrl = requireEnv('SUPABASE_URL', ['VITE_SUPABASE_URL']);
     const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
@@ -347,7 +328,6 @@ const handler: Handler = async (event) => {
       store_settings: storeSettings,
     };
 
-    setCache(cacheKey, responseBody, 60_000);
     return json(200, responseBody);
   } catch (e) {
     return json(500, { ok: false, error: 'Unexpected error', details: e instanceof Error ? e.message : String(e) });

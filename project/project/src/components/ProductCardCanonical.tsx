@@ -1,3 +1,4 @@
+import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import React, { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Award, ExternalLink, Heart, ShoppingCart, Star } from 'lucide-react';
@@ -260,6 +261,7 @@ const CanonicalProductCard: React.FC<Props> = ({
     </div>
   );
 
+  if (!isPublicStoreProduct(product)) return null;
   return <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 overflow-hidden transition-all duration-300">{content}</div>;
 };
 

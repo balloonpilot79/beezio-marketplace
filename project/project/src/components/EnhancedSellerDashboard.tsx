@@ -1,3 +1,4 @@
+import { productAvailabilityNotice } from '../../shared/publicProductVisibility';
 import { isConfirmedPaidOrder, isEarningSnapshot } from '../../shared/accountingStatus';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -452,9 +453,6 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
               };
             })
             .filter(Boolean);
-          if (embeddedRows.length === rows.length) {
-            return embeddedRows;
-          }
 
           const productIds = Array.from(
             new Set(
@@ -466,7 +464,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
           if (!productIds.length) return [];
 
           let selectFields =
-            'id,title,name,description,price,seller_ask,seller_amount,seller_ask_price,commission_rate,affiliate_commission_rate,commission_type,affiliate_commission_type,flat_commission_amount,category,image_url,images,seller_id,is_active,is_promotable,status';
+            'id,title,name,description,price,seller_ask,seller_amount,seller_ask_price,commission_rate,affiliate_commission_rate,commission_type,affiliate_commission_type,flat_commission_amount,category,image_url,images,seller_id,stock_quantity,total_inventory,in_stock,track_inventory,affiliate_enabled,is_active,is_promotable,status';
           let productRows: any[] | null = null;
           let productError: any = null;
 
@@ -552,6 +550,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
             seenProductIds.add(productId);
             const commission = resolveAffiliateCommission(product);
             return {
+              ...product,
               id: productId,
               title: product.title || product.name || 'Product',
               description: product.description || '',
@@ -1666,7 +1665,7 @@ const ProductList = ({
                   </div>
                   <div>
                     <div className="text-gray-500">Stock</div>
-                    <div className="font-semibold text-gray-900">{product.stock_quantity ?? '-'}</div>
+                    <div className="font-semibold text-gray-900">{productAvailabilityNotice(product, false) || product.stock_quantity || '-'}</div>
                   </div>
                 </div>
               </div>
@@ -1758,7 +1757,7 @@ const ProductList = ({
               </td>
               <td className="truncate px-3 py-3">{product.category || 'Uncategorized'}</td>
               <td className="px-3 py-3 text-right">{money(getBuyerFacingProductPrice(product as any))}</td>
-              <td className="px-3 py-3 text-right">{product.stock_quantity ?? '-'}</td>
+              <td className="px-3 py-3 text-right">{productAvailabilityNotice(product, false) || product.stock_quantity || '-'}</td>
               <td className="px-3 py-3 text-right">
                 <div className="flex justify-end gap-2">
                   <Link
@@ -1852,6 +1851,7 @@ const AffiliatePromotionList = ({
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold text-gray-900">{product.title || 'Product'}</div>
+                  {productAvailabilityNotice(product) && <div className="mt-1 text-sm font-semibold text-amber-800">{productAvailabilityNotice(product)}</div>}
                   <div className="mt-1 text-sm text-gray-500">{product.seller_name || 'Marketplace Seller'}</div>
                   <div className="mt-1 text-xs text-emerald-700">
                     Affiliate commission {getAffiliateCommissionSummary(product)}
@@ -1940,6 +1940,7 @@ const AffiliatePromotionList = ({
                     )}
                     <div className="min-w-0">
                       <div className="truncate font-semibold text-gray-900">{product.title || 'Product'}</div>
+                      {productAvailabilityNotice(product) && <div className="mt-1 text-sm font-semibold text-amber-800">{productAvailabilityNotice(product)}</div>}
                       <div className="truncate text-xs text-emerald-700">
                         Affiliate commission {getAffiliateCommissionSummary(product)}
                       </div>
