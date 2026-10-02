@@ -1,3 +1,5 @@
+import { readAccountingPages } from './_lib/accounting-pagination';
+import { annotateReversedEarnings, summarizeEarningActivity } from '../../shared/accountingStatus';
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import { summarizePayeeSnapshots, type PayeeRole } from '../../server/payments/paypalPayoutLedger';
@@ -5,7 +7,7 @@ import { summarizePayeeSnapshots, type PayeeRole } from '../../server/payments/p
 function json(statusCode: number, body: unknown) {
   return {
     statusCode,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
     body: JSON.stringify(body),
   };
 }
@@ -92,29 +94,38 @@ const handler: Handler = async (event) => {
         : requestedRole === 'influencer'
           ? 'INFLUENCER'
           : 'PARTNER';
-    const { data: snapshotRows, error: snapshotError } = await supabaseAdmin
+    const ownerIds = [...new Set([userId, ...rows.map((row: any) => String(row.id))])];
+    let snapshotRows = await readAccountingPages((from, to) => supabaseAdmin
       .from('payout_snapshots')
       .select('id, order_id, ledger_id, payee_user_id, payee_role, amount, status, hold_release_at, paid_at, updated_at, created_at, snapshot_json')
-      .eq('payee_user_id', profileId)
+      .in('payee_user_id', ownerIds)
       .eq('payee_role', payeeRole)
-      .order('created_at', { ascending: false })
-      .limit(500);
+      .order('created_at', { ascending: false }).order('id', { ascending: false })
+      .range(from, to));
 
-    if (snapshotError) return json(500, { error: 'Failed to load payout snapshots', details: snapshotError.message });
 
-    const summary = summarizePayeeSnapshots((snapshotRows as any[]) || [], profileId, payeeRole);
+    const orderIds = [...new Set(snapshotRows.map(row => row.order_id).filter(Boolean))];
+    const orderStates: any[] = [];
+    for (let offset = 0; offset < orderIds.length; offset += 200) {
+      orderStates.push(...await readAccountingPages((from, to) => supabaseAdmin.from('orders')
+        .select('id,status,payment_status').in('id', orderIds.slice(offset, offset + 200)).order('id').range(from, to)));
+    }
+    snapshotRows = annotateReversedEarnings(snapshotRows, orderStates);
+    const historicalPaid = snapshotRows.filter(row => row.status === 'PAID').reduce((sum, row) => sum + Math.round(Number(row.amount || 0) * 100), 0) / 100;
+    const refundedAfterPayout = snapshotRows.filter(row => row.status === 'PAID' && row.accounting_reversed).reduce((sum, row) => sum + Math.round(Number(row.amount || 0) * 100), 0) / 100;
+    const summary = summarizePayeeSnapshots(snapshotRows, null, payeeRole);
     const latestRow = Array.isArray(snapshotRows) && snapshotRows.length > 0 ? snapshotRows[0] : null;
-    const lastPaidRow = ((snapshotRows as any[]) || []).find((row: any) => Boolean(row?.paid_at));
+    const lastPaidRow = ((snapshotRows as any[]) || []).find((row: any) => String(row?.status || '').toUpperCase() === 'PAID' && Boolean(row?.paid_at));
 
     let requests: any[] = [];
     try {
-      const { data } = await supabaseAdmin
+      const data = await readAccountingPages((from, to) => supabaseAdmin
         .from('payout_requests')
         .select('id, amount, status, requested_at, processed_at, rejection_reason, created_at')
-        .eq('user_id', profileId)
+        .in('user_id', ownerIds)
         .eq('role', requestedRole)
         .order('created_at', { ascending: false })
-        .limit(100);
+        .order('id', { ascending: false }).range(from, to));
       requests = (data as any[]) || [];
     } catch {
       requests = [];
@@ -125,7 +136,8 @@ const handler: Handler = async (event) => {
       role: requestedRole,
       total_earned: summary.total,
       pending_payout: summary.available,
-      paid_out: summary.paid,
+      paid_out: historicalPaid,
+      refunded_after_payout: refundedAfterPayout,
       current_balance: summary.available,
       held_balance: summary.pending + summary.onHold,
       pending_hold_balance: summary.pending,
@@ -135,22 +147,19 @@ const handler: Handler = async (event) => {
       next_release_at: summary.nextReleaseAt,
     };
 
-    const { data: payoutItems, error: payoutItemsError } = await supabaseAdmin
+    const payoutItems = await readAccountingPages((from, to) => supabaseAdmin
       .from('payout_items')
       .select('id, ledger_id, recipient, amount, status, payee_role, provider_item_id, error_message, created_at, updated_at')
-      .eq('payee_user_id', profileId)
+      .in('payee_user_id', ownerIds)
       .eq('payee_role', payeeRole)
       .order('created_at', { ascending: false })
-      .limit(100);
-
-    if (payoutItemsError) {
-      return json(500, { error: 'Failed to load payout transfer history', details: payoutItemsError.message });
-    }
+      .order('id', { ascending: false }).range(from, to));
 
     return json(200, {
       profileId,
       earnings,
-      earnings_history: ((snapshotRows as any[]) || []).slice(0, 100),
+      activity: summarizeEarningActivity(snapshotRows),
+      earnings_history: snapshotRows,
       payout_history: (payoutItems as any[]) || [],
       payout_requests: requests || [],
     });

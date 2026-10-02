@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { PayPalProvider, PayPalProviderError } from './PayPalProvider';
 
 vi.mock('../paypal', () => ({
@@ -89,5 +89,30 @@ describe('PayPalProvider.captureOrder', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+const completed = { id: 'ORDER', status: 'COMPLETED', purchase_units: [{ payments: { captures: [{ id: 'CAPTURE', status: 'COMPLETED' }] } }] };
+const reply = (body: any, status = 200) => new Response(JSON.stringify(body), { status });
+describe('PayPal payment evidence', () => {
+  beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
+  afterEach(() => vi.unstubAllGlobals());
+  it('requires a completed capture and uses the supplied retry identifier', async () => {
+    vi.mocked(fetch).mockResolvedValue(reply(completed));
+    expect((await new PayPalProvider().captureOrder('ORDER', 'stable-key')).providerCaptureId).toBe('CAPTURE');
+    expect(vi.mocked(fetch).mock.calls[0][1]?.headers).toMatchObject({ 'PayPal-Request-Id': 'stable-key' });
+  });
+  it.each([
+    { id: 'ORDER', status: 'APPROVED' },
+    { ...completed, purchase_units: [{ payments: { captures: [{ id: 'CAPTURE', status: 'PENDING' }] } }] },
+    { ...completed, purchase_units: [] },
+  ])('does not mark incomplete payments paid: %j', async payload => {
+    vi.mocked(fetch).mockResolvedValue(reply(payload));
+    await expect(new PayPalProvider().captureOrder('ORDER', 'stable-key')).rejects.toMatchObject({ code: 'PAYMENT_NOT_COMPLETED' });
+  });
+  it('recovers an already captured payment using verified existing capture evidence', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(reply({ details: [{ issue: 'ORDER_ALREADY_CAPTURED' }] }, 422)).mockResolvedValueOnce(reply(completed));
+    expect((await new PayPalProvider().captureOrder('ORDER', 'stable-key')).providerCaptureId).toBe('CAPTURE');
+    expect(vi.mocked(fetch).mock.calls[1][1]?.method).toBe('GET');
   });
 });

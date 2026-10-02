@@ -1,3 +1,5 @@
+import { isConfirmedPaidOrder, isEarningSnapshot } from '../../shared/accountingStatus';
+import { readAccountingPages } from './_lib/accounting-pagination';
 import type { Handler } from '@netlify/functions';
 import { json } from './_lib/http';
 import { createSupabaseAdmin } from './_lib/supabase';
@@ -43,7 +45,9 @@ const selectWithFallback = async (
   let lastError: any = null;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const { data, error } = await queryFactory(selected);
+    let data: any[] = []; let error: any = null;
+    try { data = await readAccountingPages((from, to) => (queryFactory(selected) as any).order('id', { ascending: false }).range(from, to)); }
+    catch (failure) { error = failure; }
     if (!error) return { data: (data as any[]) || [], selected, error: null };
     lastError = error;
     const missing = extractMissingColumnName(String((error as any)?.message || ''));
@@ -94,6 +98,7 @@ export const handler: Handler = async (event) => {
       'fulfillment_status',
       'created_at',
       'provider_capture_id',
+      'paid_at',
       'billing_email',
       'customer_email',
       'shipping_address',
@@ -123,11 +128,11 @@ export const handler: Handler = async (event) => {
       if (id) orderRowsById.set(id, row);
     }
 
-    const ownedProducts = await supabaseAdmin
+    const ownedProducts = { data: await readAccountingPages((from, to) => supabaseAdmin
       .from('products')
       .select('id')
       .in('seller_id', ownerIds)
-      .limit(2000);
+      .order('id').range(from, to)), error: null as any };
 
     if (ownedProducts.error) {
       return json(500, { ok: false, error: ownedProducts.error.message });
@@ -141,7 +146,7 @@ export const handler: Handler = async (event) => {
         const orderId = asText((item as any)?.order_id);
         if (!orderId) continue;
         const current = itemsByOrderId.get(orderId) || [];
-        current.push(item);
+        if (!current.some(existing => existing.id === item.id)) current.push(item);
         itemsByOrderId.set(orderId, current);
       }
     };
@@ -175,17 +180,21 @@ export const handler: Handler = async (event) => {
       ingestOrderItems(productOrderItemsResult.data);
     }
 
-    const sellerSnapshots = await supabaseAdmin
+    const sellerSnapshots = { data: await readAccountingPages((from, to) => supabaseAdmin
       .from('payout_snapshots')
-      .select('order_id')
+      .select('id,order_id,amount,status')
       .eq('payee_role', 'SELLER')
       .in('payee_user_id', ownerIds)
-      .limit(1000);
+      .order('id').range(from, to)), error: null as any };
 
     if (sellerSnapshots.error) {
       return json(500, { ok: false, error: sellerSnapshots.error.message });
     }
 
+    const sellerEarningsByOrder = new Map<string, number>();
+    for (const snapshot of sellerSnapshots.data || []) {
+      if (isEarningSnapshot(snapshot)) sellerEarningsByOrder.set(snapshot.order_id, round2((sellerEarningsByOrder.get(snapshot.order_id) || 0) + Number(snapshot.amount || 0)));
+    }
     const snapshotOrderIds = uniqueTexts(((sellerSnapshots.data as any[]) || []).map((row) => (row as any)?.order_id));
     const candidateOrderIds = uniqueTexts([...orderRowsById.keys(), ...itemsByOrderId.keys(), ...snapshotOrderIds]);
 
@@ -232,10 +241,10 @@ export const handler: Handler = async (event) => {
     const orderIds = uniqueTexts([...orderRowsById.keys(), ...itemsByOrderId.keys(), ...snapshotOrderIds]);
 
     const ledgerRows = orderIds.length
-      ? await supabaseAdmin
+      ? { data: await readAccountingPages((from, to) => supabaseAdmin
           .from('payout_ledger')
           .select('id, order_id, seller_earnings, gross_amount, status, hold_release_at')
-          .in('order_id', orderIds)
+          .in('order_id', orderIds).order('id').range(from, to)), error: null as any }
       : { data: [], error: null as any };
 
     if (ledgerRows.error) {
@@ -251,7 +260,7 @@ export const handler: Handler = async (event) => {
     const orders = orderIds
       .map((orderId) => {
         const order = orderRowsById.get(orderId) || {};
-        const orderItems = itemsByOrderId.get(orderId) || [];
+        const orderItems = (itemsByOrderId.get(orderId) || []).filter(item => ownerIds.includes(String(item.seller_id || '')) || ownedProductIds.includes(String(item.product_id || '')));
         const ledger = ledgerByOrderId.get(orderId) || null;
         const totalAmount = asMoney((order as any)?.total_charged ?? (order as any)?.total_amount ?? (ledger as any)?.gross_amount);
 
@@ -272,12 +281,13 @@ export const handler: Handler = async (event) => {
           amount: totalAmount,
           status: asText((order as any)?.status) || 'pending',
           payment_status: asText((order as any)?.payment_status) || null,
+          paid_at: (order as any)?.paid_at || null,
           fulfillment_status: asText((order as any)?.fulfillment_status) || null,
           created_at: (order as any)?.created_at || null,
           payment_reference_id: asText((order as any)?.provider_capture_id) || null,
           shipping_address: (order as any)?.shipping_address || null,
           gross_amount: asMoney((ledger as any)?.gross_amount ?? totalAmount),
-          seller_earnings: ledger ? asMoney((ledger as any)?.seller_earnings) : null,
+          seller_earnings: sellerEarningsByOrder.has(orderId) ? sellerEarningsByOrder.get(orderId) : 0,
           payout_status: ledger ? asText((ledger as any)?.status) || null : null,
           hold_release_at: ledger ? ((ledger as any)?.hold_release_at || null) : null,
           order_items: orderItems,
@@ -285,22 +295,23 @@ export const handler: Handler = async (event) => {
       })
       .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
 
-    const totalRevenue = round2(orders.reduce((sum, row) => sum + asMoney(row.amount), 0));
+    const completedOrders = orders.filter(isConfirmedPaidOrder);
+    const totalRevenue = round2(completedOrders.reduce((sum, row) => sum + asMoney(row.seller_earnings), 0));
     const totalTaxCollected = round2(
-      orders.reduce((sum, row) => {
+      completedOrders.reduce((sum, row) => {
         const order = orderRowsById.get(row.id) || {};
         return sum + asMoney((order as any)?.tax_amount);
       }, 0)
     );
-    const completedCount = orders.filter((row) => ['completed', 'shipped', 'delivered'].includes(asText(row.status).toLowerCase())).length;
-    const pendingCount = orders.filter((row) => needsSellerFulfillment(row)).length;
+    const completedCount = completedOrders.length;
+    const pendingCount = completedOrders.filter((row) => needsSellerFulfillment(row)).length;
 
     return json(200, {
       ok: true,
       ownerIds,
       orders,
       summary: {
-        total_sales: orders.length,
+        total_sales: completedCount,
         total_revenue: totalRevenue,
         total_tax_collected: totalTaxCollected,
         pending_orders: pendingCount,

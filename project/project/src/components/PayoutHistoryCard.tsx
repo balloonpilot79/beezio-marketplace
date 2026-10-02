@@ -1,3 +1,4 @@
+import { isEarningSnapshot } from '../../shared/accountingStatus';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { apiPost } from '../utils/netlifyApi';
@@ -5,6 +6,7 @@ import { apiPost } from '../utils/netlifyApi';
 type PayeeRole = 'SELLER' | 'PARTNER' | 'INFLUENCER';
 
 export type LedgerRow = {
+  accounting_reversed?: boolean;
   id: string;
   order_id: string | null;
   ledger_id?: string | null;
@@ -115,21 +117,22 @@ export default function PayoutHistoryCard({
 
   const ledgerAmountForRole = (row: LedgerRow) => Number(row.amount || 0);
 
-  const upcoming = useMemo(() => ledger.filter((r) => String(r.status) !== 'PAID'), [ledger]);
-  const paidLedgers = useMemo(() => ledger.filter((r) => String(r.status) === 'PAID'), [ledger]);
+  const upcoming = useMemo(() => ledger.filter((r) => isEarningSnapshot(r) && String(r.status).toUpperCase() !== 'PAID'), [ledger]);
+  const paidLedgers = useMemo(() => ledger.filter((r) => String(r.status).toUpperCase() === 'PAID'), [ledger]);
   const readyToPay = useMemo(
-    () => ledger.filter((r) => String(r.status).toUpperCase() === 'READY_TO_PAY'),
+    () => ledger.filter((r) => isEarningSnapshot(r) && String(r.status).toUpperCase() === 'READY_TO_PAY'),
     [ledger]
   );
   const pendingHold = useMemo(
-    () => ledger.filter((r) => String(r.status).toUpperCase() === 'PENDING_HOLD'),
+    () => ledger.filter((r) => isEarningSnapshot(r) && String(r.status).toUpperCase() === 'PENDING_HOLD'),
     [ledger]
   );
   const onHoldDispute = useMemo(
-    () => ledger.filter((r) => String(r.status).toUpperCase() === 'ON_HOLD_DISPUTE'),
+    () => ledger.filter((r) => isEarningSnapshot(r) && String(r.status).toUpperCase() === 'ON_HOLD_DISPUTE'),
     [ledger]
   );
 
+  const canceledEarnings = ledger.filter(row => !isEarningSnapshot(row));
   const nextPayoutDate = useMemo(() => {
     const candidates = upcoming
       .map((r) => r.hold_release_at)
@@ -215,6 +218,11 @@ export default function PayoutHistoryCard({
       {loading ? <div className="mt-4 text-sm text-gray-600">Loading...</div> : null}
       {error ? <div className="mt-4 text-sm text-red-700">{error}</div> : null}
 
+      {!loading && !error && canceledEarnings.length > 0 && <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+        <div className="font-semibold">Canceled or reversed earnings</div>
+        <p>These entries are kept for your history and do not count toward a payout.</p>
+        {canceledEarnings.map(row => <div key={row.id} className="mt-2 break-all">{formatReference(row)} — {formatMoney(Number(row.amount || 0))} — {row.accounting_reversed ? 'Order refunded or canceled' : row.status}</div>)}
+      </div>}
       {!loading && !error ? (
         <div className="mt-5 space-y-6">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">

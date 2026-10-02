@@ -1,3 +1,4 @@
+import { summarizeAccountingReportRows } from '../../shared/accountingReport';
 import { useEffect, useMemo, useState } from 'react';
 import { Calendar, Download, Eye, Mail, RefreshCcw, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -29,6 +30,7 @@ type LedgerRow = {
   payment_status: string;
   fulfillment_status: string;
   dispute_status: string;
+  is_counted_sale: boolean;
   is_refunded: boolean;
   refunded_amount: number;
   buyer_id: string | null;
@@ -288,27 +290,7 @@ const buildPeriodKey = (value: string | null | undefined, granularity: GroupGran
   return `${utcDate.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 };
 
-const summarizeRows = (rows: LedgerRow[]): LedgerSummary => {
-  return rows.reduce<LedgerSummary>((acc, row) => {
-    acc.orders += 1;
-    acc.real_sales += row.is_refunded ? 0 : 1;
-    acc.gross_sales += Number(row.gross_sales || row.gross_amount || 0);
-    acc.seller_payouts += Number(row.seller?.amount || 0);
-    acc.affiliate_payouts += Number(row.affiliate?.amount || 0);
-    acc.influencer_payouts += Number(row.influencer?.amount || 0);
-    acc.beezio_fee += Number(row.beezio_fee || 0);
-    acc.paypal_fee += Number(row.paypal_fee || 0);
-    acc.beezio_gross_revenue += Number(row.beezio_gross_revenue || 0);
-    acc.beezio_net_revenue += Number(row.beezio_net_revenue || 0);
-    acc.sales_tax += Number(row.sales_tax || 0);
-    acc.shipping += Number(row.shipping || 0);
-    acc.refunded_orders += row.is_refunded ? 1 : 0;
-    acc.refunded_amount += Number(row.refunded_amount || 0);
-    acc.disputed_orders += row.dispute_status && row.dispute_status !== 'NONE' ? 1 : 0;
-    acc.open_disputes += row.dispute_status === 'OPEN' ? 1 : 0;
-    return acc;
-  }, { ...emptySummary });
-};
+const summarizeRows = (rows: LedgerRow[]): LedgerSummary => summarizeAccountingReportRows(rows);
 
 const getDisputeTone = (status: string | null | undefined) => {
   const normalized = String(status || '').toUpperCase();
@@ -338,6 +320,8 @@ const formatAddressLines = (address: Record<string, unknown> | null | undefined)
 };
 
 export default function AdminOrderLedgerPanel({ defaultPreset = 'month' }: { defaultPreset?: TimeFilter }) {
+  const [paymentIncidents, setPaymentIncidents] = useState<Array<{ provider_order_id: string; order_id: string | null; error: string; created_at: string }>>([]);
+  const [paymentMonitorError, setPaymentMonitorError] = useState<string | null>(null);
   const [preset, setPreset] = useState<LedgerRangePreset>(defaultPreset);
   const [customStart, setCustomStart] = useState(() => formatDateInputValue(getDateRange(defaultPreset).start));
   const [customEnd, setCustomEnd] = useState(() => formatDateInputValue(getDateRange(defaultPreset).end));
@@ -385,6 +369,15 @@ export default function AdminOrderLedgerPanel({ defaultPreset = 'month' }: { def
       const { data: sessionData } = await supabase.auth.getSession();
       const token = String(sessionData?.session?.access_token || '').trim();
       if (!token) throw new Error('Not authenticated');
+      try {
+        const monitor = await fetch('/api/admin-payment-recovery', { headers: { Authorization: `Bearer ${token}` } });
+        const history = await monitor.json();
+        if (!monitor.ok) throw new Error(history.error || 'Payment recovery monitor unavailable');
+        setPaymentIncidents(Array.isArray(history.incidents) ? history.incidents : []);
+        setPaymentMonitorError(null);
+      } catch {
+        setPaymentMonitorError('Payment recovery history could not be checked. Refresh to try again.');
+      }
 
       const response = await fetch('/api/admin-sales-ledger', {
         method: 'POST',
@@ -680,6 +673,21 @@ export default function AdminOrderLedgerPanel({ defaultPreset = 'month' }: { def
 
   return (
     <div className="space-y-6">
+      {(paymentIncidents.length > 0 || paymentMonitorError) && (
+        <section className="rounded-lg border border-amber-300 bg-amber-50 p-5">
+          <h3 className="font-semibold text-amber-950">Payment recovery history</h3>
+          <p className="mt-1 text-sm text-amber-900">These payments encountered a recovery problem. Compare the current order with PayPal before fulfilling, refunding, or asking a customer to pay again.</p>
+          {paymentMonitorError && <p className="mt-2 text-sm text-red-800">{paymentMonitorError}</p>}
+          <ul className="mt-3 space-y-3 text-sm">
+            {paymentIncidents.map(incident => <li key={incident.provider_order_id} className="break-all">
+              <strong>PayPal reference: {incident.provider_order_id}</strong>
+              <div>{incident.error}</div>
+              <div>Last recovery problem: {new Date(incident.created_at).toLocaleString()}</div>
+              {incident.order_id && <button type="button" className="underline" onClick={() => setSearchInput(incident.order_id || '')}>Find saved order</button>}
+            </li>)}
+          </ul>
+        </section>
+      )}
       <section className="bg-white rounded-lg shadow-sm p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

@@ -1,4 +1,5 @@
 import { productAvailabilityNotice } from '../../shared/publicProductVisibility';
+import { isConfirmedPaidOrder, isEarningSnapshot } from '../../shared/accountingStatus';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -323,7 +324,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
         if (mode === 'seller' && session) {
           try {
             const payload = await apiPost<any>('/.netlify/functions/seller-dashboard-sales', session, {});
-            const orderRows = Array.isArray(payload?.orders) ? payload.orders : [];
+            const orderRows = (Array.isArray(payload?.orders) ? payload.orders : []).filter(isConfirmedPaidOrder);
             const salesSummary = orderRows.reduce((acc: Record<string, ProductSalesSummary>, order: any) => {
               const items = Array.isArray(order?.order_items) ? order.order_items : [];
               items.forEach((row: any) => {
@@ -698,18 +699,9 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
 
       try {
         if (mode === 'affiliate') {
-          const { data, error: snapshotError } = await supabase
-            .from('payout_snapshots')
-            .select('id, order_id, amount, status, created_at, hold_release_at, snapshot_json')
-            .eq('payee_role', 'PARTNER')
-            .in('payee_user_id', dashboardOwnerIds)
-            .order('created_at', { ascending: false })
-            .limit(24);
-
-          if (snapshotError) throw snapshotError;
+          const payload = await apiPost<any>('/api/user-earnings', session ?? null, { role: 'affiliate' });
           if (cancelled) return;
-
-          const rows = ((data as any[]) || []) as PayoutSnapshotActivityRow[];
+          const rows = (payload.earnings_history || []).filter(isEarningSnapshot) as PayoutSnapshotActivityRow[];
           setAffiliateSalePulse(
             rows.slice(0, 6).map((row) => ({
               id: row.id,
@@ -725,41 +717,16 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
         }
 
         if (mode === 'influencer') {
-          const { data, error: snapshotError } = await supabase
-            .from('payout_snapshots')
-            .select('id, order_id, amount, status, created_at, hold_release_at, snapshot_json')
-            .eq('payee_role', 'INFLUENCER')
-            .in('payee_user_id', dashboardOwnerIds)
-            .order('created_at', { ascending: false })
-            .limit(250);
-
-          if (snapshotError) throw snapshotError;
+          const payload = await apiPost<any>('/api/user-earnings', session ?? null, { role: 'influencer' });
           if (cancelled) return;
-
-          const rows = ((data as any[]) || []) as PayoutSnapshotActivityRow[];
-          const now = new Date();
-          const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const startOfWeek = new Date(startOfToday);
-          startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay());
-          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-          const startOfYear = new Date(now.getFullYear(), 0, 1);
-
-          const countUniqueSalesSince = (start: Date) => {
-            const saleIds = new Set<string>();
-            rows.forEach((row) => {
-              const createdAt = row.created_at ? new Date(row.created_at) : null;
-              if (!createdAt || Number.isNaN(createdAt.getTime()) || createdAt < start) return;
-              saleIds.add(String(row.order_id || row.id));
-            });
-            return saleIds.size;
-          };
-
+          const rows = (payload.earnings_history || []).filter(isEarningSnapshot) as PayoutSnapshotActivityRow[];
+          const activity = payload.activity || {};
           setInfluencerProgress({
-            todaySales: countUniqueSalesSince(startOfToday),
-            weekSales: countUniqueSalesSince(startOfWeek),
-            monthSales: countUniqueSalesSince(startOfMonth),
-            yearSales: countUniqueSalesSince(startOfYear),
-            totalEarned: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+            todaySales: Number(activity.today_sales || 0),
+            weekSales: Number(activity.week_sales || 0),
+            monthSales: Number(activity.month_sales || 0),
+            yearSales: Number(activity.year_sales || 0),
+            totalEarned: Number(payload.earnings?.total_earned || 0),
             recentSales: rows.slice(0, 6).map((row) => ({
               id: row.id,
               orderId: row.order_id,
@@ -794,7 +761,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [dashboardOwnerIds, mode, user?.id]);
+  }, [dashboardOwnerIds, mode, user?.id, session]);
 
   const handleTabClick = (tab: SellerDashboardTab) => {
     const next = normalizeTab(tab);
@@ -882,7 +849,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
   const stats = {
     products: products.length,
     orders: orders.length,
-    revenue: orders.reduce((sum, order) => sum + Number(order.total_charged ?? order.total_amount ?? 0), 0),
+    revenue: orders.reduce((sum, order) => sum + Number((order as any).seller_earnings || 0), 0),
     lowStock: products.filter((product) => Number(product.stock_quantity ?? 0) > 0 && Number(product.stock_quantity ?? 0) <= 5).length,
     sellingProducts: products.filter((product) => Number(productSales[product.id]?.quantitySold || 0) > 0).length,
     unsoldProducts: products.filter((product) => Number(productSales[product.id]?.quantitySold || 0) <= 0).length,
@@ -1127,7 +1094,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <StatCard label="Products" value={String(stats.products)} />
           <StatCard label="Orders" value={String(stats.orders)} />
-          <StatCard label="Revenue" value={money(stats.revenue)} />
+          <StatCard label="Seller earnings" value={money(stats.revenue)} />
           <StatCard label="Low Stock" value={String(stats.lowStock)} />
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -1173,7 +1140,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <QuickMetricCard label="Paid Orders" value={String(stats.orders)} tone="slate" />
-              <QuickMetricCard label="Revenue Logged" value={money(stats.revenue)} tone="emerald" />
+              <QuickMetricCard label="Seller earnings" value={money(stats.revenue)} tone="emerald" />
               <QuickMetricCard label="Low Stock Alerts" value={String(stats.lowStock)} tone="amber" />
             </div>
           </div>
@@ -1477,7 +1444,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
                   <StatCard label="Products Selling" value={String(stats.sellingProducts)} />
                   <StatCard label="Products Not Selling" value={String(stats.unsoldProducts)} />
                   <StatCard label="Orders Logged" value={String(stats.orders)} />
-                  <StatCard label="Revenue Logged" value={money(stats.revenue)} />
+                  <StatCard label="Seller earnings" value={money(stats.revenue)} />
                 </div>
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                   <div className="rounded-xl border bg-white p-5 shadow-sm">

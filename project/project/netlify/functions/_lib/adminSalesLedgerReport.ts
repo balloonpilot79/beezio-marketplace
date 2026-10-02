@@ -1,3 +1,6 @@
+import { isConfirmedPaidOrder, isRefundedPayment } from '../../../shared/accountingStatus';
+import { summarizeAccountingReportRows } from '../../../shared/accountingReport';
+import { readAccountingPages } from './accounting-pagination';
 import { createSupabaseAdmin } from './supabase';
 
 export type LedgerRequest = {
@@ -120,11 +123,6 @@ const asMoney = (value: unknown) => {
 };
 const asText = (value: unknown) => String(value ?? '').trim();
 
-const isCompletedSale = (orderStatus: string, paymentStatus: string) => {
-  const status = asText(orderStatus).toLowerCase();
-  const payment = asText(paymentStatus).toLowerCase();
-  return payment === 'paid' || status === 'completed' || status === 'processing' || status === 'paid';
-};
 
 const isRefundedOrder = (orderStatus: string, paymentStatus: string, refundedAmount: number) => {
   const status = asText(orderStatus).toLowerCase();
@@ -150,7 +148,9 @@ async function selectWithFallback(
   };
 
   for (let attempt = 0; attempt < 12; attempt += 1) {
-    const { data, error } = await execute(selected);
+    let data: any[] = []; let error: any = null;
+    try { data = await readAccountingPages((from, to) => (execute(selected) as any).order('id').range(from, to)); }
+    catch (failure) { error = failure; }
     if (!error) return { data: (data as any[]) || [], error: null };
     lastError = error;
     const missing = extractMissingColumnName(String(error?.message || ''));
@@ -201,7 +201,7 @@ export async function buildAdminSalesLedgerReport(request: LedgerRequest) {
       .from('orders')
       .select(selected.join(','))
       .order('created_at', { ascending: false })
-      .limit(limit);
+      ;
 
     if (startDate) query = query.gte('created_at', `${startDate}T00:00:00.000Z`);
     if (endDate) query = query.lte('created_at', `${endDate}T23:59:59.999Z`);
@@ -209,7 +209,8 @@ export async function buildAdminSalesLedgerReport(request: LedgerRequest) {
   }, orderFields);
   if (ordersError) throw new Error(ordersError.message);
 
-  const orders = (orderRows as any[]) || [];
+  const orders = ((orderRows as any[]) || []).slice(0, limit);
+  const orderById = new Map(orders.map(order => [asText(order.id), order]));
   const orderIds = orders.map((row) => asText(row?.id)).filter(Boolean);
   if (!orderIds.length) {
     return {
@@ -254,22 +255,23 @@ export async function buildAdminSalesLedgerReport(request: LedgerRequest) {
   for (const row of moneyLedgerResult.data as any[]) {
     const orderId = asText(row?.order_id);
     if (!orderId) continue;
-    const payeeType = asText(row?.payee_type).toLowerCase();
+    let payeeType = asText(row?.payee_type).toLowerCase();
     const payeeId = asText(row?.payee_id) || null;
+    if (payeeType === 'affiliate' && payeeId && payeeId === asText(orderById.get(orderId)?.seller_id)) payeeType = 'seller';
     const grossAmount = asMoney(row?.gross_amount);
-    const netAmount = asMoney(row?.net_amount);
+    const netAmount = row?.net_amount == null ? grossAmount : asMoney(row.net_amount);
     const breakdown = moneyLedgerByOrder.get(orderId) || { seller: 0, affiliate: 0, influencer: 0, beezio: 0, tax: 0, shipping: 0, processorFee: 0 };
     const payees = moneyLedgerPayeesByOrder.get(orderId) || { sellerId: null, affiliateId: null, influencers: [] as Array<{ id: string; amount: number }> };
     const batchRefs = moneyLedgerBatchRefsByOrder.get(orderId) || [];
 
     if (payeeType === 'seller') {
-      breakdown.seller += netAmount || grossAmount;
+      breakdown.seller += netAmount;
       if (!payees.sellerId && payeeId) payees.sellerId = payeeId;
     } else if (payeeType === 'affiliate') {
-      breakdown.affiliate += netAmount || grossAmount;
+      breakdown.affiliate += netAmount;
       if (!payees.affiliateId && payeeId) payees.affiliateId = payeeId;
     } else if (payeeType === 'influencer') {
-      const amount = netAmount || grossAmount;
+      const amount = netAmount;
       breakdown.influencer += amount;
       if (payeeId) {
         const existing = payees.influencers.find((entry) => entry.id === payeeId);
@@ -277,7 +279,7 @@ export async function buildAdminSalesLedgerReport(request: LedgerRequest) {
         else payees.influencers.push({ id: payeeId, amount });
       }
     } else if (payeeType === 'beezio') {
-      breakdown.beezio += netAmount || grossAmount;
+      breakdown.beezio += netAmount;
     } else if (payeeType === 'tax') {
       breakdown.tax += grossAmount || netAmount;
     } else if (payeeType === 'shipping') {
@@ -393,7 +395,8 @@ export async function buildAdminSalesLedgerReport(request: LedgerRequest) {
     const moneyBatchRefs = moneyLedgerBatchRefsByOrder.get(orderId) || [];
     const disputes = (disputesByOrder.get(orderId) || []).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
     const latestDispute = disputes[0] || null;
-    const refundedAmount = round2(disputes.reduce((sum, dispute) => sum + asMoney(dispute.refund_amount), 0));
+    const confirmedDisputeRefund = round2(disputes.filter(dispute => ['resolved','closed'].includes(String(dispute.status).toLowerCase()) && String(dispute.resolution_type || '').startsWith('refund')).reduce((sum, dispute) => sum + asMoney(dispute.refund_amount), 0));
+    const refundedAmount = isRefundedPayment(order) ? asMoney(order.total_charged ?? order.total_amount) : confirmedDisputeRefund;
 
     const sellerId = asText(order?.seller_id) || asText(ledger?.seller_id) || snapshotPayees.sellerId || moneyPayees.sellerId || '';
     const affiliateId = asText(order?.affiliate_id) || asText(order?.partner_id) || asText(ledger?.partner_id) || snapshotPayees.affiliateId || moneyPayees.affiliateId || '';
@@ -406,16 +409,16 @@ export async function buildAdminSalesLedgerReport(request: LedgerRequest) {
       const unit = Number(item?.computed_listing_price ?? item?.price ?? 0) || 0;
       return sum + unit * qty;
     }, 0));
-    const sellerAmount = asMoney(moneyBreakdown?.seller || ledger?.seller_earnings);
-    const affiliateAmount = asMoney(moneyBreakdown?.affiliate || ledger?.partner_earnings);
-    const influencerAmount = asMoney(moneyBreakdown?.influencer || ledger?.influencer_earnings);
-    const paypalFee = asMoney(moneyBreakdown?.processorFee || ledger?.paypal_fee_estimate);
-    const salesTax = asMoney(moneyBreakdown?.tax || order?.tax_amount);
-    const shipping = asMoney(moneyBreakdown?.shipping || order?.shipping_amount);
-    const grossSales = asMoney(itemsSubtotal > 0 ? itemsSubtotal + shipping + salesTax : Number(order?.total_charged ?? order?.total_amount ?? order?.subtotal_listing ?? 0));
-    const beezioFee = asMoney(moneyBreakdown?.beezio || ledger?.beezio_profit || Math.max(grossSales - sellerAmount - affiliateAmount - influencerAmount - salesTax - shipping - paypalFee, 0));
-    const beezioGrossRevenue = asMoney(Math.max(grossSales - sellerAmount - affiliateAmount - influencerAmount - salesTax - shipping, 0));
-    const beezioNetRevenue = asMoney(Math.max(beezioGrossRevenue - paypalFee, 0));
+    const sellerAmount = asMoney(moneyBreakdown ? moneyBreakdown.seller : ledger?.seller_earnings);
+    const affiliateAmount = asMoney(moneyBreakdown ? moneyBreakdown.affiliate : ledger?.partner_earnings);
+    const influencerAmount = asMoney(moneyBreakdown ? moneyBreakdown.influencer : ledger?.influencer_earnings);
+    const paypalFee = asMoney(ledger?.paypal_fee_estimate ?? moneyBreakdown?.processorFee);
+    const salesTax = asMoney(moneyBreakdown ? moneyBreakdown.tax : order?.tax_amount);
+    const shipping = asMoney(moneyBreakdown ? moneyBreakdown.shipping : order?.shipping_amount);
+    const grossSales = asMoney(order?.total_charged ?? order?.total_amount ?? (itemsSubtotal + shipping + salesTax));
+    const beezioFee = asMoney(moneyBreakdown ? moneyBreakdown.beezio : (ledger?.beezio_profit ?? (grossSales - sellerAmount - affiliateAmount - influencerAmount - salesTax - paypalFee)));
+    const beezioGrossRevenue = asMoney(Math.max(grossSales - sellerAmount - affiliateAmount - influencerAmount - salesTax, 0));
+    const beezioNetRevenue = asMoney((isRefundedPayment(order) ? 0 : beezioGrossRevenue) - paypalFee);
     const sellerProfile = profileMap.get(sellerId);
     const affiliateProfile = profileMap.get(affiliateId);
 
@@ -474,7 +477,7 @@ export async function buildAdminSalesLedgerReport(request: LedgerRequest) {
       payment_status: asText(order?.payment_status) || '-',
       fulfillment_status: asText(order?.fulfillment_status) || '-',
       dispute_status: asText(order?.dispute_status) || asText(latestDispute?.status) || 'NONE',
-      is_counted_sale: isCompletedSale(asText(order?.status), asText(order?.payment_status)),
+      is_counted_sale: isConfirmedPaidOrder(order),
       is_refunded: isRefundedOrder(asText(order?.status), asText(order?.payment_status), refundedAmount),
       refunded_amount: refundedAmount,
       buyer_id: asText(order?.buyer_id || order?.user_id) || null,
@@ -538,26 +541,7 @@ export async function buildAdminSalesLedgerReport(request: LedgerRequest) {
     return haystack.some((value) => value.includes(search));
   }) : rows;
 
-  const summary = roundSummary(filteredRows.reduce<AdminSalesLedgerSummary>((acc, row) => {
-    if (!row.is_counted_sale) return acc;
-    acc.orders += 1;
-    acc.real_sales += row.is_refunded ? 0 : 1;
-    acc.gross_sales += row.gross_sales;
-    acc.seller_payouts += row.seller.amount;
-    acc.affiliate_payouts += row.affiliate.amount;
-    acc.influencer_payouts += row.influencer.amount;
-    acc.beezio_fee += row.beezio_fee;
-    acc.paypal_fee += row.paypal_fee;
-    acc.beezio_gross_revenue += row.beezio_gross_revenue;
-    acc.beezio_net_revenue += row.beezio_net_revenue;
-    acc.sales_tax += row.sales_tax;
-    acc.shipping += row.shipping;
-    acc.refunded_orders += row.is_refunded ? 1 : 0;
-    acc.refunded_amount += row.refunded_amount;
-    acc.disputed_orders += row.dispute_status !== 'NONE' ? 1 : 0;
-    acc.open_disputes += row.dispute_status === 'OPEN' ? 1 : 0;
-    return acc;
-  }, { orders: 0, real_sales: 0, gross_sales: 0, seller_payouts: 0, affiliate_payouts: 0, influencer_payouts: 0, beezio_fee: 0, paypal_fee: 0, beezio_gross_revenue: 0, beezio_net_revenue: 0, sales_tax: 0, shipping: 0, refunded_orders: 0, refunded_amount: 0, disputed_orders: 0, open_disputes: 0 }));
+  const summary = summarizeAccountingReportRows(filteredRows);
 
   return {
     summary,

@@ -1,8 +1,9 @@
+import { createHash } from 'node:crypto';
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { json, assertPost, parseJson } from './_lib/http';
 import { getEnvNumber, getPayoutHoldDays } from './_lib/env';
-import { getPayPalEnv, isPayPalEnabled, paypalRequestId } from './_lib/paypal';
+import { getPayPalEnv, isPayPalEnabled } from './_lib/paypal';
 import { round2 } from './_lib/money';
 import { getPaymentProvider } from './_lib/providers';
 import { PayPalProviderError } from './_lib/providers/PayPalProvider';
@@ -415,6 +416,7 @@ export const handler: Handler = async (event) => {
         return json(409, {
           error: 'Some CJ items are no longer available. Payment capture was blocked.',
           code: 'INSUFFICIENT_CJ_INVENTORY',
+          payment_not_captured: true,
           strict_cj_inventory: strictCJInventory,
           items: stockErrors,
         });
@@ -424,7 +426,7 @@ export const handler: Handler = async (event) => {
     const provider = getPaymentProvider('paypal');
     let capture;
     try {
-      capture = await provider.captureOrder(providerOrderId, paypalRequestId(`bzo_capture_${orderId}`));
+      capture = await provider.captureOrder(providerOrderId, `bzo_${createHash('sha256').update(`capture:${orderId}`).digest('hex').slice(0, 32)}`);
     } catch (error) {
       if (error instanceof PayPalProviderError) {
         return json(error.statusCode, {

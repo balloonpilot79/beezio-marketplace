@@ -1,3 +1,4 @@
+import { readAccountingPages } from './_lib/accounting-pagination';
 import type { Handler } from '@netlify/functions';
 import { extractAuthHeader, getAuthedUser } from './_lib/auth';
 import { json } from './_lib/http';
@@ -26,7 +27,9 @@ const selectRows = async (supabaseAdmin: any, table: string, fields: string[], b
   let lastError: any = null;
 
   for (let attempt = 0; attempt < 12; attempt += 1) {
-    const { data, error } = await build(supabaseAdmin.from(table).select(selected.join(',')));
+    let data: any[] = []; let error: any = null;
+    try { data = await readAccountingPages((from, to) => build(supabaseAdmin.from(table).select(selected.join(','))).order('id').range(from, to)); }
+    catch (failure) { error = failure; }
     if (!error) return { data: (data as any[]) || [], error: null };
     lastError = error;
     const missing = extractMissingColumnName(String((error as any)?.message || ''));
@@ -132,7 +135,7 @@ export const handler: Handler = async (event) => {
 
     const orders = Array.from(byId.values())
       .sort((a, b) => new Date(String(b?.created_at || '')).getTime() - new Date(String(a?.created_at || '')).getTime())
-      .slice(0, 100);
+;
     const orderIds = orders.map((row) => String(row?.id || '').trim()).filter(Boolean);
 
     const [itemsResult, cjResult, vendorResult] = await Promise.all([
@@ -140,7 +143,7 @@ export const handler: Handler = async (event) => {
         ? selectRows(
             supabaseAdmin,
             'order_items',
-            ['id', 'order_id', 'product_id', 'quantity', 'price', 'total_price', 'final_sale_price_per_unit', 'product_title', 'title_snapshot', 'sku'],
+            ['id', 'order_id', 'product_id', 'quantity', 'price', 'total_price', 'final_sale_price_per_unit', 'computed_listing_price', 'product_title', 'title_snapshot', 'sku'],
             (query) => query.in('order_id', orderIds)
           )
         : Promise.resolve({ data: [], error: null } as any),
@@ -239,7 +242,7 @@ export const handler: Handler = async (event) => {
           items: orderItems.map((item) => {
             const product = productById.get(String(item?.product_id || '').trim()) || {};
             const quantity = Math.max(1, Number(item?.quantity || 1));
-            const unitPrice = toMoney(item?.final_sale_price_per_unit ?? item?.price);
+            const unitPrice = toMoney(item?.computed_listing_price ?? item?.final_sale_price_per_unit ?? item?.price);
             return {
               id: String(item?.id || ''),
               title: toText(item?.product_title) || toText(item?.title_snapshot) || toText(product?.title) || 'Product',

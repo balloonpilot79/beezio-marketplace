@@ -1,4 +1,5 @@
 import { productAvailabilityNotice } from '../../shared/publicProductVisibility';
+import { isEarningSnapshot } from '../../shared/accountingStatus';
 import React, { useMemo, useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -136,7 +137,7 @@ const normalizeLedgerStatus = (status: unknown): 'pending' | 'paid' => {
 };
 
 const buildAffiliateCommissionRows = (rows: any[], orderMetaById: Map<string, { productTitle: string; customerEmail: string }>) =>
-  rows.map((row: any) => {
+  rows.filter(isEarningSnapshot).map((row: any) => {
     const orderId = String(row?.order_id || '').trim();
     const meta = orderMetaById.get(orderId);
     return {
@@ -378,14 +379,16 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
       const affiliateId = partnerOwnerId;
       if (affiliateId) {
         let earnings: any = {};
+        let authoritativeHistory: any[] | null = null;
         try {
           const earningsData = await apiPost<any>('/api/user-earnings', session ?? null, { role: 'affiliate' });
           earnings = (earningsData as any)?.earnings || {};
+          authoritativeHistory = (earningsData as any)?.earnings_history || [];
         } catch {
           earnings = {};
         }
         const totalEarned = Number(earnings.total_earned || 0);
-        const pendingEarned = Number(earnings.pending_payout ?? earnings.current_balance ?? 0);
+        const pendingEarned = Number(earnings.held_balance || 0) + Number(earnings.current_balance || 0);
 
         let snapshotRows: any[] = [];
         let orderMetaById = new Map<string, { productTitle: string; customerEmail: string }>();
@@ -397,11 +400,12 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
             .in('payee_user_id', affiliateOwnerIds)
             .order('created_at', { ascending: false })
             .limit(50);
-          snapshotRows = (data as any[]) || [];
+          snapshotRows = ((data as any[]) || []).filter(isEarningSnapshot);
         } catch {
           snapshotRows = [];
         }
 
+        if (authoritativeHistory !== null) snapshotRows = authoritativeHistory.filter(isEarningSnapshot);
         if (snapshotRows.length > 0) {
           setTodayEarnings(
             snapshotRows
@@ -740,7 +744,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
         if (!active) return;
 
         const rows = (snapshotRows as any[]) || [];
-        const scopedRows = rows;
+        const scopedRows = rows.filter(isEarningSnapshot);
         if (scopedRows.length === 0) return;
 
         const orderIds = Array.from(new Set(scopedRows.map((row) => String(row?.order_id || '').trim()).filter(Boolean)));
