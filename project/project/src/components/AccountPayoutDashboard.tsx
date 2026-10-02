@@ -10,6 +10,7 @@ import TaxComplianceCard from './TaxComplianceCard';
 type RoleKey = 'seller' | 'affiliate' | 'influencer';
 
 type EarningsSummary = {
+  refunded_after_payout?: number;
   total_earned?: number;
   pending_payout?: number;
   paid_out?: number;
@@ -111,6 +112,7 @@ export default function AccountPayoutDashboard() {
   const totals = useMemo(() => {
     const rows = Object.values(summaries);
     return {
+      refundedAfterPayout: rows.reduce((sum, row) => sum + Number(row.refunded_after_payout || 0), 0),
       total: rows.reduce((sum, row) => sum + Number(row.total_earned || 0), 0),
       ready: rows.reduce((sum, row) => sum + Number(row.current_balance || 0), 0),
       paid: rows.reduce((sum, row) => sum + Number(row.paid_out || 0), 0),
@@ -170,7 +172,7 @@ export default function AccountPayoutDashboard() {
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-4">
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
             <div className="text-xs font-semibold uppercase text-emerald-700">Next expected payment</div>
-            <div className="mt-1 text-lg font-bold text-emerald-950">{loading ? '...' : money(nextExpectedPayment)}</div>
+            <div className="mt-1 text-lg font-bold text-emerald-950">{loading ? '...' : loadError ? 'Unavailable' : money(nextExpectedPayment)}</div>
             <div className="mt-1 text-xs text-emerald-800">
               {nextPayoutDate ? formatPayoutDate(nextPayoutDate) : `Not scheduled — ${money(amountToMinimum)} more needed`}
             </div>
@@ -182,12 +184,13 @@ export default function AccountPayoutDashboard() {
           ].map(([label, value]) => (
             <div key={String(label)} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <div className="text-xs font-semibold uppercase text-gray-500">{label}</div>
-              <div className="mt-1 text-lg font-bold text-gray-900">{loading ? '...' : money(value)}</div>
+              <div className="mt-1 text-lg font-bold text-gray-900">{loading ? '...' : loadError ? 'Unavailable' : money(value)}</div>
             </div>
           ))}
         </div>
       </div>
 
+      {totals.refundedAfterPayout > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{money(totals.refundedAfterPayout)} was paid out on orders later refunded. Completed transfers remain in your payout history; these amounts are excluded from net earnings and require Beezio review.</div>}
       {loadError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{loadError}</div>
       ) : null}
@@ -231,19 +234,19 @@ export default function AccountPayoutDashboard() {
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
               <div>
                 <div className="text-gray-500">Total</div>
-                <div className="font-semibold text-gray-900">{money(summary.total_earned)}</div>
+                <div className="font-semibold text-gray-900">{loadError ? 'Unavailable' : money(summary.total_earned)}</div>
               </div>
               <div>
                 <div className="text-gray-500">Ready next payday</div>
-                <div className="font-semibold text-gray-900">{money(summary.current_balance)}</div>
+                <div className="font-semibold text-gray-900">{loadError ? 'Unavailable' : money(summary.current_balance)}</div>
               </div>
               <div>
                 <div className="text-gray-500">Still in 14-day hold</div>
-                <div className="font-semibold text-gray-900">{money(summary.pending_hold_balance)}</div>
+                <div className="font-semibold text-gray-900">{loadError ? 'Unavailable' : money(summary.pending_hold_balance)}</div>
               </div>
               <div>
                 <div className="text-gray-500">On dispute hold</div>
-                <div className="font-semibold text-gray-900">{money(summary.dispute_hold_balance)}</div>
+                <div className="font-semibold text-gray-900">{loadError ? 'Unavailable' : money(summary.dispute_hold_balance)}</div>
               </div>
             </div>
             {summary.next_release_at ? (

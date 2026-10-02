@@ -1,3 +1,4 @@
+import { summarizeAccountingReportRows } from '../../shared/accountingReport';
 import { useEffect, useMemo, useState } from 'react';
 import { Calendar, Download, Eye, Mail, RefreshCcw, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -29,6 +30,7 @@ type LedgerRow = {
   payment_status: string;
   fulfillment_status: string;
   dispute_status: string;
+  is_counted_sale: boolean;
   is_refunded: boolean;
   refunded_amount: number;
   buyer_id: string | null;
@@ -288,27 +290,7 @@ const buildPeriodKey = (value: string | null | undefined, granularity: GroupGran
   return `${utcDate.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 };
 
-const summarizeRows = (rows: LedgerRow[]): LedgerSummary => {
-  return rows.reduce<LedgerSummary>((acc, row) => {
-    acc.orders += 1;
-    acc.real_sales += row.is_refunded ? 0 : 1;
-    acc.gross_sales += Number(row.gross_sales || row.gross_amount || 0);
-    acc.seller_payouts += Number(row.seller?.amount || 0);
-    acc.affiliate_payouts += Number(row.affiliate?.amount || 0);
-    acc.influencer_payouts += Number(row.influencer?.amount || 0);
-    acc.beezio_fee += Number(row.beezio_fee || 0);
-    acc.paypal_fee += Number(row.paypal_fee || 0);
-    acc.beezio_gross_revenue += Number(row.beezio_gross_revenue || 0);
-    acc.beezio_net_revenue += Number(row.beezio_net_revenue || 0);
-    acc.sales_tax += Number(row.sales_tax || 0);
-    acc.shipping += Number(row.shipping || 0);
-    acc.refunded_orders += row.is_refunded ? 1 : 0;
-    acc.refunded_amount += Number(row.refunded_amount || 0);
-    acc.disputed_orders += row.dispute_status && row.dispute_status !== 'NONE' ? 1 : 0;
-    acc.open_disputes += row.dispute_status === 'OPEN' ? 1 : 0;
-    return acc;
-  }, { ...emptySummary });
-};
+const summarizeRows = (rows: LedgerRow[]): LedgerSummary => summarizeAccountingReportRows(rows);
 
 const getDisputeTone = (status: string | null | undefined) => {
   const normalized = String(status || '').toUpperCase();

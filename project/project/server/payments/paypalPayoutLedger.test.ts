@@ -19,3 +19,27 @@ describe('buildPayPalLedgerPlan fixed-tier accounting', () => {
 });
 
 describe('summarizePayeeSnapshots',()=>{const rows=[{payee_user_id:'seller-1',payee_role:'SELLER' as const,amount:100,status:'PENDING_HOLD',hold_release_at:'2026-04-10T12:00:00.000Z'},{payee_user_id:'seller-1',payee_role:'SELLER' as const,amount:25,status:'READY_TO_PAY',hold_release_at:'2026-04-01T12:00:00.000Z'},{payee_user_id:'seller-1',payee_role:'SELLER' as const,amount:15,status:'PAID',paid_at:'2026-04-15T12:00:00.000Z'},{payee_user_id:'seller-1',payee_role:'SELLER' as const,amount:10,status:'ON_HOLD_DISPUTE'}];it('splits pending, on-hold, available, and paid totals',()=>{expect(summarizePayeeSnapshots(rows,'seller-1','SELLER')).toEqual({pending:100,onHold:10,available:25,paid:15,nextReleaseAt:'2026-04-10T12:00:00.000Z',total:150});});it('is idempotent and excludes canceled rows',()=>{const withCanceled=[...rows,{payee_user_id:'seller-1',payee_role:'SELLER' as const,amount:40,status:'CANCELED'}];const first=summarizePayeeSnapshots(withCanceled,'seller-1','SELLER');const second=summarizePayeeSnapshots(withCanceled,'seller-1','SELLER');expect(second).toEqual(first);expect(second.total).toBe(150);});});
+
+describe('all-party conservation of buyer funds', () => {
+  it.each([
+    { partnerId:'affiliate-1',sellerInfluencerId:'influencer-1',partnerInfluencerId:'influencer-2' },
+    { partnerId:null,sellerInfluencerId:null,partnerInfluencerId:null },
+    { partnerId:'seller-1',affiliateSource:'seller_self',sellerInfluencerId:'influencer-1',partnerInfluencerId:'influencer-1' },
+    { paypalFeeAmount:8 },
+    { shippingAmount:5,taxAmount:3.62 },
+  ])('allocates exactly the customer charge across seller, affiliate, influencer, Beezio, tax, and PayPal: %j', overrides => {
+    const input = makeInput(overrides); const plan = buildPayPalLedgerPlan(input);
+    const allocated = Math.round(plan.moneyEntries.reduce((sum, entry) => sum + entry.netAmount, 0) * 100) / 100;
+    expect(allocated).toBe(Math.round((input.subtotalListing + input.shippingAmount + input.taxAmount) * 100) / 100);
+    expect(plan.moneyEntries.find(row => row.payeeType === 'shipping')?.netAmount).toBe(0);
+    const sellerMoney = plan.moneyEntries.filter(row => row.payeeType === 'seller' || (row.payeeType === 'affiliate' && row.payeeId === input.sellerId)).reduce((sum,row) => sum + row.netAmount,0);
+    expect(Math.round(sellerMoney * 100)/100).toBe(plan.aggregate.sellerEarnings);
+  });
+  it('records an actual processing-cost overrun against Beezio profit without reducing promised role payouts', () => {
+    const normal = buildPayPalLedgerPlan(makeInput()); const expensive = buildPayPalLedgerPlan(makeInput({paypalFeeAmount:8}));
+    expect(expensive.aggregate.sellerEarnings).toBe(normal.aggregate.sellerEarnings);
+    expect(expensive.aggregate.partnerEarnings).toBe(normal.aggregate.partnerEarnings);
+    expect(expensive.aggregate.influencerEarnings).toBe(normal.aggregate.influencerEarnings);
+    expect(expensive.aggregate.beezioProfit).toBeLessThan(normal.aggregate.beezioProfit);
+  });
+});
