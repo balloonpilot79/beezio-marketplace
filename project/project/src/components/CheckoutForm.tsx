@@ -50,6 +50,11 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
   const { user, profile } = useAuth();
   const [, setProcessing] = useState(false);
   const [cardPaymentProcessing, setCardPaymentProcessing] = useState(false);
+  const [recoveryOrderId, setRecoveryOrderId] = useState(() => {
+    try { return localStorage.getItem('beezio-pending-paypal-payment') || ''; } catch { return ''; }
+  });
+  const captureInFlight = useRef(false);
+  const [recoveringPayment, setRecoveringPayment] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [paypalReady, setPaypalReady] = useState(false);
@@ -633,6 +638,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
   };
 
   const createPayPalOrder = async () => {
+    let pendingPayment = recoveryOrderId;
+    try { pendingPayment = localStorage.getItem('beezio-pending-paypal-payment') || pendingPayment; } catch { /* use in-memory state */ }
+    if (pendingPayment) throw new Error('A previous payment needs verification. Use Check existing payment before starting another purchase.');
     setProcessing(true);
     setError(null);
     try {
@@ -674,9 +682,14 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
   };
 
   const capturePayPalOrder = async (approvedOrderId: string) => {
+    if (captureInFlight.current) return;
+    captureInFlight.current = true;
+    setRecoveringPayment(true);
     setProcessing(true);
     try {
       if (!approvedOrderId) throw new Error('Missing PayPal order id');
+      setRecoveryOrderId(approvedOrderId);
+      try { localStorage.setItem('beezio-pending-paypal-payment', approvedOrderId); } catch { /* recovery reference also remains on screen */ }
 
       const captureRes = await fetch('/api/paypal/capture-order', {
         method: 'POST',
@@ -684,11 +697,14 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
         body: JSON.stringify({ orderID: approvedOrderId }),
       });
       const captureData = await captureRes.json().catch(() => ({}));
-      if (!captureRes.ok) {
-        throw new Error(String((captureData as any)?.error || 'PayPal capture failed'));
+      if (!captureRes.ok || captureData?.ok !== true) {
+        throw new Error('We could not confirm this payment. Do not start another purchase. Check existing payment or contact support with the reference shown below.');
       }
 
       const beezioOrderId = String((captureData as any)?.order_id || '').trim();
+      if (!beezioOrderId) throw new Error('Payment confirmation is incomplete. Check existing payment before ordering again.');
+      try { localStorage.removeItem('beezio-pending-paypal-payment'); } catch { /* non-fatal */ }
+      setRecoveryOrderId('');
       clearReferralData();
       clearCart();
       onSuccessRef.current(beezioOrderId || 'paid');
@@ -699,6 +715,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
       onErrorRef.current(message);
       throw err;
     } finally {
+      captureInFlight.current = false;
+      setRecoveringPayment(false);
       setProcessing(false);
     }
   };
@@ -1277,6 +1295,18 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
         </div>
       )}
 
+      {recoveryOrderId && (
+        <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          <div className="font-semibold">Your payment needs verification</div>
+          <p className="mt-1">Your cart is saved. Check this existing payment before placing another order.</p>
+          <p className="mt-2 break-all">Checkout reference: {recoveryOrderId}</p>
+          <button type="button" disabled={recoveringPayment} onClick={() => { void capturePayPalOrder(recoveryOrderId).catch(() => {}); }} className="mt-3 rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
+            {recoveringPayment ? 'Checking payment…' : 'Check existing payment'}
+          </button>
+          <a className="ml-3 underline" href={`/checkout/success?token=${encodeURIComponent(recoveryOrderId)}`}>Open payment recovery</a>
+          <a className="ml-3 underline" href={`mailto:support@beezio.co?subject=${encodeURIComponent(`Payment verification: ${recoveryOrderId}`)}`}>Contact support</a>
+        </div>
+      )}
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">{error}</div>}
 
       {paymentsEnabled && paymentProvider === 'paypal' && !resolvedPayPalClientId && paypalStatusChecked && !paypalStatusLoading && (

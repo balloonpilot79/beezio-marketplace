@@ -25,6 +25,14 @@ export default function CheckoutSuccessPage() {
     let cancelled = false;
     const run = async () => {
       try {
+        const captureRes = await fetch('/api/paypal/capture-order', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderID: providerOrderId }),
+        });
+        const capture = await captureRes.json().catch(() => ({}));
+        if (!captureRes.ok || capture?.ok !== true || !capture?.order_id) {
+          throw new Error('We could not confirm payment yet. Do not place another order. Check this payment again or contact support with the reference below.');
+        }
         const sessionData = await supabase.auth.getSession();
         const accessToken = String(sessionData.data.session?.access_token || '').trim();
         const res = await fetch(`/api/order-details?providerOrderId=${encodeURIComponent(providerOrderId)}`, {
@@ -41,7 +49,8 @@ export default function CheckoutSuccessPage() {
         }
 
         const orderId = String((payload as any)?.order?.id || '').trim() || null;
-        if (orderId) {
+        if (orderId && String(payload?.order?.payment_status || '').toLowerCase() === 'paid') {
+          try { localStorage.removeItem('beezio-pending-paypal-payment'); } catch { /* non-fatal */ }
           clearReferralData();
           navigate(`/order-confirmation?order=${orderId}`, { replace: true });
           return;
@@ -72,7 +81,10 @@ export default function CheckoutSuccessPage() {
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
         <div className="text-2xl font-bold text-gray-900">Processing your order...</div>
         <div className="mt-3 text-gray-600">Hang tight while we confirm payment.</div>
+        {providerOrderId && <p className="mt-4 break-all text-sm">Checkout reference: {providerOrderId}</p>}
         {error && <div className="mt-4 text-sm text-red-700">{error}</div>}
+        {error && providerOrderId && <button type="button" onClick={() => { setError(null); setAttempt(a => a + 1); }} className="mt-4 rounded-lg bg-amber-600 px-4 py-2 text-white">Check existing payment</button>}
+        <a href={`mailto:support@beezio.co?subject=${encodeURIComponent(`Payment verification: ${providerOrderId}`)}`} className="mt-4 block text-sm underline">Contact support</a>
       </div>
     </div>
   );

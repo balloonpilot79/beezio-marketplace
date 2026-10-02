@@ -338,6 +338,8 @@ const formatAddressLines = (address: Record<string, unknown> | null | undefined)
 };
 
 export default function AdminOrderLedgerPanel({ defaultPreset = 'month' }: { defaultPreset?: TimeFilter }) {
+  const [paymentIncidents, setPaymentIncidents] = useState<Array<{ provider_order_id: string; order_id: string | null; error: string; created_at: string }>>([]);
+  const [paymentMonitorError, setPaymentMonitorError] = useState<string | null>(null);
   const [preset, setPreset] = useState<LedgerRangePreset>(defaultPreset);
   const [customStart, setCustomStart] = useState(() => formatDateInputValue(getDateRange(defaultPreset).start));
   const [customEnd, setCustomEnd] = useState(() => formatDateInputValue(getDateRange(defaultPreset).end));
@@ -385,6 +387,15 @@ export default function AdminOrderLedgerPanel({ defaultPreset = 'month' }: { def
       const { data: sessionData } = await supabase.auth.getSession();
       const token = String(sessionData?.session?.access_token || '').trim();
       if (!token) throw new Error('Not authenticated');
+      try {
+        const monitor = await fetch('/api/admin-payment-recovery', { headers: { Authorization: `Bearer ${token}` } });
+        const history = await monitor.json();
+        if (!monitor.ok) throw new Error(history.error || 'Payment recovery monitor unavailable');
+        setPaymentIncidents(Array.isArray(history.incidents) ? history.incidents : []);
+        setPaymentMonitorError(null);
+      } catch {
+        setPaymentMonitorError('Payment recovery history could not be checked. Refresh to try again.');
+      }
 
       const response = await fetch('/api/admin-sales-ledger', {
         method: 'POST',
@@ -680,6 +691,21 @@ export default function AdminOrderLedgerPanel({ defaultPreset = 'month' }: { def
 
   return (
     <div className="space-y-6">
+      {(paymentIncidents.length > 0 || paymentMonitorError) && (
+        <section className="rounded-lg border border-amber-300 bg-amber-50 p-5">
+          <h3 className="font-semibold text-amber-950">Payment recovery history</h3>
+          <p className="mt-1 text-sm text-amber-900">These payments encountered a recovery problem. Compare the current order with PayPal before fulfilling, refunding, or asking a customer to pay again.</p>
+          {paymentMonitorError && <p className="mt-2 text-sm text-red-800">{paymentMonitorError}</p>}
+          <ul className="mt-3 space-y-3 text-sm">
+            {paymentIncidents.map(incident => <li key={incident.provider_order_id} className="break-all">
+              <strong>PayPal reference: {incident.provider_order_id}</strong>
+              <div>{incident.error}</div>
+              <div>Last recovery problem: {new Date(incident.created_at).toLocaleString()}</div>
+              {incident.order_id && <button type="button" className="underline" onClick={() => setSearchInput(incident.order_id || '')}>Find saved order</button>}
+            </li>)}
+          </ul>
+        </section>
+      )}
       <section className="bg-white rounded-lg shadow-sm p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
