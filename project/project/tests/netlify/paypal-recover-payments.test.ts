@@ -33,6 +33,18 @@ describe('independent beta payment backup', () => {
     state.rows.paypal_webhook_events = Array.from({ length: 15 }, (_, i) => paymentEvent(String(i)));
     await recover(); expect(state.recover).toHaveBeenCalledTimes(10);
   });
+  it('rotates past permanently failing candidates on later runs', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(0);
+    try {
+      state.rows.paypal_webhook_events = Array.from({ length: 20 }, (_, i) => paymentEvent(String(i)));
+      state.recover.mockRejectedValue(new Error('invalid saved order'));
+      await recover();
+      clock.mockReturnValue(600000);
+      await recover();
+      const attempted = new Set(state.recover.mock.calls.map(([arg]) => arg.resource.id));
+      expect(attempted.size).toBe(20);
+    } finally { clock.mockRestore(); }
+  });
   it('blocks payment history for unauthorized users', async () => {
     state.auth.mockRejectedValue(Object.assign(new Error('Forbidden'), { statusCode: 403 }));
     const response = await monitor(new Request('https://example.test/api/admin-payment-recovery'));

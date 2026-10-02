@@ -519,6 +519,7 @@ async function insertRowWithFallback(supabaseAdmin: any, table: string, payload:
 }
 
 async function repairOrderAccounting(params: {
+  orderStatus?: string;
   supabaseAdmin: any;
   orderId: string;
   providerOrderId: string;
@@ -530,7 +531,7 @@ async function repairOrderAccounting(params: {
   const { supabaseAdmin, orderId, providerOrderId, providerCaptureId, paidAt, holdReleaseAt, plan } = params;
 
   const orderUpdate = await updateRowWithFallback(supabaseAdmin, 'orders', 'id', orderId, {
-    status: 'completed',
+    ...(['', 'pending', 'created', 'awaiting_payment', 'payment_pending'].includes(String(params.orderStatus || '').toLowerCase()) ? { status: 'completed' } : {}),
     payment_status: 'paid',
     payment_provider: 'PAYPAL',
     provider_order_id: providerOrderId,
@@ -540,10 +541,6 @@ async function repairOrderAccounting(params: {
     influencer_id: plan.aggregate.influencerId,
     paid_at: paidAt,
     payment_finalized_at: paidAt,
-    subtotal_listing: plan.aggregate.grossAmount,
-    total_charged: round2(plan.aggregate.grossAmount + plan.moneyEntries
-      .filter((entry) => entry.payeeType === 'shipping' || entry.payeeType === 'tax')
-      .reduce((sum, entry) => sum + Number(entry.grossAmount || 0), 0)),
     updated_at: new Date().toISOString(),
   });
   if (orderUpdate.error) throw new Error(orderUpdate.error.message);
@@ -710,6 +707,7 @@ export async function finalizePayPalOrderPayment(params: {
     [
       'id',
       'order_number',
+      'status',
       'seller_id',
       'partner_id',
       'influencer_id',
@@ -893,7 +891,10 @@ export async function finalizePayPalOrderPayment(params: {
     })),
   };
 
-  if (!params.forceRepair && Array.isArray(existingSnapshots) && existingSnapshots.length > 0) {
+  // The legacy RPC sets order status to completed. Repair later fulfillment
+  // states locally so a delayed event cannot move shipping backwards.
+  const preserveFulfillment = ['processing', 'shipped', 'delivered', 'fulfilled'].includes(String(orderRow.status || '').toLowerCase());
+  if (preserveFulfillment || (!params.forceRepair && Array.isArray(existingSnapshots) && existingSnapshots.length > 0)) {
     try {
       const { data: existingMoneyRows } = await supabaseAdmin
         .from('order_money_ledger')
@@ -901,8 +902,9 @@ export async function finalizePayPalOrderPayment(params: {
         .eq('order_id', orderId)
         .limit(1);
 
-      if (Array.isArray(existingMoneyRows) && existingMoneyRows.length > 0) {
+      if (preserveFulfillment || (Array.isArray(existingMoneyRows) && existingMoneyRows.length > 0)) {
         const repaired = await repairOrderAccounting({
+          orderStatus: String(orderRow.status || ''),
           supabaseAdmin,
           orderId,
           providerOrderId,
@@ -950,6 +952,7 @@ export async function finalizePayPalOrderPayment(params: {
       }
     } catch {
       const repaired = await repairOrderAccounting({
+          orderStatus: String(orderRow.status || ''),
         supabaseAdmin,
         orderId,
         providerOrderId,
@@ -1013,6 +1016,7 @@ export async function finalizePayPalOrderPayment(params: {
     if (ledgerError) throw new Error(ledgerError.message);
 
     const repaired = await repairOrderAccounting({
+          orderStatus: String(orderRow.status || ''),
       supabaseAdmin,
       orderId,
       providerOrderId,

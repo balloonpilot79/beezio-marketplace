@@ -22,7 +22,8 @@ export async function recoverCompletedPayPalPayment({ supabaseAdmin, resource }:
   const paidAt = order.paid_at || resource.create_time || new Date().toISOString();
   const { error: updateError } = await supabaseAdmin.from('orders').update({
     payment_provider: 'PAYPAL', provider_capture_id: captureId,
-    payment_status: 'paid', status: 'completed', paid_at: paidAt,
+    payment_status: 'paid', paid_at: paidAt,
+    ...(['', 'pending', 'created', 'awaiting_payment', 'payment_pending'].includes(String(order.status || '').toLowerCase()) ? { status: 'completed' } : {}),
   }).eq('id', order.id);
   if (updateError) throw new Error(updateError.message);
   const rawFee = resource?.seller_receivable_breakdown?.paypal_fee?.value;

@@ -698,6 +698,11 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
       });
       const captureData = await captureRes.json().catch(() => ({}));
       if (!captureRes.ok || captureData?.ok !== true) {
+        if (captureRes.status === 409 && captureData?.code === 'INSUFFICIENT_CJ_INVENTORY' && captureData?.payment_not_captured === true) {
+          try { localStorage.removeItem('beezio-pending-paypal-payment'); } catch { /* clear in-memory state too */ }
+          setRecoveryOrderId('');
+          throw new Error('An item is no longer available. No payment was captured. Update your cart and try checkout again.');
+        }
         throw new Error('We could not confirm this payment. Do not start another purchase. Check existing payment or contact support with the reference shown below.');
       }
 

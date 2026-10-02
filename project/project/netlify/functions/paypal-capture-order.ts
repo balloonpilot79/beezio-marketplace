@@ -416,6 +416,7 @@ export const handler: Handler = async (event) => {
         return json(409, {
           error: 'Some CJ items are no longer available. Payment capture was blocked.',
           code: 'INSUFFICIENT_CJ_INVENTORY',
+          payment_not_captured: true,
           strict_cj_inventory: strictCJInventory,
           items: stockErrors,
         });

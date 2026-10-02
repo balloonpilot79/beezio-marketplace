@@ -29,7 +29,12 @@ export default async () => {
   const byProvider = new Map((orders || []).map(order => [order.provider_order_id, order]));
   let attempted = 0;
   const started = Date.now();
-  for (const event of events || []) {
+  // Rotate the bounded candidate window each run so permanently broken events
+  // cannot consume every attempt ahead of older valid payments.
+  const candidates = events || [];
+  const offset = (Math.floor(Date.now() / 600000) * 10) % candidates.length;
+  const rotated = [...candidates.slice(offset), ...candidates.slice(0, offset)];
+  for (const event of rotated) {
     const resource = event.raw_json?.resource;
     const providerId = String(resource?.supplementary_data?.related_ids?.order_id || '');
     const order = byProvider.get(providerId);

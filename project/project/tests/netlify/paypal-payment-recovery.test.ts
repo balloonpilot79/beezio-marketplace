@@ -44,6 +44,11 @@ describe('payment recovery after browser or database failures', () => {
     await recoverCompletedPayPalPayment({ supabaseAdmin: db, resource });
     expect(update).not.toHaveBeenCalled(); expect(state.finalize).not.toHaveBeenCalled();
   });
+  it('preserves shipped fulfillment on a delayed completed event', async () => {
+    state.order.status = 'shipped';
+    await recoverCompletedPayPalPayment({ supabaseAdmin: db, resource });
+    expect(update.mock.calls[0][0]).not.toHaveProperty('status');
+  });
   it('does not accept mismatched amounts', async () => {
     state.order.total_charged = 25;
     await expect(recoverCompletedPayPalPayment({ supabaseAdmin: db, resource })).rejects.toThrow('amount');
