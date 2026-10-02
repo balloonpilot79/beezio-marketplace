@@ -254,9 +254,10 @@ const RouteFallback = () => (
 
 const BusinessRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, profile, userRoles, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) return <RouteFallback />;
-  if (!user) return <Navigate to="/auth/login?next=%2Fbusiness" replace />;
+  if (!user) return <Navigate to={'/auth/login?next=' + encodeURIComponent(location.pathname + location.search)} replace />;
 
   const roles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role);
   const isAdmin = roles.includes('admin') || canAccessCJImport(user.email || profile?.email || '');
@@ -571,68 +572,26 @@ const AppWorking: React.FC = () => {
         {showPersistentDashboardSubNav && (
           <div className="mt-[6.375rem] border-b border-slate-200 bg-[#faf9f5] xl:sticky xl:top-[6.375rem] xl:z-40">
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-              <div className="xl:hidden py-2">
-                <div className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2">
+              <div className="xl:hidden py-3">
+                <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#6b4f00]">
-                      {dashboardSectionLabel}
-                    </div>
-                    <div className="truncate text-sm font-semibold text-[#2e2300]">
-                      {activeDashboardTab?.label || 'Sections'}
-                    </div>
+                    <div className="text-xs font-semibold text-slate-600">{dashboardSectionLabel}</div>
+                    <div className="truncate text-sm font-bold text-slate-950">{activeDashboardTab?.label || 'Products'}</div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsMobileDashboardSubNavOpen((current) => !current)}
-                    className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#d6ab00] bg-white px-3 py-2 text-xs font-semibold text-[#2e2300]"
-                    aria-expanded={isMobileDashboardSubNavOpen}
-                    aria-label="Toggle dashboard sections"
-                  >
-                    Dashboard Menu
-                    <ChevronDown className={`h-4 w-4 transition-transform ${isMobileDashboardSubNavOpen ? 'rotate-180' : ''}`} />
-                  </button>
+                  <Link to="/business/products/add" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[#ffcb05] px-4 text-sm font-bold text-[#101820]">+ Add product</Link>
                 </div>
+                <nav aria-label="Business sections" className="mt-3 grid grid-cols-4 gap-1">
+                  {dashboardSubNav.filter((tab) => ['products', 'orders', 'store-customization', 'financials'].includes(tab.id)).map((tab) => {
+                    const Icon = tab.icon;
+                    const label = tab.id === 'financials' ? 'Earnings' : tab.id === 'store-customization' ? 'My store' : tab.label;
+                    return <button key={tab.id} type="button" aria-current={activeDashboardTabId === tab.id ? 'page' : undefined} onClick={() => handlePersistentDashboardNavClick(tab.id)} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[11px] font-semibold ${activeDashboardTabId === tab.id ? 'bg-[#101820] text-[#ffcb05]' : 'bg-white text-slate-700'}`}><Icon className="h-4 w-4" aria-hidden="true" />{label}</button>;
+                  })}
+                </nav>
+                <button type="button" onClick={() => setIsMobileDashboardSubNavOpen((current) => !current)} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 text-xs font-semibold text-slate-700" aria-expanded={isMobileDashboardSubNavOpen} aria-controls="business-more-sections">More business tools<ChevronDown className={`h-4 w-4 ${isMobileDashboardSubNavOpen ? 'rotate-180' : ''}`} /></button>
                 {isMobileDashboardSubNavOpen && (
-                  <>
-                    <div className="mt-2 mb-2 flex gap-2 overflow-x-auto pb-1">
-                      <Link
-                        to={dashboardBasePath + '/products/add'}
-                        onClick={() => setIsMobileDashboardSubNavOpen(false)}
-                        className="inline-flex shrink-0 items-center gap-2 rounded-md bg-[#101820] px-3 py-2 text-xs font-semibold text-[#ffcb05]"
-                      >
-                        Sell a Product
-                      </Link>
-                      <Link
-                        to="/marketplace"
-                        onClick={() => setIsMobileDashboardSubNavOpen(false)}
-                        className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#101820] hover:bg-[#ffef9f]"
-                      >
-                        Open Marketplace
-                      </Link>
-                    </div>
-                    <div className="flex gap-2 overflow-x-auto pb-1">
-                      {dashboardSubNav.map((tab) => {
-                        const Icon = tab.icon;
-                        const isActive =
-                          activeDashboardTabId === tab.id || (!activeDashboardTabId && tab.id === defaultDashboardTabId);
-
-                        return (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => handlePersistentDashboardNavClick(tab.id)}
-                            className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${
-                              isActive ? 'border-[#101820] bg-[#101820] text-[#ffcb05]' : 'border-[#d6ab00] bg-white text-[#2e2300]'
-                            }`}
-                            title={tab.description}
-                          >
-                            <Icon className="h-3.5 w-3.5" />
-                            {tab.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
+                  <nav id="business-more-sections" aria-label="More business tools" className="mt-2 grid grid-cols-2 gap-2">
+                    {dashboardSubNav.filter((tab) => !['products', 'orders', 'store-customization', 'financials'].includes(tab.id)).map((tab) => <button key={tab.id} type="button" onClick={() => handlePersistentDashboardNavClick(tab.id)} className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">{tab.label}</button>)}
+                  </nav>
                 )}
               </div>
 
@@ -666,7 +625,7 @@ const AppWorking: React.FC = () => {
                     to={dashboardBasePath + '/products/add'}
                     className="inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-[#101820] px-3 py-2 text-sm font-semibold text-[#ffcb05] hover:bg-[#26313f]"
                   >
-                    Sell a Product
+                    Add product
                   </Link>
                   <Link
                     to="/marketplace"

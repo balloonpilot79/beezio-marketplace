@@ -1803,7 +1803,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       )}
 
       {showStickyAlert && (error || success) && (
-        <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2">
+        <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] xl:bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2">
           <div
             className={[
               'rounded-xl border shadow-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3',

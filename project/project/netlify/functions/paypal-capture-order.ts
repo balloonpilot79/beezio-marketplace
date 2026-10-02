@@ -12,7 +12,6 @@ import { buildOrderConfirmationEmail, sendTransactionalEmail } from './_lib/emai
 import { getCJInventory } from './_lib/cj-api';
 import { resolveRecruiterInfluencerId } from './_lib/influencer-referrals';
 import { finalizePayPalOrderPayment } from './_lib/paypal-order-finalization';
-import { createUnpaidCJOrderForBeezioOrder } from './_lib/cj-fulfillment';
 import { getReferrerBonusTotal } from '../../shared/referralBonus';
 import {
   computeBeezioPlatformFee,
@@ -609,27 +608,8 @@ export const handler: Handler = async (event) => {
       paidAt,
     });
 
-    // SupplyLine Plus is created in CJ immediately after Beezio payment clears,
-    // but with payType=3 so Jason retains the final manual CJ payment step.
-    try {
-      await createUnpaidCJOrderForBeezioOrder({ orderId, supabaseAdmin });
-    } catch (err) {
-      console.warn('SupplyLine Plus unpaid CJ order creation failed; scheduled retry will continue:', err);
-    }
-
-    // Best-effort: trigger fulfillment dispatch (Printful/Printify/CJ).
-    try {
-      const siteUrl = getSiteUrl();
-      if (siteUrl) {
-        await fetch(`${siteUrl.replace(/\/$/, '')}/.netlify/functions/fulfillment-dispatch`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId }),
-        });
-      }
-    } catch (err) {
-      console.warn('Fulfillment dispatch failed (non-fatal):', err);
-    }
+    // Sellers fulfill their own orders. Payment capture must never place supplier
+    // orders or dispatch customer information to an external fulfillment service.
 
     // Best-effort operational log for seller/partner/influencer visibility in admin diagnostics.
     try {

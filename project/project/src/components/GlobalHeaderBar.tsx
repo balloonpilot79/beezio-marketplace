@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Plus,
   ShoppingBag,
   ShoppingCart,
   Store,
@@ -57,6 +58,7 @@ const GlobalHeaderBar: React.FC = () => {
     hasBusinessAccess
       ? { label: "Business", href: "/business", icon: LayoutDashboard }
       : { label: "Sell & earn", href: "/start-earning", icon: Store },
+    ...(hasBusinessAccess ? [{ label: "Add product", href: "/business/products/add", icon: Plus }] : []),
     { label: "Account", href: user ? "/account" : "/auth/login", icon: User },
     { label: "Cart", href: "/cart", icon: ShoppingCart },
   ];
@@ -114,10 +116,11 @@ const GlobalHeaderBar: React.FC = () => {
           <div className="flex items-center gap-2 sm:gap-3">
             {hasBusinessAccess ? (
               <Link
-                to="/business"
-                className="hidden rounded-lg bg-[#faf9f5] px-3 py-2 text-xs font-semibold text-slate-800 sm:inline-flex"
+                to="/business/products/add"
+                className="hidden items-center gap-1 rounded-lg bg-[#101820] px-3 py-2 text-xs font-semibold text-[#ffcb05] sm:inline-flex"
               >
-                Business Center
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add product
               </Link>
             ) : (
               <Link
@@ -167,6 +170,15 @@ const GlobalHeaderBar: React.FC = () => {
                     >
                       Shopper Account
                     </Link>
+                    {hasBusinessAccess && (
+                      <Link
+                        to="/business/products/add"
+                        className="flex items-center gap-2 rounded-lg bg-[#fff4bb] px-3 py-3 font-semibold text-slate-900"
+                      >
+                        <Plus className="h-4 w-4" aria-hidden="true" />
+                        Add product
+                      </Link>
+                    )}
                     {hasBusinessAccess && (
                       <Link
                         to="/business"
@@ -259,6 +271,20 @@ const GlobalHeaderBar: React.FC = () => {
         className="bz-shopping-nav fixed inset-x-0 top-14 z-[68]"
       >
         <div className="mx-auto flex max-w-7xl items-center gap-7 overflow-x-auto px-4 sm:px-6 lg:px-8">
+          {hasBusinessAccess && (
+            <Link to="/business/products/add" className="bz-shopping-link text-[#ffdb55]">
+              <Plus className="h-5 w-5" aria-hidden="true" />
+              Add product
+            </Link>
+          )}
+          {hasBusinessAccess && isBusiness ? (
+            <>
+              <Link to="/business?section=seller&tab=products" className="bz-shopping-link">My products</Link>
+              <Link to="/business?tab=orders" className="bz-shopping-link">Orders</Link>
+              <Link to="/business?tab=financials" className="bz-shopping-link">Earnings</Link>
+              <Link to="/marketplace" className="bz-shopping-link">Shop marketplace</Link>
+            </>
+          ) : (<>
           <Link
             to="/marketplace"
             aria-current={location.pathname === "/marketplace" ? "page" : undefined}
@@ -282,6 +308,7 @@ const GlobalHeaderBar: React.FC = () => {
           <Link to="/stores" className="bz-shopping-link bz-shopping-link-accent">
             Discover stores
           </Link>
+          </>)}
         </div>
       </nav>
       {mobileOpen && (
@@ -298,6 +325,14 @@ const GlobalHeaderBar: React.FC = () => {
             className="fixed inset-x-0 top-[6.375rem] z-[69] grid max-h-[calc(100dvh-10.375rem)] gap-1 overflow-y-auto border-b border-slate-200 bg-[#f3f0e8] p-4 2xl:hidden"
           >
             <MarketplaceSearch />
+            {hasBusinessAccess && (
+              <div className="grid grid-cols-2 gap-2">
+                <Link to="/business/products/add" className="bz-button bz-button-gold"><Plus className="h-4 w-4" /> Add product</Link>
+                <Link to="/business?section=seller&tab=products" className="bz-button bz-button-outline">My products</Link>
+                <Link to="/business?tab=orders" className="bz-button bz-button-outline">Orders</Link>
+                <Link to="/business?tab=financials" className="bz-button bz-button-outline">Earnings & payouts</Link>
+              </div>
+            )}
             {publicLinks.map((link) => (
               <Link
                 key={link.href}
@@ -340,16 +375,16 @@ const GlobalHeaderBar: React.FC = () => {
       )}
       <nav
         aria-label="Quick navigation"
-        className="fixed inset-x-0 bottom-0 z-[65] grid grid-cols-4 border-t border-slate-200 bg-white px-2 pt-2 pb-[max(.5rem,env(safe-area-inset-bottom))] xl:hidden"
+        className={`fixed inset-x-0 bottom-0 z-[65] grid ${hasBusinessAccess ? 'grid-cols-5' : 'grid-cols-4'} border-t border-slate-200 bg-white px-2 pt-2 pb-[max(.5rem,env(safe-area-inset-bottom))] xl:hidden`}
       >
         {mobileLinks.map(({ label, href, icon: Icon }) => (
           <Link
             key={href}
             to={href}
             aria-current={
-              location.pathname.startsWith(href) ? "page" : undefined
+              (href === "/business" ? location.pathname === href : location.pathname.startsWith(href)) ? "page" : undefined
             }
-            className={`flex flex-col items-center gap-1 rounded-lg px-1 py-1 text-[10px] font-semibold ${location.pathname.startsWith(href) ? "bg-[#fff4bb] text-[#101820]" : "text-slate-600"}`}
+            className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg px-1 py-1 text-[10px] font-semibold ${href === "/business/products/add" ? "bg-[#ffcb05] text-[#101820]" : (href === "/business" ? location.pathname === href : location.pathname.startsWith(href)) ? "bg-[#fff4bb] text-[#101820]" : "text-slate-600"}`}
           >
             <Icon className="h-4 w-4" aria-hidden="true" />
             {label}
