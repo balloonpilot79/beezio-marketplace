@@ -80,6 +80,7 @@ describe("Beezio public message and account boundaries", () => {
     expect(html).toContain('href="/auth/login"');
     expect(html).toContain('href="/join"');
     expect(html).not.toContain('href="/business"');
+    expect(html).not.toContain('href="/business/products/add"');
   });
   it("keeps business shortcuts out of buyer-only navigation", () => {
     state.user = { id: "buyer", email: "test@example.invalid" };
@@ -87,6 +88,7 @@ describe("Beezio public message and account boundaries", () => {
     const html = render(<GlobalHeaderBar />);
     expect(html).toContain('href="/account"');
     expect(html).not.toContain('href="/business"');
+    expect(html).not.toContain('href="/business/products/add"');
   });
   it.each(["seller", "affiliate", "influencer"])(
     "gives %s access to both account spaces",
@@ -96,6 +98,8 @@ describe("Beezio public message and account boundaries", () => {
       const html = render(<GlobalHeaderBar />);
       expect(html).toContain('href="/business"');
       expect(html).toContain('href="/account"');
+      expect(html).toContain('href="/business/products/add"');
+      expect(html).toContain('grid-cols-5');
     },
   );
   it("gives business users a dashboard route from the shopper account shell", () => {

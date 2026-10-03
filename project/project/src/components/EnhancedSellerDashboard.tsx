@@ -1227,13 +1227,11 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
             <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
             <p className="mt-2 text-gray-600">{description}</p>
           </div>
-          <Link
-            to={storePath}
-            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
-          >
-            <ExternalLink className="h-4 w-4" />
-            View Store
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/business/products/add" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#ffcb05] px-4 py-2 text-sm font-bold text-[#101820]">+ Add product</Link>
+            <Link to="/marketplace" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700">Find products to promote</Link>
+            <Link to={storePath} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"><ExternalLink className="h-4 w-4" />View store</Link>
+          </div>
         </div>
 
         {error && (
