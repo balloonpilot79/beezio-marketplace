@@ -218,7 +218,7 @@ const CanonicalProductCard: React.FC<Props> = ({
   const content = viewMode === 'list' ? (
     <div className="flex gap-5 p-5">
       <ProductLink className="w-32 shrink-0">
-        <img {...commonImageProps} className="w-32 h-32 object-cover rounded-xl" />
+        <img {...commonImageProps} className="w-32 h-32 bg-white object-contain p-2 rounded-xl" />
       </ProductLink>
       <div className="min-w-0 flex-1">
         <ProductLink>
@@ -233,7 +233,7 @@ const CanonicalProductCard: React.FC<Props> = ({
     <div>
       <ProductLink>
         <div className="relative">
-          <img {...commonImageProps} className={`${compact ? 'h-28' : 'h-56'} w-full object-cover`} />
+          <img {...commonImageProps} className={`${compact ? 'h-28' : 'h-56'} w-full bg-white object-contain p-2`} />
         </div>
         <div className={compact ? 'p-3' : 'p-5'}>
           <h3 className={`${compact ? 'text-sm' : 'text-lg'} font-semibold text-gray-900 hover:text-purple-600 line-clamp-2`}>{product.title}</h3>
