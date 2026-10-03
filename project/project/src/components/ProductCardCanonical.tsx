@@ -54,6 +54,7 @@ interface Props {
   compact?: boolean;
   ctaMode?: 'marketplace' | 'storefront';
   forcePurchaseCtas?: boolean;
+  promoterBadge?: React.ReactNode;
 }
 
 const stop = (event: React.SyntheticEvent) => {
@@ -69,6 +70,7 @@ const CanonicalProductCard: React.FC<Props> = ({
   compact = false,
   ctaMode = 'marketplace',
   forcePurchaseCtas = false,
+  promoterBadge,
 }) => {
   const { addToCart } = useCart();
   const { user, profile, currentRole, hasRole } = useAuth();
@@ -221,6 +223,7 @@ const CanonicalProductCard: React.FC<Props> = ({
         <img {...commonImageProps} className="w-32 h-32 bg-white object-contain p-2 rounded-xl" />
       </ProductLink>
       <div className="min-w-0 flex-1">
+        {promoterBadge && <div className="mb-3">{promoterBadge}</div>}
         <ProductLink>
           <h3 className="text-lg font-semibold text-gray-900 hover:text-purple-600 line-clamp-2">{product.title}</h3>
           <p className="text-sm text-gray-500 mt-1">by {product.profiles?.full_name || 'Seller'}</p>
@@ -233,9 +236,10 @@ const CanonicalProductCard: React.FC<Props> = ({
     <div>
       <ProductLink>
         <div className="relative">
-          <img {...commonImageProps} className={`${compact ? 'h-28' : 'h-56'} w-full bg-white object-contain p-2`} />
+          <img {...commonImageProps} className={`${compact ? 'h-52' : 'h-56'} w-full bg-white object-contain p-2`} />
         </div>
         <div className={compact ? 'p-3' : 'p-5'}>
+          {promoterBadge && <div className="mb-3">{promoterBadge}</div>}
           <h3 className={`${compact ? 'text-sm' : 'text-lg'} font-semibold text-gray-900 hover:text-purple-600 line-clamp-2`}>{product.title}</h3>
           <p className="text-sm text-gray-500 mt-1">by {product.profiles?.full_name || 'Seller'}</p>
           {Number(product.average_rating) > 0 && (

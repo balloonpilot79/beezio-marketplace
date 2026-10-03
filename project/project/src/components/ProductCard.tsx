@@ -27,10 +27,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode, affiliateR
         affiliateRef={affiliateRef}
         affiliateUid={uid}
         compact={compact}
+        promoterBadge={<ProductPromoterCountBadge productId={String(product?.id || '')} />}
       />
-      <div className="pointer-events-none absolute left-4 top-4 z-10">
-        <ProductPromoterCountBadge productId={String(product?.id || '')} />
-      </div>
     </div>
   );
 };
