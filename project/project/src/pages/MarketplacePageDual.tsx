@@ -68,7 +68,7 @@ const CATEGORY_KEYWORDS: Array<{ category: string; keywords: string[] }> = [
   { category: 'Beauty & Personal Care', keywords: ['beauty', 'makeup', 'skincare', 'hair', 'cosmetic', 'lotion'] },
   { category: 'Fragrance & Candles', keywords: ['fragrance', 'perfume', 'cologne', 'scent', 'candle', 'wax melt', 'aromatherapy'] },
   { category: 'Equestrian & Horse Supplies', keywords: ['horse', 'equestrian', 'tack', 'saddle', 'bridle', 'halter', 'stable', 'grooming brush'] },
-  { category: 'Fashion', keywords: ['shirt', 'hoodie', 'jacket', 'fashion', 'dress', 'shoe', 'hat', 'pants', 'bag'] },
+  { category: 'Clothing', keywords: ['shirt', 'hoodie', 'jacket', 'fashion', 'dress', 'shoe', 'hat', 'pants', 'bag'] },
   { category: 'Toys & Games', keywords: ['toy', 'game', 'kids', 'puzzle', 'play'] },
   { category: 'Automotive', keywords: ['car', 'auto', 'vehicle', 'truck', 'tire'] },
 ];
@@ -188,6 +188,7 @@ const resolveDerivedCategory = (product: MarketplaceProduct, categoryById: Map<s
   const linkedCategory = product.category_id ? categoryById.get(product.category_id) : null;
   const parentCategory = linkedCategory?.parent_id ? categoryById.get(linkedCategory.parent_id) : null;
   const explicit = String(parentCategory?.name || linkedCategory?.name || product.category || '').trim();
+  if (/^(clothing|apparel|fashion|clothing & fashion)$/i.test(explicit)) return 'Clothing';
   if (explicit) return explicit;
 
   const haystack = `${product.title || ''} ${product.description || ''}`.toLowerCase();
@@ -307,7 +308,7 @@ const MarketplacePageDual: React.FC = () => {
   );
 
   const categoryOptions = useMemo(() => {
-    const counts = new Map<string, number>();
+    const counts = new Map<string, number>([['Clothing', 0]]);
     productsWithCategory.forEach((product) => {
       const category = String((product as any).derivedCategory || '').trim();
       if (!category) return;

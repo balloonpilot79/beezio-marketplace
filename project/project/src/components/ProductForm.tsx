@@ -529,6 +529,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     { id: 'home-kitchen', name: 'Home & Kitchen' },
     { id: 'beauty-personal-care', name: 'Beauty & Personal Care' },
     { id: 'apparel', name: 'Apparel' },
+    { id: 'clothing', name: 'Clothing' },
     { id: 'sports-outdoors', name: 'Sports & Outdoors' },
     { id: 'beauty-personal-care', name: 'Beauty & Personal Care' },
     { id: 'health-wellness', name: 'Health & Wellness' },
@@ -688,12 +689,16 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         if (!error && data && data.length > 0) {
           console.log('Categories loaded from database:', data.length);
           setCategoriesLoadedFromDatabase(true);
+          const listingCategories = data.map((category) => ({
+            id: String(category?.id || '').trim(),
+            name: String(category?.name || '').trim(),
+          }));
+          if (!listingCategories.some((category) => normalizeCategoryToken(category.name) === 'clothing')) {
+            listingCategories.push({ id: 'clothing', name: 'Clothing' });
+          }
           setCategories(
             dedupeCategories(
-              data.map((category) => ({
-                id: String(category?.id || '').trim(),
-                name: String(category?.name || '').trim(),
-              }))
+              listingCategories
             ).sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), undefined, { sensitivity: 'base' }))
           );
         } else {
@@ -1266,7 +1271,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     try {
       let savedProductId: string | null = null;
       const normalizedCategoryId =
-        categoriesLoadedFromDatabase && categories.some((category) => String(category.id) === categorySelection)
+        categoriesLoadedFromDatabase && looksLikeUuid(categorySelection) && categories.some((category) => String(category.id) === categorySelection)
           ? categorySelection
           : looksLikeUuid(categorySelection)
             ? categorySelection
