@@ -1102,6 +1102,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       abortSubmit('You must be logged in to create a product');
       return;
     }
+    if (formData.is_digital === true || isDigitalCategoryOption(categories.find((category) => category.id === formData.category_id) || { id: formData.category_id, name: formData.category_id })) {
+      abortSubmit('Digital products are not available during beta. Please list a physical product.');
+      return;
+    }
     if (buyerOnlyAccount) {
       abortSubmit('Customer accounts can view purchases in the customer dashboard. Open a Beezio business account before creating products.');
       return;
@@ -2005,7 +2009,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             <label className="block text-sm font-bold text-gray-900 mb-2">
               Product Type <span className="text-red-500">*</span>
             </label>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3">
               <button
                 type="button"
                 onClick={() => setProductType(false)}
@@ -2013,14 +2017,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               >
                 <div className="font-semibold">Physical Product</div>
                 <div className="mt-1 text-sm text-gray-600">Ships to the buyer and uses fulfillment tracking.</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setProductType(true)}
-                className={`rounded-xl border px-4 py-4 text-left transition ${formData.is_digital ? 'border-[#ffcb05] bg-amber-50 text-gray-900 shadow-sm' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}`}
-              >
-                <div className="font-semibold">Digital Download</div>
-                <div className="mt-1 text-sm text-gray-600">Buyer gets a secure account-tied download after payment.</div>
               </button>
             </div>
           </div>
@@ -2038,7 +2034,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
             >
               <option value="">Select a category...</option>
-              {categories.map((c) => (
+              {categories.filter((c) => !isDigitalCategoryOption(c)).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>

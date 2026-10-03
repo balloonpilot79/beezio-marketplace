@@ -812,10 +812,10 @@ export const handler: Handler = async (event) => {
     }
 
     const hasDigitalProduct = productTokens.some((token) => tokenToProduct.get(token)?.is_digital === true);
-    if (hasDigitalProduct && !buyerId) {
+    if (hasDigitalProduct) {
       return json(400, {
-        error: 'You must sign in to purchase digital products so delivery stays secure.',
-        code: 'DIGITAL_LOGIN_REQUIRED',
+        error: 'Digital products are not available for purchase during beta.',
+        code: 'DIGITAL_PRODUCTS_UNAVAILABLE',
       });
     }
 
