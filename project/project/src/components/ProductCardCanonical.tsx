@@ -41,6 +41,7 @@ export interface CanonicalProductCardProduct {
   affiliate_commission_type?: 'percent' | 'flat';
   affiliate_commission_value?: number;
   affiliate_payout_amount?: number;
+  affiliate_enabled?: boolean;
   profiles?: { full_name?: string } | null;
   average_rating?: number;
   review_count?: number;
@@ -119,6 +120,12 @@ const CanonicalProductCard: React.FC<Props> = ({
   const canAffiliate = Boolean(user?.id) && (role === 'affiliate' || role === 'partner' || hasRole('affiliate') || hasRole('partner'));
   const canSeller = Boolean(user?.id) && (role === 'seller' || hasRole('seller'));
   const showStoreTools = ctaMode !== 'storefront' && (canAffiliate || canSeller);
+  const affiliateEarnings = showStoreTools && product.affiliate_enabled !== false && affiliateAmount > 0 ? (
+    <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">
+      <Award className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span>Earn ${affiliateAmount.toFixed(2)} per sale</span>
+    </div>
+  ) : null;
   const purchaseVisible = forcePurchaseCtas || ctaMode === 'storefront' || product.is_active === true || product.is_promotable === true || String(product.status || '').toLowerCase() === 'active';
   const hasVariants = Boolean(product.has_variants) || (Array.isArray(product.product_variants) && product.product_variants.length > 0) || (Array.isArray(product.variants) && product.variants.length > 0);
   const stock = Number.isFinite(product.stock_quantity) ? Number(product.stock_quantity) : Number.isFinite(product.total_inventory) ? Number(product.total_inventory) : null;
@@ -228,6 +235,7 @@ const CanonicalProductCard: React.FC<Props> = ({
           <h3 className="text-lg font-semibold text-gray-900 hover:text-purple-600 line-clamp-2">{product.title}</h3>
           <p className="text-sm text-gray-500 mt-1">by {product.profiles?.full_name || 'Seller'}</p>
           <p className="text-2xl font-bold text-gray-900 mt-3">${buyerPrice.toFixed(2)}</p>
+          {affiliateEarnings}
         </ProductLink>
         <div className="mt-3 flex flex-col sm:flex-row gap-2">{purchaseButtons}{storeButtons}</div>
       </div>
@@ -249,8 +257,8 @@ const CanonicalProductCard: React.FC<Props> = ({
           )}
           <div className="flex items-center justify-between mt-3">
             <span className="text-2xl font-bold text-gray-900">${buyerPrice.toFixed(2)}</span>
-            {canAffiliate && commission.value > 0 && <span className="text-xs text-green-700"><Award className="inline w-3 h-3" /> ${affiliateAmount.toFixed(2)}</span>}
           </div>
+          {affiliateEarnings}
           <div className="text-xs text-gray-500 mt-1">Free shipping • tax at checkout</div>
         </div>
       </ProductLink>
