@@ -35,8 +35,6 @@ const SellerGuide: React.FC = () => {
     },
     { referralOverrideEnabled: false }
   );
-  const exampleProcessingFee =
-    exampleBreakdown.processingPercentAmount + exampleBreakdown.processingFixedFee;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -141,7 +139,7 @@ const SellerGuide: React.FC = () => {
                 <h4 className="font-bold text-gray-900 mb-4">How Beezio Pricing Works:</h4>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-700">Your Desired Profit:</span>
+                    <span className="text-gray-700">Your Seller Ask:</span>
                     <span className="font-bold text-green-600">$100.00</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
@@ -149,12 +147,8 @@ const SellerGuide: React.FC = () => {
                     <span className="font-bold text-purple-600">$30.00</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-700">Fixed Beezio platform fee:</span>
-                    <span className="font-bold text-gray-600">${exampleBreakdown.platformGrossAmount.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-700">Processing Fee:</span>
-                    <span className="font-bold text-gray-600">${exampleProcessingFee.toFixed(2)}</span>
+                    <span className="text-gray-700">Shipping cost:</span>
+                    <span className="font-bold text-gray-600">$0.00</span>
                   </div>
                   <div className="flex justify-between items-center py-2 font-bold text-lg">
                     <span className="text-gray-900">Customer Pays:</span>
@@ -162,7 +156,7 @@ const SellerGuide: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-4 p-3 bg-green-50 rounded-lg">
-                  <p className="text-green-800 text-sm font-medium">✅ You always get your full desired profit amount!</p>
+                  <p className="text-green-800 text-sm font-medium">✅ You receive 100% of your ask plus shipping. Affiliates receive 100% of the payout you set. Beezio calculates the customer price automatically.</p>
                 </div>
               </div>
             </div>

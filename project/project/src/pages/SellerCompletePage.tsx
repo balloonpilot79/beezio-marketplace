@@ -53,65 +53,11 @@ const SellerCompletePage: React.FC = () => {
           </div>
         </section>
 
-        {/* Fees Structure */}
         <section className="mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">💳 Fee Structure</h2>
-          
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">Simple pricing</h2>
           <div className="bg-white rounded-lg shadow-sm border p-8">
-            <div className="grid md:grid-cols-2 gap-8">
-              <div>
-                <h3 className="text-2xl font-semibold text-green-600 mb-4">Simple, Transparent Pricing</h3>
-                
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center py-3 border-b">
-                    <span className="font-medium">Platform Fee</span>
-                    <span className="text-xl font-bold text-green-600">5%</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center py-3 border-b">
-                    <span className="font-medium">Payment Processing</span>
-                    <span className="text-xl font-bold">2.9% + $0.30</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center py-3 border-b">
-                    <span className="font-medium">Listing Fee</span>
-                    <span className="text-xl font-bold text-green-600">FREE</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center py-3 border-b">
-                    <span className="font-medium">Monthly Fee</span>
-                    <span className="text-xl font-bold text-green-600">FREE</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 p-6 rounded-lg">
-                <h4 className="text-lg font-semibold mb-4">Example: $100 Sale</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Sale Amount:</span>
-                    <span>$100.00</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Platform Fee (5%):</span>
-                    <span className="text-red-600">-$5.00</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Payment Processing:</span>
-                    <span className="text-red-600">-$3.20</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Partner Commission:</span>
-                    <span className="text-red-600">-$10.00</span>
-                  </div>
-                  <hr className="my-2" />
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Your Earnings:</span>
-                    <span className="text-green-600">$81.80</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <p className="text-gray-700">Enter just three amounts: your seller ask, the affiliate payout, and the shipping cost. You receive 100% of your ask plus shipping, and the affiliate receives 100% of the payout you set on a completed sale.</p>
+            <p className="mt-4 text-gray-700">Beezio calculates the customer price automatically. Listing products and joining are free.</p>
           </div>
         </section>
 

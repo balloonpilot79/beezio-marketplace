@@ -20,8 +20,8 @@ const SellerTerms: React.FC = () => (
     <section>
       <h2 className="text-xl font-semibold text-gray-900">3. Pricing and Commissions</h2>
       <ul className="list-disc list-inside space-y-2">
-        <li>Sellers set product pricing and affiliate commission amounts.</li>
-        <li>Beezio platform fees and processing fees are disclosed and included in buyer pricing.</li>
+        <li>Sellers enter their seller ask, affiliate payout, and shipping cost. Sellers receive 100% of their ask plus the shipping amount, and affiliates receive 100% of the specified payout on completed sales.</li>
+        <li>Beezio calculates buyer pricing automatically. Internal pricing allocations may change without reducing the seller ask or specified affiliate payout.</li>
       </ul>
     </section>
     <section>

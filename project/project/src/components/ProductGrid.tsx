@@ -2,7 +2,7 @@ import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 ﻿import React, { useMemo, useState, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { TrendingUp, Info, ShoppingBag, Store } from 'lucide-react';
+import { TrendingUp, ShoppingBag, Store } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AffiliateLink from './AffiliateLink';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -85,7 +85,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
   hideShareUI = false,
   hideSellerInfo = false,
   storefrontBrand,
-  platformLabel = 'Beezio platform',
   gridLayout = 'standard',
   productBasePath,
   colorScheme,
@@ -629,35 +628,10 @@ const ProductGrid: React.FC<ProductGridProps> = ({
               
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
-                  {/* Transparent Pricing Display */}
-                  <div className="group relative">
-                    {hideAffiliateUI ? (
-                      <div className="flex items-center space-x-2">
-                        <span className={`${storefrontCard ? 'text-2xl' : 'text-lg'} font-bold text-gray-900`}>{formatStorefrontPrice(payouts.salePrice)}</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center space-x-2">
-                          <span className={`${storefrontCard ? 'text-2xl' : 'text-lg'} font-bold text-gray-900`}>{formatStorefrontPrice(payouts.salePrice)}</span>
-                          <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                        </div>
-                        <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                          <div className="text-sm text-gray-700 space-y-1">
-                            <div className="font-semibold text-gray-900">Transparent pricing</div>
-                            <div className="flex justify-between"><span>Seller keeps</span><span className="font-medium text-green-600">${payouts.sellerPayout.toFixed(2)}</span></div>
-                            <div className="flex justify-between"><span>Affiliate earns</span><span className="font-medium text-blue-600">${payouts.affiliateCommission.toFixed(2)}</span></div>
-                            <div className="flex justify-between"><span>{platformLabel}</span><span className="font-medium text-purple-600">${payouts.beezioGross.toFixed(2)}</span></div>
-                            <div className="flex justify-between"><span>Payment fees</span><span className="font-medium text-gray-600">${payouts.processingFee.toFixed(2)}</span></div>
-                            <div className="border-t pt-1 mt-1 flex justify-between font-semibold">
-                              <span>Buyer pays</span><span className="text-gray-900">${payouts.salePrice.toFixed(2)}</span>
-                            </div>
-                            <div className="text-xs text-gray-500">No hidden fees. Free shipping; tax is calculated at checkout.</div>
-                          </div>
-                        </div>
-                      </>
-                    )}
+                  <div className="flex items-center space-x-2">
+                    <span className={`${storefrontCard ? 'text-2xl' : 'text-lg'} font-bold text-gray-900`}>{formatStorefrontPrice(payouts.salePrice)}</span>
                   </div>
-                  
+
                   {normalizedProduct.is_subscription && normalizedProduct.subscription_interval && (
                     <span className="ml-2 text-primary-600 text-xs font-semibold bg-primary-50 px-2 py-1 rounded-full">
                       {normalizedProduct.subscription_interval.charAt(0).toUpperCase() + normalizedProduct.subscription_interval.slice(1)}

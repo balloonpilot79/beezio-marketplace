@@ -2131,12 +2131,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               Pricing <span className="text-red-500">*</span>
             </label>
               <p className="mb-4 text-sm leading-6 text-gray-600">
-                Enter the product cost, the profit you want to keep, and the fixed affiliate payout. Beezio adds every required amount on top.
+                Enter your seller ask, the affiliate payout, and the shipping cost. You receive 100% of your ask plus the shipping amount; the affiliate receives 100% of the payout you set. Beezio calculates the customer price automatically.
               </p>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-gray-600 mb-2">
-                    Supplier / product cost
+                    Your seller ask
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-3 text-gray-500">$</span>
@@ -2144,31 +2144,15 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                       type="number"
                       min="0"
                       step="0.01"
-                      value={pricingSeed.supplierCost}
-                      onChange={(e) => setPricingSeed((prev) => ({
-                        ...prev,
-                        supplierCost: Math.max(0, Number.parseFloat(normalizeMoneyInput(e.target.value)) || 0),
-                      }))}
-                      className="w-full rounded-lg border border-gray-300 py-3 pl-8 pr-3 focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-600 mb-2">
-                    Seller markup / profit
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-3 text-gray-500">$</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={pricingSeed.sellerMarkup}
-                      onChange={(e) => setPricingSeed((prev) => ({
-                        ...prev,
-                        sellerMarkup: Math.max(0, Number.parseFloat(normalizeMoneyInput(e.target.value)) || 0),
-                      }))}
+                      value={pricingSeed.supplierCost + pricingSeed.sellerMarkup}
+                      onChange={(e) => {
+                        const ask = Math.max(0, Number.parseFloat(normalizeMoneyInput(e.target.value)) || 0);
+                        setPricingSeed((prev) => ({
+                          ...prev,
+                          supplierCost: Math.min(prev.supplierCost, ask),
+                          sellerMarkup: ask - Math.min(prev.supplierCost, ask),
+                        }));
+                      }}
                       className="w-full rounded-lg border border-gray-300 py-3 pl-8 pr-3 focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
                     />
                   </div>
@@ -2202,7 +2186,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
           {(formData as any).is_digital !== true && (
             <section className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
-              <div className="font-bold text-gray-950">Supplier shipping cost</div>
+              <div className="font-bold text-gray-950">Shipping cost</div>
               <p className="mt-1 text-sm leading-6 text-gray-700">
                 Enter what you need to pay to ship one item. Beezio includes this amount in the listed product price, reserves it in your seller payout, and shows the customer free shipping.
               </p>
@@ -2241,54 +2225,16 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
           {pricingBreakdown && (
             <section className="rounded-xl border-2 border-slate-900 bg-slate-950 p-5 text-white">
-              <div className="text-lg font-black">Review the complete price before listing</div>
+              <div className="text-lg font-black">Your listing price</div>
               <p className="mt-1 text-sm text-slate-300">
-                Nothing is published until you approve this breakdown and press Save.
+                Your ask and the affiliate payout stay whole. Beezio handles automatic pricing.
               </p>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
-                <div className="rounded-lg bg-white/10 p-3">
-                  <div className="text-slate-300">Supplier / product cost</div>
-                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.supplierCost.toFixed(2)}</div>
-                </div>
-                <div className="rounded-lg bg-white/10 p-3">
-                  <div className="text-slate-300">Seller markup / profit</div>
-                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.sellerMarkup.toFixed(2)}</div>
-                </div>
-                <div className="rounded-lg bg-white/10 p-3">
-                  <div className="text-slate-300">Shipping reserved for seller</div>
-                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.shippingIncludedAmount.toFixed(2)}</div>
-                </div>
-                <div className="rounded-lg bg-white/10 p-3">
-                  <div className="text-slate-300">Total seller payout</div>
-                  <div className="mt-1 text-xl font-bold text-emerald-300">${pricingBreakdown.sellerAmount.toFixed(2)}</div>
-                </div>
-                <div className="rounded-lg bg-white/10 p-3">
-                  <div className="text-slate-300">Affiliate payout</div>
-                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.affiliateAmount.toFixed(2)}</div>
-                </div>
-                <div className="rounded-lg bg-white/10 p-3">
-                  <div className="text-slate-300">Beezio fee</div>
-                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.platformFee.toFixed(2)}</div>
-                </div>
-                <div className="rounded-lg bg-white/10 p-3">
-                  <div className="text-slate-300">PayPal processing allocation</div>
-                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.processingFee.toFixed(2)}</div>
-                </div>
-                <div className="rounded-lg bg-white/10 p-3">
-                  <div className="text-slate-300">Influencer allocation</div>
-                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.referralAmount.toFixed(2)}</div>
-                </div>
-                <div className="rounded-lg bg-white/10 p-3">
-                  <div className="text-slate-300">Estimated sales tax</div>
-                  <div className="mt-1 text-xl font-bold">${pricingBreakdown.taxAmount.toFixed(2)}</div>
-                </div>
-              </div>
               <div className="mt-4 rounded-xl bg-[#ffcc00] p-4 text-slate-950">
                 <div className="text-sm font-bold uppercase tracking-wide">Final product price</div>
                 <div className="mt-1 text-4xl font-black">${pricingBreakdown.listingPrice.toFixed(2)}</div>
                 <div className="mt-1 text-sm font-semibold">Free shipping • Tax calculated at checkout</div>
                 <div className="mt-2 text-sm">
-                  Estimated checkout total: <strong>${pricingBreakdown.estimatedCheckoutTotal.toFixed(2)}</strong>. Actual tax depends on the customer’s location.
+                  Estimated checkout total with 7% sales tax: <strong>${pricingBreakdown.estimatedCheckoutTotal.toFixed(2)}</strong>. Actual tax depends on the customer’s location.
                 </div>
               </div>
             </section>
