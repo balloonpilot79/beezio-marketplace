@@ -162,17 +162,14 @@ export default function AffiliateShareWidget(props: Props) {
       ? window.open('', '_blank', 'noopener,noreferrer,width=720,height=640')
       : null;
     try {
-      if (!isPromoter) {
-        window.location.assign(buildSignupUrl(canonicalTargetUrl));
-        return;
-      }
-
       let trackedUrl = canonicalTargetUrl;
-      try {
-        const response = await getTrackedLink(channel);
-        trackedUrl = response?.trackedUrl || canonicalTargetUrl;
-      } catch (linkError) {
-        console.warn('[AffiliateShareWidget] Falling back to canonical share URL:', linkError);
+      if (isPromoter) {
+        try {
+          const response = await getTrackedLink(channel);
+          trackedUrl = response?.trackedUrl || canonicalTargetUrl;
+        } catch (linkError) {
+          console.warn('[AffiliateShareWidget] Falling back to canonical share URL:', linkError);
+        }
       }
       const template = getDefaultTemplate(props.type, channel);
       const message = fillTemplate(template.text, trackedUrl);

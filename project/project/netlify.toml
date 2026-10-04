@@ -97,6 +97,18 @@
 
 # Seller / affiliate product actions
 [[redirects]]
+  from = "/api/affiliate/link"
+  to = "/.netlify/functions/affiliate-link"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/analytics/share_click"
+  to = "/.netlify/functions/analytics-share-click"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/seller/add-product"
   to = "/.netlify/functions/seller-add-product"
   status = 200

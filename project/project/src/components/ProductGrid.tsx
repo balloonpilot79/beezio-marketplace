@@ -560,6 +560,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                   <div className="absolute top-2 right-2 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <SocialShareButton 
                       product={normalizedProduct}
+                      targetPath={productPathWithAttribution}
                       variant="icon"
                       size="sm"
                       className="bg-primary-50 bg-opacity-90 hover:bg-opacity-100 shadow-md border border-primary-200"
@@ -710,6 +711,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                   <div className="flex-shrink-0">
                     <SocialShareButton 
                       product={normalizedProduct}
+                      targetPath={productPathWithAttribution}
                       size="sm"
                     />
                   </div>

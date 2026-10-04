@@ -6,6 +6,7 @@ import {
 import SocialMediaTemplates from './SocialMediaTemplates';
 import QRCodeShare from './QRCodeShare';
 import { useBehaviorTracker } from '../hooks/useBehaviorTracker';
+import { productShareUrl } from '../../shared/productShareMetadata';
 
 interface Product {
   id: string;
@@ -21,6 +22,7 @@ interface Product {
 
 interface SocialShareButtonProps {
   product: Product;
+  targetPath?: string;
   affiliateCode?: string;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
@@ -131,6 +133,7 @@ const copyText = async (value: string) => {
 
 export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
   product,
+  targetPath,
   affiliateCode,
   className = '',
   size = 'md',
@@ -143,8 +146,7 @@ export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
   const { trackShare } = useBehaviorTracker();
 
   const getProductUrl = () => {
-    const baseUrl = `${window.location.origin}/product/${product.id}`;
-    return affiliateCode ? `${baseUrl}?ref=${affiliateCode}` : baseUrl;
+    return productShareUrl(window.location.origin, product.id, targetPath, affiliateCode);
   };
 
   const getShareText = () => {
