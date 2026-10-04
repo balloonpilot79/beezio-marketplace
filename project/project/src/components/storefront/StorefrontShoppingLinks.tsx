@@ -6,8 +6,10 @@ import { useCart } from "../../contexts/CartContext";
 /** Buyer-only navigation, shared by seller sites, affiliate sites and custom pages. */
 export default function StorefrontShoppingLinks({
   inverse = false,
+  compact = false,
 }: {
   inverse?: boolean;
+  compact?: boolean;
 }) {
   const { user } = useAuth();
   const { getTotalItems } = useCart();
@@ -24,16 +26,17 @@ export default function StorefrontShoppingLinks({
   return (
     <nav
       aria-label="Store shopping"
-      className="flex flex-wrap items-center gap-2"
+      className={`flex items-center ${compact ? "gap-1" : "flex-wrap gap-2"}`}
     >
       <Link
         to={user ? "/account" : `/account/login?next=${next}`}
-        className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${style}`}
+        aria-label={user ? "Your account" : "Sign in"}
+        className={`inline-flex items-center justify-center gap-2 rounded-lg border text-xs font-semibold ${compact ? "h-11 w-11" : "min-h-10 px-3 py-2"} ${style}`}
       >
         <UserCircle className="h-4 w-4" aria-hidden="true" />
-        {user ? "Your account" : "Sign in"}
+        <span className={compact ? "sr-only" : undefined}>{user ? "Your account" : "Sign in"}</span>
       </Link>
-      {!user && (
+      {!user && !compact && (
         <Link
           to={`/account/signup?next=${next}`}
           className={`inline-flex min-h-10 items-center rounded-lg border px-3 py-2 text-xs font-semibold ${style}`}
@@ -44,10 +47,10 @@ export default function StorefrontShoppingLinks({
       <Link
         to="/cart"
         aria-label={`Cart${count ? `, ${count} items` : ""}`}
-        className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${style}`}
+        className={`inline-flex items-center justify-center gap-2 rounded-lg border text-xs font-semibold ${compact ? "h-11 w-11" : "min-h-10 px-3 py-2"} ${style}`}
       >
         <ShoppingBag className="h-4 w-4" aria-hidden="true" />
-        Cart{count > 0 && <span>({count})</span>}
+        <span className={compact ? "sr-only" : undefined}>Cart</span>{count > 0 && <span>{compact ? count : `(${count})`}</span>}
       </Link>
     </nav>
   );

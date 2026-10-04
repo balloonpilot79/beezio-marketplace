@@ -1,3 +1,4 @@
+import CompactStoreHeader from '../components/storefront/CompactStoreHeader';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -783,7 +784,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
     if ((sectionId === 'search' || sectionId === 'categories') && items.slice(0, index).some((value) => value === 'search' || value === 'categories')) {
       return false;
     }
-    return ['search', 'categories', 'featured', 'about', 'policies'].includes(sectionId);
+    return ['search', 'categories', 'featured'].includes(sectionId);
   });
 
   const storeUrl = seller?.custom_domain
@@ -865,7 +866,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
 
     if (sectionId === 'featured' && showFeaturedSection) {
       return (
-        <div key="featured" className="mb-4 rounded-[24px] border bg-white p-5 shadow-sm" style={{ borderColor: secondaryColor }}>
+        <div key="featured" className="mb-4 hidden lg:block rounded-[24px] border bg-white p-5 shadow-sm" style={{ borderColor: secondaryColor }}>
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: accentColor }}>Featured Picks</div>
@@ -1028,8 +1029,9 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         <style>{seller.custom_css}</style>
       )}
       
+      <CompactStoreHeader name={displayStoreName} logoUrl={effectiveStoreLogoUrl} homePath={storeHomePath} inverse={hasEditorialBrand} onContact={showContactButton ? () => setContactModal(true) : undefined} />
       <header
-        className="sticky top-0 z-40 border-b shadow-sm backdrop-blur"
+        className="hidden lg:block sticky top-0 z-40 border-b shadow-sm backdrop-blur"
         style={hasEditorialBrand
           ? { backgroundColor: isLovingNutrition ? '#063c2f' : '#070707', borderColor: isMareBelle ? '#4b3a22' : isRedTail ? '#4f1719' : '#c7a34a' }
           : { backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#e2e8f0' }}
@@ -1151,7 +1153,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
       </header>
 
       {hasEditorialBrand && (
-        <div className="mx-auto max-w-[1440px] px-3 pt-4 sm:px-6 lg:px-8 lg:pt-7">
+        <div className="hidden lg:block mx-auto max-w-[1440px] px-3 pt-4 sm:px-6 lg:px-8 lg:pt-7">
           <section
             className="overflow-hidden border shadow-[0_32px_100px_rgba(0,0,0,0.24)]"
             style={{ background: isLovingNutrition ? 'radial-gradient(circle at 50% 35%, #176b50 0%, #063c2f 58%, #03271f 100%)' : '#080808', borderColor: `${editorialAccentColor}66` }}
@@ -1188,7 +1190,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
       )}
 
       {showStoreIntroSection && !hasEditorialBrand && (
-        <div className="mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
+        <div className="hidden lg:block mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
           <section className="overflow-hidden rounded-[36px] border border-white/40 bg-white shadow-[0_32px_100px_rgba(15,23,42,0.16)]">
             <div
               className="relative min-h-[380px] lg:min-h-[500px]"
@@ -1265,7 +1267,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
       )}
       
       {/* Products Section */}
-      <div id="products" className="mx-auto max-w-[1440px] scroll-mt-28 px-4 py-6 sm:px-6 md:scroll-mt-32 md:py-8 lg:px-8">
+      <div id="products" className="mx-auto max-w-[1440px] scroll-mt-20 px-3 py-3 sm:px-6 md:scroll-mt-32 md:py-8 lg:px-8">
         {orderedStorefrontSections.map((sectionId) => renderStorefrontSection(sectionId))}
 
         {/* Products Grid */}
@@ -1383,8 +1385,10 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         {/* Store Customization Panel intentionally hidden on storefront */}
       </div>
 
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">{renderStorefrontSection('about')}</div>
       <footer id="policies" className="border-t border-slate-200 bg-white/95">
         <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+          <nav aria-label="Store information" className="mb-5 flex flex-wrap gap-5 text-sm font-semibold"><Link to={aboutPath}>About us</Link><a href="#policies">Policies</a>{showContactButton && <button onClick={() => setContactModal(true)}>Contact</button>}</nav>
           <div className="grid gap-6 lg:grid-cols-[1.15fr_1fr_1fr]">
             <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-6">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Store highlights</div>

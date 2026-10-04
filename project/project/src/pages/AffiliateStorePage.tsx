@@ -1,3 +1,4 @@
+import CompactStoreHeader from '../components/storefront/CompactStoreHeader';
 import { isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -591,7 +592,8 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
         backgroundPosition: storefrontBackgroundImageUrl ? 'center' : undefined,
       }}
     >
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+      <CompactStoreHeader name={storeName} logoUrl={storeLogoUrl} homePath={storeHomePath} onContact={() => setContactModal(true)} />
+      <header className="hidden lg:block sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-4 justify-between">
           <Link to={storeHomePath} className="flex items-center gap-3">
             {storeLogoUrl ? (
@@ -706,7 +708,7 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
 
       <div className="max-w-6xl mx-auto py-1 md:py-2 px-4">
         {showStoreIntroSection && (
-          <section className="mb-4 overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
+          <section className="hidden lg:block mb-4 overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
             <div
               className="relative min-h-[280px]"
               style={{
@@ -919,8 +921,9 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
         </div>
       </div>
 
-      <footer className="border-t border-slate-200 bg-white/95">
+      <footer id="policies" className="border-t border-slate-200 bg-white/95">
         <div className="max-w-6xl mx-auto px-4 py-10">
+          <section id="about" className="mb-6 text-sm leading-6 text-slate-600"><h2 className="mb-2 text-lg font-bold text-slate-900">About {storeName}</h2>{storeDescription || storeTagline}<nav aria-label="Store information" className="mt-3 flex flex-wrap gap-5 font-semibold"><Link to={`${storeHomePath === '/' ? '' : storeHomePath}/about`}>About us</Link><a href="#policies">Policies</a><button onClick={() => setContactModal(true)}>Contact</button></nav></section>
           <div className="grid gap-6 lg:grid-cols-[1.15fr_1fr_1fr]">
             <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-6">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Store highlights</div>
