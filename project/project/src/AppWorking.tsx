@@ -1,3 +1,5 @@
+import StorefrontShoppingPage from './components/storefront/StorefrontShoppingPage';
+import { hasStoredStorefrontScope } from './utils/storefrontScope';
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { BarChart3, ChevronDown, CreditCard, ExternalLink, HelpCircle, Package, ShoppingCart, Store, Users, Zap } from 'lucide-react';
@@ -448,7 +450,7 @@ const AppWorking: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [isMobileDashboardSubNavOpen, setIsMobileDashboardSubNavOpen] = useState(false);
-    const hidePlatformChrome = isStorefrontPath(location.pathname);
+    const hidePlatformChrome = isStorefrontPath(location.pathname) || (hasStoredStorefrontScope() && (location.pathname === '/cart' || location.pathname.startsWith('/checkout')));
     const hideGlobalAuthModal =
       location.pathname === '/auth/login' ||
       location.pathname === '/auth/signup' ||
@@ -829,10 +831,10 @@ const AppWorking: React.FC = () => {
                     <Route path="/get-started" element={<SignUpPage />} />
                     <Route path="/auth/verify" element={<AuthConfirmPage />} />
                     <Route path="/auth/confirm" element={<AuthConfirmPage />} />
-                    <Route path="/cart" element={<CartPage />} />
-                    <Route path="/checkout" element={<CheckoutPage />} />
-                    <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
-                    <Route path="/checkout/cancel" element={<CheckoutCancelPage />} />
+                    <Route path="/cart" element={<StorefrontShoppingPage><CartPage /></StorefrontShoppingPage>} />
+                    <Route path="/checkout" element={<StorefrontShoppingPage><CheckoutPage /></StorefrontShoppingPage>} />
+                    <Route path="/checkout/success" element={<StorefrontShoppingPage><CheckoutSuccessPage /></StorefrontShoppingPage>} />
+                    <Route path="/checkout/cancel" element={<StorefrontShoppingPage><CheckoutCancelPage /></StorefrontShoppingPage>} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/change-password" element={<ChangePasswordPage />} />
                     <Route path="/orders" element={<BusinessRoute><OrderManagement /></BusinessRoute>} />
