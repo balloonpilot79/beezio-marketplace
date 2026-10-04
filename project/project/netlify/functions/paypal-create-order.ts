@@ -1,3 +1,4 @@
+import { DOLLAR_CHECKOUT_TEST, isDollarCheckoutTest } from '../../shared/dollarCheckoutTest';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
@@ -1049,7 +1050,9 @@ export const handler: Handler = async (event) => {
         )
       ));
 
-      const unitPricing = isTestItemTitle(title)
+      const unitPricing = isDollarCheckoutTest(productId)
+        ? DOLLAR_CHECKOUT_TEST
+        : isTestItemTitle(title)
         ? null
         : computeFixedTierPricing({
             sellerPayout: ask,
@@ -1409,8 +1412,10 @@ export const handler: Handler = async (event) => {
     }
 
     const taxCollectionDisabled = String(process.env.DISABLE_TAX_COLLECTION || '').trim().toLowerCase() === 'true';
-    const configuredPaymentTaxRate = Number(String(process.env.PAYMENT_TAX_RATE || '').trim());
-    const configuredFallbackTaxRate = Number(String(process.env.TAX_RATE || '').trim());
+    const configuredPaymentTaxRate = String(process.env.PAYMENT_TAX_RATE || '').trim()
+      ? Number(process.env.PAYMENT_TAX_RATE) : Number.NaN;
+    const configuredFallbackTaxRate = String(process.env.TAX_RATE || '').trim()
+      ? Number(process.env.TAX_RATE) : Number.NaN;
     const shippingAddress = body?.shipping_info || {};
     const fallbackTaxRate =
       Number.isFinite(configuredPaymentTaxRate) && configuredPaymentTaxRate >= 0
