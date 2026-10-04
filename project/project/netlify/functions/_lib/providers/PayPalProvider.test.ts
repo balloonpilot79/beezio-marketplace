@@ -53,6 +53,7 @@ describe('PayPalProvider.captureOrder', () => {
 
   it('surfaces payer approval required as a non-500 provider error', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch' as any)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'APPROVED' }) } as Response)
       .mockResolvedValueOnce({
         ok: false,
         status: 422,
@@ -88,7 +89,7 @@ describe('PayPalProvider.captureOrder', () => {
       approveUrl: 'https://www.sandbox.paypal.com/checkoutnow?token=paypal-order-1',
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });
 
@@ -98,9 +99,9 @@ describe('PayPal payment evidence', () => {
   beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
   afterEach(() => vi.unstubAllGlobals());
   it('requires a completed capture and uses the supplied retry identifier', async () => {
-    vi.mocked(fetch).mockResolvedValue(reply(completed));
+    vi.mocked(fetch).mockResolvedValueOnce(reply({ status: 'APPROVED' })).mockResolvedValueOnce(reply(completed));
     expect((await new PayPalProvider().captureOrder('ORDER', 'stable-key')).providerCaptureId).toBe('CAPTURE');
-    expect(vi.mocked(fetch).mock.calls[0][1]?.headers).toMatchObject({ 'PayPal-Request-Id': 'stable-key' });
+    expect(vi.mocked(fetch).mock.calls[1][1]?.headers).toMatchObject({ 'PayPal-Request-Id': 'stable-key' });
   });
   it.each([
     { id: 'ORDER', status: 'APPROVED' },
@@ -110,9 +111,15 @@ describe('PayPal payment evidence', () => {
     vi.mocked(fetch).mockResolvedValue(reply(payload));
     await expect(new PayPalProvider().captureOrder('ORDER', 'stable-key')).rejects.toMatchObject({ code: 'PAYMENT_NOT_COMPLETED' });
   });
-  it('recovers an already captured payment using verified existing capture evidence', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(reply({ details: [{ issue: 'ORDER_ALREADY_CAPTURED' }] }, 422)).mockResolvedValueOnce(reply(completed));
+  it('reconciles completed payments using only a read request', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(reply(completed));
     expect((await new PayPalProvider().captureOrder('ORDER', 'stable-key')).providerCaptureId).toBe('CAPTURE');
-    expect(vi.mocked(fetch).mock.calls[1][1]?.method).toBe('GET');
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(fetch).mock.calls[0][1]?.method).toBe('GET');
+  });
+  it('recovers an already captured payment using verified existing capture evidence', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(reply({status:'APPROVED'})).mockResolvedValueOnce(reply({ details: [{ issue: 'ORDER_ALREADY_CAPTURED' }] }, 422)).mockResolvedValueOnce(reply(completed));
+    expect((await new PayPalProvider().captureOrder('ORDER', 'stable-key')).providerCaptureId).toBe('CAPTURE');
+    expect(vi.mocked(fetch).mock.calls[2][1]?.method).toBe('GET');
   });
 });
