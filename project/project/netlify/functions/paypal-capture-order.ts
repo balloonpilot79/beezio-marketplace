@@ -1,3 +1,4 @@
+import { loadPayPalCaptureOrder } from './_lib/paypal-capture-order-record';
 import { createHash } from 'node:crypto';
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
@@ -206,24 +207,7 @@ export const handler: Handler = async (event) => {
 
     const supabaseAdmin = createSupabaseAdmin();
 
-    const orderSelect = async (columns: string) =>
-      supabaseAdmin
-        .from('orders')
-        .select(columns)
-        .eq('provider_order_id', providerOrderId)
-        .maybeSingle();
-
-    let orderRow: any = null;
-    let orderError: any = null;
-    ({ data: orderRow, error: orderError } = await orderSelect(
-      'id, buyer_id, billing_email, seller_id, partner_id, influencer_id, currency, subtotal_listing, shipping_amount, tax_amount, total_charged, shipping_address, status, payment_status, provider_capture_id, paid_at'
-    ));
-
-    if (orderError && String(orderError.message || '').includes('payment_status')) {
-      ({ data: orderRow, error: orderError } = await orderSelect(
-        'id, buyer_id, billing_email, seller_id, partner_id, influencer_id, currency, subtotal_listing, shipping_amount, tax_amount, total_charged, shipping_address, status, provider_capture_id, paid_at'
-      ));
-    }
+    const { data: orderRow, error: orderError } = await loadPayPalCaptureOrder(supabaseAdmin, providerOrderId);
 
     if (orderError) return json(500, { error: orderError.message });
     const orderId = (orderRow as any)?.id ? String((orderRow as any).id) : null;
@@ -693,7 +677,7 @@ export const handler: Handler = async (event) => {
               product_id: String(row.product_id),
               seller_id: row.seller_id ? String(row.seller_id) : (String((orderRow as any)?.seller_id || '').trim() || null),
               buyer_user_id: String((orderRow as any)?.buyer_id || '').trim() || null,
-              billing_email: String((orderRow as any)?.billing_email || '').trim() || null,
+              billing_email: String((orderRow as any)?.customer_email || '').trim() || null,
               storage_bucket: String(row.products.digital_download_bucket),
               storage_path: String(row.products.digital_download_path),
               original_filename: String(row.products.digital_download_filename || `${String(row.products.title || 'download').trim() || 'download'}`),
@@ -725,13 +709,13 @@ export const handler: Handler = async (event) => {
       const orderEmailResult = await selectMaybeSingleWithFallback(
         supabaseAdmin,
         'orders',
-        ['id', 'billing_email', 'billing_name', 'currency', 'subtotal_listing', 'shipping_amount', 'tax_amount', 'total_charged'],
+        ['id', 'customer_email', 'customer_name', 'currency', 'subtotal_listing', 'shipping_amount', 'tax_amount', 'total_charged'],
         'id',
         orderId
       );
       const orderEmailRow = orderEmailResult.data;
 
-      const recipient = String((orderEmailRow as any)?.billing_email || '').trim();
+      const recipient = String((orderEmailRow as any)?.customer_email || '').trim();
       if (recipient) {
         const emailItemsResult = await selectWithFallback(
           supabaseAdmin,
@@ -750,7 +734,7 @@ export const handler: Handler = async (event) => {
 
         const template = buildOrderConfirmationEmail({
           orderId,
-          buyerName: String((orderEmailRow as any)?.billing_name || '').trim() || null,
+          buyerName: String((orderEmailRow as any)?.customer_name || '').trim() || null,
           currency: String((orderEmailRow as any)?.currency || 'USD'),
           items: lineItems,
           subtotal: Number((orderEmailRow as any)?.subtotal_listing || 0),
@@ -879,7 +863,7 @@ export const handler: Handler = async (event) => {
           <p><strong>Your role:</strong> ${config.label}</p>
           <p><strong>${payoutLabel}:</strong> $${Number(config.payoutAmount || 0).toFixed(2)}</p>
           ${shippingHtml}
-          <p><strong>Buyer:</strong> ${String((orderRow as any)?.billing_email || 'Unknown')}</p>
+          <p><strong>Buyer:</strong> ${String((orderRow as any)?.customer_email || 'Unknown')}</p>
           ${shippingAddressHtml}
           <p><strong>Items:</strong></p>
           <ul>${itemRows || '<li>Order items unavailable</li>'}</ul>
