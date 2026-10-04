@@ -794,7 +794,7 @@ export async function finalizePayPalOrderPayment(params: {
       subtotalListing: Number((orderRow as any)?.subtotal_listing || 0),
       shippingAmount: Number((orderRow as any)?.shipping_amount || 0),
       taxAmount: Number((orderRow as any)?.tax_amount || 0),
-      paypalFeeAmount: params.paypalFeeAmount,
+      paypalFeeAmount: params.paypalFeeAmount ?? existingLedger?.paypal_fee_estimate,
       items: rows.map((row: any) => ({
         id: row?.id ? String(row.id) : null,
         quantity: Number(row?.quantity || 0) || 1,
