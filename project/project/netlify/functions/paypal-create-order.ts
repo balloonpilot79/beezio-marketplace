@@ -1673,8 +1673,8 @@ export const handler: Handler = async (event) => {
       tax_amount: taxAmount,
       total_charged: totalCharged,
       total_amount: totalCharged,
-      billing_name: body?.customer?.name || null,
-      billing_email: body?.customer?.email || null,
+      customer_name: body?.customer?.name || null,
+      customer_email: body?.customer?.email || null,
       shipping_address: body?.shipping_info || null,
       created_at: new Date().toISOString(),
     };
