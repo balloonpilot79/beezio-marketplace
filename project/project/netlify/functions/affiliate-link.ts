@@ -248,9 +248,9 @@ export const handler: Handler = async (event) => {
     }
 
     return json(200, {
-      trackedUrl: String(created?.full_url || fullUrl),
+      trackedUrl: fullUrl,
       linkCode: publicToken,
-      fullUrl: String(created?.full_url || fullUrl),
+      fullUrl,
       campaign,
       source,
       targetType,
