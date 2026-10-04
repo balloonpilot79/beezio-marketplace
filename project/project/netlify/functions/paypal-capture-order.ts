@@ -1,3 +1,4 @@
+import { orderEmailNotification, resolveSaleNotificationEmail } from './_lib/order-email-notification';
 import { loadPayPalCaptureOrder } from './_lib/paypal-capture-order-record';
 import { createHash } from 'node:crypto';
 import type { Handler } from '@netlify/functions';
@@ -132,18 +133,7 @@ const logEmailNotification = async (params: {
   const recipientEmail = String(params.recipientEmail || '').trim();
   if (!recipientEmail) return;
 
-  const { error } = await insertEmailNotificationWithFallback(params.supabaseAdmin, {
-    user_id: params.userId || null,
-    order_id: params.orderId,
-    email_type: params.emailType,
-    recipient_email: recipientEmail,
-    subject: params.subject,
-    content: params.html,
-    metadata: params.metadata || null,
-    sent_at: new Date().toISOString(),
-    status: params.sent ? 'sent' : 'failed',
-    error_message: params.sent ? null : String(params.reason || 'delivery_failed'),
-  });
+  const { error } = await params.supabaseAdmin.from('email_notifications').insert(orderEmailNotification(params));
 
   if (error) {
     console.warn('[paypal-capture-order] email notification log failed (non-fatal):', error);
@@ -791,26 +781,7 @@ export const handler: Handler = async (event) => {
         })
         .join('');
 
-      const resolvePayeeEmail = async (profileId: string | null, role: 'SELLER' | 'PARTNER' | 'INFLUENCER') => {
-        const payeeId = String(profileId || '').trim();
-        if (!payeeId) return '';
-
-        const { data: payoutAccount } = await supabaseAdmin
-          .from('paypal_accounts')
-          .select('paypal_email')
-          .eq('user_id', payeeId)
-          .eq('role', role)
-          .maybeSingle();
-        const paypalEmail = String((payoutAccount as any)?.paypal_email || '').trim();
-        if (paypalEmail) return paypalEmail;
-
-        const { data: profileRow } = await supabaseAdmin
-          .from('profiles')
-          .select('email')
-          .eq('id', payeeId)
-          .maybeSingle();
-        return String((profileRow as any)?.email || '').trim();
-      };
+      const resolvePayeeEmail = async (profileId: string | null, role: 'SELLER' | 'PARTNER' | 'INFLUENCER') => profileId ? resolveSaleNotificationEmail(supabaseAdmin, profileId, role) : '';
 
       const shouldSendSellerSaleEmail = async (profileId: string | null) => {
         const sellerId = String(profileId || '').trim();
