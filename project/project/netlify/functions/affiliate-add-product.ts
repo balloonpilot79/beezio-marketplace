@@ -1,3 +1,4 @@
+import { ensureAffiliateStorefrontPlacement } from './_lib/affiliate-storefront-placement';
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 
@@ -225,6 +226,7 @@ const handler: Handler = async (event) => {
     }
 
     if (Array.isArray(existingRows) && existingRows.length >= affiliateIds.length) {
+      await ensureAffiliateStorefrontPlacement(supabaseAdmin, affiliateId, productId);
       return json(200, { ok: true, affiliate_id: affiliateId, product_id: productId, existing: true });
     }
 
@@ -263,6 +265,7 @@ const handler: Handler = async (event) => {
     }
 
     if (insertAffiliateIds.length === 0 || insertedId || !lastInsertError) {
+      await ensureAffiliateStorefrontPlacement(supabaseAdmin, affiliateId, productId);
       return json(200, {
         ok: true,
         affiliate_id: affiliateId,
@@ -281,6 +284,7 @@ const handler: Handler = async (event) => {
         .eq('product_id', productId)
         .limit(1);
       if (Array.isArray(afterRows) && afterRows.length > 0) {
+        await ensureAffiliateStorefrontPlacement(supabaseAdmin, affiliateId, productId);
         return json(200, { ok: true, affiliate_id: affiliateId, product_id: productId, existing: true });
       }
     } catch {
