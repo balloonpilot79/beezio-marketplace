@@ -1,3 +1,4 @@
+import { paymentRecoveryMessage, safePayPalApprovalUrl } from '../utils/paymentRecovery';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -13,6 +14,7 @@ export default function CheckoutSuccessPage() {
     // Keep legacy compatibility for older links.
     return String(searchParams.get('session_id') || '').trim();
   }, [searchParams]);
+  const [approvalUrl, setApprovalUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
@@ -31,7 +33,8 @@ export default function CheckoutSuccessPage() {
         });
         const capture = await captureRes.json().catch(() => ({}));
         if (!captureRes.ok || capture?.ok !== true || !capture?.order_id) {
-          throw new Error('We could not confirm payment yet. Do not place another order. Check this payment again or contact support with the reference below.');
+          setApprovalUrl(safePayPalApprovalUrl(capture?.approve_url));
+          throw new Error(paymentRecoveryMessage(capture, captureRes.status));
         }
         const sessionData = await supabase.auth.getSession();
         const accessToken = String(sessionData.data.session?.access_token || '').trim();
@@ -83,6 +86,7 @@ export default function CheckoutSuccessPage() {
         <div className="mt-3 text-gray-600">Hang tight while we confirm payment.</div>
         {providerOrderId && <p className="mt-4 break-all text-sm">Checkout reference: {providerOrderId}</p>}
         {error && <div className="mt-4 text-sm text-red-700">{error}</div>}
+        {approvalUrl && <a className="mt-4 block rounded-lg bg-slate-900 px-4 py-3 font-semibold text-white" href={approvalUrl}>Continue existing checkout with PayPal</a>}
         {error && providerOrderId && <button type="button" onClick={() => { setError(null); setAttempt(a => a + 1); }} className="mt-4 rounded-lg bg-amber-600 px-4 py-2 text-white">Check existing payment</button>}
         <a href={`mailto:support@beezio.co?subject=${encodeURIComponent(`Payment verification: ${providerOrderId}`)}`} className="mt-4 block text-sm underline">Contact support</a>
       </div>
