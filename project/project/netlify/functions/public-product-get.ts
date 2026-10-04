@@ -1,6 +1,7 @@
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
+import { storefrontProductAttribution } from '../../shared/storefrontProductAttribution';
 import { createClient } from '@supabase/supabase-js';
 import { applyStorefrontProductPricing } from '../../shared/productPricing';
 import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
@@ -243,6 +244,22 @@ const handler: Handler = async (event) => {
     let sellerName: string | undefined = undefined;
     let storeSettings: any = null;
     let productStorefront: any = null;
+    let purchaseAttribution: any = {};
+    const requestedStore = String(event.queryStringParameters?.store || '').trim();
+    if (requestedStore) {
+      const storeQuery = supabaseAdmin.from('storefronts').select('id,owner_id,type,slug').eq('is_active', true);
+      const isStoreId = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(requestedStore);
+      const { data: requestedStoreRow, error: storeError } = await (isStoreId
+        ? storeQuery.eq('id', requestedStore) : storeQuery.eq('slug', requestedStore)).maybeSingle();
+      if (storeError) throw new Error(storeError.message);
+      if (requestedStoreRow) {
+        const { data: placement, error: placementError } = await supabaseAdmin.from('storefront_products')
+          .select('product_id,placement_source,source_owner_id').eq('storefront_id', requestedStoreRow.id)
+          .eq('product_id', productIdRaw).maybeSingle();
+        if (placementError) throw new Error(placementError.message);
+        purchaseAttribution = storefrontProductAttribution(requestedStoreRow, placement, product);
+      }
+    }
 
     const { data: placementRows } = await supabaseAdmin
       .from('storefront_products')
@@ -311,6 +328,7 @@ const handler: Handler = async (event) => {
       ok: true,
       product: {
         ...(normalizedProduct as any),
+        ...purchaseAttribution,
         profiles: sellerName ? { full_name: sellerName } : undefined,
         seller_name: sellerName || null,
         storefront_slug: productStorefront?.slug || null,
