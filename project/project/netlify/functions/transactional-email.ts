@@ -1,3 +1,4 @@
+import { orderEmailNotification } from './_lib/order-email-notification';
 import type { Handler } from '@netlify/functions';
 import { json, assertPost, parseJson } from './_lib/http';
 import { createSupabaseAdmin } from './_lib/supabase';
@@ -67,16 +68,13 @@ export const handler: Handler = async (event) => {
 
     try {
       const supabaseAdmin = createSupabaseAdmin();
-      await supabaseAdmin.from('email_notifications').insert({
-        user_id: userId,
-        email_type: type,
-        recipient_email: to,
-        subject,
-        content: html,
-        metadata,
-        sent_at: new Date().toISOString(),
-        status: 'sent',
-      } as any);
+      if (metadata?.order_id && ['order_confirmation', 'product_sold'].includes(type)) {
+        const logged = await supabaseAdmin.from('email_notifications').insert(orderEmailNotification({ orderId: String(metadata.order_id), emailType: type, recipientEmail: to, subject, html, sent: true, metadata }));
+        if (logged.error) console.warn('[transactional-email] order email log failed:', logged.error.message);
+      } else {
+        await supabaseAdmin.from('email_notifications').insert({ user_id: userId, email_type: type, recipient_email: to, subject, content: html, metadata, sent_at: new Date().toISOString(), status: 'sent' } as any);
+      }
+
     } catch (logError) {
       console.warn('[transactional-email] email log failed (non-fatal):', logError);
     }

@@ -22,6 +22,12 @@
 
 # API routes (keep above SPA fallback)
 [[redirects]]
+  from = "/api/order-details"
+  to = "/.netlify/functions/order-details"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/affiliate/link"
   to = "/.netlify/functions/affiliate-link"
   status = 200
