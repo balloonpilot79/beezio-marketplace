@@ -129,6 +129,20 @@ export class PayPalProvider implements PaymentProvider {
     const token = await getPayPalAccessToken();
     const baseUrl = await getPayPalBaseUrl();
 
+    // Verify existing payment evidence first. Recovery of a completed order
+    // must not submit another capture request.
+    const existingRes = await fetch(`${baseUrl}/v2/checkout/orders/${encodeURIComponent(providerOrderId)}`, {
+      method: 'GET', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    });
+    const existing = await existingRes.json().catch(() => ({}));
+    if (!existingRes.ok) throw new PayPalProviderError({
+      message: 'Could not check the existing PayPal order.', statusCode: 502, code: 'PAYPAL_STATUS_CHECK_FAILED',
+    });
+    const existingCapture = this.extractCaptureId(existing);
+    if (existingCapture && String(existing?.status || '').toUpperCase() === 'COMPLETED') {
+      return { providerOrderId, providerCaptureId: existingCapture, paypalFeeAmount: this.extractPayPalFeeAmount(existing), raw: existing };
+    }
+
     const res = await fetch(`${baseUrl}/v2/checkout/orders/${encodeURIComponent(providerOrderId)}/capture`, {
       method: 'POST',
       headers: {
