@@ -1,5 +1,6 @@
 import { DOLLAR_CHECKOUT_TEST, isDollarCheckoutTest } from '../../shared/dollarCheckoutTest';
 import { resolvePlacedStorefrontAffiliate } from './_lib/storefront-affiliate-attribution';
+import { isSellerStorefrontSale } from '../../shared/storefrontProductAttribution';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
@@ -832,7 +833,8 @@ export const handler: Handler = async (event) => {
 
     const placementAffiliateId = await resolvePlacedStorefrontAffiliate(supabaseAdmin, resolvedStorefrontId, Array.from(productMap.keys()), sellerId);
     if (placementAffiliateId) rawPartnerId = await resolveAffiliateProfileId(supabaseAdmin, placementAffiliateId);
-    const sellerSelfSale = sameProfileId(buyerId, sellerId);
+    const sellerSelfSale = sameProfileId(buyerId, sellerId) ||
+      isSellerStorefrontSale(sellerId, resolvedStorefrontId, resolvedStorefrontProfileId);
     const partnerId = sellerSelfSale ? sellerId : (sameProfileId(rawPartnerId, buyerId) ? null : rawPartnerId);
     const effectiveOrderSource = sellerSelfSale ? 'seller_self_sale' : resolvedOrderSource;
 
@@ -840,10 +842,9 @@ export const handler: Handler = async (event) => {
     const partnerRecruiterInfluencerIdRaw = await resolveRecruiterInfluencerId(supabaseAdmin, partnerId, 'affiliate');
     const sellerRecruiterInfluencerId = sameProfileId(sellerRecruiterInfluencerIdRaw, buyerId) ? null : sellerRecruiterInfluencerIdRaw;
     const partnerRecruiterInfluencerId = sameProfileId(partnerRecruiterInfluencerIdRaw, buyerId) ? null : partnerRecruiterInfluencerIdRaw;
-    const partnerIsInfluencer = await isInfluencerProfile(partnerId);
     // Keep explicit checkout referrers on the order, but let capture finalization resolve
     // seller-vs-affiliate recruiter slots from influencer_referrals so both roles can pay correctly.
-    const inferredPartnerInfluencerId = partnerRecruiterInfluencerId || (partnerIsInfluencer && !sameProfileId(partnerId, buyerId) ? partnerId : null) || null;
+    const inferredPartnerInfluencerId = partnerRecruiterInfluencerId || null;
     const inferredSellerInfluencerId = sellerRecruiterInfluencerId || null;
     const rawInfluencerId = explicitReferrerProfileId || null;
     const influencerId = sameProfileId(rawInfluencerId, buyerId) ? null : rawInfluencerId;

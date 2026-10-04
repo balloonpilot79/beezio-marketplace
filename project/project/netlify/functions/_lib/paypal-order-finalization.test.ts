@@ -126,6 +126,34 @@ function createSupabaseMock(seed?: Partial<Record<string, any[]>>) {
 }
 
 describe('finalizePayPalOrderPayment', () => {
+  it('does not reopen a paid payout when a delayed payment callback arrives', async () => {
+    const db = createSupabaseMock({
+      orders: [{ id: 'order', status: 'shipped', payment_status: 'paid', provider_capture_id: 'capture' }],
+      payout_snapshots: [{ id: 'snapshot', order_id: 'order', payee_user_id: 'seller', payee_role: 'SELLER', amount: 10, status: 'PAID' }],
+      order_money_ledger: [{ id: 'money', order_id: 'order', source_key: 'seller', status: 'paid', net_amount: 10 }],
+    });
+    const before = JSON.stringify(db.store);
+    const result = await finalizePayPalOrderPayment({ supabaseAdmin: db, orderId: 'order', providerOrderId: 'paypal', providerCaptureId: 'capture' });
+    expect(result.preserved_payout_state).toBe(true);
+    expect(JSON.stringify(db.store)).toBe(before);
+    expect(db.rpcCalls).toHaveLength(0);
+  });
+  it('pays the saved recruiter once and does not grant self-referral credit for an influencer role', async () => {
+    const db = createSupabaseMock({
+      orders: [{ id: 'order', buyer_id: 'buyer', seller_id: 'seller', partner_id: 'affiliate', influencer_id: 'recruiter', currency: 'USD', subtotal_listing: 0.93, tax_amount: 0.07, shipping_amount: 0, total_charged: 1 }],
+      order_items: [{ id: 'item', order_id: 'order', quantity: 1, product_id: 'product', seller_ask_amount: 0.1,
+        computed_listing_price: 0.93, affiliate_payout_amount: 0.1, influencer_allocation_amount: 0.04,
+        platform_fee_amount: 0.05, paypal_processing_allowance: 0.64, product_title_snapshot: 'Beezio $1 Checkout Test' }],
+      profiles: [{ id: 'seller', recruited_by_influencer_id: 'recruiter' }, { id: 'affiliate', role: 'influencer' }],
+      influencer_referrals: [{ recruited_profile_id: 'seller', recruited_role: 'seller', influencer_profile_id: 'recruiter' }],
+    });
+    await finalizePayPalOrderPayment({ supabaseAdmin: db, orderId: 'order', providerOrderId: 'paypal',
+      providerCaptureId: 'capture', paidAt: '2026-10-04T12:00:00Z', paypalFeeAmount: 0.32 });
+    const influencers = db.store.order_money_ledger.filter(row => row.payee_type === 'influencer');
+    expect(influencers.map(row => [row.payee_id,row.net_amount])).toEqual([['recruiter',0.02]]);
+    expect(db.store.order_money_ledger.find(row => row.payee_type === 'affiliate').net_amount).toBe(0.1);
+    expect(db.store.order_money_ledger.find(row => row.payee_type === 'beezio').net_amount).toBe(0.39);
+  });
   it('corrects older dashboard allocations and remains stable when retried', async () => {
     const db = createSupabaseMock({
       transactions: [{ id: 'tx', order_id: 'order', status: 'completed' }],

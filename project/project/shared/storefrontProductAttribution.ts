@@ -1,4 +1,8 @@
 // A store's presentation type does not determine who earns its commission.
+export function isSellerStorefrontSale(sellerId: string, storefrontId: string | null, ownerId: string | null) {
+  return Boolean(storefrontId && sellerId && sellerId === ownerId);
+}
+
 export function storefrontProductAttribution(store: any, placement: any, product: any) {
   if (!store?.id || placement?.product_id !== product?.id) return {};
   const owner = String(store.owner_id || '').trim();

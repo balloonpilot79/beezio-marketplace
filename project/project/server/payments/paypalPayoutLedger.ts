@@ -1,4 +1,4 @@
-import { getInfluencerReserveTotal, getReferrerBonusTotal } from '../../shared/referralBonus';
+import { getReferrerBonusTotal } from '../../shared/referralBonus';
 import {
   computeFixedBeezioPlatformFee,
 } from '../../shared/beezioFee';
@@ -221,9 +221,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       beezio_fee_gross_line_total: beezioFeeGrossLine,
       paypal_processing_allowance_line_total: paypalAllowanceLine,
       influencer_bonus_per_slot_line_total: influencerPerSlotLine,
-      influencer_bonus_line_total: isTestItem
-        ? round2(TEST_ITEM_INFLUENCER_FEE * quantity * 2)
-        : getInfluencerReserveTotal(listingUnit, quantity),
+      influencer_bonus_line_total: round2(influencerPerSlotLine * 2),
     };
   });
 
