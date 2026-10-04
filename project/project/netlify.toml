@@ -66,6 +66,12 @@
 
 # PayPal runtime + checkout routes
 [[redirects]]
+  from = "/api/order-details"
+  to = "/.netlify/functions/order-details"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/paypal/status"
   to = "/.netlify/functions/paypal-status"
   status = 200
