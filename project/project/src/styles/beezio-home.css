@@ -912,3 +912,28 @@
     transition: none !important;
   }
 }
+
+/* Keep the sample storefront readable without cropping its preview. */
+.hm-store-sample-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.hm-store-sample {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: center;
+}
+.hm-store-sample > img {
+  height: auto;
+  min-height: 0;
+  object-fit: contain;
+}
+.hm-store-sample span,
+.hm-store-sample p,
+.hm-stores-section .hm-store-caption {
+  font-size: 14px;
+}
+@media (max-width: 700px) {
+  .hm-store-sample {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
