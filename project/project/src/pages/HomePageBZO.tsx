@@ -345,63 +345,32 @@ export default function HomePageBZO() {
         <section id="stores" className="hm-stores-section">
           <div className="hm-section-heading">
             <div>
-              <p className="hm-kicker">A world of individual brands</p>
-              <h2>Meet the stores. Find your style.</h2>
+              <p className="hm-kicker">Your free custom store</p>
+              <h2>See a sample store: MareBelle.</h2>
             </div>
             <Link to="/signup" className="hm-all-link">
               Your brand could be next <ArrowRight size={17} />
             </Link>
           </div>
-          <div className="hm-store-grid">
-            <Link to="/store/marebelle" className="hm-store-card hm-marebelle">
+          <div className="hm-store-grid hm-store-sample-grid">
+            <Link to="/store/marebelle" className="hm-store-card hm-marebelle hm-store-sample">
               <img
-                src="/marebelle-editorial-hero.png"
-                alt="MareBelle beauty and equestrian lifestyle collection"
+                src="/marebelle-storefront-example.png"
+                alt="Sample MareBelle custom storefront on Beezio"
                 loading="lazy"
               />
               <div>
-                <span>Beauty & equestrian lifestyle</span>
+                <span>Sample storefront</span>
                 <h3>MareBelle</h3>
                 <p>
-                  Discover the collection <ArrowRight size={16} />
-                </p>
-              </div>
-            </Link>
-            <Link to="/store/redtail" className="hm-store-card hm-redtail">
-              <img
-                src="/redtail-coffee-hero.png"
-                alt="RedTail coffee"
-                loading="lazy"
-              />
-              <div>
-                <span>Coffee collection coming soon</span>
-                <h3>RedTail</h3>
-                <p>
-                  Preview the brand <ArrowRight size={16} />
-                </p>
-              </div>
-            </Link>
-            <Link
-              to="/store/loving-nutrition"
-              className="hm-store-card hm-nutrition"
-            >
-              <img
-                src="/loving-nutrition-logo.png"
-                alt="Loving Nutrition"
-                loading="lazy"
-              />
-              <div>
-                <span>Everyday wellness</span>
-                <h3>Loving Nutrition</h3>
-                <p>
-                  Explore the brand <ArrowRight size={16} />
+                  Visit MareBelle <ArrowRight size={16} />
                 </p>
               </div>
             </Link>
           </div>
           <p className="hm-store-caption">
-            Beezio-created brands. Individual stores, connected by one
-            marketplace.
+            MareBelle shows what your own Beezio store can look like. Create
+            your free store and make it your own.
           </p>
         </section>
         <section className="hm-build">
