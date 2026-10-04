@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { finalizePayPalOrderPayment } from './paypal-order-finalization';
+import { mirrorOrderToLegacyFinance } from './legacy-finance-mirror';
 
 class MockQuery {
   private filters: Record<string, unknown> = {};
@@ -125,6 +126,23 @@ function createSupabaseMock(seed?: Partial<Record<string, any[]>>) {
 }
 
 describe('finalizePayPalOrderPayment', () => {
+  it('corrects older dashboard allocations and remains stable when retried', async () => {
+    const db = createSupabaseMock({
+      transactions: [{ id: 'tx', order_id: 'order', status: 'completed' }],
+      payment_distributions: [{ id: 'platform', order_id: 'order', recipient_type: 'platform', recipient_id: null, amount: 0.49, percentage: 52.69, status: 'pending' }],
+      platform_revenue: [{ id: 'revenue', transaction_id: 'tx', amount: 0.49 }],
+    });
+    const input = { supabaseAdmin: db, orderId: 'order', sellerId: 'seller', partnerId: 'affiliate', influencerTotal: 0.04,
+      influencerPayeeIds: ['one','two'], influencerPayees: [{ id: 'one', amount: 0.01 }, { id: 'two', amount: 0.03 }],
+      subtotalListing: 0.93, totalCharged: 1, sellerEarnings: 0.1, partnerEarnings: 0.1, beezioProfit: 0.37,
+      currency: 'USD', holdReleaseAt: '2026-10-18T12:00:00Z', paidAt: '2026-10-04T12:00:00Z', providerCaptureId: 'capture' };
+    await mirrorOrderToLegacyFinance(input);
+    await mirrorOrderToLegacyFinance(input);
+    expect(db.store.payment_distributions).toHaveLength(5);
+    expect(db.store.payment_distributions.find(row => row.recipient_type === 'platform').amount).toBe(0.37);
+    expect(db.store.payment_distributions.filter(row => row.recipient_type === 'influencer').map(row => row.amount)).toEqual([0.01,0.03]);
+    expect(db.store.platform_revenue[0].amount).toBe(0.37);
+  });
   it('reconciles the complete ledger for a duplicate webhook instead of returning a false success', async () => {
     const supabase = createSupabaseMock({
       orders: [

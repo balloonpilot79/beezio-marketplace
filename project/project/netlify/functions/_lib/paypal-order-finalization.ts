@@ -825,6 +825,8 @@ export async function finalizePayPalOrderPayment(params: {
         sellerId: plan.aggregate.sellerId,
         partnerId: plan.aggregate.partnerId,
         influencerTotal: plan.aggregate.influencerEarnings,
+        influencerPayees: plan.payees.filter(snapshot => snapshot.payeeRole === 'INFLUENCER')
+          .map(snapshot => ({ id: snapshot.payeeUserId, amount: snapshot.amount })),
         influencerPayeeIds: plan.payees
           .filter((snapshot) => snapshot.payeeRole === 'INFLUENCER')
           .map((snapshot) => String(snapshot.payeeUserId || '').trim())

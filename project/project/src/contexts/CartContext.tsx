@@ -22,6 +22,7 @@ export interface CartItem {
   commission_type?: 'percentage' | 'flat_rate';
   flat_commission_amount?: number;
   affiliateId?: string;
+  storefrontScope?: string;
   affiliateCommissionRate?: number;
   variantId?: string;
   variantName?: string;
@@ -260,6 +261,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [shippingOption, currentUserId, storeScope, isCartHydrated]);
 
   const addToCart = (newItem: Omit<CartItem, 'id'>) => {
+    // Persist origin with the item before navigation or sign-in changes browser scope.
+    newItem = { ...newItem, storefrontScope: newItem.storefrontScope || localStorage.getItem(STORE_SCOPE_KEY) || undefined };
     setItems(prevItems => {
       const hasMaxQuantity = typeof newItem.maxQuantity === 'number' && Number.isFinite(newItem.maxQuantity);
       const maxQuantity = hasMaxQuantity ? Math.max(0, Math.floor(newItem.maxQuantity as number)) : null;
@@ -271,7 +274,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Check if item already exists in cart
       const existingItemIndex = prevItems.findIndex(
-        item => item.productId === newItem.productId && item.variantId === newItem.variantId
+        item => item.productId === newItem.productId && item.variantId === newItem.variantId &&
+          item.affiliateId === newItem.affiliateId && item.storefrontScope === newItem.storefrontScope
       );
       
       if (existingItemIndex > -1) {

@@ -1060,7 +1060,8 @@ const ProductDetailPage: React.FC = () => {
         const controller = new AbortController();
         const timeout = window.setTimeout(() => controller.abort(), PRODUCT_FETCH_TIMEOUT_MS);
         try {
-          const resp = await fetch(`/api/public/product/get?id=${encodeURIComponent(String(productId))}&pricing=published`, {
+          const storeQuery = lookupStoreSlug ? `&store=${encodeURIComponent(lookupStoreSlug)}` : '';
+          const resp = await fetch(`/api/public/product/get?id=${encodeURIComponent(String(productId))}&pricing=published${storeQuery}`, {
             signal: controller.signal,
           });
           if (!resp.ok) return null;
@@ -1441,6 +1442,7 @@ const ProductDetailPage: React.FC = () => {
         shippingCost: 0,
         maxQuantity: typeof computedMaxQuantity === 'number' ? computedMaxQuantity : undefined,
         affiliateId: cartAffiliateId,
+        storefrontScope: (product as any)?.storefront_scope,
         variantId: selectedVariant?.id ?? undefined,
         variantName: selectedVariant ? formatVariantLabel(selectedVariant) : undefined,
         isDigital: product.is_digital === true,
@@ -1482,6 +1484,7 @@ const ProductDetailPage: React.FC = () => {
         shippingCost: 0,
         maxQuantity: 1,
         affiliateId: cartAffiliateId,
+        storefrontScope: (product as any)?.storefront_scope,
         variantId: selectedVariant?.id ?? undefined,
         variantName: selectedVariant ? formatVariantLabel(selectedVariant) : undefined,
         isSample: true,

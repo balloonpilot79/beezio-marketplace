@@ -908,10 +908,13 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
     const taxAmount = Math.round((itemsSubtotal * TAX_RATE + Number.EPSILON) * 100) / 100;
 
     const attribution = getReferralAttribution();
+    const cartAffiliates = new Set(normalizedItems.map(item => String(item.affiliateId || '').trim()).filter(Boolean));
+    if (cartAffiliates.size > 1) throw new Error('Your cart contains items from different affiliates. Please check out one affiliate at a time.');
     const { affiliate_id, storefront_id, orderSource } = resolveCheckoutAttribution({
       referralAffiliateId: attribution.type === 'affiliate' ? attribution.id : null,
       storeScope: localStorage.getItem('beezio-store-scope'),
       cartAffiliateIds: normalizedItems.map((item) => item.affiliateId ?? null),
+      cartStoreScopes: normalizedItems.map((item) => item.storefrontScope ?? null),
     });
 
     const nameParts = selectedShippingName.split(/\s+/).filter(Boolean);

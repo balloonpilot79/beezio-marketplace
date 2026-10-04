@@ -8,6 +8,7 @@ type CheckoutAttributionInput = {
   referralAffiliateId?: string | null;
   storeScope?: string | null;
   cartAffiliateIds?: Array<string | null | undefined>;
+  cartStoreScopes?: Array<string | null | undefined>;
 };
 
 const resolveSingleCartAffiliateId = (cartAffiliateIds: Array<string | null | undefined> | undefined): string | null => {
@@ -23,10 +24,12 @@ const resolveSingleCartAffiliateId = (cartAffiliateIds: Array<string | null | un
 };
 
 export function resolveCheckoutAttribution(input: CheckoutAttributionInput): CheckoutAttribution {
-  const storeScope = String(input.storeScope || '').trim();
+  const cartScopes = Array.from(new Set((input.cartStoreScopes || []).map(value => String(value || '').trim()).filter(Boolean)));
+  if (cartScopes.length > 1) throw new Error('Your cart contains items from different stores. Please check out one store at a time.');
+  const storeScope = cartScopes[0] || String(input.storeScope || '').trim();
   const referralAffiliateId = String(input.referralAffiliateId || '').trim() || null;
   const cartAffiliateId = resolveSingleCartAffiliateId(input.cartAffiliateIds);
-  let affiliate_id = referralAffiliateId || cartAffiliateId || null;
+  let affiliate_id = cartAffiliateId || referralAffiliateId || null;
   let storefront_id: string | null = null;
   let orderSource: string | null = null;
 

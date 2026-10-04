@@ -92,6 +92,7 @@ type LegacyFinanceMirrorParams = {
   partnerId: string | null;
   influencerTotal: number;
   influencerPayeeIds: string[];
+  influencerPayees?: Array<{ id: string; amount: number }>;
   subtotalListing: number;
   totalCharged: number;
   sellerEarnings: number;
@@ -111,6 +112,7 @@ export async function mirrorOrderToLegacyFinance(params: LegacyFinanceMirrorPara
     partnerId,
     influencerTotal,
     influencerPayeeIds,
+    influencerPayees,
     subtotalListing,
     totalCharged,
     sellerEarnings,
@@ -163,7 +165,7 @@ export async function mirrorOrderToLegacyFinance(params: LegacyFinanceMirrorPara
   const existingDistributions = await selectWithFallback(
     supabaseAdmin,
     'payment_distributions',
-    ['id', 'recipient_type', 'recipient_id', 'order_id'],
+    ['id', 'recipient_type', 'recipient_id', 'order_id', 'amount', 'percentage', 'status'],
     [{ column: 'order_id', value: orderId }],
     20
   );
@@ -175,8 +177,8 @@ export async function mirrorOrderToLegacyFinance(params: LegacyFinanceMirrorPara
     throw new Error(String((existingDistributions.error as any)?.message || 'Failed to read payment distributions'));
   }
 
-  const existingKeys = new Set(
-    ((existingDistributions.data as any[]) || []).map((row: any) => `${asText(row?.recipient_type).toLowerCase()}::${asText(row?.recipient_id) || 'platform'}`)
+  const existingByKey = new Map<string, any>(
+    ((existingDistributions.data as any[]) || []).map((row: any) => [`${asText(row?.recipient_type).toLowerCase()}::${asText(row?.recipient_id) || 'platform'}`, row])
   );
 
   const baseDistribution = {
@@ -192,9 +194,8 @@ export async function mirrorOrderToLegacyFinance(params: LegacyFinanceMirrorPara
   const distributionRows: Array<Record<string, unknown>> = [];
   const pushDistribution = (recipientType: string, recipientId: string | null, amount: number, percentage: number) => {
     const normalizedAmount = round2(amount);
-    if (normalizedAmount <= 0) return;
+    if (normalizedAmount <= 0 && recipientType !== 'platform') return;
     const key = `${recipientType.toLowerCase()}::${recipientId || 'platform'}`;
-    if (existingKeys.has(key)) return;
     distributionRows.push({
       ...baseDistribution,
       recipient_type: recipientType,
@@ -209,7 +210,9 @@ export async function mirrorOrderToLegacyFinance(params: LegacyFinanceMirrorPara
   pushDistribution('affiliate', partnerId, partnerEarnings, (partnerEarnings / grossBase) * 100);
 
   const influencerIds = Array.from(new Set(influencerPayeeIds.map((value) => asText(value)).filter(Boolean)));
-  if (influencerIds.length === 1) {
+  if (influencerPayees) {
+    for (const payee of influencerPayees) pushDistribution('influencer', payee.id, payee.amount, payee.amount / grossBase * 100);
+  } else if (influencerIds.length === 1) {
     pushDistribution('influencer', influencerIds[0], influencerTotal, (influencerTotal / grossBase) * 100);
   } else if (influencerIds.length > 1 && influencerTotal > 0) {
     const splitAmount = round2(influencerTotal / influencerIds.length);
@@ -224,13 +227,23 @@ export async function mirrorOrderToLegacyFinance(params: LegacyFinanceMirrorPara
 
   pushDistribution('platform', null, beezioProfit, (beezioProfit / grossBase) * 100);
 
-  if (distributionRows.length > 0) {
-    const insertedDistributions = await insertWithFallback(supabaseAdmin, 'payment_distributions', distributionRows);
+  const inserts = [];
+  for (const row of distributionRows) {
+    const key = `${row.recipient_type}::${row.recipient_id || 'platform'}`;
+    const existing = existingByKey.get(key);
+    if (!existing) { inserts.push(row); continue; }
+    if (round2(existing.amount) === row.amount && round2(existing.percentage) === row.percentage) continue;
+    if (existing.status !== 'pending') throw new Error('Cannot change an already settled distribution');
+    const updated = await supabaseAdmin.from('payment_distributions').update({ amount: row.amount, percentage: row.percentage })
+      .eq('id', existing.id).eq('status', 'pending');
+    if (updated.error) throw new Error(updated.error.message);
+  }
+  if (inserts.length > 0) {
+    const insertedDistributions = await insertWithFallback(supabaseAdmin, 'payment_distributions', inserts);
     if (insertedDistributions.error && !isMissingRelationError(insertedDistributions.error)) {
       throw new Error(String((insertedDistributions.error as any)?.message || 'Failed to mirror payment distributions'));
     }
   }
-
   const monthYear = String(paidAt || new Date().toISOString()).slice(0, 7);
   const existingRevenue = await selectWithFallback(
     supabaseAdmin,
@@ -239,6 +252,12 @@ export async function mirrorOrderToLegacyFinance(params: LegacyFinanceMirrorPara
     transactionId ? [{ column: 'transaction_id', value: transactionId }] : [{ column: 'order_id', value: orderId }],
     10
   );
+  for (const row of existingRevenue.data || []) {
+    if (round2(row.amount) !== round2(beezioProfit)) {
+      const updated = await supabaseAdmin.from('platform_revenue').update({ amount: round2(beezioProfit) }).eq('id', row.id);
+      if (updated.error) throw new Error(updated.error.message);
+    }
+  }
 
   if (!existingRevenue.error && ((existingRevenue.data as any[]) || []).length === 0 && beezioProfit > 0) {
     await insertWithFallback(supabaseAdmin, 'platform_revenue', {
@@ -255,6 +274,6 @@ export async function mirrorOrderToLegacyFinance(params: LegacyFinanceMirrorPara
   return {
     ok: true,
     transactionId,
-    distributionsInserted: distributionRows.length,
+    distributionsInserted: inserts.length,
   };
 }

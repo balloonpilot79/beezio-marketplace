@@ -5,6 +5,7 @@ import { buildStoreInsuranceListings } from './_lib/storeInsurance';
 import { applyStorefrontProductPricing } from '../../shared/productPricing';
 import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 import { isSupplyLineProduct, sanitizeSupplyLineProduct } from '../../shared/publicSupplyLineProduct';
+import { storefrontProductAttribution } from '../../shared/storefrontProductAttribution';
 
 function json(statusCode: number, body: unknown) {
   return {
@@ -290,7 +291,7 @@ const handler: Handler = async (event) => {
     const orderLookup = brandStorefront?.id
       ? await supabaseAdmin
           .from('storefront_products')
-          .select('product_id, position')
+          .select('product_id, position, placement_source, source_owner_id')
           .eq('storefront_id', brandStorefront.id)
       : await supabaseAdmin
           .from('seller_product_order')
@@ -370,6 +371,7 @@ const handler: Handler = async (event) => {
       const isDigital = product?.is_digital === true;
       return sanitizeSupplyLineProduct({
         ...applyStorefrontProductPricing(normalizeLegacyStorefrontProduct(product)),
+        ...storefrontProductAttribution(brandStorefront, orderSetting, product),
         profiles: { full_name: mergedSeller.full_name },
         storefront_slug: brandStorefront?.slug || storeSlug || null,
         shipping_cost: 0,

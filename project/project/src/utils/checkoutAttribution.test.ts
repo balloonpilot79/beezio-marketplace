@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { resolveCheckoutAttribution } from './checkoutAttribution';
 
 describe('resolveCheckoutAttribution', () => {
+  it('retains the cart origin after refresh, sign-in, or browser scope changes', () => {
+    for (const storeScope of [null, 'global', 'store:affiliate:unrelated']) {
+      const saved = JSON.parse(JSON.stringify({ storefrontScope: 'store:seller:marebelle', affiliateId: 'marebelle-owner' }));
+      expect(resolveCheckoutAttribution({ storeScope, referralAffiliateId: 'stale-referral',
+        cartStoreScopes: [saved.storefrontScope], cartAffiliateIds: [saved.affiliateId] })).toEqual({
+        affiliate_id: 'marebelle-owner', storefront_id: 'marebelle', orderSource: 'seller_storefront',
+      });
+    }
+  });
+  it('stops a checkout containing multiple store origins rather than miscrediting it', () => {
+    expect(() => resolveCheckoutAttribution({ cartStoreScopes: ['store:seller:a', 'store:seller:b'] })).toThrow('one store at a time');
+  });
   it('keeps single-product direct sales seller-only when there is no referral or storefront scope', () => {
     expect(resolveCheckoutAttribution({ referralAffiliateId: null, storeScope: null })).toEqual({
       affiliate_id: null,

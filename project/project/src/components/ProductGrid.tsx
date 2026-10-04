@@ -445,6 +445,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                 commission_type: normalizedProduct.commission_type,
                 flat_commission_amount: normalizedProduct.commission_type === 'flat_rate' ? (normalizedProduct.flat_commission_amount ?? 0) : 0,
                 affiliateId: itemAffiliateId,
+                storefrontScope: (normalizedProduct as any)?.storefront_scope,
                 isDigital: (normalizedProduct as any).is_digital === true,
               });
             });
@@ -480,6 +481,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                 commission_type: normalizedProduct.commission_type,
                 flat_commission_amount: normalizedProduct.commission_type === 'flat_rate' ? (normalizedProduct.flat_commission_amount ?? 0) : 0,
                 affiliateId: itemAffiliateId,
+                storefrontScope: (normalizedProduct as any)?.storefront_scope,
                 isDigital: (normalizedProduct as any).is_digital === true,
               });
             });
