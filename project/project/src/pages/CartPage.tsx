@@ -1,3 +1,4 @@
+import { useShoppingBrand } from '../components/storefront/StorefrontShoppingPage';
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
@@ -21,6 +22,7 @@ const CartPage: React.FC = () => {
   } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const shoppingBrand = useShoppingBrand();
   
   // Behavior tracking
   const { trackView, trackClick } = useBehaviorTracker();
@@ -75,7 +77,7 @@ const CartPage: React.FC = () => {
             Looks like you haven't added any products to your cart yet.
           </p>
           <Link
-            to="/products"
+            to={shoppingBrand?.homePath || '/products'}
             className="bg-amber-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-amber-700 transition-colors inline-flex items-center"
           >
             <ShoppingBag className="w-5 h-5 mr-2" />
@@ -89,17 +91,17 @@ const CartPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div className="flex items-center space-x-4">
           <Link
-            to="/products"
+            to={shoppingBrand?.homePath || '/products'}
             className="inline-flex items-center text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Continue Shopping
           </Link>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
           Shopping Cart ({getTotalItems()} {getTotalItems() === 1 ? 'item' : 'items'})
         </h1>
         <button
@@ -266,7 +268,7 @@ const CartPage: React.FC = () => {
 
             {/* Continue Shopping */}
             <Link
-              to="/products"
+              to={shoppingBrand?.homePath || '/products'}
               className="block text-center text-amber-600 hover:text-amber-700 font-medium mt-4"
             >
               Continue Shopping
@@ -276,7 +278,7 @@ const CartPage: React.FC = () => {
       </div>
 
       {/* Complete the Look / AI Recommendations */}
-      {items.length > 0 && (
+      {items.length > 0 && !shoppingBrand && (
         <div className="mt-16">
           <RecommendationEngine 
             type="cart" 
