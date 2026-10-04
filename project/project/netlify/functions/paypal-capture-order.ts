@@ -209,7 +209,7 @@ export const handler: Handler = async (event) => {
 
     const { data: orderRow, error: orderError } = await loadPayPalCaptureOrder(supabaseAdmin, providerOrderId);
 
-    if (orderError) return json(500, { error: orderError.message });
+    if (orderError) return json(500, { error: orderError.message, code: 'ORDER_LOOKUP_FAILED' });
     const orderId = (orderRow as any)?.id ? String((orderRow as any).id) : null;
     if (!orderId) return json(404, { error: 'Order not found for that provider_order_id' });
 
@@ -912,7 +912,7 @@ export const handler: Handler = async (event) => {
     });
   } catch (e: any) {
     const statusCode = Number(e?.statusCode) || 500;
-    return json(statusCode, { error: e instanceof Error ? e.message : 'Unexpected error' });
+    return json(statusCode, { error: e instanceof Error ? e.message : 'Unexpected error', code: 'CAPTURE_SERVICE_ERROR' });
   }
 };
 
