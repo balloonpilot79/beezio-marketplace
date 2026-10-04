@@ -17,6 +17,7 @@ import {
 } from '../utils/recruitAttribution';
 import { sendSignupVerificationEmail } from '../services/signupVerificationClient';
 import { isBeezioEmailVerified } from '../utils/emailVerification';
+import { isBuyerOnlyAccount } from '../utils/accountRoles';
 
 const PENDING_SIGNUP_KEY = 'beezio-pending-signup-bootstrap';
 const AUTH_RESTRICTION_KEY = 'beezio-auth-restriction';
@@ -1047,7 +1048,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        if (data.session && !isBuyerAccount(initialRole)) {
+        if (data.session && !isBuyerOnlyAccount([initialRole])) {
           try {
             const agreementTime = new Date().toISOString();
             await upsertTaxComplianceProfile(profileId, {
