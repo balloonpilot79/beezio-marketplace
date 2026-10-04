@@ -716,7 +716,7 @@ export async function finalizePayPalOrderPayment(params: {
       'shipping_amount',
       'tax_amount',
       'total_charged',
-      'billing_email',
+      'customer_email',
       'buyer_id',
       'paid_at',
       'affiliate_commission',

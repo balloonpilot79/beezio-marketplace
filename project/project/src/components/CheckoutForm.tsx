@@ -1305,11 +1305,13 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
           <div className="font-semibold">Your payment needs verification</div>
           <p className="mt-1">Your cart is saved. Check this existing payment before placing another order.</p>
           <p className="mt-2 break-all">Checkout reference: {recoveryOrderId}</p>
-          <button type="button" disabled={recoveringPayment} onClick={() => { void capturePayPalOrder(recoveryOrderId).catch(() => {}); }} className="mt-3 rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
-            {recoveringPayment ? 'Checking payment…' : 'Check existing payment'}
-          </button>
-          <a className="ml-3 underline" href={`/checkout/success?token=${encodeURIComponent(recoveryOrderId)}`}>Open payment recovery</a>
-          <a className="ml-3 underline" href={`mailto:support@beezio.co?subject=${encodeURIComponent(`Payment verification: ${recoveryOrderId}`)}`}>Contact support</a>
+          <div className="mt-3 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <button type="button" disabled={recoveringPayment} onClick={() => { void capturePayPalOrder(recoveryOrderId).catch(() => {}); }} className="rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
+              {recoveringPayment ? 'Checking payment…' : 'Check existing payment'}
+            </button>
+            <a className="px-2 py-2 text-center underline" href={`/checkout/success?token=${encodeURIComponent(recoveryOrderId)}`}>Open payment recovery</a>
+            <a className="px-2 py-2 text-center underline" href={`mailto:support@beezio.co?subject=${encodeURIComponent(`Payment verification: ${recoveryOrderId}`)}`}>Contact support</a>
+          </div>
         </div>
       )}
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">{error}</div>}
