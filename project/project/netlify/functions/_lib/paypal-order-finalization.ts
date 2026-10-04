@@ -708,6 +708,8 @@ export async function finalizePayPalOrderPayment(params: {
       'id',
       'order_number',
       'status',
+      'payment_status',
+      'provider_capture_id',
       'seller_id',
       'partner_id',
       'influencer_id',
@@ -734,6 +736,15 @@ export async function finalizePayPalOrderPayment(params: {
 
   if (orderError) throw new Error(orderError.message);
   if (!orderRow?.id) throw new Error('Order not found for finalization');
+  if (orderRow.provider_capture_id && providerCaptureId && orderRow.provider_capture_id !== providerCaptureId) {
+    throw new Error('Saved order capture does not match the payment callback');
+  }
+  const settledSnapshot = (existingSnapshots || []).some((row: any) =>
+    ['PAID', 'READY_TO_PAY', 'ON_HOLD_DISPUTE', 'CANCELED'].includes(String(row.status || '')));
+  if (settledSnapshot || ['refunded', 'canceled', 'cancelled'].includes(String(orderRow.payment_status || orderRow.status || '').toLowerCase())) {
+    return { ok: true, idempotent: true, preserved_payout_state: true, order_id: orderId,
+      provider_order_id: providerOrderId, provider_capture_id: providerCaptureId, snapshots: existingSnapshots };
+  }
 
   const rows = await selectOrderItems(supabaseAdmin, orderId);
   if (!rows.length) throw new Error('Order has no line items');
@@ -742,14 +753,13 @@ export async function finalizePayPalOrderPayment(params: {
   const sellerId = String((orderRow as any)?.seller_id || '').trim() || null;
   const rawPartnerId = String((orderRow as any)?.partner_id || '').trim() || null;
   const orderSource = String((orderRow as any)?.source || '').trim() || null;
-  const sellerSelfSale = sameProfileId(sellerId, buyerId)
-    && (sameProfileId(rawPartnerId, sellerId) || orderSource === 'seller_self_sale');
+  const sellerSelfSale = sameProfileId(rawPartnerId, sellerId) ||
+    (sameProfileId(sellerId, buyerId) && orderSource === 'seller_self_sale');
   const partnerId = sellerSelfSale ? sellerId : (sameProfileId(rawPartnerId, buyerId) ? null : rawPartnerId);
   const sellerRecruiterInfluencerIdRaw = await resolveRecruiterInfluencerId(supabaseAdmin, sellerId, 'seller');
   const partnerRecruiterInfluencerIdRaw = await resolveRecruiterInfluencerId(supabaseAdmin, partnerId, 'affiliate');
   const sellerRecruiterInfluencerId = sameProfileId(sellerRecruiterInfluencerIdRaw, buyerId) ? null : sellerRecruiterInfluencerIdRaw;
   const partnerRecruiterInfluencerId = sameProfileId(partnerRecruiterInfluencerIdRaw, buyerId) ? null : partnerRecruiterInfluencerIdRaw;
-  const partnerIsInfluencer = await isInfluencerProfile(supabaseAdmin, partnerId);
   const explicitInfluencerIdRaw = String((orderRow as any)?.influencer_id || '').trim() || null;
   const explicitInfluencerId = sameProfileId(explicitInfluencerIdRaw, buyerId) ? null : explicitInfluencerIdRaw;
   let sellerInfluencerId: string | null = null;
@@ -758,8 +768,10 @@ export async function finalizePayPalOrderPayment(params: {
   // Lifetime recruiter attribution is authoritative. A click-level referrer may
   // fill an empty slot, but must never replace either frozen recruiter slot.
   sellerInfluencerId = sellerRecruiterInfluencerId || null;
-  partnerInfluencerId = partnerRecruiterInfluencerId || (partnerIsInfluencer ? partnerId : null) || null;
-  if (explicitInfluencerId) {
+  partnerInfluencerId = partnerRecruiterInfluencerId || null;
+  // A saved seller recruiter must not also fill an unclaimed affiliate slot.
+  // Having an influencer role alone does not mean the affiliate recruited itself.
+  if (explicitInfluencerId && !sellerInfluencerId && !partnerInfluencerId) {
     if (partnerId && !partnerInfluencerId) {
       partnerInfluencerId = explicitInfluencerId;
     } else if (!sellerInfluencerId) {
