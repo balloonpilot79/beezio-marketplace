@@ -821,7 +821,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
       if (products.length === 0 || (!showSearchBar && !showCategoryFilters)) return null;
       return (
         <div key="browse-controls" className="mb-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-3 hidden lg:flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="text-sm font-semibold" style={{ color: textColor }}>Browse the collection</div>
               <div className="text-xs" style={{ color: textColor, opacity: 0.68 }}>Find products faster with search and quick filters.</div>
@@ -842,12 +842,12 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               </label>
             )}
             {showCategoryFilters && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex gap-2 overflow-x-auto pb-1">
                 {categories.map(category => (
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}
-                    className="px-4 py-2 rounded-lg text-sm font-medium transition-colors border"
+                    className="shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-colors border"
                     style={
                       activeCategory === category
                         ? { backgroundColor: primaryColor, color: '#ffffff', borderColor: primaryColor }
@@ -1029,7 +1029,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         <style>{seller.custom_css}</style>
       )}
       
-      <CompactStoreHeader name={displayStoreName} logoUrl={effectiveStoreLogoUrl} homePath={storeHomePath} inverse={hasEditorialBrand} onContact={showContactButton ? () => setContactModal(true) : undefined} />
+      <CompactStoreHeader name={displayStoreName} logoUrl={effectiveStoreLogoUrl} homePath={storeHomePath} inverse={hasEditorialBrand} accentColor={hasEditorialBrand ? editorialAccentColor : primaryColor} label={houseBrandIdentity?.headerLabel || 'Independent shop'} onContact={showContactButton ? () => setContactModal(true) : undefined} />
       <header
         className="hidden lg:block sticky top-0 z-40 border-b shadow-sm backdrop-blur"
         style={hasEditorialBrand
@@ -1350,13 +1350,13 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             </div>
           </div>
         ) : (
-          <div className="rounded-[32px] border bg-white p-4 shadow-[0_28px_80px_rgba(15,23,42,0.08)] md:p-6" style={{ borderColor: secondaryColor }}>
+          <div className="rounded-[24px] md:rounded-[32px] border bg-white p-4 shadow-[0_28px_80px_rgba(15,23,42,0.08)] md:p-6" style={{ borderColor: secondaryColor, background: `linear-gradient(145deg, color-mix(in srgb, ${hasEditorialBrand ? editorialAccentColor : accentColor} 9%, white), white 40%)` }}>
             <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <div className="text-[0.72rem] font-semibold uppercase tracking-[0.24em]" style={{ color: accentColor }}>Collection</div>
-                <h3 className="mt-2 text-3xl font-black tracking-tight" style={{ color: textColor }}>Shop the catalog</h3>
+                <h3 className={`mt-2 text-2xl md:text-3xl tracking-tight ${hasEditorialBrand ? 'font-serif font-semibold' : 'font-black'}`} style={{ color: textColor }}>Shop {displayStoreName}</h3>
                 <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: textColor, opacity: 0.72 }}>
-                  A cleaner storefront that puts the product selection first and keeps the buying path direct.
+                  Discover the {displayStoreName} collection.
                 </p>
               </div>
               <div className="text-sm" style={{ color: textColor, opacity: 0.7 }}>
