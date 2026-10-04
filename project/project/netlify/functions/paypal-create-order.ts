@@ -1,4 +1,5 @@
 import { DOLLAR_CHECKOUT_TEST, isDollarCheckoutTest } from '../../shared/dollarCheckoutTest';
+import { resolvePlacedStorefrontAffiliate } from './_lib/storefront-affiliate-attribution';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
@@ -829,6 +830,8 @@ export const handler: Handler = async (event) => {
       return json(400, { error: 'Seller mismatch for cart items.' });
     }
 
+    const placementAffiliateId = await resolvePlacedStorefrontAffiliate(supabaseAdmin, resolvedStorefrontId, Array.from(productMap.keys()), sellerId);
+    if (placementAffiliateId) rawPartnerId = await resolveAffiliateProfileId(supabaseAdmin, placementAffiliateId);
     const sellerSelfSale = sameProfileId(buyerId, sellerId);
     const partnerId = sellerSelfSale ? sellerId : (sameProfileId(rawPartnerId, buyerId) ? null : rawPartnerId);
     const effectiveOrderSource = sellerSelfSale ? 'seller_self_sale' : resolvedOrderSource;
