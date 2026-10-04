@@ -136,6 +136,8 @@ export default function OrderConfirmationPage() {
   }, [authLoading, orderId, rawOrderToken, session?.access_token]);
 
   const loadOrder = async () => {
+    setLoading(true);
+    setError('');
     try {
       const accessToken = String(session?.access_token || '').trim();
       const params = new URLSearchParams();
@@ -146,7 +148,10 @@ export default function OrderConfirmationPage() {
         method: 'GET',
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
       });
-      const payload = await response.json().catch(() => ({}));
+      if (!response.headers.get('content-type')?.includes('application/json')) {
+        throw new Error('Order details are temporarily unavailable. Please retry; do not place another order.');
+      }
+      const payload = await response.json();
 
       if (!response.ok) {
         throw new Error(String((payload as any)?.error || 'Failed to load order details'));
@@ -246,8 +251,9 @@ export default function OrderConfirmationPage() {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-3xl">❌</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Unable to load order details</h2>
           <p className="text-gray-600 mb-6">{error || 'We couldn\'t find this order'}</p>
+          <button onClick={loadOrder} className="mb-4 block w-full rounded-lg bg-slate-900 px-6 py-3 text-white">Retry order details</button>
           <button
             onClick={() => navigate('/')}
             className="px-6 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
