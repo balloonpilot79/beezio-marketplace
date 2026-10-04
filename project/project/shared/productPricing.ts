@@ -1,3 +1,4 @@
+import { DOLLAR_CHECKOUT_TEST, isDollarCheckoutTest } from './dollarCheckoutTest';
 import { computeCustomerListingPrice, type SharedAffiliateCommissionType } from './customerPrice';
 import {
   TEST_ITEM_AFFILIATE_AMOUNT,
@@ -12,6 +13,7 @@ const round2 = (value: number): number =>
 const DEFAULT_ZERO_AFFILIATE_PERCENT = 30;
 
 type ProductPricingLike = {
+  id?: string | null;
   title?: string | null;
   price?: number | null;
   calculated_customer_price?: number | null;
@@ -106,6 +108,19 @@ export function applyCanonicalProductPricing<T extends ProductPricingLike>(produ
   affiliate_commission_type: SharedAffiliateCommissionType;
   affiliate_commission_value: number;
 } {
+  if (isDollarCheckoutTest(product?.id)) {
+    const test = DOLLAR_CHECKOUT_TEST;
+    return {
+      ...product,
+      price: test.finalAdvertisedPrice,
+      calculated_customer_price: test.finalAdvertisedPrice,
+      seller_ask: test.sellerPayout,
+      seller_amount: test.sellerPayout,
+      seller_ask_price: test.sellerPayout,
+      affiliate_commission_type: 'flat',
+      affiliate_commission_value: test.affiliatePayout,
+    };
+  }
   if (isTestItemTitle(product?.title)) {
     return {
       ...product,
