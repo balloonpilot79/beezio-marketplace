@@ -592,7 +592,7 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
         backgroundPosition: storefrontBackgroundImageUrl ? 'center' : undefined,
       }}
     >
-      <CompactStoreHeader name={storeName} logoUrl={storeLogoUrl} homePath={storeHomePath} onContact={() => setContactModal(true)} />
+      <CompactStoreHeader name={storeName} logoUrl={storeLogoUrl} homePath={storeHomePath} accentColor={primaryColor} onContact={() => setContactModal(true)} />
       <header className="hidden lg:block sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-4 justify-between">
           <Link to={storeHomePath} className="flex items-center gap-3">
