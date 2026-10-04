@@ -31,6 +31,7 @@ export default function StorefrontShoppingLinks({
       <Link
         to={user ? "/account" : `/account/login?next=${next}`}
         aria-label={user ? "Your account" : "Sign in"}
+        style={inverse ? { color: "#ffffff" } : undefined}
         className={`inline-flex items-center justify-center gap-2 rounded-lg border text-xs font-semibold ${compact ? "h-11 w-11" : "min-h-10 px-3 py-2"} ${style}`}
       >
         <UserCircle className="h-4 w-4" aria-hidden="true" />
@@ -47,6 +48,7 @@ export default function StorefrontShoppingLinks({
       <Link
         to="/cart"
         aria-label={`Cart${count ? `, ${count} items` : ""}`}
+        style={inverse ? { color: "#ffffff" } : undefined}
         className={`inline-flex items-center justify-center gap-2 rounded-lg border text-xs font-semibold ${compact ? "h-11 w-11" : "min-h-10 px-3 py-2"} ${style}`}
       >
         <ShoppingBag className="h-4 w-4" aria-hidden="true" />

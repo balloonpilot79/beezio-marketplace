@@ -1,3 +1,4 @@
+import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 export type StorefrontScope =
   | { kind: 'seller'; storeId: string; raw: string }
   | { kind: 'affiliate'; storeId: string; raw: string };
@@ -10,6 +11,9 @@ export interface StorefrontBranding {
   logoUrl?: string | null;
   backgroundImageUrl?: string | null;
   homePath: string;
+  accentColor?: string;
+  backgroundColor?: string;
+  inverseHeader?: boolean;
 }
 
 const SCOPE_KEY = 'beezio-store-scope';
@@ -82,12 +86,16 @@ export async function loadStorefrontBranding(scope: StorefrontScope | null): Pro
       const payload: any = await response.json().catch(() => ({}));
       const seller = payload?.seller || {};
       const slug = String(payload?.store_slug || seller?.subdomain || scope.storeId).trim();
+      const identity = resolveHouseBrandIdentity(slug);
       return {
         kind: 'seller',
+        accentColor: identity?.accentColor || seller?.primary_color || '#c7a34a',
+        backgroundColor: seller?.background_color || (identity?.slug === 'marebelle' ? '#e5d8bb' : '#faf9f5'),
+        inverseHeader: Boolean(identity),
         storeId: scope.storeId,
         name: String(seller?.full_name || 'Storefront').trim() || 'Storefront',
         tagline: String(seller?.bio || '').trim() || 'Orders, receipts, and support in one place.',
-        logoUrl: seller?.store_logo || null,
+        logoUrl: seller?.store_logo || identity?.logoUrl || null,
         backgroundImageUrl: seller?.layout_config?.background_image_url || null,
         homePath: `/store/${slug}`,
       };
@@ -100,6 +108,8 @@ export async function loadStorefrontBranding(scope: StorefrontScope | null): Pro
     const slug = String(settings?.subdomain || affiliate?.subdomain || payload?.canonical_affiliate_id || scope.storeId).trim();
       return {
         kind: 'affiliate',
+        accentColor: settings?.primary_color || '#c7a34a',
+        backgroundColor: settings?.background_color || '#faf9f5',
         storeId: scope.storeId,
         name: String(settings?.store_name || affiliate?.full_name || 'Storefront').trim() || 'Storefront',
         tagline: String(settings?.store_description || affiliate?.bio || '').trim() || 'Orders, receipts, and support in one place.',
