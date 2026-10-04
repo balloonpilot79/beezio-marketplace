@@ -1,3 +1,4 @@
+import { paymentRecoveryMessage, safePayPalApprovalUrl } from '../utils/paymentRecovery';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -50,6 +51,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
   const { user, profile } = useAuth();
   const [, setProcessing] = useState(false);
   const [cardPaymentProcessing, setCardPaymentProcessing] = useState(false);
+  const [recoveryApprovalUrl, setRecoveryApprovalUrl] = useState<string | null>(null);
   const [recoveryOrderId, setRecoveryOrderId] = useState(() => {
     try { return localStorage.getItem('beezio-pending-paypal-payment') || ''; } catch { return ''; }
   });
@@ -685,6 +687,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
     if (captureInFlight.current) return;
     captureInFlight.current = true;
     setRecoveringPayment(true);
+    setError(null);
+    setRecoveryApprovalUrl(null);
     setProcessing(true);
     try {
       if (!approvedOrderId) throw new Error('Missing PayPal order id');
@@ -703,7 +707,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
           setRecoveryOrderId('');
           throw new Error('An item is no longer available. No payment was captured. Update your cart and try checkout again.');
         }
-        throw new Error('We could not confirm this payment. Do not start another purchase. Check existing payment or contact support with the reference shown below.');
+        setRecoveryApprovalUrl(safePayPalApprovalUrl(captureData?.approve_url));
+        throw new Error(paymentRecoveryMessage(captureData, captureRes.status));
       }
 
       const beezioOrderId = String((captureData as any)?.order_id || '').trim();
@@ -1309,6 +1314,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
             <button type="button" disabled={recoveringPayment} onClick={() => { void capturePayPalOrder(recoveryOrderId).catch(() => {}); }} className="rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
               {recoveringPayment ? 'Checking payment…' : 'Check existing payment'}
             </button>
+            {recoveryApprovalUrl && <a className="rounded-lg bg-slate-900 px-4 py-3 text-center font-semibold text-white" href={recoveryApprovalUrl}>Continue existing checkout with PayPal</a>}
             <a className="px-2 py-2 text-center underline" href={`/checkout/success?token=${encodeURIComponent(recoveryOrderId)}`}>Open payment recovery</a>
             <a className="px-2 py-2 text-center underline" href={`mailto:support@beezio.co?subject=${encodeURIComponent(`Payment verification: ${recoveryOrderId}`)}`}>Contact support</a>
           </div>
@@ -1444,7 +1450,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
       </div>
 
       {paymentProvider === 'paypal' && resolvedPayPalClientId && (
-        <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+        <div className={`rounded-xl border border-gray-200 bg-white p-3 shadow-sm ${recoveryOrderId ? 'hidden' : ''}`} aria-hidden={Boolean(recoveryOrderId)}>
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
               <div>
