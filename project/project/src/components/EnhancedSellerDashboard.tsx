@@ -1,3 +1,4 @@
+import { removeStoreProducts } from '../api/removeStoreProducts';
 import { productAvailabilityNotice } from '../../shared/publicProductVisibility';
 import { isConfirmedPaidOrder, isEarningSnapshot } from '../../shared/accountingStatus';
 import React, { useEffect, useState } from 'react';
@@ -537,7 +538,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
         };
 
         const localRows = await hydrateProductRows(readLocalRows());
-        if (localRows.length > 0) {
+        if (promotedRows.length === 0 && localRows.length > 0) {
           promotedRows = localRows;
         }
 
@@ -792,12 +793,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
 
     try {
       setUnlistingAffiliateProductId(productId);
-      const { error } = await supabase
-        .from('affiliate_products')
-        .delete()
-        .in('affiliate_id', affiliateOwnerIds)
-        .eq('product_id', productId);
-      if (error) throw error;
+      await removeStoreProducts([productId], 'affiliate');
 
       setPromotedProducts((prev) => prev.filter((product) => product.id !== productId));
       if (typeof window !== 'undefined' && user?.id) {

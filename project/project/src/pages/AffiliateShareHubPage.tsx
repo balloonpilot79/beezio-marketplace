@@ -222,7 +222,7 @@ export default function AffiliateShareHubPage() {
                       <div className="text-sm text-gray-600">${Number(p.price || 0).toFixed(2)}</div>
                     </div>
                     <button
-                      onClick={() => (isProductSelected(p.id) ? removeProduct(p.id) : addProduct(p.id))}
+                      onClick={() => (isProductSelected(p.id) ? void removeProduct(p.id).catch((error) => window.alert(error instanceof Error ? error.message : 'Could not remove product')) : addProduct(p.id))}
                       className={`px-3 py-1.5 rounded-lg text-sm font-semibold border ${
                         isProductSelected(p.id)
                           ? 'bg-gray-900 text-white border-gray-900'
@@ -289,7 +289,7 @@ export default function AffiliateShareHubPage() {
                       <div className="text-sm text-gray-600">${Number(p.price || 0).toFixed(2)}</div>
                     </div>
                     <button
-                      onClick={() => removeProduct(p.id)}
+                      onClick={() => void removeProduct(p.id).catch((error) => window.alert(error instanceof Error ? error.message : 'Could not remove product'))}
                       className="px-3 py-1.5 rounded-lg text-sm font-semibold border border-gray-300 hover:bg-gray-50"
                     >
                       Remove

@@ -1,3 +1,4 @@
+import { removeStoreProducts } from '../api/removeStoreProducts';
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import {
@@ -575,11 +576,9 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
     setProductActionLoading(true);
     setProductActionMessage(null);
     try {
-      const { error } = await supabase
-        .from('affiliate_products')
-        .delete()
-        .eq('id', rowId);
-      if (error) throw error;
+      const productId = curatedProducts.find((row) => row.id === rowId)?.product_id;
+      if (!productId) throw new Error('Product selection not found');
+      await removeStoreProducts([productId], 'affiliate');
       setProductActionMessage('Product removed from your storefront.');
       await loadCuratedProducts();
     } catch (error) {

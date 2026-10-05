@@ -1,3 +1,4 @@
+import { removeStoreProducts } from '../api/removeStoreProducts';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
@@ -437,12 +438,7 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('affiliate_products')
-        .delete()
-        .eq('affiliate_id', effectiveId)
-        .eq('product_id', productId);
-      if (error) throw error;
+      await removeStoreProducts([productId], 'affiliate');
 
       setIsAdded(false);
       alert('Product removed from your store');

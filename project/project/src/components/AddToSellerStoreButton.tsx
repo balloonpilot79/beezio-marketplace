@@ -1,3 +1,4 @@
+import { removeStoreProducts } from '../api/removeStoreProducts';
 import React, { useEffect, useState } from 'react';
 import { Plus, Check, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -278,13 +279,7 @@ const AddToSellerStoreButton: React.FC<AddToSellerStoreButtonProps> = ({
 
     try {
       setIsLoading(true);
-      const { error } = await supabase
-        .from('seller_product_order')
-        .delete()
-        .eq('seller_id', resolvedSellerId)
-        .eq('product_id', productId);
-
-      if (error) throw error;
+      await removeStoreProducts([productId], 'seller');
 
       // Best-effort cleanup of share link
       try {

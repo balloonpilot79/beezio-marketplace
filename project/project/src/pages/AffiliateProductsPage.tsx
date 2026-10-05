@@ -278,7 +278,7 @@ const AffiliateProductsPage: React.FC = () => {
 
   const toggleProductSelection = (productId: string) => {
     if (isProductSelected(productId)) {
-      removeProduct(productId);
+      void removeProduct(productId).catch((error) => window.alert(error instanceof Error ? error.message : 'Could not remove product'));
     } else {
       addProduct(productId);
     }

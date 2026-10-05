@@ -1,3 +1,4 @@
+import { removeStoreProducts } from '../api/removeStoreProducts';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
@@ -28,7 +29,7 @@ interface AffiliateContextType {
   affiliateStats: AffiliateStats;
   referralCode: string | null;
   addProduct: (productId: string) => void;
-  removeProduct: (productId: string) => void;
+  removeProduct: (productId: string) => Promise<void>;
   generateAffiliateLink: (productId: string) => string;
   generateSiteWideLink: () => string;
   trackClick: (productId: string, affiliateId: string) => void;
@@ -184,14 +185,14 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
       if (!affiliateId) return;
       const { data, error } = await supabase
         .from('affiliate_products')
-        .select('product_id, is_active, is_featured, created_at, total_clicks, total_sales, total_earnings')
+        .select('product_id, is_active, added_at')
         .eq('affiliate_id', affiliateId)
         .eq('is_active', true);
       if (cancelled || error || !Array.isArray(data)) return;
       const serverProducts = data.map((row: any) => ({
         productId: String(row.product_id),
         selected: true,
-        dateAdded: row.created_at || new Date().toISOString(),
+        dateAdded: row.added_at || new Date().toISOString(),
         totalClicks: Number(row.total_clicks || 0),
         totalSales: Number(row.total_sales || 0),
         totalEarnings: Number(row.total_earnings || 0),
@@ -232,7 +233,7 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
 
   // Save to localStorage when data changes
   useEffect(() => {
-    if (user && selectedProducts.length > 0) {
+    if (user) {
       localStorage.setItem(`affiliate_products_${user.id}`, JSON.stringify(selectedProducts));
     }
   }, [selectedProducts, user]);
@@ -258,7 +259,8 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
     setAffiliateStats(prev => ({ ...prev, totalProducts: prev.totalProducts + 1 }));
   };
 
-  const removeProduct = (productId: string) => {
+  const removeProduct = async (productId: string) => {
+    await removeStoreProducts([productId], 'affiliate');
     setSelectedProducts(prev => prev.filter(p => p.productId !== productId));
     
     setAffiliateStats(prev => ({

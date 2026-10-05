@@ -1,3 +1,4 @@
+import { removeStoreProducts } from '../api/removeStoreProducts';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -222,13 +223,7 @@ const ProductBrowserForAffiliates: React.FC = () => {
     if (!user || !resolvedAffiliateId) return;
 
     try {
-      const { error } = await supabase
-        .from('affiliate_products')
-        .delete()
-        .eq('affiliate_id', resolvedAffiliateId)
-        .eq('product_id', productId);
-
-      if (error) throw error;
+      await removeStoreProducts([productId], 'affiliate');
 
       setSelectedProducts(prev => {
         const newSet = new Set(prev);
@@ -277,12 +272,7 @@ const ProductBrowserForAffiliates: React.FC = () => {
     if (!confirm(confirmMessage)) return;
 
     try {
-      const { error } = await supabase
-        .from('affiliate_products')
-        .delete()
-        .eq('affiliate_id', resolvedAffiliateId)
-        .in('product_id', productIds);
-      if (error) throw error;
+      await removeStoreProducts(productIds, 'affiliate');
 
       setSelectedProducts((prev) => {
         const next = new Set(prev);

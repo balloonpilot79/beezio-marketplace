@@ -1,3 +1,4 @@
+import { removeStoreProducts } from '../api/removeStoreProducts';
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
@@ -184,13 +185,7 @@ const ProductBrowserForSellers: React.FC<SellerProductBrowserProps> = ({ sellerI
   const handleRemoveProduct = async (productId: string) => {
     try {
       setActionLoading(true);
-      const { error } = await supabase
-        .from('seller_product_order')
-        .delete()
-        .eq('seller_id', sellerId)
-        .eq('product_id', productId);
-
-      if (error) throw error;
+      await removeStoreProducts([productId], 'seller');
       setSelectedProductIds(prev => {
         const clone = new Set(prev);
         clone.delete(productId);
@@ -254,12 +249,7 @@ const ProductBrowserForSellers: React.FC<SellerProductBrowserProps> = ({ sellerI
 
     try {
       setActionLoading(true);
-      const { error } = await supabase
-        .from('seller_product_order')
-        .delete()
-        .eq('seller_id', sellerId)
-        .in('product_id', productIds);
-      if (error) throw error;
+      await removeStoreProducts(productIds, 'seller');
 
       setSelectedProductIds((prev) => {
         const next = new Set(prev);
