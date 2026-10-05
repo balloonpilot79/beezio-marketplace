@@ -51,9 +51,9 @@ const HowItWorksPage: React.FC = () => {
 
         <section className="rounded-3xl border border-emerald-200 bg-emerald-50/85 p-6 md:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-700">Free to join</p>
-          <h2 className="mt-2 text-2xl font-semibold text-gray-900 md:text-3xl">Sellers, affiliates, and influencers are free — buyers pay one clear price.</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-gray-900 md:text-3xl">Free business accounts. Clear product prices and checkout totals.</h2>
           <p className="mt-3 text-sm text-gray-700 md:text-base">
-            Beezio is free for sellers, affiliates, and influencers. Instead of monthly fees, Beezio’s platform fees and commissions are built into product pricing. Buyers see one all-in price, and earnings are distributed automatically after purchase.
+            Beezio is free for sellers, affiliates, and influencers. Instead of monthly fees, Beezio’s platform fees and commissions are built into product pricing. Buyers see the product price, with shipping and applicable tax shown separately at checkout. Earnings are recorded when a sale completes and paid according to the payout policy.
           </p>
           <ul className="mt-4 grid gap-2 text-sm text-gray-800 md:grid-cols-2">
             <li>✅ Free seller accounts</li>
