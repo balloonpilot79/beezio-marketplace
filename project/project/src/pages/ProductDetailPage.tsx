@@ -1,3 +1,4 @@
+import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import { productWithSelectedVariant } from '../../shared/productShipping';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { DEFAULT_PHYSICAL_RETURN_POLICY } from '../utils/returnPolicy';
@@ -1441,6 +1442,7 @@ const ProductDetailPage: React.FC = () => {
         sellerId: product.seller_id,
         sellerName: sellerDisplayName,
         shippingCost: getProductShipping(productWithSelectedVariant(product, selectedVariant)),
+        combinedShipping: getCombinedShippingPolicy(product),
         maxQuantity: typeof computedMaxQuantity === 'number' ? computedMaxQuantity : undefined,
         affiliateId: cartAffiliateId,
         storefrontScope: (product as any)?.storefront_scope,
@@ -1483,6 +1485,7 @@ const ProductDetailPage: React.FC = () => {
         sellerId: product.seller_id,
         sellerName: sellerDisplayName,
         shippingCost: getProductShipping(productWithSelectedVariant(product, selectedVariant)),
+        combinedShipping: getCombinedShippingPolicy(product),
         maxQuantity: 1,
         affiliateId: cartAffiliateId,
         storefrontScope: (product as any)?.storefront_scope,

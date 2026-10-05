@@ -1,4 +1,5 @@
-import { getOrderSavings, getCartUnitPrice as getOrderCartUnitPrice } from '../../shared/orderPricing';
+import { getCombinedShippingSavings } from '../../shared/combinedShipping';
+import { getCartUnitPrice as getOrderCartUnitPrice } from '../../shared/orderPricing';
 import { useShoppingBrand } from '../components/storefront/StorefrontShoppingPage';
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -242,7 +243,7 @@ const CartPage: React.FC = () => {
 
             <div className="mt-4 text-sm text-emerald-700">
               <p className="font-medium">
-                Shipping is added separately based on each item and quantity. {getOrderSavings(items) > 0 && `Multi-item savings of $${getOrderSavings(items).toFixed(2)} are included above.`}
+                Shipping is added separately based on each item and quantity. {getCombinedShippingSavings(items) > 0 && `Seller combined shipping saves $${getCombinedShippingSavings(items).toFixed(2)} on delivery.`}
               </p>
             </div>
 

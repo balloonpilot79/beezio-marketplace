@@ -1,3 +1,4 @@
+import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import React, { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -143,6 +144,7 @@ const CanonicalProductCard: React.FC<Props> = ({
     sellerId: product.seller_id || 'unknown-seller',
     sellerName: product.profiles?.full_name || 'Seller',
     shippingCost: getProductShipping(product),
+    combinedShipping: getCombinedShippingPolicy(product),
     maxQuantity: stock === null ? undefined : Math.max(0, stock),
     commission_rate: commission.value,
     commission_type: commission.type === 'flat' ? 'flat_rate' : 'percentage',

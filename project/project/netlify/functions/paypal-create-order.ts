@@ -1,4 +1,4 @@
-import { getOrderUnitSavings } from '../../shared/orderPricing';
+import { allocateCombinedShipping, applyShippingAllocations, getCombinedShippingPolicy, shippingChannelKey } from '../../shared/combinedShipping';
 import { DOLLAR_CHECKOUT_TEST, isDollarCheckoutTest } from '../../shared/dollarCheckoutTest';
 import { resolvePlacedStorefrontAffiliate } from './_lib/storefront-affiliate-attribution';
 import { isSellerStorefrontSale } from '../../shared/storefrontProductAttribution';
@@ -82,6 +82,7 @@ const PRODUCT_SELECT_COLUMNS = [
   'external_id',
   'shipping_cost',
   'shipping_price',
+  'shipping_options',
   'base_weight_oz',
   'lineage',
   'dropship_provider',
@@ -475,6 +476,8 @@ const isCJProduct = (product: any, variant?: any): boolean => {
 type CartLineItem = {
   product_id: string;
   variant_id?: string | null;
+  affiliate_id?: string | null;
+  storefront_scope?: string | null;
   qty: number;
   unit_price: number; // seller ask
 };
@@ -705,6 +708,10 @@ export const handler: Handler = async (event) => {
     const orderCampaign = body?.context?.campaign ? String(body.context.campaign).trim() : null;
 
     if (!lineItems.length) return json(400, { error: 'Missing cart line_items' });
+    if (new Set(lineItems.map(item => shippingChannelKey({ affiliateId: item.affiliate_id, storefrontScope: item.storefront_scope }))).size > 1) {
+      return json(400, { error: 'Items bought through different seller or affiliate channels need separate checkouts.', code: 'MIXED_PURCHASE_CHANNELS' });
+    }
+
 
     const shippingAmountClient = Number(body?.cart?.shipping_amount ?? 0) || 0;
     const taxAmountClient = Number(body?.cart?.tax_amount ?? 0) || 0;
@@ -1113,14 +1120,6 @@ export const handler: Handler = async (event) => {
       });
     }
 
-    const unitSavings = getOrderUnitSavings(computedItems, paypalFixed);
-    if (unitSavings > 0) {
-      for (const item of computedItems) {
-        item.listingUnit = round2(item.listingUnit - unitSavings);
-        item.paypalProcessingAllowanceUnit = round2(item.paypalProcessingAllowanceUnit - unitSavings);
-      }
-      subtotalListing = computedItems.reduce((total, item) => total + item.listingUnit * item.quantity, 0);
-    }
     subtotalListing = round2(subtotalListing);
 
     const strictCJInventory = String(process.env.CJ_STRICT_STOCK_REQUIRED || 'false').trim().toLowerCase() === 'true';
@@ -1426,7 +1425,18 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const shippingAmount = round2(computedItems.reduce((total, item) => total + item.shippingReserveUnit * item.quantity, 0));
+    const shippingLines = allocateCombinedShipping(computedItems.map(item => ({
+      quantity: item.quantity,
+      shippingCost: item.shippingReserveUnit,
+      sellerId,
+      affiliateId: partnerId,
+      storefrontScope: resolvedStorefrontId || effectiveOrderSource,
+      combinedShipping: isCJProduct(productMap.get(item.productId), item.variantId ? variantMap.get(item.variantId) : null)
+        ? null : getCombinedShippingPolicy(productMap.get(item.productId)),
+    })));
+    const shippingItems = applyShippingAllocations(computedItems, shippingLines);
+    computedItems.splice(0, computedItems.length, ...shippingItems);
+    const shippingAmount = round2(shippingLines.reduce((total, amount) => total + amount, 0));
     const taxCollectionDisabled = String(process.env.DISABLE_TAX_COLLECTION || '').trim().toLowerCase() === 'true';
     const configuredPaymentTaxRate = String(process.env.PAYMENT_TAX_RATE || '').trim()
       ? Number(process.env.PAYMENT_TAX_RATE) : Number.NaN;

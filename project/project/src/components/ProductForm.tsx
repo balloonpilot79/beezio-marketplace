@@ -1,3 +1,4 @@
+import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
@@ -145,8 +146,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const buildSingleShippingOption = (
     shippingPrice: number,
     includeInPrice: boolean = true
-  ): Array<{ name: string; cost: number; estimated_days: string; included_in_price?: boolean; seller_shipping_cost?: number }> => [{
-    name: includeInPrice ? 'Free Shipping' : 'Seller Shipping',
+  ): Array<{ name: string; cost: number; estimated_days: string; included_in_price?: boolean; seller_shipping_cost?: number; bundle_shipping?: boolean; additional_item_cost?: number | string }> => [{
+    name: 'Standard shipping',
     cost: includeInPrice ? 0 : Math.max(0, shippingPrice),
     estimated_days: '3-5 business days',
     ...(includeInPrice ? { included_in_price: true, seller_shipping_cost: Math.max(0, shippingPrice) } : {}),
@@ -183,7 +184,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     raw: any,
     shippingPrice: number,
     includeInPrice: boolean = true
-  ): Array<{ name: string; cost: number; estimated_days: string }> => {
+  ): Array<{ name: string; cost: number; estimated_days: string; included_in_price?: boolean; seller_shipping_cost?: number; bundle_shipping?: boolean; additional_item_cost?: number | string }> => {
     let options: any = raw;
 
     if (typeof options === 'string') {
@@ -227,6 +228,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       option.included_in_price = true;
       option.seller_shipping_cost = effectiveCost;
     }
+    const savedBundle = options[0];
+    if (savedBundle?.bundle_shipping === true) {
+      option.bundle_shipping = true;
+      option.additional_item_cost = savedBundle.additional_item_cost;
+    }
     return [option];
   };
   const [loading, setLoading] = useState(false);
@@ -259,7 +265,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     is_subscription: product?.is_subscription || false,
     subscription_interval: product?.subscription_interval || '',
     affiliate_enabled: true, // DEFAULT TO TRUE - Business preference
-    shipping_options: buildSingleShippingOption(product?.shipping_price ?? (product as any)?.shipping_cost ?? 0, true),
+    shipping_options: normalizeShippingOptions(product?.shipping_options, product?.shipping_price ?? (product as any)?.shipping_cost ?? 0, true),
     requires_shipping: product?.requires_shipping !== false,
     shipping_price: product?.shipping_price ?? (product as any)?.shipping_cost ?? 0,
     shipping_included_in_price: true,
@@ -1167,6 +1173,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     }
 
     const isDigitalProduct = (formData as any).is_digital === true;
+    if (!isDigitalProduct && (formData.shipping_options as any)?.[0]?.bundle_shipping === true && !getCombinedShippingPolicy(formData)) {
+      abortSubmit('Enter an additional-item shipping cost from $0 up to your single-item shipping cost. Supplier-quoted products cannot use combined shipping.');
+      return;
+    }
+
     const normalizedShippingOptions = isDigitalProduct
       ? []
       : normalizeShippingOptions(
@@ -2221,9 +2232,35 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   />
                 </div>
               </div>
+              <details className="mt-4 rounded-lg border border-amber-200 bg-white p-3">
+                <summary className="cursor-pointer font-semibold text-gray-900">Optional combined shipping</summary>
+                <label className="mt-3 flex items-start gap-2 text-sm text-gray-800">
+                  <input type="checkbox" className="mt-1"
+                    checked={(formData.shipping_options as any)?.[0]?.bundle_shipping === true}
+                    onChange={(event) => setFormData(previous => ({ ...previous,
+                      shipping_options: [{ ...normalizeShippingOptions(previous.shipping_options, Number(previous.shipping_price) || 0)[0],
+                        bundle_shipping: event.target.checked,
+                        additional_item_cost: (previous.shipping_options as any)?.[0]?.additional_item_cost ?? Number(previous.shipping_price || 0),
+                      }],
+                    }))} />
+                  Offer combined shipping for this product
+                </label>
+                {(formData.shipping_options as any)?.[0]?.bundle_shipping === true && (
+                  <div className="mt-3 max-w-xs">
+                    <label htmlFor="additional-item-shipping" className="block text-sm font-semibold">Shipping for each additional item ($)</label>
+                    <input id="additional-item-shipping" type="number" min="0" max={Number(formData.shipping_price) || 0} step="0.01"
+                      value={(formData.shipping_options as any)?.[0]?.additional_item_cost ?? ''}
+                      onChange={event => setFormData(previous => ({ ...previous,
+                        shipping_options: [{ ...(previous.shipping_options as any)?.[0], additional_item_cost: event.target.value }],
+                      }))}
+                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+                  </div>
+                )}
+                <p className="mt-3 text-xs leading-5 text-gray-600">Choose an amount that covers your actual delivery costs. Eligible items from the same seller and the same store or affiliate channel can share one first-item shipping charge. Purchases through different channels stay separate. Product prices and commissions do not change. Supplier-quoted shipping is excluded.</p>
+              </details>
               <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
                 <div className="font-semibold text-emerald-900">Customer sees: Shipping at checkout</div>
-                <div className="text-sm text-emerald-800">This expense is added once at checkout and paid to the seller.</div>
+                <div className="text-sm text-emerald-800">Shipping is calculated at checkout and paid to the seller.</div>
               </div>
             </section>
           )}

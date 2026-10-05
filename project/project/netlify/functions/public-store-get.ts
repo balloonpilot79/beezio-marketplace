@@ -1,3 +1,4 @@
+import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import { getProductShipping } from '../../shared/productShipping';
 import { isPublicStoreProduct, isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
@@ -384,6 +385,7 @@ const handler: Handler = async (event) => {
               cost: getProductShipping(product),
               estimated_days: isSupplyLineProduct(product) ? 'Confirmed for your address at checkout' : '3-5 business days',
               included_in_price: false,
+              ...(getCombinedShippingPolicy(product) ? { bundle_shipping: true, additional_item_cost: getCombinedShippingPolicy(product)!.additionalItemCost } : {}),
             }],
         display_order: orderSetting?.display_order ?? 999,
         is_featured: orderSetting?.is_featured ?? false,

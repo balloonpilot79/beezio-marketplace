@@ -1,3 +1,4 @@
+import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import { getProductShipping } from '../../shared/productShipping';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
@@ -342,6 +343,7 @@ const handler: Handler = async (event) => {
               cost: getProductShipping(normalizedProduct),
               estimated_days: isSupplyLinePlus ? 'Confirmed for your address at checkout' : '3-5 business days',
               included_in_price: false,
+              ...(getCombinedShippingPolicy(normalizedProduct) ? { bundle_shipping: true, additional_item_cost: getCombinedShippingPolicy(normalizedProduct)!.additionalItemCost } : {}),
             }],
       },
       store_settings: storeSettings,

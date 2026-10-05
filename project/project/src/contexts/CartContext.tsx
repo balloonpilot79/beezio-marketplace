@@ -1,3 +1,4 @@
+import { getCombinedShippingTotal, getCombinedShippingPolicy, type CombinedShippingPolicy } from '../../shared/combinedShipping';
 import { getCartUnitPrice as getOrderCartUnitPrice } from '../../shared/orderPricing';
 import { productWithSelectedVariant } from '../../shared/productShipping';
 import { getBuyerFacingProductPrice, getProductShipping } from '../utils/buyerPrice';
@@ -18,6 +19,7 @@ export interface CartItem {
   sellerId: string;
   sellerName: string;
   shippingCost?: number;
+  combinedShipping?: CombinedShippingPolicy | null;
   maxQuantity?: number;
   commission_rate?: number;
   commission_type?: 'percentage' | 'flat_rate';
@@ -249,7 +251,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const variant = item.variantId ? (product.variants || product.product_variants || []).find((v: any) => v.id === item.variantId) : null;
         if (item.variantId && !variant) return item;
         const selected = productWithSelectedVariant(product, variant);
-        return { ...item, price: getBuyerFacingProductPrice(selected), shippingCost: getProductShipping(selected) };
+        return { ...item, price: getBuyerFacingProductPrice(selected), shippingCost: getProductShipping(selected), combinedShipping: getCombinedShippingPolicy(selected) };
       }));
     }).finally(() => window.clearTimeout(timeout));
     return () => { controller.abort(); window.clearTimeout(timeout); };
@@ -371,7 +373,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getShippingTotal = () => {
-    return Math.round(items.reduce((total, item) => total + (item.isDigital ? 0 : Math.max(0, Number(item.shippingCost || 0)) * item.quantity), 0) * 100) / 100;
+    return getCombinedShippingTotal(items);
   };
 
   const isInCart = (productId: string) => {

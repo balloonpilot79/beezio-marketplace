@@ -1,3 +1,4 @@
+import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import React, { useMemo, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -501,6 +502,7 @@ const ProductDetailPageSimple: React.FC = () => {
         flat_commission_amount: product.flat_commission_amount,
         affiliateId: cartAffiliateId,
         shippingCost: shippingPrice,
+        combinedShipping: getCombinedShippingPolicy(product),
         maxQuantity: typeof computedMaxQuantity === 'number' ? computedMaxQuantity : undefined,
         variantId,
           variantName: variantLabel,

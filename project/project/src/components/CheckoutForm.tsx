@@ -1,3 +1,4 @@
+import { getCombinedShippingTotal, shippingChannelKey } from '../../shared/combinedShipping';
 import { getCartUnitPrice as getOrderCartUnitPrice } from '../../shared/orderPricing';
 import { paymentRecoveryMessage, safePayPalApprovalUrl } from '../utils/paymentRecovery';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -904,11 +905,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
     }
 
     const itemsSubtotal = currentPayPalListingSubtotal;
-    const quotedShippingCost = normalizedItems.reduce((sum, item) => sum + (item.isDigital ? 0 : Number(item.shippingCost || 0) * item.quantity), 0);
+    const quotedShippingCost = getCombinedShippingTotal(normalizedItems);
     const shippingTotal = Math.round((quotedShippingCost + Number.EPSILON) * 100) / 100;
     const taxAmount = Math.round(((itemsSubtotal + shippingTotal) * TAX_RATE + Number.EPSILON) * 100) / 100;
 
     const attribution = getReferralAttribution();
+    if (new Set(normalizedItems.map(item => shippingChannelKey({ sellerId: item.sellerId, affiliateId: item.affiliateId, storefrontScope: item.storefrontScope }))).size > 1) throw new Error('Items bought through different seller or affiliate channels need separate checkouts.');
     const cartAffiliates = new Set(normalizedItems.map(item => String(item.affiliateId || '').trim()).filter(Boolean));
     if (cartAffiliates.size > 1) throw new Error('Your cart contains items from different affiliates. Please check out one affiliate at a time.');
     const { affiliate_id, storefront_id, orderSource } = resolveCheckoutAttribution({
@@ -958,6 +960,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
         line_items: normalizedItems.map((it) => ({
           product_id: it.productId,
           variant_id: it.variantId ?? null,
+          affiliate_id: it.affiliateId ?? null,
+          storefront_scope: it.storefrontScope ?? null,
           qty: it.quantity,
           unit_price: it.sellerAsk ?? it.price,
         })),
