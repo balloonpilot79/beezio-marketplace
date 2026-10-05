@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { pricingExplanation } from "../components/brand/BeezioBrand";
 import { prepareHomeProducts, type HomeProduct } from "../utils/homeCatalog";
+import { useAuth } from "../contexts/AuthContextMultiRole";
 import "../styles/beezio-home.css";
 
 const money = (amount: number) =>
@@ -71,6 +72,7 @@ const paths = [
 ];
 
 export default function HomePageBZO() {
+  const { user } = useAuth();
   const [products, setProducts] = useState<HomeProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -177,6 +179,9 @@ export default function HomePageBZO() {
                     </div>
                     <span>{product.title}</span>
                     <strong>{money(product.price)}</strong>
+                    {user?.id && product.affiliateAmount > 0 && (
+                      <span className="text-sm font-semibold text-green-700">Earn {money(product.affiliateAmount)} per sale</span>
+                    )}
                   </Link>
                 ))}
               </div>
@@ -295,6 +300,9 @@ export default function HomePageBZO() {
                         <ArrowRight size={17} />
                       </span>
                     </div>
+                    {user?.id && product.affiliateAmount > 0 && (
+                      <p className="mt-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">Earn {money(product.affiliateAmount)} per sale</p>
+                    )}
                     <p className="hm-product-detail">
                       See product & delivery details
                     </p>

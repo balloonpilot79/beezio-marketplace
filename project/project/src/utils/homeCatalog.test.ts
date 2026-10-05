@@ -14,6 +14,16 @@ const product = {
 };
 
 describe("homepage live catalog", () => {
+  it.each([
+    [{ affiliate_payout_amount: 7 }, 7],
+    [{ commission_type: "flat_rate", flat_commission_amount: 5 }, 5],
+    [{ affiliate_commission_type: "flat", affiliate_commission_value: 6 }, 6],
+    [{ seller_ask: 20, commission_rate: 25 }, 5],
+    [{ affiliate_payout_amount: 7, affiliate_enabled: false }, 0],
+    [{}, 0],
+  ])("preserves the configured affiliate earnings: %j", (fields, amount) => {
+    expect(prepareHomeProducts([{ ...product, ...fields }])[0].affiliateAmount).toBe(amount);
+  });
   it("uses the published customer price and seller identity", () => {
     expect(prepareHomeProducts([product])[0]).toMatchObject({
       id: "live",

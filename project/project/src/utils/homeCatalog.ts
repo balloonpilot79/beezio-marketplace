@@ -1,6 +1,7 @@
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import { getBuyerFacingProductPrice } from "./buyerPrice";
+import { getAffiliateAmount, resolveAffiliateCommission } from "./pricing";
 import { normalizeProductImages } from "./imageHelpers";
 
 export interface HomeProduct {
@@ -11,6 +12,7 @@ export interface HomeProduct {
   seller: string;
   category: string;
   available: boolean;
+  affiliateAmount: number;
 }
 
 export function prepareHomeProducts(rows: any[]): HomeProduct[] {
@@ -54,7 +56,14 @@ export function prepareHomeProducts(rows: any[]): HomeProduct[] {
         (knownStock
           ? Number(stock) > 0
           : !(row.track_inventory === true && row.in_stock === false));
+      const commission = resolveAffiliateCommission(row);
+      const affiliateAmount = row.affiliate_enabled === false ? 0 : getAffiliateAmount(
+        Number(row.seller_ask ?? row.seller_amount ?? getBuyerFacingProductPrice(row)),
+        commission.type,
+        commission.value,
+      );
       return {
+        affiliateAmount,
         id: String(row.id),
         title: String(row.title),
         price: getBuyerFacingProductPrice(row),
