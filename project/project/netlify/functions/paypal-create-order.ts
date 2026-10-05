@@ -1082,7 +1082,7 @@ export const handler: Handler = async (event) => {
       subtotalListing += listingUnit * qty;
 
       const platformFeeGrossUnit = round2(
-        unitPricing?.platformFee ?? computeBeezioPlatformFee(listingUnit)
+        unitPricing?.platformFee ?? computeBeezioPlatformFee(ask)
       );
       const platformFeeNetUnit = platformFeeGrossUnit;
       const cjMapping = cjCostMap.get(productId);

@@ -84,7 +84,7 @@ const SellersPage: React.FC = () => {
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-700">Free to join</p>
             <h2 className="mt-2 text-2xl md:text-3xl font-bold text-gray-900">Join free. Sell, promote, or influence — Beezio earns only when you do.</h2>
             <p className="mt-3 text-sm md:text-base text-gray-700">
-              Beezio is free for sellers, affiliates, and influencers. Instead of monthly fees, Beezio’s platform fees and commissions are built into product pricing. Buyers see one all-in price, and earnings are distributed automatically after purchase.
+              Beezio is free for sellers, affiliates, and influencers. Set your seller payout, affiliate commission, and shipping. Preview the product price before publishing. Buyers see shipping and applicable tax separately at checkout.
             </p>
             <ul className="mt-4 grid gap-2 text-sm text-gray-800 md:grid-cols-2">
               <li>✅ Free seller accounts</li>

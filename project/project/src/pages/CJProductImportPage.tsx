@@ -2189,14 +2189,6 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
                             <span className="text-gray-600">Partner Commission:</span>
                             <span className="font-medium">${priceBreakdown.affiliateCommission.toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Beezio Fee:</span>
-                            <span className="font-medium">${priceBreakdown.beezioFee.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Processing Fee:</span>
-                            <span className="font-medium">${priceBreakdown.processingFee.toFixed(2)}</span>
-                          </div>
                           <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
                             <span className="font-semibold text-gray-900">Customer Pays:</span>
                             <span className="font-bold text-[#101820]">${priceBreakdown.finalPrice.toFixed(2)}</span>

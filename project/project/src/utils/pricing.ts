@@ -211,7 +211,7 @@ export function calculatePayouts(
   const processingFee = roundUpToTwoDecimals(
     salePrice * PROCESSING_PERCENT + PROCESSING_FLAT
   );
-  const beezioGross = computeFixedBeezioPlatformFee(salePrice);
+  const beezioGross = computeFixedBeezioPlatformFee(sellerPayout);
 
   return {
     salePrice: roundToCurrency(salePrice),

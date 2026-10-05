@@ -60,22 +60,22 @@ export const PaymentSetupGuide: React.FC<PaymentSetupGuideProps> = ({ userType, 
   const getEarningsEstimate = () => {
     if (userType === 'seller') {
       return {
-        potential: '$500-2000/month',
-        description: 'From product sales (after platform fees)',
+        potential: 'Your chosen payout',
+        description: 'Receive the seller payout you set',
         breakdown: [
-          'Product Price: $50',
-          'Platform Fee: $7.50 (15%)',
-          'Your Earnings: $42.50'
+          'Set your seller payout',
+          'Choose an affiliate commission',
+          'Enter shipping and preview the customer price'
         ]
       }
     } else {
       return {
-        potential: '$100-1000/month',
+        potential: 'Earn on qualifying sales',
         description: 'From influencer commissions',
         breakdown: [
-          'Product Sale: $50',
-          'Commission Rate: 15%',
-          'Your Earnings: $7.50'
+          'Invite sellers and affiliates',
+          'Earn when your referrals generate qualifying sales',
+          'Track recorded earnings in your dashboard'
         ]
       }
     }

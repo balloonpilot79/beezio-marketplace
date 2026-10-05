@@ -84,7 +84,7 @@ const PricingCalculator: React.FC<PricingCalculatorProps> = ({
         <p className="font-semibold">Set your payout and optional affiliate commission.</p>
         <p className="mt-1">
           Enter the amount you want to receive from the sale. The customer price updates automatically.
-          {` Shipping is included at ${new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(shippingAmount)} and checkout displays Free Shipping.`}
+          {` Shipping is included at ${new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(shippingAmount)} in this preview; buyers see shipping separately at checkout.`}
         </p>
         <p className="mt-1">
           Use the preview below to confirm the seller amount, affiliate amount, and customer total before saving.

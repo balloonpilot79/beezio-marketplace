@@ -61,13 +61,13 @@ const PricingSlider: React.FC = () => {
     },
     {
       id: 2,
-      title: "Transparent 15% Platform Fee",
-      description: "We only succeed when you do. Beezio uses a 15% platform fee for payment processing and marketplace services.",
+      title: "Choose Your Payout",
+      description: "Set your seller payout, affiliate commission, and shipping. Preview the customer price before publishing.",
       icon: <DollarSign className="h-8 w-8 text-white" />,
       features: [
         "You set your desired profit amount",
-        "15% platform fee on each sale",
-        "Processing fees included in final price",
+        "You choose the affiliate commission",
+        "Customer pricing calculated automatically",
         "Transparent pricing - no hidden costs"
       ],
       highlight: "You get 100% of your desired profit!",

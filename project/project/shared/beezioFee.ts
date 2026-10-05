@@ -6,11 +6,11 @@
  * amount remains with Beezio and is therefore Beezio profit.
  */
 export const DEFAULT_BEEZIO_PLATFORM_RATE = 0;
-export const DEFAULT_BEEZIO_UNDER_THRESHOLD_FLAT_FEE = 2;
+export const DEFAULT_BEEZIO_UNDER_THRESHOLD_FLAT_FEE = 1;
 export const DEFAULT_BEEZIO_PERCENT_RATE_THRESHOLD = 50;
-export const DEFAULT_BEEZIO_MIN_NET_PROFIT = 2;
-export const DEFAULT_BEEZIO_PLATFORM_FEE_MIN = 2;
-export const DEFAULT_BEEZIO_PLATFORM_FEE_CAP = 2;
+export const DEFAULT_BEEZIO_MIN_NET_PROFIT = 1;
+export const DEFAULT_BEEZIO_PLATFORM_FEE_MIN = 1;
+export const DEFAULT_BEEZIO_PLATFORM_FEE_CAP = Number.MAX_SAFE_INTEGER;
 export const DEFAULT_BEEZIO_LARGE_ORDER_THRESHOLD = Number.MAX_SAFE_INTEGER;
 export const DEFAULT_BEEZIO_LARGE_ORDER_FLAT_FEE = 0;
 
@@ -31,20 +31,23 @@ type PlatformFeeOptions = {
 const toMoney = (value: number): number =>
   Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
-export function computeFixedBeezioPlatformFee(finalAdvertisedPrice: number): number {
-  const price = Number.isFinite(finalAdvertisedPrice)
-    ? Math.max(0, Number(finalAdvertisedPrice))
+export function computeFixedBeezioPlatformFee(sellerAsk: number): number {
+  const price = Number.isFinite(sellerAsk)
+    ? Math.max(0, toMoney(sellerAsk))
     : 0;
   if (price <= 0) return 0;
-  // Flat per-product allocation; seller and affiliate asks stay whole.
-  return 2;
+  // Internal per-item policy, based only on seller payout before shipping.
+  // No cap: each started $25 bracket above $50 adds one dollar.
+  if (price <= 15) return 1;
+  if (price <= 50) return 2;
+  return Math.ceil(Math.round(price * 100) / 2500);
 }
 
 export function computeBeezioPlatformFee(
-  finalAdvertisedPrice: number,
+  sellerAsk: number,
   _options?: PlatformFeeOptions,
 ): number {
-  return computeFixedBeezioPlatformFee(finalAdvertisedPrice);
+  return computeFixedBeezioPlatformFee(sellerAsk);
 }
 
 export function computeBeezioPlatformPoolForPrice(params: {
@@ -61,6 +64,7 @@ export function computeBeezioPlatformPoolForPrice(params: {
   minimumNetProfit?: number;
 }): number {
   const price = Number(
+    params.sellerAsk ??
     params.finalAdvertisedPrice ??
     params.listingPrice ??
     params.sellerAsk ??

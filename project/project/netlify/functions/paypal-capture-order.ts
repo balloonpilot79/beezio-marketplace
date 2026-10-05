@@ -518,7 +518,7 @@ export const handler: Handler = async (event) => {
         regularBeezioFeeGrossTotal += (testItem
           ? TEST_ITEM_PLATFORM_GROSS
           : round2(
-              computeBeezioPlatformFee(listingUnit, {
+              computeBeezioPlatformFee(ask, {
                 rate: beezioRate,
                 minimum: beezioPlatformFeeMin,
                 cap: beezioPlatformFeeCap,

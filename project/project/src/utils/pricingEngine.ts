@@ -92,7 +92,7 @@ export function computePayoutBreakdown(
   const processingPercentAmount = round2(
     Math.max(0, Number(finalPrice || 0)) * (PROCESSING_PERCENT / 100)
   );
-  const platformGrossAmount = computeFixedBeezioPlatformFee(finalPrice);
+  const platformGrossAmount = computeFixedBeezioPlatformFee(sellerAmount);
 
   return {
     finalPrice: round2(finalPrice),

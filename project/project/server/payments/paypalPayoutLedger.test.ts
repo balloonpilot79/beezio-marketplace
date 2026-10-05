@@ -12,7 +12,7 @@ describe('buildPayPalLedgerPlan fixed-tier accounting', () => {
   it('keeps each unfilled influencer slot with Beezio',()=>{const plan=buildPayPalLedgerPlan(makeInput({sellerInfluencerId:null,partnerInfluencerId:null}));expect(plan.aggregate.influencerEarnings).toBe(0);expect(plan.aggregate.notes).toContain('influencer_bonus_retained_total=2.00');expect(plan.aggregate.beezioProfit).toBe(4.01);});
   it('retains the fixed affiliate allocation for a direct marketplace purchase',()=>{const plan=buildPayPalLedgerPlan(makeInput({partnerId:null,affiliateSource:'beezio',sellerInfluencerId:null,partnerInfluencerId:null}));expect(plan.aggregate.partnerEarnings).toBe(0);expect(plan.aggregate.beezioProfit).toBe(9.01);expect(plan.aggregate.notes).toContain('affiliate_payout_retained_total=5.00');expect(plan.aggregate.notes).toContain('affiliate_source=beezio');expect(plan.moneyEntries.find(row=>row.payeeType==='affiliate')).toBeUndefined();expect(plan.moneyEntries.find(row=>row.payeeType==='beezio')?.metadata.affiliate_payout_retained_total).toBe(5);});
   it('rolls the affiliate allocation into the seller payout for a seller self-sale',()=>{const plan=buildPayPalLedgerPlan(makeInput({partnerId:'seller-1',affiliateSource:'seller_self',sellerInfluencerId:null,partnerInfluencerId:null}));expect(plan.aggregate.sellerEarnings).toBe(45);expect(plan.aggregate.partnerEarnings).toBe(0);expect(plan.payees.map(row=>`${row.payeeRole}:${row.amount}`)).toEqual(['SELLER:45']);expect(plan.aggregate.notes).toContain('affiliate_payout_paid_to_seller_total=5.00');expect(plan.moneyEntries.find(row=>row.payeeType==='affiliate' && row.payeeId==='seller-1')?.grossAmount).toBe(5);});
-  it('uses the final advertised price for the under-$20 influencer tier',()=>{const pricing=computeFixedTierPricing({sellerPayout:15});const plan=buildPayPalLedgerPlan(makeInput({partnerId:null,partnerInfluencerId:null,subtotalListing:pricing.finalAdvertisedPrice,items:[{id:'item-low',quantity:1,seller_ask_amount:15,partner_rate:0,computed_listing_price:pricing.finalAdvertisedPrice,affiliate_payout_amount:0,shipping_reserve_amount:0,influencer_allocation_amount:pricing.influencerAllocation,platform_fee_amount:pricing.platformFee,paypal_processing_allowance:pricing.paypalProcessingAllowance}]}));expect(pricing.finalAdvertisedPrice).toBeLessThan(20);expect(plan.aggregate.influencerEarnings).toBe(0.5);expect(plan.aggregate.beezioFeeGross).toBe(2);});
+  it('uses the final advertised price for the under-$20 influencer tier',()=>{const pricing=computeFixedTierPricing({sellerPayout:15});const plan=buildPayPalLedgerPlan(makeInput({partnerId:null,partnerInfluencerId:null,subtotalListing:pricing.finalAdvertisedPrice,items:[{id:'item-low',quantity:1,seller_ask_amount:15,partner_rate:0,computed_listing_price:pricing.finalAdvertisedPrice,affiliate_payout_amount:0,shipping_reserve_amount:0,influencer_allocation_amount:pricing.influencerAllocation,platform_fee_amount:pricing.platformFee,paypal_processing_allowance:pricing.paypalProcessingAllowance}]}));expect(pricing.finalAdvertisedPrice).toBeLessThan(20);expect(plan.aggregate.influencerEarnings).toBe(0.5);expect(plan.aggregate.beezioFeeGross).toBe(1);});
   it('uses the full tax-inclusive capture amount for actual PayPal cost',()=>{const plan=buildPayPalLedgerPlan(makeInput({taxAmount:3.62,paypalFeeAmount:null}));expect(plan.aggregate.paypalFeeEstimate).toBe(2.81);expect(plan.aggregate.sellerEarnings).toBe(40);expect(plan.aggregate.partnerEarnings).toBe(5);expect(plan.aggregate.beezioFeeNet).toBe(2);});
   it('uses PayPal capture fee data without reducing platform earnings',()=>{const plan=buildPayPalLedgerPlan(makeInput({paypalFeeAmount:3.12}));expect(plan.aggregate.paypalFeeEstimate).toBe(3.12);expect(plan.aggregate.beezioFeeGross).toBe(2);expect(plan.aggregate.beezioFeeNet).toBe(2);expect(plan.moneyEntries.find(row=>row.payeeType==='processor_fee')?.grossAmount).toBe(3.12);});
   it('freezes itemized cost, markup, shipping, affiliate, and fee data',()=>{const plan=buildPayPalLedgerPlan(makeInput());const snapshot=plan.payees[0].snapshot as any;expect(snapshot.items[0]).toMatchObject({supplier_cost_amount:23.8,seller_markup_amount:10,shipping_reserve_amount:6.2,partner_line_total:5,beezio_fee_gross_line_total:2});expect(snapshot.provider_capture_id).toBe('capture-1');});
@@ -86,5 +86,26 @@ describe('platform affordability policy', () => {
     expect(plan.aggregate.sellerEarnings).toBe(40);
     expect(plan.aggregate.partnerEarnings).toBe(5);
     expect(plan.aggregate.influencerEarnings).toBe(2);
+  });
+});
+
+// Checkout stores the agreed amounts so later fee changes cannot rewrite a sale.
+describe('shirt pricing and historical fee snapshots', () => {
+  it.each([[14.20,5.99],[12.20,7.99]])('reconciles $29.99 shirts with ask %s and shipping %s', (ask, shipping) => {
+    const pricing = computeFixedTierPricing({sellerPayout:ask,affiliatePayout:5,shippingIncluded:shipping});
+    const input = makeInput({subtotalListing:29.99-shipping,shippingAmount:shipping,taxAmount:2.10,paypalFeeAmount:1.61,items:[{quantity:1,seller_ask_amount:ask,computed_listing_price:29.99,affiliate_payout_amount:5,shipping_reserve_amount:shipping,influencer_allocation_amount:2,platform_fee_amount:pricing.platformFee,paypal_processing_allowance:pricing.paypalProcessingAllowance}]});
+    const plan = buildPayPalLedgerPlan(input);
+    expect(plan.aggregate.sellerEarnings).toBe(20.19);
+    expect(plan.aggregate.partnerEarnings).toBe(5);
+    expect(plan.aggregate.influencerEarnings).toBe(2);
+    expect(plan.aggregate.beezioFeeGross).toBe(1);
+    expect(Math.round(plan.moneyEntries.reduce((sum,row)=>sum+row.netAmount,0)*100)).toBe(3209);
+  });
+  it('keeps the old $2 fee for an already placed low-ask order', () => {
+    const input = makeInput({subtotalListing:29.89,items:[{quantity:1,seller_ask_amount:13.10,computed_listing_price:29.89,affiliate_payout_amount:5,shipping_reserve_amount:5.99,influencer_allocation_amount:2,platform_fee_amount:2,paypal_processing_allowance:1.80}]});
+    const plan = buildPayPalLedgerPlan(input);
+    expect(plan.aggregate.beezioFeeGross).toBe(2);
+    expect(plan.aggregate.sellerEarnings).toBe(19.09);
+    expect(plan.aggregate.partnerEarnings).toBe(5);
   });
 });

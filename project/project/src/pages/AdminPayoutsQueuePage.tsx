@@ -2982,7 +2982,7 @@ export default function AdminPayoutsQueuePage() {
             <div className="mt-2 space-y-2 text-sm text-gray-700">
               <p>Seller sets the product price basis and keeps 100% of the ask amount they entered.</p>
               <p>Seller also chooses the affiliate commission for that product, and the affiliate receives 100% of that configured commission.</p>
-              <p>For asks under $25, Beezio uses a flat $2 platform fee and PayPal is baked into the customer price.</p>
+              <p>Current pricing is calculated from the seller ask. Historical orders retain their recorded allocations.</p>
               <p>For asks at $25 and above, Beezio uses 15% and PayPal comes out of Beezio&apos;s fee pool, not the seller or affiliate payout.</p>
               <p>Influencer payout amounts are added to the product price and are never deducted from the seller payout or the affiliate payout.</p>
             </div>
