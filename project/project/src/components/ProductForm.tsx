@@ -2238,6 +2238,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 <div className="text-sm font-bold uppercase tracking-wide">Final product price</div>
                 <div className="mt-1 text-4xl font-black">${Math.max(0, pricingBreakdown.listingPrice - Number(formData.shipping_price || 0)).toFixed(2)}</div>
                 <div className="mt-1 text-sm font-semibold">Shipping & tax at checkout</div>
+                <div className="mt-2 text-base font-bold">
+                  Total including shipping, before tax: ${pricingBreakdown.listingPrice.toFixed(2)}
+                </div>
+                <p className="mt-2 text-sm">
+                  Compare this delivered total with similar products before publishing. Your ask should cover your product costs and profit; choose an affiliate payout that your margin can support.
+                </p>
                 <div className="mt-2 text-sm">
                   Estimated checkout total with 7% sales tax: <strong>${pricingBreakdown.estimatedCheckoutTotal.toFixed(2)}</strong>. Actual tax depends on the customer’s location.
                 </div>

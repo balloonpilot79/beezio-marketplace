@@ -1,15 +1,15 @@
 /**
- * Beezio fixed platform economics.
+ * Beezio platform economics.
  *
  * The platform fee is Beezio revenue. Influencer/recruiter allocations are
  * baked into the advertised price. When a slot is unused, that reserved
  * amount remains with Beezio and is therefore Beezio profit.
  */
-export const DEFAULT_BEEZIO_PLATFORM_RATE = 0;
-export const DEFAULT_BEEZIO_UNDER_THRESHOLD_FLAT_FEE = 2;
-export const DEFAULT_BEEZIO_PERCENT_RATE_THRESHOLD = 25;
-export const DEFAULT_BEEZIO_MIN_NET_PROFIT = 2;
-export const DEFAULT_BEEZIO_PLATFORM_FEE_MIN = 2;
+export const DEFAULT_BEEZIO_PLATFORM_RATE = 0.02;
+export const DEFAULT_BEEZIO_UNDER_THRESHOLD_FLAT_FEE = 1;
+export const DEFAULT_BEEZIO_PERCENT_RATE_THRESHOLD = 50;
+export const DEFAULT_BEEZIO_MIN_NET_PROFIT = 1;
+export const DEFAULT_BEEZIO_PLATFORM_FEE_MIN = 1;
 export const DEFAULT_BEEZIO_PLATFORM_FEE_CAP = Number.MAX_SAFE_INTEGER;
 export const DEFAULT_BEEZIO_LARGE_ORDER_THRESHOLD = Number.MAX_SAFE_INTEGER;
 export const DEFAULT_BEEZIO_LARGE_ORDER_FLAT_FEE = 0;
@@ -36,11 +36,11 @@ export function computeFixedBeezioPlatformFee(finalAdvertisedPrice: number): num
     ? Math.max(0, Number(finalAdvertisedPrice))
     : 0;
   if (price <= 0) return 0;
-  // Every non-zero advertised product below $25 must reserve at least $2 of
-  // actual Beezio profit. Influencer reserves are additional price components;
-  // unused reserves are retained by Beezio.
-  if (price < 25) return 2;
-  return toMoney(2 * (Math.floor(price / 100) + 1));
+  // A small operating reserve supports payout expenses without imposing the
+  // old $2 floor on inexpensive goods. The percentage grows continuously,
+  // avoiding artificial price jumps at $100 boundaries. Referral reserves
+  // and payment processing remain separate; promised payouts stay whole.
+  return toMoney(Math.max(DEFAULT_BEEZIO_PLATFORM_FEE_MIN, price * DEFAULT_BEEZIO_PLATFORM_RATE));
 }
 
 export function computeBeezioPlatformFee(

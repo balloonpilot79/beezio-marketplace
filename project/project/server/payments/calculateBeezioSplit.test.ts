@@ -14,13 +14,13 @@ describe('calculateBeezioSplit', () => {
     });
 
     expect(split.validation_ok).toBe(true);
-    expect(split.beezio_fee_amount).toBe(6);
+    expect(split.beezio_fee_amount).toBe(4);
     expect(split.referral_fee_amount).toBe(0);
     expect(split.affiliate_commission_amount).toBe(0);
     expect(split.seller_net_items_amount).toBe(100);
     expect(split.seller_total_transfer_amount).toBe(110);
     expect(split.referrer_amount).toBe(0);
-    expect(split.beezio_kept_amount).toBe(6);
+    expect(split.beezio_kept_amount).toBe(4);
   });
 
   it('affiliate only creates affiliate amount', () => {
@@ -36,7 +36,7 @@ describe('calculateBeezioSplit', () => {
 
     expect(split.validation_ok).toBe(true);
     expect(split.affiliate_amount).toBe(10);
-    expect(split.beezio_kept_amount).toBe(6);
+    expect(split.beezio_kept_amount).toBe(4);
     expect(split.seller_net_items_amount).toBe(100);
   });
 
@@ -53,7 +53,7 @@ describe('calculateBeezioSplit', () => {
 
     expect(split.validation_ok).toBe(true);
     expect(split.referrer_amount).toBe(0);
-    expect(split.beezio_kept_amount).toBe(6);
+    expect(split.beezio_kept_amount).toBe(4);
     expect(split.seller_net_items_amount).toBe(100);
   });
 
@@ -70,7 +70,7 @@ describe('calculateBeezioSplit', () => {
 
     expect(split.validation_ok).toBe(true);
     expect(split.referrer_amount).toBe(1);
-    expect(split.beezio_kept_amount).toBe(5);
+    expect(split.beezio_kept_amount).toBe(3);
   });
 
   it('handles high affiliate rates without reducing seller ask', () => {
