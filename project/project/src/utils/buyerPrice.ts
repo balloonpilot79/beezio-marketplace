@@ -1,6 +1,9 @@
 // Beezio: CJ Variants + Shipping extension (do not remove)
 // Central helper to ensure storefronts display buyer-facing prices (not seller payout/ask).
 
+import { getProductShipping, priceBeforeShipping } from '../../shared/productShipping';
+export { getProductShipping } from '../../shared/productShipping';
+
 import { calculateSalePriceFromSellerAsk, resolveAffiliateCommission } from './pricing';
 
 type CommissionType = 'percentage' | 'flat_rate' | string | null | undefined;
@@ -35,7 +38,7 @@ const toFiniteNumber = (value: unknown): number => {
  * - If product.price looks like it equals the seller ask (legacy data), compute instead.
  * - Only recompute from seller ask when the final buyer-facing price is missing.
  */
-export function getBuyerFacingProductPrice(product: PriceLikeProduct): number {
+function getDeliveredProductPrice(product: PriceLikeProduct): number {
   const calculatedCustomerPrice = toFiniteNumber(product?.calculated_customer_price);
   if (calculatedCustomerPrice > 0) return calculatedCustomerPrice;
 
@@ -66,4 +69,8 @@ export function getBuyerFacingProductPrice(product: PriceLikeProduct): number {
   }
 
   return directPrice;
+}
+
+export function getBuyerFacingProductPrice(product: PriceLikeProduct): number {
+  return priceBeforeShipping(getDeliveredProductPrice(product), getProductShipping(product));
 }

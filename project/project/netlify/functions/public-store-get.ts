@@ -1,3 +1,4 @@
+import { getProductShipping } from '../../shared/productShipping';
 import { isPublicStoreProduct, isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
@@ -374,15 +375,15 @@ const handler: Handler = async (event) => {
         ...storefrontProductAttribution(brandStorefront, orderSetting, product),
         profiles: { full_name: mergedSeller.full_name },
         storefront_slug: brandStorefront?.slug || storeSlug || null,
-        shipping_cost: 0,
-        shipping_price: 0,
+        shipping_cost: getProductShipping(product),
+        shipping_price: getProductShipping(product),
         shipping_options: isDigital
           ? []
           : [{
-              name: 'Free Shipping',
-              cost: 0,
+              name: 'Standard shipping',
+              cost: getProductShipping(product),
               estimated_days: isSupplyLineProduct(product) ? 'Confirmed for your address at checkout' : '3-5 business days',
-              included_in_price: true,
+              included_in_price: false,
             }],
         display_order: orderSetting?.display_order ?? 999,
         is_featured: orderSetting?.is_featured ?? false,

@@ -636,7 +636,7 @@ const ProductDetailPageSimple: React.FC = () => {
                     )}
                   </div>
                   <p className="text-sm text-gray-500 mt-1">
-                    Free shipping is included in the product price. Tax is calculated at checkout, and no payout or commission details are shown to buyers.
+                    Shipping is added at checkout. Tax is calculated at checkout, and no payout or commission details are shown to buyers.
                   </p>
                 </div>
               </div>
@@ -807,7 +807,7 @@ const ProductDetailPageSimple: React.FC = () => {
                 <p>
                   Shipping: {formatShippingDisplay(shippingPrice, (product as any)?.currency || 'USD')}
                 </p>
-                <p>Free shipping is included. Tax is calculated at checkout. Free returns within 30 days.</p>
+                <p>Shipping is added at checkout. Tax is calculated at checkout. Free returns within 30 days.</p>
               </div>
             </div>
           </div>

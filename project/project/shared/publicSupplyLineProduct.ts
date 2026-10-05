@@ -1,3 +1,4 @@
+import { getProductShipping } from './productShipping';
 import { SUPPLYLINE_PLUS_NAME } from './cjContract';
 
 const asText = (value: unknown): string => String(value ?? '').trim();
@@ -69,7 +70,7 @@ export function isSupplyLineProduct(product: any): boolean {
 }
 
 export function sanitizeSupplyLineVariant<T extends Record<string, any>>(variant: T): T {
-  const sanitized: Record<string, any> = { ...(variant || {}) };
+  const sanitized: Record<string, any> = { ...(variant || {}), shipping_price: getProductShipping(variant) };
   for (const field of PRIVATE_SUPPLYLINE_FIELDS) delete sanitized[field];
 
   // Variant database ids and customer-facing option labels remain available;
@@ -85,7 +86,7 @@ export function sanitizeSupplyLineVariant<T extends Record<string, any>>(variant
 export function sanitizeSupplyLineProduct<T extends Record<string, any>>(product: T): T {
   if (!isSupplyLineProduct(product)) return product;
 
-  const sanitized: Record<string, any> = { ...(product || {}) };
+  const sanitized: Record<string, any> = { ...(product || {}), shipping_price: getProductShipping(product) };
   for (const field of PRIVATE_SUPPLYLINE_FIELDS) delete sanitized[field];
 
   delete sanitized.sku;

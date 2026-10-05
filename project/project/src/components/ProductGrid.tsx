@@ -20,7 +20,7 @@ import {
   normalizeAffiliateRate,
   resolveAffiliateCommission,
 } from '../utils/pricing';
-import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
+import { getBuyerFacingProductPrice, getProductShipping } from '../utils/buyerPrice';
 import { getProductIdentifierLines } from '../utils/productIdentifiers';
 import { normalizeProductImages, resolveProductImageFromList } from '../utils/imageHelpers';
 import { formatMoneyDisplay } from '../utils/moneyDisplay';
@@ -406,7 +406,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
           const requiresOptionSelection = hasVariants && !isStorefrontCtas;
 
           const productSellerName = storefrontBrand?.name || normalizedProduct.profiles?.full_name || 'Seller';
-          const shippingCost = 0;
+          const shippingCost = getProductShipping(normalizedProduct);
           const storefrontCard = isStorefrontCtas;
           const imageForCart = heroImage;
           const rowAffiliateId = String((normalizedProduct as any)?.affiliate_id || '').trim() || undefined;
@@ -590,7 +590,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                     {storefrontBrand?.name ? 'Store pick' : 'Featured item'}
                   </div>
                   <span className="text-[11px] font-semibold" style={{ color: primaryColor }}>
-                    Free shipping
+                    Shipping at checkout
                   </span>
                 </div>
               )}
@@ -641,7 +641,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                     </span>
                   )}
                   {!storefrontCard && (
-                    <span className="text-primary-500 text-xs font-semibold">Free shipping</span>
+                    <span className="text-primary-500 text-xs font-semibold">Shipping at checkout</span>
                   )}
                 </div>
               </div>

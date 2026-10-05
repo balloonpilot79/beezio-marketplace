@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Award, ExternalLink, Heart, ShoppingCart, Star } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useCart } from '../contexts/CartContext';
-import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
+import { getBuyerFacingProductPrice, getProductShipping } from '../utils/buyerPrice';
 import { getFallbackProductImage, normalizeProductImages } from '../utils/imageHelpers';
 import { resolveAffiliateCommission, getAffiliateAmount } from '../utils/pricing';
 import AddToAffiliateStoreButton from './AddToAffiliateStoreButton';
@@ -142,7 +142,7 @@ const CanonicalProductCard: React.FC<Props> = ({
     image,
     sellerId: product.seller_id || 'unknown-seller',
     sellerName: product.profiles?.full_name || 'Seller',
-    shippingCost: 0,
+    shippingCost: getProductShipping(product),
     maxQuantity: stock === null ? undefined : Math.max(0, stock),
     commission_rate: commission.value,
     commission_type: commission.type === 'flat' ? 'flat_rate' : 'percentage',
@@ -259,7 +259,7 @@ const CanonicalProductCard: React.FC<Props> = ({
             <span className="text-2xl font-bold text-gray-900">${buyerPrice.toFixed(2)}</span>
           </div>
           {affiliateEarnings}
-          <div className="text-xs text-gray-500 mt-1">Free shipping • tax at checkout</div>
+          <div className="text-xs text-gray-500 mt-1">Shipping & tax at checkout</div>
         </div>
       </ProductLink>
       <div className={compact ? 'p-3 pt-0' : 'p-5 pt-0'}>

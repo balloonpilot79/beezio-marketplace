@@ -43,3 +43,23 @@ describe('all-party conservation of buyer funds', () => {
     expect(expensive.aggregate.beezioProfit).toBeLessThan(normal.aggregate.beezioProfit);
   });
 });
+
+describe('shipping charged separately', () => {
+  it.each([1, 3])('preserves all payouts and reconciles the order with quantity %s', quantity => {
+    const input = makeInput();
+    input.items[0].quantity = quantity;
+    input.subtotalListing = Math.round((input.subtotalListing - 6.2) * quantity * 100) / 100;
+    input.shippingAmount = 6.2 * quantity;
+    const plan = buildPayPalLedgerPlan(input);
+    const legacy = makeInput();
+    legacy.items[0].quantity = quantity;
+    legacy.subtotalListing *= quantity;
+    const original = buildPayPalLedgerPlan(legacy);
+    expect(plan.aggregate).toEqual({ ...original.aggregate, grossAmount: input.subtotalListing });
+    expect(plan.moneyEntries.filter(row => row.payeeType === 'seller')).toEqual(original.moneyEntries.filter(row => row.payeeType === 'seller'));
+    const allocated = plan.moneyEntries.reduce((total, row) => total + row.netAmount, 0);
+    expect(Math.round(allocated * 100) / 100).toBe(Math.round((input.subtotalListing + input.shippingAmount) * 100) / 100);
+    expect(plan.payees[0].snapshot.subtotal_listing).toBe(input.subtotalListing);
+    expect(plan.payees[0].snapshot.shipping_amount).toBe(input.shippingAmount);
+  });
+});

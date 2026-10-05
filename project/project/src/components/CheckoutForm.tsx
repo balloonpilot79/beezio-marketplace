@@ -903,9 +903,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
     }
 
     const itemsSubtotal = currentPayPalListingSubtotal;
-    const quotedShippingCost = currentRequiresQuotedShipping ? Number(currentShippingOption?.cost || 0) : 0;
+    const quotedShippingCost = normalizedItems.reduce((sum, item) => sum + (item.isDigital ? 0 : Number(item.shippingCost || 0) * item.quantity), 0);
     const shippingTotal = Math.round((quotedShippingCost + Number.EPSILON) * 100) / 100;
-    const taxAmount = Math.round((itemsSubtotal * TAX_RATE + Number.EPSILON) * 100) / 100;
+    const taxAmount = Math.round(((itemsSubtotal + shippingTotal) * TAX_RATE + Number.EPSILON) * 100) / 100;
 
     const attribution = getReferralAttribution();
     const cartAffiliates = new Set(normalizedItems.map(item => String(item.affiliateId || '').trim()).filter(Boolean));
@@ -1633,9 +1633,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
 
       <div className="space-y-2">
         <div>
-          <div className="text-sm font-medium text-gray-900">Free shipping</div>
+          <div className="text-sm font-medium text-gray-900">Shipping at checkout</div>
           <div className="mt-0.5 text-xs text-gray-600">
-            Supplier shipping expenses are already included in each physical product price and are not added again at checkout.
+            Shipping is charged separately per item and shown in your order summary.
           </div>
         </div>
         {shippingLoading && <div className="text-sm text-gray-600">Loading seller shipping...</div>}
@@ -1670,12 +1670,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
         )}
         {!shippingLoading && availableShippingOptions.length === 0 && hasFreeOnlyShipping && (
           <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-            Free shipping is included for this order.
+            Shipping is shown in the order summary before payment.
           </div>
         )}
         {!shippingLoading && availableShippingOptions.length === 0 && !shippingError && !hasFreeOnlyShipping && (
           <div className="text-sm text-gray-600">
-            Free shipping is included for this order.
+            Shipping is shown in the order summary before payment.
           </div>
         )}
       </div>

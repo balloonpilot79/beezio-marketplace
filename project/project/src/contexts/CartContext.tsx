@@ -1,5 +1,5 @@
-import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
-import { refreshCartPublishedPrices } from '../utils/cartPublishedPrices';
+import { productWithSelectedVariant } from '../../shared/productShipping';
+import { getBuyerFacingProductPrice, getProductShipping } from '../utils/buyerPrice';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
@@ -218,7 +218,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsCartHydrated(true);
   }, [currentUserId, storeScope]);
 
-  const baseProductIds = Array.from(new Set(items.filter(item => !item.variantId && !item.isSample).map(item => item.productId))).sort().join(',');
+  const baseProductIds = Array.from(new Set(items.filter(item => !item.isSample).map(item => item.productId))).sort().join(',');
   useEffect(() => {
     if (!isCartHydrated || !baseProductIds) return;
     const controller = new AbortController();
@@ -228,13 +228,28 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const response = await fetch(`/api/public/product/get?id=${encodeURIComponent(productId)}&pricing=published`, { signal: controller.signal });
         if (!response.ok) return null;
         const payload = await response.json();
-        return payload?.product ? [productId, getBuyerFacingProductPrice(payload.product)] as const : null;
+        if (!payload?.product) return null;
+        if (items.some(item => item.productId === productId && item.variantId)) {
+          const variantResponse = await fetch(`/.netlify/functions/product-variants-public?productId=${encodeURIComponent(productId)}`, { signal: controller.signal });
+          if (variantResponse.ok) {
+            const variantPayload = await variantResponse.json();
+            payload.product.variants = variantPayload.variants || [];
+          }
+        }
+        return [productId, payload.product] as const;
       } catch { return null; }
     })).then(results => {
       if (controller.signal.aborted) return;
-      const prices = new Map<string, number>();
-      for (const row of results) if (row) prices.set(row[0], row[1]);
-      setItems(current => refreshCartPublishedPrices(current, prices));
+      const products = new Map<string, any>();
+      for (const row of results) if (row) products.set(row[0], row[1]);
+      setItems(current => current.map(item => {
+        const product = products.get(item.productId);
+        if (!product || item.isSample) return item;
+        const variant = item.variantId ? (product.variants || product.product_variants || []).find((v: any) => v.id === item.variantId) : null;
+        if (item.variantId && !variant) return item;
+        const selected = productWithSelectedVariant(product, variant);
+        return { ...item, price: getBuyerFacingProductPrice(selected), shippingCost: getProductShipping(selected) };
+      }));
     }).finally(() => window.clearTimeout(timeout));
     return () => { controller.abort(); window.clearTimeout(timeout); };
   }, [baseProductIds, currentUserId, storeScope, isCartHydrated]);
@@ -355,9 +370,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getShippingTotal = () => {
-    // Physical-product shipping is already included in each listed price.
-    // Keeping this hard-zero prevents stale cart records from adding it twice.
-    return 0;
+    return Math.round(items.reduce((total, item) => total + (item.isDigital ? 0 : Math.max(0, Number(item.shippingCost || 0)) * item.quantity), 0) * 100) / 100;
   };
 
   const isInCart = (productId: string) => {

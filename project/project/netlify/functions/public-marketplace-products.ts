@@ -1,3 +1,4 @@
+import { getProductShipping } from '../../shared/productShipping';
 import { isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
@@ -222,8 +223,8 @@ const handler: Handler = async () => {
         ...priced,
         ...publicCommissionFields(raw),
         category_id: categoryId || null,
-        shipping_cost: 0,
-        shipping_price: 0,
+        shipping_cost: getProductShipping(raw),
+        shipping_price: getProductShipping(raw),
         category: text(raw?.category || categoryMeta.name) || null,
         category_name: text(categoryMeta.name || raw?.category) || null,
         category_slug: text(categoryMeta.slug) || null,

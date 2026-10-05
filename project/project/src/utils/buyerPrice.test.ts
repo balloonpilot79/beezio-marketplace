@@ -44,3 +44,12 @@ describe('getBuyerFacingProductPrice', () => {
     expect(getBuyerFacingProductPrice(product)).toBe(19.31);
   });
 });
+
+describe('shipping separated from catalog price', () => {
+  it('subtracts only the shipping charge from the stored total', () => {
+    expect(getBuyerFacingProductPrice({ calculated_customer_price: 34.06, shipping_price: 5.99 })).toBe(28.07);
+  });
+  it('uses the shipping reserve once when shipping fields are duplicated', () => {
+    expect(getBuyerFacingProductPrice({ price: 34.06, shipping_reserve_amount: 5.99, shipping_price: 5.99, shipping_cost: 5.99 })).toBe(28.07);
+  });
+});

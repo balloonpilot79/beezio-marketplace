@@ -2193,7 +2193,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             <section className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
               <div className="font-bold text-gray-950">Shipping cost</div>
               <p className="mt-1 text-sm leading-6 text-gray-700">
-                Enter what you need to pay to ship one item. Beezio includes this amount in the listed product price, reserves it in your seller payout, and shows the customer free shipping.
+                Enter what you need to ship one item. Shipping is added separately at checkout and included in your seller payout.
               </p>
               <div className="mt-4 max-w-xs">
                 <label className="mb-2 block text-sm font-semibold text-gray-900" htmlFor="main-shipping-price">
@@ -2222,8 +2222,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 </div>
               </div>
               <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
-                <div className="font-semibold text-emerald-900">Customer sees: Free shipping</div>
-                <div className="text-sm text-emerald-800">This expense is included once in the final product price and is never added again at checkout.</div>
+                <div className="font-semibold text-emerald-900">Customer sees: Shipping at checkout</div>
+                <div className="text-sm text-emerald-800">This expense is added once at checkout and paid to the seller.</div>
               </div>
             </section>
           )}
@@ -2236,8 +2236,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               </p>
               <div className="mt-4 rounded-xl bg-[#ffcc00] p-4 text-slate-950">
                 <div className="text-sm font-bold uppercase tracking-wide">Final product price</div>
-                <div className="mt-1 text-4xl font-black">${pricingBreakdown.listingPrice.toFixed(2)}</div>
-                <div className="mt-1 text-sm font-semibold">Free shipping • Tax calculated at checkout</div>
+                <div className="mt-1 text-4xl font-black">${Math.max(0, pricingBreakdown.listingPrice - Number(formData.shipping_price || 0)).toFixed(2)}</div>
+                <div className="mt-1 text-sm font-semibold">Shipping & tax at checkout</div>
                 <div className="mt-2 text-sm">
                   Estimated checkout total with 7% sales tax: <strong>${pricingBreakdown.estimatedCheckoutTotal.toFixed(2)}</strong>. Actual tax depends on the customer’s location.
                 </div>

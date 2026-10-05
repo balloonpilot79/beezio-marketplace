@@ -1,3 +1,4 @@
+import { getProductShipping } from '../../shared/productShipping';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
@@ -332,15 +333,15 @@ const handler: Handler = async (event) => {
         profiles: sellerName ? { full_name: sellerName } : undefined,
         seller_name: sellerName || null,
         storefront_slug: productStorefront?.slug || null,
-        shipping_cost: 0,
-        shipping_price: 0,
+        shipping_cost: getProductShipping(normalizedProduct),
+        shipping_price: getProductShipping(normalizedProduct),
         shipping_options: isDigital
           ? []
           : [{
-              name: 'Free Shipping',
-              cost: 0,
+              name: 'Standard shipping',
+              cost: getProductShipping(normalizedProduct),
               estimated_days: isSupplyLinePlus ? 'Confirmed for your address at checkout' : '3-5 business days',
-              included_in_price: true,
+              included_in_price: false,
             }],
       },
       store_settings: storeSettings,

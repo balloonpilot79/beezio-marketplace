@@ -1,3 +1,4 @@
+import { productWithSelectedVariant } from '../../shared/productShipping';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { DEFAULT_PHYSICAL_RETURN_POLICY } from '../utils/returnPolicy';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -22,7 +23,7 @@ import AddToSellerStoreButton from '../components/AddToSellerStoreButton';
 import AffiliateShareWidget from '../components/AffiliateShareWidget';
 import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
 import { getAffiliateAmount, resolveAffiliateCommission } from '../utils/pricing';
-import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
+import { getBuyerFacingProductPrice, getProductShipping } from '../utils/buyerPrice';
 import { getProductIdentifierLines } from '../utils/productIdentifiers';
 import { normalizeAccountRole } from '../utils/accountRoles';
 import { fetchProductById, getVariantOptions, resolveImageUrl, resolveVariant, type ProductVariant } from '../services/productService';
@@ -685,7 +686,7 @@ const ProductDetailPage: React.FC = () => {
       (selectedVariant as any)?.calculated_customer_price ?? (selectedVariant as any)?.price
     );
     if (Number.isFinite(exactVariantPrice) && exactVariantPrice > 0) {
-      return exactVariantPrice;
+      return Math.round(Math.max(0, exactVariantPrice - getProductShipping(productWithSelectedVariant(product, selectedVariant))) * 100) / 100;
     }
     try {
       return getBuyerFacingProductPrice(product as any);
@@ -1222,7 +1223,7 @@ const ProductDetailPage: React.FC = () => {
                 ...(storeSettingsData || {}),
                 store_name: houseBrand.name,
                 subdomain: houseBrand.slug,
-                shipping_policy: 'Free shipping. Shipping costs are included in each physical product price.',
+                shipping_policy: 'Shipping is added separately at checkout.',
               }
             : storeSettingsData || null
         );
@@ -1439,7 +1440,7 @@ const ProductDetailPage: React.FC = () => {
           image: (selectedVariant?.image_url ? resolveImageUrl(selectedVariant.image_url) : '') || product.images[0] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=800',
         sellerId: product.seller_id,
         sellerName: sellerDisplayName,
-        shippingCost: 0,
+        shippingCost: getProductShipping(productWithSelectedVariant(product, selectedVariant)),
         maxQuantity: typeof computedMaxQuantity === 'number' ? computedMaxQuantity : undefined,
         affiliateId: cartAffiliateId,
         storefrontScope: (product as any)?.storefront_scope,
@@ -1452,7 +1453,7 @@ const ProductDetailPage: React.FC = () => {
       // Show success message or redirect to checkout
       if (!options?.silent) {
         const variantText = selectedVariant ? ` (${formatVariantLabel(selectedVariant)})` : '';
-        alert(`Product${variantText} added to cart! Free shipping is included in the product price.`);
+        alert(`Product${variantText} added to cart! Shipping is added at checkout.`);
         navigate('/cart');
       }
 
@@ -1481,7 +1482,7 @@ const ProductDetailPage: React.FC = () => {
         image: (selectedVariant?.image_url ? resolveImageUrl(selectedVariant.image_url) : '') || product.images[0] || 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg?auto=compress&cs=tinysrgb&w=800',
         sellerId: product.seller_id,
         sellerName: sellerDisplayName,
-        shippingCost: 0,
+        shippingCost: getProductShipping(productWithSelectedVariant(product, selectedVariant)),
         maxQuantity: 1,
         affiliateId: cartAffiliateId,
         storefrontScope: (product as any)?.storefront_scope,
@@ -1935,7 +1936,7 @@ const ProductDetailPage: React.FC = () => {
                 </span>
                 {showBuyerCtas && product.requires_shipping && (
                   <span className="text-sm text-gray-600">
-                    Free shipping
+                    Shipping at checkout
                   </span>
                 )}
                 {showBuyerCtas && product.is_digital && (

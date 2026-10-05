@@ -155,10 +155,14 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
   let influencerBonusPoolPerSlot = 0;
   let paypalAllowanceTotal = 0;
 
+  const deliveredSubtotal = round2(items.reduce((total, item) => total + Number(item.computed_listing_price || 0) * Math.max(1, Math.floor(Number(item.quantity || 1))), 0));
+  const separateShipping = Number(input.shippingAmount || 0) > 0 &&
+    Math.abs(deliveredSubtotal - Number(input.subtotalListing || 0) - Number(input.shippingAmount || 0)) < 0.01;
+  const extraShipping = separateShipping ? 0 : Number(input.shippingAmount || 0);
   const lineSnapshots = items.map((item) => {
     const quantity = Math.max(1, Math.floor(Number(item.quantity || 0) || 1));
     const ask = round2(Math.max(0, Number(item.seller_ask_amount || 0)));
-    const listingUnit = round2(Math.max(0, Number(item.computed_listing_price || 0)));
+    const listingUnit = round2(Math.max(0, Number(item.computed_listing_price || 0) - (separateShipping ? Number(item.shipping_reserve_amount || 0) : 0)));
     const partnerRate = Math.max(0, Number(item.partner_rate || 0));
     const title = String(item.product_title || '').trim();
     const isTestItem = isTestItemTitle(title);
@@ -266,11 +270,11 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
   const sellerSelfSale = sameProfileId(input.sellerId, input.partnerId);
   const affiliatePayoutPaidTotal = input.partnerId ? partnerTotal : 0;
   const affiliatePayoutRetainedTotal = input.partnerId ? 0 : partnerTotal;
-  const sellerEarningsTotal = round2(askTotal + shippingReserveTotal + Number(input.shippingAmount || 0) + (sellerSelfSale ? partnerTotal : 0));
+  const sellerEarningsTotal = round2(askTotal + shippingReserveTotal + extraShipping + (sellerSelfSale ? partnerTotal : 0));
   const partnerEarningsTotal = sellerSelfSale ? 0 : affiliatePayoutPaidTotal;
   const processorAllowanceRemainder = round2(paypalAllowanceTotal - paypalFeeEstimate);
   const pricingRoundingRemainder = round2(
-    listingSubtotal -
+    listingSubtotal + (separateShipping ? Number(input.shippingAmount || 0) : 0) -
       askTotal -
       shippingReserveTotal -
       partnerTotal -
@@ -396,8 +400,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       orderItemId: line.order_item_id,
       payeeType: 'seller',
       payeeId: input.sellerId,
-      grossAmount: round2(line.seller_line_total + (lineIndex === 0 ? Number(input.shippingAmount || 0) : 0)),
-      netAmount: round2(line.seller_line_total + (lineIndex === 0 ? Number(input.shippingAmount || 0) : 0)),
+      grossAmount: round2(line.seller_line_total + (lineIndex === 0 ? extraShipping : 0)),
+      netAmount: round2(line.seller_line_total + (lineIndex === 0 ? extraShipping : 0)),
       status: 'held',
       holdUntil: input.holdReleaseAt,
       metadata: {

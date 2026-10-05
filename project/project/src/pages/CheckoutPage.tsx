@@ -28,7 +28,7 @@ const CheckoutPage: React.FC = () => {
   const computeFinalUnitPrice = (item: typeof items[number]) => Math.max(0, Number(item.price || 0));
   const subtotal = items.reduce((sum, item) => sum + computeFinalUnitPrice(item) * item.quantity, 0);
   const shipping = getShippingTotal();
-  const tax = Math.round((subtotal * TAX_RATE + Number.EPSILON) * 100) / 100;
+  const tax = Math.round(((subtotal + shipping) * TAX_RATE + Number.EPSILON) * 100) / 100;
   const total = subtotal + shipping + tax;
   const hasDigitalItems = items.some((item) => item.isDigital);
 
@@ -185,7 +185,7 @@ const CheckoutPage: React.FC = () => {
                   <span>{formatMoneyDisplay(total)}</span>
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
-                  Shipping is free. The final total changes only if the verified tax amount changes.
+                  Shipping and tax are shown separately before payment.
                 </div>
               </div>
             </div>

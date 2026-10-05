@@ -30,14 +30,14 @@ describe('public product details', () => {
       shipping_reserve_amount: 4.5,
     };
   });
-  it('preserves the shipping-inclusive published price through the detail endpoint and cart input', async () => {
+  it('separates shipping from the displayed and cart price while preserving the stored total', async () => {
     const result: any = await handler({ queryStringParameters: { id: state.product.id } } as any, {} as any, () => {});
     const body = JSON.parse(result.body);
     expect(result.statusCode).toBe(200);
     expect(body.product.price).toBe(30.31);
-    expect(getBuyerFacingProductPrice(body.product)).toBe(30.31);
+    expect(getBuyerFacingProductPrice(body.product)).toBe(25.81);
     expect(body.product.shipping_reserve_amount).toBe(4.5);
-    expect(body.product.shipping_options[0].cost).toBe(0);
+    expect(body.product.shipping_options[0].cost).toBe(4.5);
   });
   it('rejects the known test item even if accidentally reactivated', async () => {
     state.product.id = '721f1a14-645b-4aee-97b2-ec9ae780eeca';

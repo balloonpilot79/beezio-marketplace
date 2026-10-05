@@ -1042,7 +1042,7 @@ export const handler: Handler = async (event) => {
           : round2(ask * configuredAffiliateRate)
         : 0;
       const storedVariantShipping = Number(variant?.shipping_reserve_amount);
-      const shippingReserveUnit = round2(Math.max(
+      const shippingReserveUnit = prod?.is_digital === true ? 0 : round2(Math.max(
         0,
         cjItem && Number.isFinite(storedVariantShipping)
           ? storedVariantShipping
@@ -1068,7 +1068,7 @@ export const handler: Handler = async (event) => {
           });
       const listingUnit = isTestItemTitle(title)
         ? round2(TEST_ITEM_PRICE)
-        : round2(unitPricing!.finalAdvertisedPrice);
+        : round2(unitPricing!.finalAdvertisedPrice - shippingReserveUnit);
       subtotalListing += listingUnit * qty;
 
       const platformFeeGrossUnit = round2(
@@ -1415,6 +1415,7 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    const shippingAmount = round2(computedItems.reduce((total, item) => total + item.shippingReserveUnit * item.quantity, 0));
     const taxCollectionDisabled = String(process.env.DISABLE_TAX_COLLECTION || '').trim().toLowerCase() === 'true';
     const configuredPaymentTaxRate = String(process.env.PAYMENT_TAX_RATE || '').trim()
       ? Number(process.env.PAYMENT_TAX_RATE) : Number.NaN;
@@ -1427,7 +1428,7 @@ export const handler: Handler = async (event) => {
         : Number.isFinite(configuredFallbackTaxRate) && configuredFallbackTaxRate >= 0
           ? configuredFallbackTaxRate
           : taxAmountClient > 0 && subtotalListing > 0
-            ? taxAmountClient / subtotalListing
+            ? taxAmountClient / (subtotalListing + shippingAmount)
             : 0.07;
     const taxResolution = resolveLocationTaxRate({
       country: shippingAddress?.country,
@@ -1437,9 +1438,9 @@ export const handler: Handler = async (event) => {
       fallbackRate: fallbackTaxRate,
       disabled: taxCollectionDisabled,
     });
-    const taxAmount = round2(subtotalListing * taxResolution.rate);
+    const taxAmount = round2((subtotalListing + shippingAmount) * taxResolution.rate);
 
-    // SupplyLine Plus shipping is included in the advertised item price. Before
+    // SupplyLine Plus shipping is charged separately. Before
     // PayPal can charge the buyer, verify the exact VIDs against CJ's live freight
     // calculator and freeze the chosen method in a private fulfillment record.
     let cjShippingSnapshot: Record<string, any> | null = null;
@@ -1517,7 +1518,7 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    const shippingAmount = 0;
+    // Shipping is computed from trusted catalog values above, never the client total.
 
     const totalCharged = round2(subtotalListing + shippingAmount + taxAmount);
 
@@ -1753,7 +1754,7 @@ export const handler: Handler = async (event) => {
         partner_rate: it.partnerRate,
         influencer_rate: it.influencerRate,
         beezio_rate: it.beezioRate,
-        computed_listing_price: it.listingUnit,
+        computed_listing_price: round2(it.listingUnit + it.shippingReserveUnit),
         variant_id: variantId,
         sku: variant?.sku || null,
         cj_product_id: isCjItem ? privateMapping?.cj_product_id || null : variant?.cj_product_id || null,

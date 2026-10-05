@@ -35,7 +35,7 @@ const CartPage: React.FC = () => {
 
   const displaySubtotal = items.reduce((total, item) => total + getCartUnitPrice(item) * item.quantity, 0);
   const shipping = getShippingTotal();
-  const tax = Math.round((displaySubtotal * TAX_RATE + Number.EPSILON) * 100) / 100;
+  const tax = Math.round(((displaySubtotal + shipping) * TAX_RATE + Number.EPSILON) * 100) / 100;
   const total = displaySubtotal + shipping + tax;
 
   useEffect(() => {
@@ -243,7 +243,7 @@ const CartPage: React.FC = () => {
 
             <div className="mt-4 text-sm text-emerald-700">
               <p className="font-medium">
-                Free shipping is already included in each physical product price.
+                Shipping is added separately based on each item and quantity.
               </p>
             </div>
 

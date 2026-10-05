@@ -481,7 +481,7 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
                       {/* Recommendation Score */}
                       {showReasons && (
                         <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>{personalizedRecommendationsEnabled && product.recommendation_score > 0 ? getReasonText(product.recommendation_reason) : 'Free shipping'}</span>
+                          <span>{personalizedRecommendationsEnabled && product.recommendation_score > 0 ? getReasonText(product.recommendation_reason) : 'Shipping at checkout'}</span>
                           <Link
                             to={`/product/${product.id}`}
                             className="flex items-center space-x-1 text-primary-600 hover:text-primary-700"
@@ -562,7 +562,7 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
                 {/* Recommendation Score */}
                 {showReasons && (
                   <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{personalizedRecommendationsEnabled && product.recommendation_score > 0 ? getReasonText(product.recommendation_reason) : 'Free shipping'}</span>
+                    <span>{personalizedRecommendationsEnabled && product.recommendation_score > 0 ? getReasonText(product.recommendation_reason) : 'Shipping at checkout'}</span>
                     <Link
                       to={`/product/${product.id}`}
                       className="flex items-center space-x-1 text-primary-600 hover:text-primary-700"
