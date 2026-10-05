@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ auth: vi.fn(), owners: vi.fn(), remove: vi.fn(), db: {} }));
-vi.mock('./_lib/supabase', () => ({ createSupabaseAdmin: () => mocks.db }));
-vi.mock('./_lib/auth', () => ({ extractAuthHeader: (event: any) => event.headers.authorization || '', getAuthedUser: mocks.auth }));
-vi.mock('./_lib/owned-profiles', () => ({ resolveOwnedProfileIdsForUser: mocks.owners }));
-vi.mock('./_lib/store-product-removal', () => ({ removeStoreProducts: mocks.remove }));
-import { handler } from './store-remove-products';
+vi.mock('./supabase', () => ({ createSupabaseAdmin: () => mocks.db }));
+vi.mock('./auth', () => ({ extractAuthHeader: (event: any) => event.headers.authorization || '', getAuthedUser: mocks.auth }));
+vi.mock('./owned-profiles', () => ({ resolveOwnedProfileIdsForUser: mocks.owners }));
+vi.mock('./store-product-removal', () => ({ removeStoreProducts: mocks.remove }));
+import { handler } from '../store-remove-products';
 const id = 'b6d9fb96-1d1d-4b80-a467-762afc8b4068';
 const event = (body: any, token = 'Bearer valid') => ({ httpMethod: 'POST', headers: { authorization: token }, body: JSON.stringify(body) });
 async function run(input: any) { return await (handler as any)(input, {}); }
