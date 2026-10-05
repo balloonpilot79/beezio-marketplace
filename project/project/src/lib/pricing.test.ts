@@ -24,9 +24,9 @@ describe('seller-reviewed product pricing', () => {
     expect(withShipping.listingPrice).toBeGreaterThan(withoutShipping.listingPrice);
   });
 
-  it('rejects affiliate payouts below the launch minimum', () => {
-    expect(validatePricingInput({ sellerDesiredAmount: 20, affiliateRate: 4.99 }))
-      .toContain('Affiliate payout must be at least $5.00 when affiliates are enabled');
+  it('allows seller-chosen commissions on inexpensive products', () => {
+    expect(validatePricingInput({ sellerDesiredAmount: 3, affiliateRate: 0.5 })).toEqual([]);
+    expect(validatePricingInput({ sellerDesiredAmount: 3, affiliateRate: -1 })).toContain('Affiliate payout cannot be negative');
     expect(validatePricingInput({ sellerDesiredAmount: 20, affiliateRate: 5 })).toEqual([]);
     expect(validatePricingInput({ sellerDesiredAmount: 20, affiliateRate: 0 })).toEqual([]);
   });

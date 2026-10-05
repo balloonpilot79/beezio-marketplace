@@ -1,3 +1,4 @@
+import { getProductShipping } from './productShipping';
 import { DOLLAR_CHECKOUT_TEST, isDollarCheckoutTest } from './dollarCheckoutTest';
 import { computeCustomerListingPrice, type SharedAffiliateCommissionType } from './customerPrice';
 import {
@@ -10,7 +11,7 @@ import {
 const round2 = (value: number): number =>
   Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
-const DEFAULT_ZERO_AFFILIATE_PERCENT = 30;
+const DEFAULT_ZERO_AFFILIATE_PERCENT = 0;
 
 type ProductPricingLike = {
   id?: string | null;
@@ -20,6 +21,12 @@ type ProductPricingLike = {
   seller_ask?: number | null;
   seller_amount?: number | null;
   seller_ask_price?: number | null;
+  affiliate_enabled?: boolean | null;
+  affiliate_payout_amount?: number | null;
+  shipping_reserve_amount?: number | null;
+  shipping_price?: number | null;
+  shipping_cost?: number | null;
+  is_digital?: boolean | null;
   commission_rate?: number | null;
   affiliate_commission_rate?: number | null;
   commission_type?: string | null;
@@ -40,6 +47,9 @@ export function resolveStoredAffiliateCommission(product: ProductPricingLike): {
   type: SharedAffiliateCommissionType;
   value: number;
 } {
+  if (product?.affiliate_enabled === false) return { type: 'flat', value: 0 };
+  const payout = product?.affiliate_payout_amount == null ? NaN : Number(product.affiliate_payout_amount);
+  if (Number.isFinite(payout) && payout >= 0) return { type: 'flat', value: round2(payout) };
   const affiliateCommissionType = String(product?.affiliate_commission_type || '').trim().toLowerCase();
   const commissionType = String(product?.commission_type || '').trim().toLowerCase();
   const flatCommissionAmount = Number(product?.flat_commission_amount ?? 0);
@@ -149,6 +159,7 @@ export function applyCanonicalProductPricing<T extends ProductPricingLike>(produ
         sellerAsk,
         affiliateType: affiliate.type,
         affiliateValue: affiliate.value,
+        shippingIncluded: getProductShipping(product),
       })
     : round2(Number(product?.price ?? product?.calculated_customer_price ?? 0) || 0);
 

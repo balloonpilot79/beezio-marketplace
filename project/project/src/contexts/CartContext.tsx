@@ -1,3 +1,4 @@
+import { getCartUnitPrice as getOrderCartUnitPrice } from '../../shared/orderPricing';
 import { productWithSelectedVariant } from '../../shared/productShipping';
 import { getBuyerFacingProductPrice, getProductShipping } from '../utils/buyerPrice';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
@@ -366,7 +367,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getTotalPrice = () => {
-    return items.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return items.reduce((total, item) => total + (getOrderCartUnitPrice(item, items) * item.quantity), 0);
   };
 
   const getShippingTotal = () => {

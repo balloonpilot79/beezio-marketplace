@@ -53,6 +53,7 @@ export function getAffiliateAmount(
 }
 
 type AffiliatePricingLike = {
+  affiliate_enabled?: boolean | null;
   commission_rate?: number | null;
   affiliate_commission_rate?: number | null;
   commission_type?: string | null;
@@ -66,6 +67,9 @@ export function resolveAffiliateCommission(product: AffiliatePricingLike): {
   type: AffiliateCommissionType;
   value: number;
 } {
+  if (product?.affiliate_enabled === false) return { type: 'flat', value: 0 };
+  const savedPayout = product?.affiliate_payout_amount == null ? NaN : Number(product.affiliate_payout_amount);
+  if (Number.isFinite(savedPayout) && savedPayout >= 0) return { type: 'flat', value: roundToCurrency(savedPayout) };
   const directFlat = Number(
     product?.affiliate_payout_amount ??
       product?.flat_commission_amount ??

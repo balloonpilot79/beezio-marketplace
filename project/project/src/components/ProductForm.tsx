@@ -2184,7 +2184,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   <div className="mt-2 text-sm font-semibold text-emerald-700">
                     Affiliate earns ${pricingSeed.affiliateAmount.toFixed(2)} per completed sale.
                   </div>
-                  <div className="mt-1 text-xs text-gray-600">Minimum affiliate payout: ${MIN_AFFILIATE_PAYOUT.toFixed(2)}.</div>
+                  <div className="mt-1 text-xs text-gray-600">You choose the affiliate payout. A worthwhile commission helps affiliates decide to promote your product.</div>
                 </div>
               </div>
           </div>

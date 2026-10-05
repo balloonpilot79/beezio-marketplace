@@ -1,3 +1,4 @@
+import { getOrderSavings, getCartUnitPrice as getOrderCartUnitPrice } from '../../shared/orderPricing';
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Lock, CreditCard } from 'lucide-react';
@@ -25,7 +26,7 @@ const CheckoutPage: React.FC = () => {
     }
   }, [user]);
 
-  const computeFinalUnitPrice = (item: typeof items[number]) => Math.max(0, Number(item.price || 0));
+  const computeFinalUnitPrice = (item: typeof items[number]) => getOrderCartUnitPrice(item, items);
   const subtotal = items.reduce((sum, item) => sum + computeFinalUnitPrice(item) * item.quantity, 0);
   const shipping = getShippingTotal();
   const tax = Math.round(((subtotal + shipping) * TAX_RATE + Number.EPSILON) * 100) / 100;
@@ -185,7 +186,7 @@ const CheckoutPage: React.FC = () => {
                   <span>{formatMoneyDisplay(total)}</span>
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
-                  Shipping and tax are shown separately before payment.
+                  Shipping and tax are shown separately before payment. {getOrderSavings(items) > 0 && `Multi-item savings of $${getOrderSavings(items).toFixed(2)} are included above.`}
                 </div>
               </div>
             </div>

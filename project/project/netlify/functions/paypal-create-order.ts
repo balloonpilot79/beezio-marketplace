@@ -1,3 +1,4 @@
+import { getOrderUnitSavings } from '../../shared/orderPricing';
 import { DOLLAR_CHECKOUT_TEST, isDollarCheckoutTest } from '../../shared/dollarCheckoutTest';
 import { resolvePlacedStorefrontAffiliate } from './_lib/storefront-affiliate-attribution';
 import { isSellerStorefrontSale } from '../../shared/storefrontProductAttribution';
@@ -144,7 +145,7 @@ const resolveAffiliateCommissionRate = (
   sellerAsk: number,
   defaultPartnerPercent: number
 ): number => {
-  const directPayout = Number(product?.affiliate_payout_amount);
+  const directPayout = product?.affiliate_payout_amount == null ? NaN : Number(product.affiliate_payout_amount);
   if (Number.isFinite(directPayout) && directPayout >= 0 && sellerAsk > 0) {
     return roundRate(directPayout / sellerAsk);
   }
@@ -1039,7 +1040,9 @@ export const handler: Handler = async (event) => {
       const affiliatePayoutUnit = affiliateEnabled
         ? hasVariantAffiliatePayout
           ? round2(storedVariantAffiliatePayout)
-          : round2(ask * configuredAffiliateRate)
+          : prod?.affiliate_payout_amount != null && Number.isFinite(Number(prod.affiliate_payout_amount))
+            ? round2(Math.max(0, Number(prod.affiliate_payout_amount)))
+            : round2(ask * configuredAffiliateRate)
         : 0;
       const storedVariantShipping = Number(variant?.shipping_reserve_amount);
       const shippingReserveUnit = prod?.is_digital === true ? 0 : round2(Math.max(
@@ -1110,6 +1113,14 @@ export const handler: Handler = async (event) => {
       });
     }
 
+    const unitSavings = getOrderUnitSavings(computedItems, paypalFixed);
+    if (unitSavings > 0) {
+      for (const item of computedItems) {
+        item.listingUnit = round2(item.listingUnit - unitSavings);
+        item.paypalProcessingAllowanceUnit = round2(item.paypalProcessingAllowanceUnit - unitSavings);
+      }
+      subtotalListing = computedItems.reduce((total, item) => total + item.listingUnit * item.quantity, 0);
+    }
     subtotalListing = round2(subtotalListing);
 
     const strictCJInventory = String(process.env.CJ_STRICT_STOCK_REQUIRED || 'false').trim().toLowerCase() === 'true';

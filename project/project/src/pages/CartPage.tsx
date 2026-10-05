@@ -1,3 +1,4 @@
+import { getOrderSavings, getCartUnitPrice as getOrderCartUnitPrice } from '../../shared/orderPricing';
 import { useShoppingBrand } from '../components/storefront/StorefrontShoppingPage';
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -28,9 +29,7 @@ const CartPage: React.FC = () => {
   const { trackView, trackClick } = useBehaviorTracker();
 
   const getCartUnitPrice = (item: typeof items[number]) => {
-    const storedPrice = Number(item.price);
-    if (Number.isFinite(storedPrice) && storedPrice >= 0) return storedPrice;
-    return 0;
+    return getOrderCartUnitPrice(item, items);
   };
 
   const displaySubtotal = items.reduce((total, item) => total + getCartUnitPrice(item) * item.quantity, 0);
@@ -243,7 +242,7 @@ const CartPage: React.FC = () => {
 
             <div className="mt-4 text-sm text-emerald-700">
               <p className="font-medium">
-                Shipping is added separately based on each item and quantity.
+                Shipping is added separately based on each item and quantity. {getOrderSavings(items) > 0 && `Multi-item savings of $${getOrderSavings(items).toFixed(2)} are included above.`}
               </p>
             </div>
 

@@ -1,3 +1,4 @@
+import { getCartUnitPrice as getOrderCartUnitPrice } from '../../shared/orderPricing';
 import { paymentRecoveryMessage, safePayPalApprovalUrl } from '../utils/paymentRecovery';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
@@ -274,10 +275,10 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
   const payPalListingSubtotal = useMemo(() => {
     const subtotal = items.reduce((acc, it) => {
       const qty = Math.max(1, Math.floor(Number(it.quantity || 0)));
-      const buyerUnitPrice = Math.max(0, Number(it.price || 0));
+      const buyerUnitPrice = getOrderCartUnitPrice(it, items);
       return acc + buyerUnitPrice * qty;
     }, 0);
-    return roundUpToTwoDecimals(subtotal);
+    return Math.round((subtotal + Number.EPSILON) * 100) / 100;
   }, [items]);
   const hasDigitalItems = useMemo(() => items.some((item) => item.isDigital), [items]);
   const paypalCurrency = useMemo(() => {

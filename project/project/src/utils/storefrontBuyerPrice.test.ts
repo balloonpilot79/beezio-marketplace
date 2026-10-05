@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCanonicalProductPricing, applyStorefrontProductPricing } from '../../shared/productPricing';
+import { applyCanonicalProductPricing, applyStorefrontProductPricing, resolveStoredAffiliateCommission } from '../../shared/productPricing';
 import { getBuyerFacingProductPrice } from './buyerPrice';
 
 describe('public storefront buyer prices', () => {
@@ -33,4 +33,18 @@ describe('public storefront buyer prices', () => {
       expect(applyStorefrontProductPricing(legacyProduct)).toEqual(applyCanonicalProductPricing(legacyProduct));
     },
   );
+});
+
+describe('seller-controlled pricing fallbacks', () => {
+  it('never invents an affiliate commission', () => {
+    expect(resolveStoredAffiliateCommission({ seller_ask: 10 }).value).toBe(0);
+    expect(resolveStoredAffiliateCommission({ seller_ask: 10, affiliate_payout_amount: 0, flat_commission_amount: 7 }).value).toBe(0);
+    expect(resolveStoredAffiliateCommission({ seller_ask: 10, affiliate_enabled: false, affiliate_payout_amount: 7 }).value).toBe(0);
+  });
+  it('includes shipping once in the legacy total before separating it for display', () => {
+    const product = { seller_ask: 15.1, affiliate_payout_amount: 7, shipping_price: 5.99 };
+    const priced = applyCanonicalProductPricing(product);
+    expect(Math.round((getBuyerFacingProductPrice(priced)+5.99)*100)/100).toBe(priced.price);
+    expect(resolveStoredAffiliateCommission(product)).toEqual({ type:'flat', value:7 });
+  });
 });
