@@ -47,7 +47,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
   const [paypalConfigError, setPaypalConfigError] = useState<string | null>(null);
   const [paypalStatusChecked, setPaypalStatusChecked] = useState<boolean>(Boolean(paypalClientId));
   const [paypalStatusLoading, setPaypalStatusLoading] = useState(false);
-  const { items, shippingOption, setShippingOption, clearCart } = useCart();
+  const { items, shippingOption, setShippingOption, clearCart, getShippingTotal } = useCart();
   const { user, profile } = useAuth();
   const [, setProcessing] = useState(false);
   const [cardPaymentProcessing, setCardPaymentProcessing] = useState(false);
@@ -1656,7 +1656,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
                 >
                   <div className="flex items-center justify-between">
                     <div className="font-medium text-gray-900">{opt.methodName}</div>
-                    <div className="text-gray-900">${Number(opt.cost).toFixed(2)}</div>
+                    <div className="text-gray-900">${getShippingTotal().toFixed(2)}</div>
                   </div>
                   {opt.minDays != null && opt.maxDays != null && (
                     <div className="text-xs text-gray-600 mt-1">

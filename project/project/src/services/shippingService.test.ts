@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeProductOption } from './shippingService';
 
-describe('sitewide free-shipping policy', () => {
-  it('turns a legacy paid shipping option into free checkout shipping', () => {
+describe('separate checkout shipping', () => {
+  it('uses the seller shipping cost without including it twice', () => {
     const option = normalizeProductOption({
       id: 'legacy-product',
       requires_shipping: true,
@@ -14,8 +14,8 @@ describe('sitewide free-shipping policy', () => {
       ],
     });
 
-    expect(option.methodName).toBe('Free Shipping');
-    expect(option.methodCode).toBe('free-shipping');
-    expect(option.cost).toBe(0);
+    expect(option.methodName).toBe('Standard shipping');
+    expect(option.methodCode).toBe('standard-shipping');
+    expect(option.cost).toBe(9.99);
   });
 });
