@@ -5,7 +5,7 @@ import {
 } from '../config/beezioConfig';
 import { computeFixedTierPricing } from '../../shared/customerPrice';
 import { computeFixedBeezioPlatformFee } from '../../shared/beezioFee';
-import { getInfluencerReserveTotal } from '../../shared/referralBonus';
+import { getInfluencerReserveTotal, getSmallOrderPlatformReallocation } from '../../shared/referralBonus';
 
 const round2 = (value: number) =>
   Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
@@ -92,7 +92,10 @@ export function computePayoutBreakdown(
   const processingPercentAmount = round2(
     Math.max(0, Number(finalPrice || 0)) * (PROCESSING_PERCENT / 100)
   );
-  const platformGrossAmount = computeFixedBeezioPlatformFee(sellerAmount);
+  const platformGrossAmount = round2(
+    computeFixedBeezioPlatformFee(sellerAmount) +
+      getSmallOrderPlatformReallocation(finalPrice)
+  );
 
   return {
     finalPrice: round2(finalPrice),
