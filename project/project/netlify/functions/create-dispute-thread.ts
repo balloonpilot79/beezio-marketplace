@@ -1,6 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
-import { extractAuthHeader, getAuthedUser, requireAdmin, resolveProfileId } from './_lib/auth';
+import { extractAuthHeader, getAuthedUser, requireAdmin, resolveAuthUserIdFromProfileId } from './_lib/auth';
 import { json, assertPost, parseJson } from './_lib/http';
 
 const allowedTypes = new Set([
@@ -83,7 +83,7 @@ export const handler: Handler = async (event) => {
     if (orderId && !uuidRegex.test(orderId)) return json(400, { error: 'Invalid orderId' });
 
     const supabaseAdmin = createSupabaseAdmin();
-    const filerProfileId = (await resolveProfileId(user as any)) || String(user.id);
+    const filerUserId = String(user.id);
 
     let isAdmin = false;
     try {
@@ -100,18 +100,19 @@ export const handler: Handler = async (event) => {
         .select('id,user_id')
         .eq('email', rawSeller)
         .maybeSingle();
-      resolvedSellerId = normalize((data as any)?.id || (data as any)?.user_id || rawSeller);
+      resolvedSellerId = normalize((data as any)?.user_id || (data as any)?.id || rawSeller);
     } else {
       const { data } = await supabaseAdmin
         .from('profiles')
         .select('id,user_id')
         .or(`id.eq.${rawSeller},user_id.eq.${rawSeller}`)
         .maybeSingle();
-      resolvedSellerId = normalize((data as any)?.id || (data as any)?.user_id || rawSeller);
+      resolvedSellerId = normalize((data as any)?.user_id || (data as any)?.id || rawSeller);
     }
 
+    resolvedSellerId = normalize((await resolveAuthUserIdFromProfileId(resolvedSellerId)) || resolvedSellerId);
     if (!uuidRegex.test(resolvedSellerId)) return json(400, { error: 'Invalid sellerId' });
-    if (resolvedSellerId === filerProfileId || resolvedSellerId === String(user.id)) {
+    if (resolvedSellerId === filerUserId) {
       return json(400, { error: 'Cannot file against yourself' });
     }
 
@@ -133,12 +134,13 @@ export const handler: Handler = async (event) => {
       }
 
       const orderSellerId = normalize((order as any)?.seller_id);
-      if (orderSellerId && orderSellerId !== resolvedSellerId) {
-        resolvedSellerId = orderSellerId;
+      if (orderSellerId) {
+        resolvedSellerId = normalize((await resolveAuthUserIdFromProfileId(orderSellerId)) || orderSellerId);
       }
 
       const buyerId = normalize((order as any)?.buyer_id);
-      if (!isAdmin && buyerId && filerProfileId !== buyerId && String(user.id) !== buyerId) {
+      const buyerUserId = normalize((await resolveAuthUserIdFromProfileId(buyerId)) || buyerId);
+      if (!isAdmin && buyerUserId && filerUserId !== buyerUserId) {
         return json(403, { error: 'Only the buyer or platform can open an order dispute.' });
       }
     }
@@ -149,7 +151,7 @@ export const handler: Handler = async (event) => {
       .insert({
         order_id: orderId || null,
         dispute_type: disputeType,
-        filed_by: filerProfileId,
+        filed_by: filerUserId,
         filed_against: resolvedSellerId,
         description,
         status: isAdmin ? 'investigating' : 'open',
@@ -165,7 +167,7 @@ export const handler: Handler = async (event) => {
       .from('dispute_messages')
       .insert({
         dispute_id: (dispute as any).id,
-        sender_id: filerProfileId,
+        sender_id: filerUserId,
         message: messageBody || description,
         is_admin_message: isAdmin,
       } as any);
