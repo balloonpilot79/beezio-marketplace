@@ -1,4 +1,4 @@
-import { getInfluencerBonusPerSlot, getInfluencerReserveTotal } from '../../shared/referralBonus';
+import { getInfluencerBonusPerSlot, getInfluencerReserveTotal, getSmallOrderPlatformReallocation } from '../../shared/referralBonus';
 import { computeBeezioPlatformFee } from '../../shared/beezioFee';
 
 export type BeezioSplitInput = {
@@ -49,8 +49,9 @@ export function calculateBeezioSplit(input: BeezioSplitInput): BeezioSplitResult
 
   const affiliateCommissionCents = hasAffiliate ? affiliatePayoutCents : 0;
   const platformBaseCents = toCents(computeBeezioPlatformFee(input.items_subtotal));
+  const platformReallocationCents = toCents(getSmallOrderPlatformReallocation(input.items_subtotal));
   const influencerReservePoolCents = toCents(getInfluencerReserveTotal(input.items_subtotal));
-  const platformGrossCents = platformBaseCents + influencerReservePoolCents;
+  const platformGrossCents = platformBaseCents + platformReallocationCents + influencerReservePoolCents;
   // Referral payout is funded out of Beezio's kept reserve pool / fee, not added on top of the buyer price.
   const referralFeeCents = hasReferrer ? toCents(getInfluencerBonusPerSlot(input.items_subtotal)) : 0;
   const beezioFeeCents = Math.max(0, platformGrossCents - referralFeeCents);
