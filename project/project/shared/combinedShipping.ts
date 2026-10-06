@@ -21,10 +21,10 @@ export function getCombinedShippingPolicy(product: any): CombinedShippingPolicy 
 }
 
 export function shippingChannelKey(item: Pick<ShippingItem, 'sellerId' | 'affiliateId' | 'storefrontScope' | 'shippingOptionName'>): string {
-  return JSON.stringify([item.sellerId || '', item.affiliateId || 'direct', item.storefrontScope || 'global']);
+  return JSON.stringify([item.sellerId || '']);
 }
 
-/** Return exact line totals; different sellers, affiliates, and stores never share a bundle. */
+/** Return exact line totals; eligible items from the same seller can share a first-item charge. */
 export function allocateCombinedShipping(items: ShippingItem[]): number[] {
   const totals = items.map(item => item.isDigital ? 0 : cents(Number(item.shippingCost || 0)) * Math.max(1, Math.floor(Number(item.quantity) || 1)));
   const groups = new Map<string, number[]>();
