@@ -766,7 +766,7 @@ export const handler: Handler = async (event) => {
       const saleAlertItemsResult = await selectWithFallback(
         supabaseAdmin,
         'order_items',
-        ['quantity', 'computed_listing_price', 'product_title', 'product:products(title, name)'],
+        ['quantity', 'computed_listing_price', 'product_title_snapshot', 'variant_id', 'product:products(title)', 'variant:product_variants(title,sku)'],
         'order_id',
         orderId
       );
@@ -774,10 +774,15 @@ export const handler: Handler = async (event) => {
 
       const itemRows = ((saleAlertItems as any[]) || [])
         .map((it: any) => {
-          const name = String(it?.product_title || it?.product?.title || it?.product?.name || 'Item');
+          const name = String(it?.product_title_snapshot || it?.product?.title || 'Item').trim() || 'Item';
+          const variantTitle = String(it?.variant?.title || '').trim();
+          const variantSku = String(it?.variant?.sku || '').trim();
           const qty = Math.max(1, Number(it?.quantity || 1));
           const unit = Number(it?.computed_listing_price || 0);
-          return `<li>${name} x ${qty} @ $${unit.toFixed(2)}</li>`;
+          const lineTotal = round2(qty * unit);
+          const variantBits = [variantTitle, variantSku && variantSku !== variantTitle ? `SKU ${variantSku}` : ''].filter(Boolean);
+          const variantText = variantBits.length ? ` — ${variantBits.map((value) => escapeHtml(value)).join(' / ')}` : '';
+          return `<li><strong>${escapeHtml(name)}</strong>${variantText}<br />Qty: ${qty} &nbsp; Unit: ${unit.toFixed(2)} &nbsp; Line total: ${lineTotal.toFixed(2)}</li>`;
         })
         .join('');
 
