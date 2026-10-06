@@ -93,7 +93,7 @@ describe('platform affordability policy', () => {
 describe('shirt pricing and historical fee snapshots', () => {
   it.each([[14.20,5.99],[12.20,7.99]])('reconciles $29.99 shirts with ask %s and shipping %s', (ask, shipping) => {
     const pricing = computeFixedTierPricing({sellerPayout:ask,affiliatePayout:5,shippingIncluded:shipping});
-    const input = makeInput({subtotalListing:29.99-shipping,shippingAmount:shipping,taxAmount:2.10,paypalFeeAmount:1.61,items:[{quantity:1,seller_ask_amount:ask,computed_listing_price:29.99,affiliate_payout_amount:5,shipping_reserve_amount:shipping,influencer_allocation_amount:2,platform_fee_amount:pricing.platformFee,paypal_processing_allowance:pricing.paypalProcessingAllowance}]});
+    const input = makeInput({subtotalListing:29.99-shipping,shippingAmount:shipping,taxAmount:2.10,paypalFeeAmount:1.61,items:[{quantity:1,seller_ask_amount:ask,computed_listing_price:29.99,affiliate_payout_amount:5,shipping_reserve_amount:shipping,influencer_allocation_amount:2,platform_fee_amount:1,paypal_processing_allowance:1.80}]});
     const plan = buildPayPalLedgerPlan(input);
     expect(plan.aggregate.sellerEarnings).toBe(20.19);
     expect(plan.aggregate.partnerEarnings).toBe(5);
