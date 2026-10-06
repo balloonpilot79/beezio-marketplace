@@ -196,7 +196,7 @@ export const handler: Handler = async (event) => {
     };
     if (status === 'resolved' || status === 'closed') {
       payload.resolved_at = new Date().toISOString();
-      payload.resolved_by = admin.profileId;
+      payload.resolved_by = admin.userId;
     }
 
     const { data: updated, error } = await supabaseAdmin
