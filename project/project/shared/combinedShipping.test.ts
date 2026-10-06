@@ -9,12 +9,14 @@ describe('seller-controlled combined shipping', () => {
     expect(getCombinedShippingTotal([item()])).toBe(5.99);
     expect(getCombinedShippingTotal([item({ quantity: 3 })])).toBe(9.97);
   });
-  it('combines opted-in products and variants from the same purchase channel', () => {
+  it('combines opted-in products and variants from the same seller', () => {
     expect(allocateCombinedShipping([item(), item()])).toEqual([5.99, 1.99]);
     expect(getCombinedShippingTotal([item(), item({ quantity: 2 })])).toBe(9.97);
+    expect(getCombinedShippingTotal([item(), item({ affiliateId: 'other' })])).toBe(7.98);
+    expect(getCombinedShippingTotal([item(), item({ affiliateId: null, storefrontScope: 'store:seller:shop' })])).toBe(7.98);
   });
-  it.each([{ sellerId: 'other' }, { affiliateId: 'other' }, { affiliateId: null }, { storefrontScope: 'store:seller:shop' }])('never combines different seller or affiliate routes: %j', overrides => {
-    expect(getCombinedShippingTotal([item(), item(overrides)])).toBe(11.98);
+  it('never combines shipping across different sellers', () => {
+    expect(getCombinedShippingTotal([item(), item({ sellerId: 'other' })])).toBe(11.98);
   });
   it('does not include products without a bundle policy in another product bundle', () => {
     expect(getCombinedShippingTotal([item({ quantity: 2 }), item({ combinedShipping: null })])).toBe(13.97);
