@@ -79,7 +79,6 @@ export const handler: Handler = async (event) => {
 
     const supabaseAdmin = createSupabaseAdmin();
     const ownerIds = await resolveOwnedProfileIdsForUser({ supabaseAdmin, user });
-    const email = String((user as any)?.email || '').trim();
 
     const orderFields = [
       'id',
@@ -113,11 +112,6 @@ export const handler: Handler = async (event) => {
       queries.push(selectRows(supabaseAdmin, 'orders', orderFields, (query) => query.in('buyer_id', ownerIds)));
       queries.push(selectRows(supabaseAdmin, 'orders', orderFields, (query) => query.in('user_id', ownerIds)));
     }
-    if (email) {
-      queries.push(selectRows(supabaseAdmin, 'orders', orderFields, (query) => query.eq('billing_email', email)));
-      queries.push(selectRows(supabaseAdmin, 'orders', orderFields, (query) => query.eq('customer_email', email)));
-    }
-
     const results = await Promise.all(queries);
     const byId = new Map<string, any>();
     for (const result of results) {
