@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContextMultiRole";
+import { useLocation, useNavigate } from "react-router-dom";
 import AuthModal from "../components/AuthModal";
 import StorefrontBuyerShell from "../components/storefront/StorefrontBuyerShell";
 import {
@@ -23,7 +22,6 @@ export default function StorefrontAuthPage({
 }: {
   mode: "login" | "register";
 }) {
-  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [branding, setBranding] = useState<StorefrontBranding>(fallback);
@@ -40,7 +38,6 @@ export default function StorefrontAuthPage({
       active = false;
     };
   }, [mode, next]);
-  if (user) return <Navigate to={next} replace />;
   return (
     <StorefrontBuyerShell branding={branding}>
       <h1 className="sr-only">
@@ -50,6 +47,7 @@ export default function StorefrontAuthPage({
         isOpen
         mode={mode}
         audience="buyer"
+        returnTo={next}
         presentation="page"
         onClose={() => navigate(branding.homePath)}
       />

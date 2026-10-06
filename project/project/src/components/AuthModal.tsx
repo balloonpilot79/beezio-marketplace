@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { deriveStoreSlug, isValidStoreSlug } from '../utils/storeSlug';
 import { buildDeterministicReferralCode } from '../utils/referralCode';
-import { consumePostAuthPath } from '../utils/storefrontScope';
+import { consumePostAuthPath, safePostAuthPath } from '../utils/storefrontScope';
 import { PASSWORD_REQUIREMENT_MESSAGE, validatePasswordPolicy } from '../utils/passwordPolicy';
 import { sendSignupVerificationEmail } from '../services/signupVerificationClient';
 import { isBeezioEmailVerified } from '../utils/emailVerification';
@@ -26,15 +26,17 @@ interface AuthModalProps {
   mode: 'login' | 'register';
   audience?: 'buyer' | 'business';
   allowAudienceSwitch?: boolean;
+  returnTo?: string;
   presentation?: 'modal' | 'page';
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMode, audience: initialAudience = 'business', allowAudienceSwitch = false, presentation = 'modal' }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMode, audience: initialAudience = 'business', allowAudienceSwitch = false, presentation = 'modal', returnTo }) => {
   if (process.env.NODE_ENV !== 'production') {
     console.debug('AuthModal: Component rendering, isOpen prop:', isOpen, 'mode:', initialMode);
   }
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
+  const [ignoreReturnTo, setIgnoreReturnTo] = useState(false);
   const [audience, setAudience] = useState(initialAudience);
   useEffect(() => { setAudience(initialAudience); }, [initialAudience, isOpen]);
 
@@ -48,7 +50,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
-  const { signIn, signUp, resendVerificationEmail, resetPassword, sendMagicLink, currentRole } = useAuth();
+  const { signIn, signUp, resendVerificationEmail, resetPassword, sendMagicLink, currentRole, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -104,7 +106,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         'One dashboard for products, promotions, referrals, and payouts.',
       ];
 
-  const resolvePostAuthTarget = (fallback: string) => consumePostAuthPath() || fallback;
+  const resolvePostAuthTarget = (fallback: string) => {
+    const stored = consumePostAuthPath();
+    return (!ignoreReturnTo && safePostAuthPath(returnTo)) || stored || fallback;
+  };
+
+  // An existing session should not prompt for credentials again.
+  useEffect(() => {
+    if (!isOpen || presentation !== 'page' || !user || authLoading || loading) return;
+    navigate(resolvePostAuthTarget(isBuyerAudience ? '/account' : '/business'), { replace: true });
+  }, [isOpen, presentation, user, authLoading, loading, isBuyerAudience, navigate, returnTo, ignoreReturnTo]);
 
   // Reset form state when modal opens/closes
   useEffect(() => {
@@ -287,8 +298,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
 
         if (result && (result.user || result.session)) {
 
-          // Success! Just close and navigate
-          onClose();
+          // Page forms navigate directly; closing a page also navigates home.
+          if (presentation === 'modal') onClose();
 
           if (isBuyerAudience) {
             navigate(resolvePostAuthTarget('/account'));
@@ -511,7 +522,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           <div className="p-6 space-y-4">
             {allowAudienceSwitch && mode === 'login' && <div>
               <div className="grid grid-cols-2 gap-2" aria-label="Choose your account space">
-                {(['business', 'buyer'] as const).map(value => <button key={value} type="button" disabled={loading} aria-pressed={audience === value} onClick={() => { consumePostAuthPath(); setAudience(value); setError(null); }} className={`rounded-lg border px-3 py-3 text-sm font-semibold ${audience === value ? 'border-[#101820] bg-[#101820] text-white' : 'border-slate-200 text-slate-600'}`}>{value === 'business' ? 'Business Center' : 'Shopping'}</button>)}
+                {(['business', 'buyer'] as const).map(value => <button key={value} type="button" disabled={loading} aria-pressed={audience === value} onClick={() => { consumePostAuthPath(); setIgnoreReturnTo(true); setAudience(value); setError(null); }} className={`rounded-lg border px-3 py-3 text-sm font-semibold ${audience === value ? 'border-[#101820] bg-[#101820] text-white' : 'border-slate-200 text-slate-600'}`}>{value === 'business' ? 'Business Center' : 'Shopping'}</button>)}
               </div><p className="mt-2 text-xs leading-5 text-slate-500">Same login. Choose where you want to go.</p>
             </div>}
             {error && (

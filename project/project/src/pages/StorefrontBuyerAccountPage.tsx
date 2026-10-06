@@ -17,7 +17,7 @@ const fallbackBranding: StorefrontBranding = {
 const allowedTabs = new Set<BuyerDashboardTab>(['overview', 'orders', 'purchases', 'wishlist', 'recommendations', 'affiliates', 'watchlist', 'community', 'support']);
 
 const StorefrontBuyerAccountPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
   const [branding, setBranding] = useState<StorefrontBranding>(fallbackBranding);
 
@@ -31,6 +31,9 @@ const StorefrontBuyerAccountPage: React.FC = () => {
     return allowedTabs.has(raw) ? raw : 'overview';
   }, [location.search]);
 
+  if (loading) return <p role="status" className="p-10 text-center">Loading your account…</p>;
+
+  const returnPath = location.pathname + location.search;
   if (!user) {
     return (
       <StorefrontBuyerShell branding={branding}>
@@ -42,15 +45,15 @@ const StorefrontBuyerAccountPage: React.FC = () => {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
-              to="/account/login"
-              onClick={() => setPostAuthPath('/account')}
+              to={`/account/login?next=${encodeURIComponent(returnPath)}`}
+              onClick={() => setPostAuthPath(returnPath)}
               className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
             >
               Customer Login
             </Link>
             <Link
-              to="/account/signup"
-              onClick={() => setPostAuthPath('/account')}
+              to={`/account/signup?next=${encodeURIComponent(returnPath)}`}
+              onClick={() => setPostAuthPath(returnPath)}
               className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               Create Account

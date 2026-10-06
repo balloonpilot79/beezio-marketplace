@@ -23,6 +23,8 @@ const POST_AUTH_PATH_KEY = 'beezio-post-auth-path';
 export function safePostAuthPath(path: unknown): string | null {
   const value = String(path || '').trim();
   if (!value.startsWith('/') || value.startsWith('//') || /[\\\u0000-\u001f]/.test(value)) return null;
+  // A login/reset URL as the destination traps successful sign-ins in a loop.
+  if (/^\/(?:auth(?:[/?#]|$)|account\/(?:login|signup)(?:[/?#]|$))/.test(value)) return null;
   return value;
 }
 

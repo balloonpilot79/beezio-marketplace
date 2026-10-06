@@ -1,3 +1,4 @@
+import { deferredAuthListener } from '../utils/deferredAuthListener';
 import {
   TAX_COMPLIANCE_VERSION,
   appendTaxAgreements,
@@ -756,17 +757,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     getSession();
 
-    // Handle auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    // Supabase holds its auth lock while notifying listeners. Defer all
+    // profile/session requests until that notification has returned.
+    const listener = deferredAuthListener(async (event, session) => {
         try {
           console.log('AuthContext: Auth state change:', event, session?.user?.email || 'No user');
 
           if (event === 'INITIAL_SESSION' && initialSessionHandledRef.current) {
-            return;
-          }
-          if (event === 'SIGNED_IN' && !initialSessionHandledRef.current) {
-            console.log('AuthContext: Skipping startup SIGNED_IN event; session bootstrap is still in progress');
             return;
           }
           
@@ -800,10 +797,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('AuthContext: Unexpected error in auth state change:', error);
           setLoading(false);
         }
-      }
-    );
+      });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(listener.notify);
 
-    return () => subscription.unsubscribe();
+    return () => { listener.dispose(); subscription.unsubscribe(); };
   }, []);
 
   useEffect(() => {
@@ -1151,6 +1148,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           verificationError.code = 'email_not_confirmed';
           throw verificationError;
         }
+        // Publish the returned session even if a startup event was missed.
+        setSession(data.session);
+        setUser(data.user);
         await hydrateAuthenticatedSession(data.user, 'direct sign-in');
         const restrictionNotice = getStoredRestrictionNotice();
         if (restrictionNotice?.userId === data.user.id) {
