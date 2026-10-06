@@ -1,6 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
-import { extractAuthHeader, getAuthedUser, requireAdmin, resolveProfileId } from './_lib/auth';
+import { extractAuthHeader, getAuthedUser, requireAdmin } from './_lib/auth';
 import { json, assertPost, parseJson } from './_lib/http';
 
 type Body = {
@@ -29,7 +29,7 @@ export const handler: Handler = async (event) => {
     if (messageBody.length > 4000) return json(400, { error: 'Message too long' });
 
     const supabaseAdmin = createSupabaseAdmin();
-    const senderProfileId = (await resolveProfileId(user as any)) || String(user.id);
+    const senderUserId = String(user.id);
 
     let isAdmin = false;
     try {
@@ -49,7 +49,7 @@ export const handler: Handler = async (event) => {
 
     const filedBy = normalize((dispute as any)?.filed_by);
     const filedAgainst = normalize((dispute as any)?.filed_against);
-    if (!isAdmin && ![senderProfileId, String(user.id)].includes(filedBy) && ![senderProfileId, String(user.id)].includes(filedAgainst)) {
+    if (!isAdmin && senderUserId !== filedBy && senderUserId !== filedAgainst) {
       return json(403, { error: 'Forbidden' });
     }
 
@@ -57,7 +57,7 @@ export const handler: Handler = async (event) => {
       .from('dispute_messages')
       .insert({
         dispute_id: disputeId,
-        sender_id: senderProfileId,
+        sender_id: senderUserId,
         message: messageBody,
         is_admin_message: isAdmin,
       } as any)
