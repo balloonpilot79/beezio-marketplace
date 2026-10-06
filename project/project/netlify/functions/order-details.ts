@@ -122,23 +122,23 @@ export const handler: Handler = async (event) => {
 
     const supabaseAdmin = createSupabaseAdmin();
     const authHeader = extractAuthHeader(event as any);
-    let ownerIdSet = new Set<string>();
-    let isAdminRequest = false;
-    if (authHeader) {
-      const { user, error: authError } = await getAuthedUser(authHeader);
-      if (!user || authError) return json(401, { error: authError || 'Unauthorized' });
-      ownerIdSet = new Set(
-        (await resolveOwnedProfileIdsForUser({ supabaseAdmin, user }))
-          .map((value) => String(value || '').trim())
-          .filter(Boolean)
-      );
+    if (!authHeader) return json(401, { error: 'Unauthorized' });
 
-      try {
-        await requireAdmin(event as any);
-        isAdminRequest = true;
-      } catch {
-        isAdminRequest = false;
-      }
+    const { user, error: authError } = await getAuthedUser(authHeader);
+    if (!user || authError) return json(401, { error: authError || 'Unauthorized' });
+
+    const ownerIdSet = new Set(
+      (await resolveOwnedProfileIdsForUser({ supabaseAdmin, user }))
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+    );
+
+    let isAdminRequest = false;
+    try {
+      await requireAdmin(event as any);
+      isAdminRequest = true;
+    } catch {
+      isAdminRequest = false;
     }
 
     const orderFields = [
@@ -186,17 +186,6 @@ export const handler: Handler = async (event) => {
 
     const orderRow = orderResult.data as any;
     if (!orderRow?.id) return json(404, { error: 'Order not found' });
-
-    if (ownerIdSet.size === 0) {
-      const status = String(orderRow.status || '').trim().toLowerCase();
-      const paymentStatus = String(orderRow.payment_status || '').trim().toLowerCase();
-      const isPaidReceipt =
-        paymentStatus === 'paid' ||
-        status === 'paid' ||
-        status === 'completed' ||
-        status === 'processing';
-      if (!isPaidReceipt) return json(404, { error: 'Order is still processing' });
-    }
 
     const participantIds = [
       orderRow.buyer_id,
