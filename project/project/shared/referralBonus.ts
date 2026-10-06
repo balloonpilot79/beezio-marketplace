@@ -1,9 +1,11 @@
 // Each sale reserves two lifetime influencer slots: one for the seller's
 // recruiter and one for the affiliate's recruiter. Slot values are based on
 // the final advertised product price before sales tax.
-export const REFERRER_BONUS_THRESHOLD = 20;
+export const REFERRER_BONUS_THRESHOLD = 30;
 export const REFERRER_BONUS_UNDER_THRESHOLD = 0.5;
 export const REFERRER_BONUS_AT_OR_ABOVE_THRESHOLD = 1;
+export const REFERRER_BONUS_REALLOCATION_MIN = 20;
+export const REFERRER_BONUS_REALLOCATION_TO_PLATFORM = 1;
 export const INFLUENCER_BONUS_SLOT_COUNT = 2;
 
 const roundToCurrency = (value: number): number =>
@@ -13,9 +15,18 @@ export function getReferrerBonusPerItem(finalAdvertisedPrice: number): number {
   const price = Number.isFinite(finalAdvertisedPrice)
     ? Math.max(0, finalAdvertisedPrice)
     : 0;
-  return price < REFERRER_BONUS_THRESHOLD
+  return price <= REFERRER_BONUS_THRESHOLD
     ? REFERRER_BONUS_UNDER_THRESHOLD
     : REFERRER_BONUS_AT_OR_ABOVE_THRESHOLD;
+}
+
+export function getSmallOrderPlatformReallocation(finalAdvertisedPrice: number): number {
+  const price = Number.isFinite(finalAdvertisedPrice)
+    ? Math.max(0, finalAdvertisedPrice)
+    : 0;
+  return price >= REFERRER_BONUS_REALLOCATION_MIN && price <= REFERRER_BONUS_THRESHOLD
+    ? REFERRER_BONUS_REALLOCATION_TO_PLATFORM
+    : 0;
 }
 
 export function getReferrerBonusTotal(finalAdvertisedPrice: number, quantity: number): number {
