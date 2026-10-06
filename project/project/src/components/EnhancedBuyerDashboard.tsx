@@ -1,5 +1,5 @@
 import { isConfirmedPaidOrder, isRefundedPayment } from '../../shared/accountingStatus';
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
@@ -138,6 +138,16 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
   const [disputePrefill, setDisputePrefill] = useState<{ sellerId: string; orderId: string; summary: string } | null>(null);
   const [showComplianceBanner, setShowComplianceBanner] = useState(true);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const buyerDataRequestRef = useRef(0);
+
+  const clearBuyerData = () => {
+    setOrders([]);
+    setPurchases([]);
+    setWishlist([]);
+    setRecommendations([]);
+    setFollowedAffiliates([]);
+    setWatchlist([]);
+  };
 
   useEffect(() => {
     try {
@@ -158,12 +168,22 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
   };
 
   useEffect(() => {
+    const requestId = ++buyerDataRequestRef.current;
+    clearBuyerData();
+
     if (user) {
-      fetchBuyerData();
+      setLoading(true);
+      fetchBuyerData(requestId);
     } else {
       setLoading(false);
     }
-  }, [user, profile]);
+
+    return () => {
+      if (buyerDataRequestRef.current === requestId) {
+        buyerDataRequestRef.current += 1;
+      }
+    };
+  }, [user?.id, profile?.id]);
 
   useEffect(() => {
     if (!activeTabOverride || activeTabOverride === activeTab) return;
@@ -244,13 +264,14 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
     });
   };
 
-  const fetchBuyerData = async () => {
+  const fetchBuyerData = async (requestId: number) => {
     try {
       const functionOrders = await fetchBuyerOrdersFromFunction().catch((error) => {
         console.warn('Failed to fetch buyer orders from function:', error.message);
         return null;
       });
       if (functionOrders) {
+        if (requestId !== buyerDataRequestRef.current) return;
         setOrders(functionOrders);
         setPurchases(functionOrders.flatMap((order) => (order.items || []).map((item) => ({
           id: item.id,
@@ -339,6 +360,8 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
       if (ordersError) {
         console.warn('Failed to fetch buyer orders:', ordersError.message);
       }
+
+      if (requestId !== buyerDataRequestRef.current) return;
 
       if (ordersData) {
         const formattedOrders = ordersData.map(order => {
@@ -429,8 +452,13 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
 
     } catch (error) {
       console.error('Error fetching buyer data:', error);
+      if (requestId === buyerDataRequestRef.current) {
+        clearBuyerData();
+      }
     } finally {
-      setLoading(false);
+      if (requestId === buyerDataRequestRef.current) {
+        setLoading(false);
+      }
     }
   };
 
