@@ -2233,7 +2233,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 </div>
               </div>
               <details className="mt-4 rounded-lg border border-amber-200 bg-white p-3">
-                <summary className="cursor-pointer font-semibold text-gray-900">Optional combined shipping</summary>
+                <summary className="cursor-pointer font-semibold text-gray-900">Cheaper shipping for additional items</summary>
                 <label className="mt-3 flex items-start gap-2 text-sm text-gray-800">
                   <input type="checkbox" className="mt-1"
                     checked={(formData.shipping_options as any)?.[0]?.bundle_shipping === true}
@@ -2243,7 +2243,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                         additional_item_cost: (previous.shipping_options as any)?.[0]?.additional_item_cost ?? Number(previous.shipping_price || 0),
                       }],
                     }))} />
-                  Offer combined shipping for this product
+                  Offer a lower shipping price when buyers order more eligible items from me
                 </label>
                 {(formData.shipping_options as any)?.[0]?.bundle_shipping === true && (
                   <div className="mt-3 max-w-xs">
@@ -2256,7 +2256,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                       className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
                   </div>
                 )}
-                <p className="mt-3 text-xs leading-5 text-gray-600">Choose an amount that covers your actual delivery costs. Eligible items from the same seller and the same store or affiliate channel can share one first-item shipping charge. Purchases through different channels stay separate. Product prices and commissions do not change. Supplier-quoted shipping is excluded.</p>
+                <p className="mt-3 text-xs leading-5 text-gray-600">Enter what it costs to ship each additional eligible item from your seller account. Buyers pay the normal shipping charge on the first eligible item, then this lower amount for additional eligible items from the same seller. Product prices and commissions do not change. Supplier-quoted shipping is excluded.</p>
               </details>
               <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
                 <div className="font-semibold text-emerald-900">Customer sees: Shipping at checkout</div>
