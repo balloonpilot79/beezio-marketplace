@@ -22,7 +22,7 @@ class Query {
 const db = { from: (table: string) => new Query(table), auth: { getUser: async () => ({ data: { user: state.authed ? { id: 'auth-user' } : null }, error: null }) } };
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => db }));
 vi.mock('../../netlify/functions/_lib/supabase', () => ({ createSupabaseAdmin: () => db }));
-vi.mock('../../netlify/functions/_lib/auth', () => ({ requireSellerOrAdmin: async () => {}, extractAuthHeader: () => 'Bearer test', getAuthedUser: async () => ({ user: { id: 'auth-user' } }) }));
+vi.mock('../../netlify/functions/_lib/auth', () => ({ requireSellerOrAdmin: async () => {}, extractAuthHeader: () => 'Bearer test', getAuthedUser: async () => ({ user: { id: 'auth-user', email: 'random-buyer@example.com' } }) }));
 vi.mock('../../netlify/functions/_lib/owned-profiles', () => ({ resolveOwnedProfileIdsForUser: async () => ['auth-user','profile'] }));
 import { handler as earnings } from '../../netlify/functions/user-earnings';
 import { handler as seller } from '../../netlify/functions/seller-dashboard-sales';
@@ -82,6 +82,21 @@ describe('dashboard accounting endpoints', () => {
   it('shows buyers the frozen checkout price for each item', async () => {
     const result = await invoke(buyer, {}, 'GET');
     expect(result.body.orders[0]).toMatchObject({total_amount:100,items:[expect.objectContaining({unit_price:50,line_total:100})]});
+  });
+  it('does not expose an unrelated order just because its customer email matches the signed-in account', async () => {
+    state.tables.orders.push({
+      id:'unrelated-order',
+      seller_id:'unrelated-profile',
+      buyer_id:'unrelated-profile',
+      user_id:'other-user',
+      customer_email:'random-buyer@example.com',
+      payment_status:'paid',
+      status:'completed',
+      total_charged:999,
+      created_at:'2026-10-02T12:00:00Z'
+    });
+    const result = await invoke(buyer, {}, 'GET');
+    expect(result.body.orders.map((order: any) => order.id)).toEqual(['order']);
   });
   it('does not resurrect fully reversed zero money amounts from old ledger totals', async () => {
     state.tables.payout_ledger = [{ id:'ledger',order_id:'order',seller_earnings:30,partner_earnings:5,influencer_earnings:2,paypal_fee_estimate:3 }];
