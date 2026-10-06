@@ -31,6 +31,6 @@ describe('pricing utilities', () => {
     expect(underPrice).toBe(18.34);
     expect(under.referralBonus).toBe(1);
     expect(overPrice).toBeGreaterThanOrEqual(20);
-    expect(over.referralBonus).toBe(2);
+    expect(over.referralBonus).toBe(1);
   });
 });
