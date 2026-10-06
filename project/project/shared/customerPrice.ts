@@ -1,5 +1,5 @@
 import { computeFixedBeezioPlatformFee } from './beezioFee.ts';
-import { getInfluencerReserveTotal } from './referralBonus.ts';
+import { getInfluencerReserveTotal, getSmallOrderPlatformReallocation } from './referralBonus.ts';
 
 export type SharedAffiliateCommissionType = 'percent' | 'flat';
 
@@ -78,7 +78,10 @@ export function computeFixedTierPricing(params: {
   for (let index = 0; index < 100; index += 1) {
     iterations = index + 1;
     influencerAllocation = getInfluencerReserveTotal(finalAdvertisedPrice);
-    platformFee = computeFixedBeezioPlatformFee(sellerPayout);
+    platformFee = round2(
+      computeFixedBeezioPlatformFee(sellerPayout) +
+        getSmallOrderPlatformReallocation(finalAdvertisedPrice)
+    );
     paypalProcessingAllowance = ceil2(
       finalAdvertisedPrice * paypalPercent + paypalFixed
     );
