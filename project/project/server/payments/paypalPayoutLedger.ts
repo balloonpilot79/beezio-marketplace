@@ -1,4 +1,4 @@
-import { getReferrerBonusTotal } from '../../shared/referralBonus';
+import { getReferrerBonusTotal, getSmallOrderPlatformReallocation } from '../../shared/referralBonus';
 import {
   computeFixedBeezioPlatformFee,
 } from '../../shared/beezioFee';
@@ -167,6 +167,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     const title = String(item.product_title || '').trim();
     const isTestItem = isTestItemTitle(title);
     const shippingReserveUnit = round2(Math.max(0, Number(item.shipping_reserve_amount || 0)));
+    const finalAdvertisedUnit = round2(Math.max(0, Number(item.computed_listing_price || 0)));
     const explicitAffiliatePayout = Number(item.affiliate_payout_amount);
     const explicitPlatformFee = Number(item.platform_fee_amount);
     const explicitPayPalAllowance = Number(item.paypal_processing_allowance);
@@ -185,14 +186,14 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         ? TEST_ITEM_BEEZIO_FEE * quantity
         : (Number.isFinite(explicitPlatformFee)
             ? Math.max(0, explicitPlatformFee) * quantity
-            : computeFixedBeezioPlatformFee(ask) * quantity)
+            : (computeFixedBeezioPlatformFee(ask) + getSmallOrderPlatformReallocation(finalAdvertisedUnit)) * quantity)
     );
     const influencerPerSlotLine = round2(
       isTestItem
         ? TEST_ITEM_INFLUENCER_FEE * quantity
         : (Number.isFinite(explicitInfluencerAllocation)
             ? Math.max(0, explicitInfluencerAllocation) * quantity / 2
-            : getReferrerBonusTotal(listingUnit, quantity))
+            : getReferrerBonusTotal(finalAdvertisedUnit, quantity))
     );
     const paypalAllowanceLine = round2(
       (Number.isFinite(explicitPayPalAllowance)
