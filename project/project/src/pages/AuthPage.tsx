@@ -30,6 +30,7 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
         isOpen
         mode="login"
         audience={audience}
+        returnTo={next}
         allowAudienceSwitch
         presentation="page"
         onClose={() => navigate("/")}
