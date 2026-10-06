@@ -99,7 +99,6 @@ export const handler: Handler = async (event) => {
       'created_at',
       'provider_capture_id',
       'paid_at',
-      'billing_email',
       'customer_email',
       'shipping_address',
       'total_amount',
@@ -159,9 +158,8 @@ export const handler: Handler = async (event) => {
       'quantity',
       'price',
       'computed_listing_price',
-      'product_title',
-      'title_snapshot',
-      'products(title,name)',
+      'product_title_snapshot',
+      'products(title)',
     ];
 
     if (ownedProductIds.length) {
@@ -273,10 +271,8 @@ export const handler: Handler = async (event) => {
             'Customer',
           customer_email: asText((order as any)?.billing_email || (order as any)?.customer_email) || 'customer@example.com',
           product_title:
-            asText((orderItems[0] as any)?.product_title) ||
-            asText((orderItems[0] as any)?.title_snapshot) ||
+            asText((orderItems[0] as any)?.product_title_snapshot) ||
             asText((orderItems[0] as any)?.products?.title) ||
-            asText((orderItems[0] as any)?.products?.name) ||
             'Product',
           amount: totalAmount,
           status: asText((order as any)?.status) || 'pending',
