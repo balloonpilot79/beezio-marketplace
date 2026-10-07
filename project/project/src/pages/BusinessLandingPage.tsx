@@ -50,22 +50,22 @@ const content = {
     ],
   },
   influencer: {
-    label: "For influencers & creators",
-    title: "Refer once. Earn as they sell. Build your earning potential.",
+    label: "Founding influencers • Beezio beta",
+    title: "Help us launch Beezio. Earn when the sellers and affiliates you introduce make qualifying product sales.",
     description:
-      "When a seller or affiliate signs up with your referral code or link, you earn commission on every qualifying sale they make on Beezio. With lifetime referral attribution, your earning opportunity continues beyond their first sale. No inventory to buy or orders to ship.",
+      "Beezio is a brand-new marketplace built to help sellers move products through affiliates. We’re inviting early influencers and creators to help bring sellers and affiliates together. Share your personal referral link. If an eligible seller or affiliate joins through your link and later participates in a qualifying product sale, your referral relationship can earn an influencer bonus. You are not paid for the signup itself, and income is never guaranteed.",
     features: [
       [
-        "Share your code or link",
-        "Invite product owners to become sellers and people with great recommendations to become affiliates. Have them sign up with your personal referral code or link so their account is connected to you.",
+        "Share one tracked referral link",
+        "Invite product owners who may want to sell and people who may want to promote products as affiliates. When they join through your personal Beezio referral link, the platform can connect that seller or affiliate relationship to you.",
       ],
       [
-        "Earn as your referrals sell",
-        "Earn commission on every qualifying sale made by the sellers and affiliates you refer. Lifetime referral attribution keeps that connection in place—not just for their first order. Commissions come from sales, not signups.",
+        "Your earnings come from real product sales",
+        "A signup by itself does not create an influencer payment. When an eligible seller or affiliate you referred participates in a qualifying product sale, the applicable influencer bonus can be recorded for you. There is no one-sale or two-sale cutoff simply because the referral has already produced a sale.",
       ],
       [
-        "Grow your network. Grow your potential.",
-        "A network of active sellers and affiliates can create multiple sources of recurring commissions. Help your referrals get started and keep growing your connections. Your earning potential grows with their qualifying sales; income is not guaranteed.",
+        "Help put more products in front of more people",
+        "Sellers bring products. Affiliates help move those products. Influencers help grow the network connecting them. There is no inventory to buy or orders to ship just to participate as an influencer, and no specific level of earnings is promised.",
       ],
     ],
   },
@@ -85,7 +85,7 @@ const content = {
       ],
       [
         "Grow through recommendations",
-        "Affiliates earn commissions by promoting products. Influencers earn commission on every qualifying sale made by sellers and affiliates who sign up with their referral code or link—with lifetime referral attribution.",
+        "Affiliates earn commissions by promoting products. Influencers can earn on qualifying product sales involving eligible sellers and affiliates who joined through their referral link. Influencer compensation comes from qualifying sales, not from a signup by itself.",
       ],
     ],
   },
@@ -161,6 +161,14 @@ export default function BusinessLandingPage({
               sales. Income is not guaranteed. Returns, verification, and payout
               policies apply.
             </p>
+            {audience === "influencer" && (
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                If you promote Beezio or a product and you may receive compensation,
+                clearly disclose that financial relationship in the same post,
+                video, message, or other promotion. Do not promise or imply that
+                anyone is guaranteed to earn money by joining Beezio.
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap gap-5">
               <Link to="/legal/payout-policy" className="bz-text-link">
                 Payout policy
