@@ -248,8 +248,8 @@ export const handler: Handler = async (event) => {
     const refund = await refundPayPalCapture({
       captureId: providerCaptureId,
       currency: normalize(order?.currency) || 'USD',
-      amount: Number.isFinite(refundAmount) && refundAmount > 0 ? refundAmount : undefined,
-      note: normalize(body?.reason) || 'refund',
+      amount: undefined, // full refund: same PayPal request body as the dispute resolution path
+      note: 'Beezio order refund',
       requestId: 'bzo-r-' + String(order.id).replace(/-/g, ''),
     });
 
