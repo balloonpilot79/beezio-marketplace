@@ -393,18 +393,18 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
     }
     if (businessSectionForShell === 'affiliate') {
       return {
-        title: 'Affiliate Account',
+        title: 'Affiliate Tools',
         description: 'See the sales you drove, what you earned, and what to promote next.',
       };
     }
     if (businessSectionForShell === 'influencer') {
       return {
-        title: 'Influencer Account',
+        title: 'Influencer Tools',
         description: 'Track recruited sales activity, progress over time, and the links driving your network.',
       };
     }
     return {
-      title: 'Seller Account',
+      title: 'Selling Tools',
       description: 'See your business account summary, seller activity, payouts, and next actions in one place.',
     };
   }, [businessSectionForShell, sellerTab]);
@@ -513,9 +513,9 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
         {businessOnly && (
           <section aria-label="Start here: business tools" className="mx-auto max-w-7xl px-4 pt-3 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <Link to={'/store-builder?type=' + (businessSectionForShell === 'affiliate' ? 'affiliate' : 'seller')}
+              <Link to="/store-builder"
                 className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-amber-300 bg-[#101820] px-4 py-3 text-sm font-bold text-[#ffcb05]">
-                <span><span className="block text-xs font-medium text-amber-200">Step 1 · Your website</span>Build / Customize My Store</span>
+                <span><span className="block text-xs font-medium text-amber-200">Step 1 · Your website</span>Customize My Store</span>
                 <span aria-hidden="true">→</span>
               </Link>
               <Link to="/marketplace"
