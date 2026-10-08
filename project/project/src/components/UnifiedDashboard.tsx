@@ -510,6 +510,27 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
             </div>
           </section>
         )}
+        {businessOnly && (
+          <section aria-label="Start here: business tools" className="mx-auto max-w-7xl px-4 pt-3 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <Link to={'/store-builder?type=' + (businessSectionForShell === 'affiliate' ? 'affiliate' : 'seller')}
+                className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-amber-300 bg-[#101820] px-4 py-3 text-sm font-bold text-[#ffcb05]">
+                <span><span className="block text-xs font-medium text-amber-200">Step 1 · Your website</span>Build / Customize My Store</span>
+                <span aria-hidden="true">→</span>
+              </Link>
+              <Link to="/marketplace"
+                className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900">
+                <span><span className="block text-xs font-medium text-slate-500">Step 2 · Affiliate tools</span>Find Products to Promote</span>
+                <span aria-hidden="true">→</span>
+              </Link>
+              <Link to={businessBasePath + '?section=' + (businessRoleOptions.includes('influencer') ? 'influencer' : 'seller') + '&tab=influencer-promo'}
+                className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900">
+                <span><span className="block text-xs font-medium text-slate-500">Step 3 · Influencer tools</span>Invite Sellers & Affiliates</span>
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+          </section>
+        )}
         {sellerFulfillmentAlert && !sellerFulfillmentAlertDismissed && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
             <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
