@@ -259,8 +259,8 @@ const handler: Handler = async (event) => {
     const mergedSeller: any = {
       id: sellerId,
       storefront_id: brandStorefront?.id || null,
-      full_name: houseBrandIdentity?.name ?? brandStorefront?.name ?? (profile as any)?.full_name ?? (memberSettings as any)?.store_name ?? 'Store',
-      bio: houseBrandIdentity?.about ?? (hasDedicatedStorefront ? brandStorefront?.description ?? '' : (profile as any)?.bio ?? (memberSettings as any)?.store_description ?? ''),
+      full_name: houseBrandIdentity?.name ?? brandStorefront?.name ?? (memberSettings as any)?.store_name ?? (profile as any)?.full_name ?? 'Store',
+      bio: houseBrandIdentity?.about ?? (hasDedicatedStorefront ? brandStorefront?.description ?? '' : (memberSettings as any)?.store_description ?? (profile as any)?.bio ?? ''),
       store_theme: hasDedicatedStorefront ? brandStorefront?.store_theme ?? 'modern' : (memberSettings as any)?.store_theme ?? (profile as any)?.store_theme ?? 'modern',
       store_banner: hasDedicatedStorefront ? brandStorefront?.banner_url ?? null : (memberSettings as any)?.store_banner ?? (profile as any)?.store_banner ?? null,
       store_logo: hasDedicatedStorefront ? brandStorefront?.logo_url ?? houseBrandIdentity?.logoUrl ?? null : (memberSettings as any)?.store_logo ?? (profile as any)?.store_logo ?? null,
