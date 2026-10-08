@@ -3,6 +3,7 @@ import { createSupabaseAdmin } from './_lib/supabase';
 import { requireAdmin } from './_lib/auth';
 import { json, assertPost, parseJson } from './_lib/http';
 import { refundPayPalCapture } from './_lib/paypal';
+import { notifyDisputeParties } from './_lib/dispute-alerts';
 
 type DisputeStatus = 'open' | 'investigating' | 'awaiting_response' | 'resolved' | 'closed';
 type ResolutionType = '' | 'refund_full' | 'refund_partial' | 'replacement' | 'no_action' | 'seller_favor' | 'buyer_favor';
@@ -83,11 +84,12 @@ const cancelPayoutsAfterRefund = async (supabaseAdmin: any, orderId: string) => 
     .in('status', ['PENDING_HOLD', 'READY_TO_PAY', 'ON_HOLD_DISPUTE']);
 
   try {
-    await supabaseAdmin.rpc('record_order_money_ledger_reversal', {
+    const { error: reversalError } = await supabaseAdmin.rpc('record_order_money_ledger_reversal', {
       p_order_id: orderId,
       p_reason: 'dispute_refund',
       p_provider_capture_id: null,
     });
+    if (reversalError) throw reversalError;
   } catch {
     await supabaseAdmin
       .from('order_money_ledger')
@@ -138,12 +140,24 @@ export const handler: Handler = async (event) => {
     const sellerWon = resolutionType === 'seller_favor' || resolutionType === 'no_action' || resolutionType === 'replacement';
     const buyerWon = resolutionType === 'buyer_favor' || resolutionType === 'refund_full' || resolutionType === 'refund_partial';
 
+    // Partial refunds cannot be allowed until proportionate seller/affiliate/influencer
+    // reversals are implemented. A partial PayPal refund must never cancel all earnings.
+    if ((status === 'resolved' || status === 'closed') && resolutionType === 'refund_partial') {
+      return json(409, {
+        error: 'Partial refunds are unavailable until proportional payout reversals are supported.',
+        code: 'PARTIAL_REFUND_REQUIRES_PROPORTIONAL_REVERSAL',
+      });
+    }
+
     // A buyer-favor resolution must actually refund the PayPal capture before the dispute
     // is marked resolved. This prevents Beezio from recording a refund that never happened.
     let providerRefund: any = null;
     let effectiveRefundAmount: number | null = null;
 
     if ((status === 'resolved' || status === 'closed') && buyerWon) {
+      if (/refund|cancel/i.test(String(order?.payment_status || '')) || /refund/i.test(String(order?.status || ''))) {
+        return json(409, { error: 'This order has already been refunded or canceled.', code: 'ALREADY_REFUNDED' });
+      }
       const provider = String(order?.payment_provider || '').trim().toUpperCase();
       const captureId = normalize(order?.provider_capture_id);
       if (provider !== 'PAYPAL' || !captureId) {
@@ -213,7 +227,8 @@ export const handler: Handler = async (event) => {
         await supabaseAdmin
           .from('orders')
           .update({
-            dispute_status: 'WON',
+            // NONE is the only status the payout engines allow after a dispute is cleared.
+            dispute_status: 'NONE',
             updated_at: new Date().toISOString(),
           } as any)
           .eq('id', orderId);
@@ -243,9 +258,16 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    const alerts = (status === 'resolved' || status === 'closed')
+      ? await notifyDisputeParties(supabaseAdmin, {
+          disputeId, event: 'resolved', actorId: admin.userId, resolutionType,
+        })
+      : { sent: 0, failed: 0 };
+
     return json(200, {
       ok: true,
       dispute: updated,
+      alerts,
       provider_refund: providerRefund
         ? {
             id: providerRefund?.id || null,
