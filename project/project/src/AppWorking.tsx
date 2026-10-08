@@ -598,7 +598,7 @@ const AppWorking: React.FC = () => {
                 <nav aria-label="Website and promotion quick links" className="mt-2 grid grid-cols-3 gap-2">
                   <Link to={'/store-builder?type=' + (activeDashboardSection === 'affiliate' ? 'affiliate' : 'seller')} className="flex min-h-14 items-center justify-center rounded-lg bg-[#101820] px-2 py-2 text-center text-xs font-bold text-[#ffcb05]">Build My Store</Link>
                   <Link to="/marketplace" className="flex min-h-14 items-center justify-center rounded-lg border border-amber-300 bg-white px-2 py-2 text-center text-xs font-bold text-slate-900">Affiliate Tools</Link>
-                  <Link to={'/business?section=' + (activeDashboardSection === 'influencer' ? 'influencer' : 'seller') + '&tab=influencer-promo'} className="flex min-h-14 items-center justify-center rounded-lg border border-amber-300 bg-white px-2 py-2 text-center text-xs font-bold text-slate-900">Influencer Tools</Link>
+                  <Link to="/business?tab=influencer-promo" className="flex min-h-14 items-center justify-center rounded-lg border border-amber-300 bg-white px-2 py-2 text-center text-xs font-bold text-slate-900">Influencer Tools</Link>
                 </nav>
                 <button type="button" onClick={() => setIsMobileDashboardSubNavOpen((current) => !current)} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 text-xs font-semibold text-slate-700" aria-expanded={isMobileDashboardSubNavOpen} aria-controls="business-more-sections">More business tools<ChevronDown className={`h-4 w-4 ${isMobileDashboardSubNavOpen ? 'rotate-180' : ''}`} /></button>
                 {isMobileDashboardSubNavOpen && (
