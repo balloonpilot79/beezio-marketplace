@@ -280,22 +280,36 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
         console.warn('[StoreCustomization] Failed to load store settings:', error);
       }
 
-      if (data) {
+      // Existing affiliate-only members already have branding in their old
+      // affiliate settings. Import it into the ONE common editor without
+      // overwriting a seller's established store or a dedicated brand.
+      let settings: any = data;
+      if (!settings && role === 'seller') {
+        const { data: legacyAffiliate, error: affiliateError } = await supabase
+          .from('affiliate_store_settings')
+          .select('*')
+          .eq('affiliate_id', ownerId)
+          .maybeSingle();
+        if (affiliateError) {
+          console.warn('[StoreCustomization] Affiliate branding fallback unavailable:', affiliateError);
+        } else {
+          settings = legacyAffiliate;
+        }
+      }
+      if (settings) {
         setStoreSettings((prev) => ({
           ...prev,
-          ...data,
-          store_theme: normalizeThemeName((data as any).store_theme || prev.store_theme),
-          subdomain: normalizeSlugInput((data as any).subdomain || ''),
-          social_links: data.social_links || prev.social_links || {},
+          ...settings,
+          store_theme: normalizeThemeName(settings.store_theme || prev.store_theme),
+          subdomain: normalizeSlugInput(settings.subdomain || ''),
+          social_links: settings.social_links || prev.social_links || {},
           layout_config: {
             ...prev.layout_config,
-            ...(data.layout_config || {})
+            ...(settings.layout_config || {})
           },
-          color_scheme: data.color_scheme || prev.color_scheme
+          color_scheme: settings.color_scheme || prev.color_scheme
         }));
-        if (data.template_id) {
-          setActiveTemplate(data.template_id);
-        }
+        if (settings.template_id) setActiveTemplate(settings.template_id);
       }
     } finally {
       window.clearTimeout(timeoutId);
@@ -586,7 +600,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
           <div className="max-w-3xl">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-amber-800">
               <Zap className="h-3.5 w-3.5" />
-              Your free seller website
+              Your free Beezio website
             </div>
             <h2 className="text-3xl font-semibold tracking-tight text-stone-950">Design a website that feels like you.</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
