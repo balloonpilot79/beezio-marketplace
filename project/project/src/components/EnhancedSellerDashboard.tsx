@@ -23,6 +23,7 @@ import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { apiPost } from '../utils/netlifyApi';
 import StoreCustomization from './StoreCustomization';
+import AffiliateStoreCustomization from './AffiliateStoreCustomization';
 import UniversalInbox from './UniversalInbox';
 import IssueCenterPage from '../pages/IssueCenterPage';
 import SingleProductPromoStudio from './affiliate/SingleProductPromoStudio';
@@ -1224,6 +1225,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
             <p className="mt-2 text-gray-600">{description}</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link to={mode === 'affiliate' ? '/store-builder?type=affiliate' : '/store-builder?type=seller'} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#101820] px-4 py-2 text-sm font-bold text-[#ffcb05]"><Settings className="h-4 w-4" />Build My Store</Link>
             <Link to="/business/products/add" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#ffcb05] px-4 py-2 text-sm font-bold text-[#101820]">+ Add product</Link>
             <Link to="/marketplace" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700">Find products to promote</Link>
             <Link to={storePath} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"><ExternalLink className="h-4 w-4" />View store</Link>
@@ -1488,13 +1490,14 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
               <div className="space-y-4">
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
                   <h2 className="text-lg font-semibold text-gray-900">Your Custom Store & Branding</h2>
+                  <Link to={mode === 'affiliate' ? '/store-builder?type=affiliate' : '/store-builder?type=seller'} className="mt-3 inline-flex min-h-11 items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Open Full Website Builder</Link>
                   <p className="mt-1 text-sm text-gray-700">Preview, edit, upload your logo/banner, and share your storefront.</p>
                   <Link to={storePath} className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800">
                     <ExternalLink className="h-4 w-4" />
                     View Live Store
                   </Link>
                 </div>
-                <StoreCustomization userId={sellerId} role="seller" />
+                {mode === 'affiliate' ? <AffiliateStoreCustomization affiliateId={affiliateOwnerId} /> : <StoreCustomization userId={sellerId} role="seller" />}
               </div>
             )}
 
