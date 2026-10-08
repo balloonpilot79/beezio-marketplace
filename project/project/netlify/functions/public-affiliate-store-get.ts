@@ -185,7 +185,7 @@ const handler: Handler = async (event) => {
 
     const { data: affiliateRows, error: affiliateRowsError } = await supabaseAdmin
       .from('affiliate_products')
-      .select('id,affiliate_id,product_id,is_featured,display_order');
+      .select('id,affiliate_id,product_id,is_featured,display_order,is_active');
 
     if (affiliateRowsError) {
       return json(500, {
@@ -197,7 +197,7 @@ const handler: Handler = async (event) => {
 
     const matchingRows = (affiliateRows || []).filter((row: any) => {
       const rowAffiliateId = String(row?.affiliate_id || '').trim();
-      return affiliateAliases.has(rowAffiliateId);
+      return affiliateAliases.has(rowAffiliateId) && row?.is_active !== false;
     });
 
     const productIds = Array.from(
