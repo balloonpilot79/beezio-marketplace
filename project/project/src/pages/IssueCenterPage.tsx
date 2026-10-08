@@ -302,6 +302,11 @@ const IssueCenterPage: React.FC<IssueCenterPageProps> = ({
   const updateDispute = async () => {
     if (!selectedDispute || !isAdmin) return;
     setRefundStatus(null);
+    if (['resolved', 'closed'].includes(adminStatus) &&
+        ['buyer_favor', 'refund_full'].includes(adminResolutionType) &&
+        !window.confirm('Approve a real full PayPal refund? This action will return the buyer\'s payment and cancel the affected payouts.')) {
+      return;
+    }
     try {
       const refundAmount = adminRefundAmount ? Number(adminRefundAmount) : null;
       const result = await apiPost<{ refund_pending?: boolean; message?: string }>('/.netlify/functions/resolve-dispute', null, {
