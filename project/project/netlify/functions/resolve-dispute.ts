@@ -153,6 +153,11 @@ export const handler: Handler = async (event) => {
       });
     }
 
+    if ((status === 'resolved' || status === 'closed') && sellerWon &&
+        /refund_pending/i.test(String(order?.payment_status || ''))) {
+      return json(409, { error: 'A PayPal refund is pending. Payouts must remain on hold until its outcome is confirmed.' });
+    }
+
     // A buyer-favor resolution must actually refund the PayPal capture before the dispute
     // is marked resolved. This prevents Beezio from recording a refund that never happened.
     let providerRefund: any = null;
@@ -206,6 +211,7 @@ export const handler: Handler = async (event) => {
       }
       const paypalStatus = String(providerRefund?.status || '').toUpperCase();
       if (paypalStatus === 'PENDING') {
+        await supabaseAdmin.from('orders').update({ payment_status: 'refund_pending', dispute_status: 'OPEN', updated_at: new Date().toISOString() } as any).eq('id', orderId);
         return json(202, {
           ok: true, refund_pending: true, provider_refund: { id: providerRefund?.id || null, status: 'PENDING' },
           message: 'PayPal is processing the refund. The dispute stays open and payments stay held until confirmation.',
