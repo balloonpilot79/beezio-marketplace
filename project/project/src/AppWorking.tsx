@@ -565,7 +565,7 @@ const AppWorking: React.FC = () => {
     const handlePersistentDashboardNavClick = (tabId: string) => {
       if (tabId === 'admin') { navigate('/admin/platform'); return; }
       if (tabId === 'store-customization') {
-        navigate('/store-builder?type=' + (activeDashboardSection === 'affiliate' ? 'affiliate' : 'seller'));
+        navigate('/store-builder');
         return;
       }
       navigate(activeDashboardSection === 'buyer' ? '/account?tab=' + encodeURIComponent(tabId) : businessPath(requestedDashboardSection, tabId));
@@ -586,17 +586,20 @@ const AppWorking: React.FC = () => {
                     <div className="text-xs font-semibold text-slate-600">{dashboardSectionLabel}</div>
                     <div className="truncate text-sm font-bold text-slate-950">{activeDashboardTab?.label || 'Products'}</div>
                   </div>
-                  <Link to="/business/products/add" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[#ffcb05] px-4 text-sm font-bold text-[#101820]">+ Add product</Link>
+                  <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                    <Link to="/store-builder" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#101820] px-3 text-xs font-bold text-[#ffcb05]">Customize My Store</Link>
+                    <Link to="/business/products/add" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#ffcb05] px-3 text-xs font-bold text-[#101820]">+ Product</Link>
+                  </div>
                 </div>
                 <nav aria-label="Business sections" className="mt-3 grid grid-cols-4 gap-1">
                   {dashboardSubNav.filter((tab) => ['products', 'orders', 'store-customization', 'financials'].includes(tab.id)).map((tab) => {
                     const Icon = tab.icon;
-                    const label = tab.id === 'financials' ? 'Earnings' : tab.id === 'store-customization' ? 'My store' : tab.label;
+                    const label = tab.id === 'financials' ? 'Earnings' : tab.id === 'store-customization' ? 'Customize' : tab.label;
                     return <button key={tab.id} type="button" aria-current={activeDashboardTabId === tab.id ? 'page' : undefined} onClick={() => handlePersistentDashboardNavClick(tab.id)} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[11px] font-semibold ${activeDashboardTabId === tab.id ? 'bg-[#101820] text-[#ffcb05]' : 'bg-white text-slate-700'}`}><Icon className="h-4 w-4" aria-hidden="true" />{label}</button>;
                   })}
                 </nav>
                 <nav aria-label="Website and promotion quick links" className="mt-2 grid grid-cols-3 gap-2">
-                  <Link to={'/store-builder?type=' + (activeDashboardSection === 'affiliate' ? 'affiliate' : 'seller')} className="flex min-h-14 items-center justify-center rounded-lg bg-[#101820] px-2 py-2 text-center text-xs font-bold text-[#ffcb05]">Build My Store</Link>
+                  <Link to="/store-builder" className="flex min-h-14 items-center justify-center rounded-lg bg-[#101820] px-2 py-2 text-center text-xs font-bold text-[#ffcb05]">Customize My Store</Link>
                   <Link to="/marketplace" className="flex min-h-14 items-center justify-center rounded-lg border border-amber-300 bg-white px-2 py-2 text-center text-xs font-bold text-slate-900">Affiliate Tools</Link>
                   <Link to="/business?tab=influencer-promo" className="flex min-h-14 items-center justify-center rounded-lg border border-amber-300 bg-white px-2 py-2 text-center text-xs font-bold text-slate-900">Influencer Tools</Link>
                 </nav>
@@ -640,7 +643,7 @@ const AppWorking: React.FC = () => {
                   >
                     Add product
                   </Link>
-                  <Link to="/store-builder?type=seller" className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800">Build My Store</Link>
+                  <Link to="/store-builder" className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800">Customize My Store</Link>
                   <Link
                     to="/marketplace"
                     className="inline-flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold text-[#101820] hover:bg-[#ffef9f]"
