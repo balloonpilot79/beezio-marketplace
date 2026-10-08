@@ -10,8 +10,8 @@ import { getInfluencerReserveTotal, getSmallOrderPlatformReallocation } from '..
 const round2 = (value: number) =>
   Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
-export const getInfluencerBonusPool = (finalAdvertisedPrice: number): number =>
-  getInfluencerReserveTotal(finalAdvertisedPrice);
+export const getInfluencerBonusPool = (sellerAsk: number): number =>
+  getInfluencerReserveTotal(sellerAsk);
 
 export interface PayoutBreakdown {
   finalPrice: number;
@@ -94,7 +94,7 @@ export function computePayoutBreakdown(
   );
   const platformGrossAmount = round2(
     computeFixedBeezioPlatformFee(sellerAmount) +
-      getSmallOrderPlatformReallocation(finalPrice)
+      getSmallOrderPlatformReallocation(sellerAmount)
   );
 
   return {
