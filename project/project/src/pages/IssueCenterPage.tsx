@@ -304,7 +304,7 @@ const IssueCenterPage: React.FC<IssueCenterPageProps> = ({
     setRefundStatus(null);
     try {
       const refundAmount = adminRefundAmount ? Number(adminRefundAmount) : null;
-      await apiPost('/.netlify/functions/resolve-dispute', null, {
+      const result = await apiPost<{ refund_pending?: boolean; message?: string }>('/.netlify/functions/resolve-dispute', null, {
         disputeId: selectedDispute.id,
         status: adminStatus,
         resolutionType: adminResolutionType || null,
@@ -313,9 +313,12 @@ const IssueCenterPage: React.FC<IssueCenterPageProps> = ({
       });
 
       await loadDisputes();
+      if (result?.refund_pending) {
+        setRefundStatus('Refund is processing at PayPal. This dispute and its payouts remain on hold until PayPal confirms completion.');
+      }
     } catch (err) {
       console.error(err);
-      setRefundStatus('Failed to update dispute.');
+      setRefundStatus('Failed to update dispute. No payout should be released until the case is resolved.');
     }
   };
 
@@ -327,6 +330,7 @@ const IssueCenterPage: React.FC<IssueCenterPageProps> = ({
       setRefundStatus('Add a PayPal payment reference, capture ID, or order ID to refund.');
       return;
     }
+    if (!window.confirm('Issue a real PayPal refund for this order? This sends money back to the buyer and cancels the order\'s related payouts.')) return;
     try {
       setRefundStatus('Processing refund...');
       const data = await apiPost<{ ok?: boolean; action?: string; refundId?: string }>(
@@ -340,7 +344,9 @@ const IssueCenterPage: React.FC<IssueCenterPageProps> = ({
       );
       const result = data;
       if (result?.ok) {
-        setRefundStatus(`Refund ${result.action || 'processed'}${result.refundId ? ` (${result.refundId})` : ''}.`);
+        setRefundStatus(result.action === 'refund_pending'
+          ? 'PayPal refund pending. Funds remain held until completion is confirmed.'
+          : `Refund ${result.action || 'processed'}${result.refundId ? ` (${result.refundId})` : ''}.`);
       } else {
         setRefundStatus('Refund request submitted.');
       }
@@ -572,6 +578,13 @@ const IssueCenterPage: React.FC<IssueCenterPageProps> = ({
                       </div>
                     </div>
                     <p className="text-sm text-gray-700 mt-2">{selectedDispute.description}</p>
+                    {selectedDispute.order_id && ['open', 'investigating', 'awaiting_response'].includes(selectedDispute.status) && (
+                      <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                        The payouts associated with this order are on hold while Beezio reviews the complaint.
+                        The buyer, seller, and Beezio support can continue messaging here. No refund is issued
+                        automatically, and unrelated orders remain eligible under normal payout rules.
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex-1 overflow-y-auto py-4 space-y-3">
@@ -639,7 +652,9 @@ const IssueCenterPage: React.FC<IssueCenterPageProps> = ({
               <div className="bg-white border rounded-xl p-5 mt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Admin actions</h3>
                 <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                  Internal note: Beezio monitors every seller dispute here, can step into the thread, hold payouts, and manually issue refunds when needed.
+                  Internal note: Beezio monitors each dispute and freezes that order's payouts during investigation.
+                  Refunds require administrator approval and PayPal confirmation. Partial refunds are unavailable until
+                  proportional payout reversals are implemented. Replacements stay on hold until confirmed.
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
