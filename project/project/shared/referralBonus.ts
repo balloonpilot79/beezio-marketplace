@@ -29,9 +29,9 @@ export function getSmallOrderPlatformReallocation(sellerAsk: number): number {
     : 0;
 }
 
-export function getReferrerBonusTotal(finalAdvertisedPrice: number, quantity: number): number {
+export function getReferrerBonusTotal(sellerAsk: number, quantity: number): number {
   const normalizedQuantity = Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
-  return roundToCurrency(getReferrerBonusPerItem(finalAdvertisedPrice) * normalizedQuantity);
+  return roundToCurrency(getReferrerBonusPerItem(sellerAsk) * normalizedQuantity);
 }
 
 export function getInfluencerBonusPerSlot(sellerAsk: number): number {
