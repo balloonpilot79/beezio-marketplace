@@ -50,7 +50,7 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
   ctaText,
   addedText,
   showRemove = true,
-  instantAdd = false,
+  instantAdd = true,
 }) => {
   const { user, profile, userRoles, currentRole, hasRole } = useAuth();
   const [isAdded, setIsAdded] = useState(false);
@@ -228,14 +228,16 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
       const candidateIds = Array.from(
         new Set([currentAffiliateId, user?.id].filter(Boolean).map(String))
       );
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('affiliate_products')
-        .select('id, affiliate_id')
+        .select('id')
         .in('affiliate_id', candidateIds)
         .eq('product_id', productId)
-        .maybeSingle();
+        .eq('is_active', true)
+        .limit(1);
 
-      setIsAdded(Boolean(data));
+      if (error) throw error;
+      setIsAdded(Boolean(data?.length));
     } catch (error) {
       console.error('Error checking affiliate product status:', error);
     }
@@ -266,7 +268,8 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
     }
 
     if (instantAdd) {
-      await handleConfirmAdd({ silent: true });
+      // One tap adds to All Products immediately; advanced placement stays in the website builder.
+      await handleConfirmAdd();
       return;
     }
 
