@@ -28,6 +28,7 @@ const AddProductPage = lazy(() => import('./pages/AddProductPage'));
 const BusinessLandingPage = lazy(() => import('./pages/BusinessLandingPage'));
 const JoinPage = lazy(() => import('./pages/JoinPage'));
 const AffiliateProductsPage = lazy(() => import('./pages/AffiliateProductsPage'));
+const StoreBuilderPage = lazy(() => import('./pages/StoreBuilderPage'));
 const AffiliateDashboardPage = lazy(() => import('./pages/AffiliateDashboardPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const CheckoutSuccessPage = lazy(() => import('./pages/CheckoutSuccessPage'));
@@ -438,6 +439,7 @@ const AppWorking: React.FC = () => {
       'affiliate-guide',
       'store',
       'partner',
+      'store-builder',
       'paypal',
       'insurance',
     ]);
@@ -562,6 +564,10 @@ const AppWorking: React.FC = () => {
 
     const handlePersistentDashboardNavClick = (tabId: string) => {
       if (tabId === 'admin') { navigate('/admin/platform'); return; }
+      if (tabId === 'store-customization') {
+        navigate('/store-builder?type=' + (activeDashboardSection === 'affiliate' ? 'affiliate' : 'seller'));
+        return;
+      }
       navigate(activeDashboardSection === 'buyer' ? '/account?tab=' + encodeURIComponent(tabId) : businessPath(requestedDashboardSection, tabId));
     };
 
@@ -588,6 +594,11 @@ const AppWorking: React.FC = () => {
                     const label = tab.id === 'financials' ? 'Earnings' : tab.id === 'store-customization' ? 'My store' : tab.label;
                     return <button key={tab.id} type="button" aria-current={activeDashboardTabId === tab.id ? 'page' : undefined} onClick={() => handlePersistentDashboardNavClick(tab.id)} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[11px] font-semibold ${activeDashboardTabId === tab.id ? 'bg-[#101820] text-[#ffcb05]' : 'bg-white text-slate-700'}`}><Icon className="h-4 w-4" aria-hidden="true" />{label}</button>;
                   })}
+                </nav>
+                <nav aria-label="Website and promotion quick links" className="mt-2 grid grid-cols-3 gap-2">
+                  <Link to={'/store-builder?type=' + (activeDashboardSection === 'affiliate' ? 'affiliate' : 'seller')} className="flex min-h-14 items-center justify-center rounded-lg bg-[#101820] px-2 py-2 text-center text-xs font-bold text-[#ffcb05]">Build My Store</Link>
+                  <Link to="/marketplace" className="flex min-h-14 items-center justify-center rounded-lg border border-amber-300 bg-white px-2 py-2 text-center text-xs font-bold text-slate-900">Affiliate Tools</Link>
+                  <Link to={'/business?section=' + (activeDashboardSection === 'influencer' ? 'influencer' : 'seller') + '&tab=influencer-promo'} className="flex min-h-14 items-center justify-center rounded-lg border border-amber-300 bg-white px-2 py-2 text-center text-xs font-bold text-slate-900">Influencer Tools</Link>
                 </nav>
                 <button type="button" onClick={() => setIsMobileDashboardSubNavOpen((current) => !current)} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 text-xs font-semibold text-slate-700" aria-expanded={isMobileDashboardSubNavOpen} aria-controls="business-more-sections">More business tools<ChevronDown className={`h-4 w-4 ${isMobileDashboardSubNavOpen ? 'rotate-180' : ''}`} /></button>
                 {isMobileDashboardSubNavOpen && (
@@ -629,6 +640,7 @@ const AppWorking: React.FC = () => {
                   >
                     Add product
                   </Link>
+                  <Link to="/store-builder?type=seller" className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800">Build My Store</Link>
                   <Link
                     to="/marketplace"
                     className="inline-flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold text-[#101820] hover:bg-[#ffef9f]"
@@ -753,6 +765,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/affiliate-signup" element={<SignUpPage />} />
                     <Route path="/affiliate/products" element={<AffiliateProductsPage />} />
                     <Route path="/affiliate/dashboard" element={<AffiliateDashboardPage />} />
+                    <Route path="/store-builder" element={<BusinessRoute><StoreBuilderPage /></BusinessRoute>} />
                     <Route path="/business" element={<BusinessRoute><Dashboard mode="business" /></BusinessRoute>} />
                     <Route path="/business/products/add" element={<BusinessRoute><SellerProductFormPage /></BusinessRoute>} />
                     <Route path="/business/products/edit/:id" element={<BusinessRoute><ProductForm editMode={true} /></BusinessRoute>} />
