@@ -137,8 +137,12 @@ export const handler: Handler = async (event) => {
       order = orderRow;
     }
 
-    const sellerWon = resolutionType === 'seller_favor' || resolutionType === 'no_action' || resolutionType === 'replacement';
+    const sellerWon = resolutionType === 'seller_favor' || resolutionType === 'no_action';
     const buyerWon = resolutionType === 'buyer_favor' || resolutionType === 'refund_full' || resolutionType === 'refund_partial';
+
+    if ((status === 'resolved' || status === 'closed') && resolutionType === 'replacement') {
+      return json(409, { error: 'Keep the dispute open and its funds held until the replacement is confirmed received.' });
+    }
 
     // Partial refunds cannot be allowed until proportionate seller/affiliate/influencer
     // reversals are implemented. A partial PayPal refund must never cancel all earnings.
@@ -195,9 +199,22 @@ export const handler: Handler = async (event) => {
         });
       } catch (refundError) {
         return json(502, {
-          error: 'PayPal refund failed. The dispute was not marked resolved.',
+          error: 'PayPal refund failed. The dispute remains open and its payouts held.',
           code: 'PAYPAL_REFUND_FAILED',
           details: refundError instanceof Error ? refundError.message : String(refundError),
+        });
+      }
+      const paypalStatus = String(providerRefund?.status || '').toUpperCase();
+      if (paypalStatus === 'PENDING') {
+        return json(202, {
+          ok: true, refund_pending: true, provider_refund: { id: providerRefund?.id || null, status: 'PENDING' },
+          message: 'PayPal is processing the refund. The dispute stays open and payments stay held until confirmation.',
+        });
+      }
+      if (paypalStatus !== 'COMPLETED') {
+        return json(502, {
+          error: 'PayPal did not confirm the refund. The dispute and payout hold remain open.',
+          code: 'PAYPAL_REFUND_NOT_COMPLETED', provider_status: paypalStatus || 'UNKNOWN',
         });
       }
     }
