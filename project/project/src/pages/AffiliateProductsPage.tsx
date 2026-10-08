@@ -395,8 +395,8 @@ const AffiliateProductsPage: React.FC = () => {
                 Choose a marketplace product, add it to your store, then share the link. Your store updates after a successful add.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Link to="/store-builder?type=affiliate" className="inline-flex min-h-11 items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-amber-300">Build My Affiliate Store</Link>
-                <Link to={`/partner/${encodeURIComponent(resolvedAffiliateId || String(profile?.id || user.id))}`} className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800">View My Store</Link>
+                <Link to="/store-builder" className="inline-flex min-h-11 items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-amber-300">Customize My Store</Link>
+                <Link to={`/store/id/${encodeURIComponent(resolvedAffiliateId || String(profile?.id || user.id))}`} className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800">View My Store</Link>
               </div>
             </div>
             <div className="mt-4 lg:mt-0 flex flex-col sm:flex-row gap-4">
