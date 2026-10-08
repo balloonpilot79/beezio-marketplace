@@ -90,6 +90,7 @@ export async function refundPayPalCapture(args: {
   amount?: number | null;
   currency?: string | null;
   note?: string | null;
+  requestId?: string | null;
 }): Promise<any> {
   const captureId = String(args.captureId || '').trim();
   if (!captureId) throw new Error('Missing PayPal capture ID for refund.');
@@ -114,7 +115,7 @@ export async function refundPayPalCapture(args: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      'PayPal-Request-Id': paypalRequestId('bzo_refund'),
+      'PayPal-Request-Id': String(args.requestId || '').trim() || paypalRequestId('bzo_refund'),
     },
     body: JSON.stringify(body),
   });
