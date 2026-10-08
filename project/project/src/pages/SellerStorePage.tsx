@@ -1368,7 +1368,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               hideAffiliateUI
               hideFilters
               hideShareUI
-              hideSellerInfo
+              hideSellerInfo={false}
               ctaMode="storefront"
               forcePurchaseCtas
               storefrontBrand={{
