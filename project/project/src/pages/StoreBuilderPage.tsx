@@ -79,7 +79,7 @@ const StoreBuilderPage: React.FC = () => {
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 py-3 text-sm font-bold text-slate-800">
               <ExternalLink className="h-4 w-4" /> View live store
             </Link>
-            <Link to="/business?section=influencer&tab=influencer-promo"
+            <Link to="/business?tab=influencer-promo"
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 py-3 text-sm font-bold text-slate-800">
               <Megaphone className="h-4 w-4" /> Invite & share
             </Link>
