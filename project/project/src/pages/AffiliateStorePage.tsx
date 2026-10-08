@@ -843,7 +843,7 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
               hideAffiliateUI
               hideFilters
               hideShareUI
-              hideSellerInfo
+              hideSellerInfo={false}
               ctaMode="storefront"
               forcePurchaseCtas
               storefrontBrand={{
