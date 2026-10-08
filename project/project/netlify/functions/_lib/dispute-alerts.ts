@@ -108,7 +108,11 @@ export async function notifyDisputeParties(db: any, options: DisputeAlertOptions
       <p style="color:#555;font-size:12px">Case reference: ${escapeHtml(options.disputeId)}</p>
     </div>`;
 
-    const prior = await db.from('email_notifications').select('id').eq('order_id', dispute.order_id)
+    let priorQuery = db.from('email_notifications').select('id');
+    priorQuery = dispute.order_id
+      ? priorQuery.eq('order_id', dispute.order_id)
+      : priorQuery.is('order_id', null);
+    const prior = await priorQuery
       .eq('recipient_email', recipient.email).eq('notification_type', notificationType)
       .eq('status', 'sent').contains('email_data', { event_key: eventKey }).limit(1);
     if (prior.data?.length) return;
