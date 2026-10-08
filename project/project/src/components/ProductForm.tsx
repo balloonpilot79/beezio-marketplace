@@ -1137,8 +1137,33 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
 
-    if (ownedStorefronts.length > 0 && selectedStorefrontIds.length === 0) {
-      abortSubmit('Choose at least one brand storefront for this product.');
+    // Resolve the store at save time too: on mobile the user can finish the form
+    // before the initial storefront lookup has finished.
+    let storefrontsForSave = ownedStorefronts;
+    if (!storefrontsForSave.length) {
+      const { data: ownedRows, error: ownedError } = await supabase
+        .from('storefronts')
+        .select('id,name,slug')
+        .eq('owner_id', sellerProfileId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true });
+      if (ownedError) {
+        abortSubmit('Could not verify your storefront. Please try saving again.');
+        return;
+      }
+      storefrontsForSave = ((ownedRows as any[]) || []).map((row) => ({
+        id: String(row.id),
+        name: String(row.name || 'Storefront'),
+        slug: String(row.slug || ''),
+      }));
+    }
+    // A single standard store is automatic; owners with multiple brands must
+    // select a destination so a product never leaks into the wrong brand.
+    const storefrontIdsForSave = selectedStorefrontIds.length
+      ? selectedStorefrontIds
+      : storefrontsForSave.length === 1 ? [storefrontsForSave[0].id] : [];
+    if (storefrontsForSave.length > 0 && storefrontIdsForSave.length === 0) {
+      abortSubmit('Choose which brand storefront should show this product.');
       return;
     }
 
@@ -1630,8 +1655,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         }
       }
 
-      if (savedProductId && ownedStorefronts.length > 0) {
-        const ownedIds = ownedStorefronts.map((storefront) => storefront.id);
+      if (savedProductId && storefrontsForSave.length > 0) {
+        const ownedIds = storefrontsForSave.map((storefront) => storefront.id);
         const { error: clearStoreError } = await supabase
           .from('storefront_products')
           .delete()
@@ -1639,10 +1664,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
           .in('storefront_id', ownedIds);
         if (clearStoreError) throw clearStoreError;
 
-        if (selectedStorefrontIds.length > 0) {
+        if (storefrontIdsForSave.length > 0) {
           const { error: assignStoreError } = await supabase
             .from('storefront_products')
-            .insert(selectedStorefrontIds.map((storefrontId, position) => ({
+            .insert(storefrontIdsForSave.map((storefrontId, position) => ({
               storefront_id: storefrontId,
               product_id: savedProductId,
               position,
