@@ -504,7 +504,7 @@ export const handler: Handler = async (event) => {
       const lowPriceItem = isLowPriceAmount(listingUnit);
       const influencerBonusPoolLine = testItem
         ? TEST_ITEM_INFLUENCER_FEE * qty
-        : getReferrerBonusTotal(listingUnit, qty);
+        : getReferrerBonusTotal(ask, qty);
 
       askTotal += ask * qty;
       listingSubtotal += listingUnit * qty;
