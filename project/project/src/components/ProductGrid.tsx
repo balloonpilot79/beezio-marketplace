@@ -405,7 +405,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
             (Array.isArray(rawVariants) && rawVariants.length > 0);
           const requiresOptionSelection = hasVariants && !isStorefrontCtas;
 
-          const productSellerName = storefrontBrand?.name || normalizedProduct.profiles?.full_name || 'Seller';
+          const productSellerName = normalizedProduct.profiles?.full_name || storefrontBrand?.name || 'Seller';
           const shippingCost = getProductShipping(normalizedProduct);
           const storefrontCard = isStorefrontCtas;
           const imageForCart = heroImage;
@@ -654,7 +654,11 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 
               {/* Seller Info and Share Button */}
               <div className={`flex items-center justify-between ${storefrontCard ? 'mb-5 border-t border-slate-100 pt-4' : 'mb-4'}`}>
-                {storefrontBrand && !hideSellerInfo ? (
+                {storefrontCard && !hideSellerInfo ? (
+                  <div className="min-w-0 flex-1 text-xs leading-5 text-slate-600">
+                    Sold by <span className="font-semibold text-slate-900">{productSellerName}</span>
+                  </div>
+                ) : storefrontBrand && !hideSellerInfo ? (
                   <div className="flex items-center space-x-3 flex-1">
                     <div className="flex-shrink-0">
                       {storefrontBrand.logoUrl ? (
