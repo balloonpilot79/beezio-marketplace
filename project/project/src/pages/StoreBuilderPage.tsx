@@ -1,17 +1,16 @@
 import React from 'react';
-import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Megaphone, PackagePlus, Store, Wand2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import StoreCustomization from '../components/StoreCustomization';
-import AffiliateStoreCustomization from '../components/AffiliateStoreCustomization';
 
 /**
- * A dedicated, mobile-friendly entry point for Beezio's existing editors.
- * Keep storefront rendering separate: this page only changes the private builder.
+ * One account, one member website: seller merchandise and marketplace picks
+ * are simply two sources for the same storefront, not two store identities.
+ * Dedicated admin brand storefronts remain independent.
  */
 const StoreBuilderPage: React.FC = () => {
   const { user, profile, userRoles, loading } = useAuth();
-  const [params] = useSearchParams();
   const location = useLocation();
 
   if (loading && !user) {
@@ -26,21 +25,11 @@ const StoreBuilderPage: React.FC = () => {
       .filter(Boolean)
       .map((value) => String(value).toLowerCase())
   );
-  const isAdmin = roles.has('admin');
-  const canBuildSeller = isAdmin || roles.has('seller');
-  const canBuildAffiliate = isAdmin || roles.has('affiliate') || roles.has('partner');
-  if (!canBuildSeller && !canBuildAffiliate) {
-    return <Navigate to="/business" replace />;
-  }
+  const canBuild = roles.has('admin') || roles.has('seller') || roles.has('affiliate') || roles.has('partner');
+  if (!canBuild) return <Navigate to="/account" replace />;
 
-  const requested = params.get('type') === 'affiliate' ? 'affiliate' : 'seller';
-  const editor = requested === 'affiliate' && canBuildAffiliate
-    ? 'affiliate'
-    : canBuildSeller ? 'seller' : 'affiliate';
   const ownerId = String(profile?.id || user.id);
-  const previewHref = editor === 'seller'
-    ? `/store/id/${encodeURIComponent(ownerId)}`
-    : `/partner/${encodeURIComponent(ownerId)}`;
+  const previewHref = `/store/id/${encodeURIComponent(ownerId)}`;
 
   return (
     <div className="min-h-screen bg-[#faf9f5] pb-16">
@@ -48,51 +37,40 @@ const StoreBuilderPage: React.FC = () => {
         <Link to="/business" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-slate-700">
           <ArrowLeft className="h-4 w-4" /> Back to Business Center
         </Link>
-        <div className="mt-3 rounded-2xl border border-amber-200 bg-white p-4 shadow-sm sm:p-6">
+        <div className="mt-3 rounded-2xl border border-amber-300 bg-white p-4 shadow-sm sm:p-6">
           <p className="text-xs font-bold uppercase tracking-widest text-amber-700">Your free Beezio website</p>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-extrabold text-slate-950 sm:text-3xl">
-            <Wand2 className="h-6 w-6 text-amber-600" /> Build My Store
+            <Wand2 className="h-6 w-6 text-amber-600" /> Customize My Store
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-700">
-            Pick a design, add a logo, organize products, create pages and save your changes. Your public mobile store keeps its familiar shopping layout.
+            One website for everything you sell. Choose your design once, add your own products, and include products you promote from the Beezio marketplace.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {canBuildSeller && (
-              <Link to="/store-builder?type=seller" aria-current={editor === 'seller' ? 'page' : undefined}
-                className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold ${editor === 'seller' ? 'bg-[#101820] text-[#ffcb05]' : 'border border-slate-300 bg-white text-slate-800'}`}>
-                <Store className="h-4 w-4" /> Seller website
-              </Link>
-            )}
-            {canBuildAffiliate && (
-              <Link to="/store-builder?type=affiliate" aria-current={editor === 'affiliate' ? 'page' : undefined}
-                className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold ${editor === 'affiliate' ? 'bg-[#101820] text-[#ffcb05]' : 'border border-slate-300 bg-white text-slate-800'}`}>
-                <Store className="h-4 w-4" /> Affiliate website
-              </Link>
-            )}
-          </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            <Link to={editor === 'seller' ? '/business/products/add' : '/marketplace'}
+            <Link to="/business/products/add"
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#ffcb05] px-3 py-3 text-sm font-bold text-[#101820]">
-              <PackagePlus className="h-4 w-4" /> {editor === 'seller' ? 'Add my product' : 'Add marketplace products'}
+              <PackagePlus className="h-4 w-4" /> Sell My Own Product
+            </Link>
+            <Link to="/marketplace"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-3 text-sm font-bold text-slate-800">
+              <PackagePlus className="h-4 w-4" /> Add Affiliate Products
             </Link>
             <Link to={previewHref} target="_blank" rel="noopener noreferrer"
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 py-3 text-sm font-bold text-slate-800">
-              <ExternalLink className="h-4 w-4" /> View live store
-            </Link>
-            <Link to="/business?tab=influencer-promo"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 py-3 text-sm font-bold text-slate-800">
-              <Megaphone className="h-4 w-4" /> Invite & share
+              <ExternalLink className="h-4 w-4" /> View My Store
             </Link>
           </div>
-          <p className="mt-3 text-xs text-slate-600">
-            Products you create are assigned to your seller store. Marketplace products you choose to promote appear in your affiliate store after they are successfully saved.
-          </p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="max-w-2xl text-xs leading-5 text-slate-600">
+              All products appear in the same store. Shoppers can see the original seller of each item; payouts still follow the correct seller and affiliate.
+            </p>
+            <Link to="/business?tab=influencer-promo" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-indigo-700">
+              <Megaphone className="h-4 w-4" /> Influencer sharing tools
+            </Link>
+          </div>
         </div>
       </div>
       <div className="mx-auto max-w-6xl px-2 pt-4 sm:px-6 lg:px-8">
-        {editor === 'affiliate'
-          ? <AffiliateStoreCustomization affiliateId={ownerId} />
-          : <StoreCustomization userId={ownerId} role="seller" />}
+        <StoreCustomization userId={ownerId} role="seller" />
       </div>
     </div>
   );
