@@ -194,7 +194,7 @@ export const handler: Handler = async (event) => {
           captureId,
           amount: resolutionType === 'refund_partial' ? effectiveRefundAmount : null,
           currency: String(order?.currency || 'USD'),
-          note: `Beezio dispute ${disputeId}`,
+          note: 'Beezio order refund',
           requestId: 'bzo-r-' + String(orderId).replace(/-/g, ''),
         });
       } catch (refundError) {
