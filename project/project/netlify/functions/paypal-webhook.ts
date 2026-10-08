@@ -3,6 +3,7 @@ import { createSupabaseAdmin } from './_lib/supabase';
 import { json } from './_lib/http';
 import { verifyPayPalWebhookSignature } from './_lib/paypal';
 import { recoverCompletedPayPalPayment } from './_lib/paypal-payment-recovery';
+import { notifyDisputeParties } from './_lib/dispute-alerts';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const isUuid = (value: unknown) => UUID_REGEX.test(String(value || '').trim());
@@ -85,11 +86,12 @@ export const handler: Handler = async (event) => {
             .in('status', ['PENDING_HOLD', 'READY_TO_PAY', 'ON_HOLD_DISPUTE']);
 
           try {
-            await supabaseAdmin.rpc('record_order_money_ledger_reversal', {
+            const { error: reversalError } = await supabaseAdmin.rpc('record_order_money_ledger_reversal', {
               p_order_id: beezioOrderId,
               p_reason: 'refund',
               p_provider_capture_id: captureId,
             });
+            if (reversalError) throw reversalError;
           } catch {
             await supabaseAdmin
               .from('order_money_ledger')
@@ -97,11 +99,33 @@ export const handler: Handler = async (event) => {
               .eq('order_id', beezioOrderId)
               .in('status', ['held', 'ready', 'tracked', 'on_hold_dispute']);
           }
+
+          // Provider-initiated refunds must also close and notify any open Beezio case.
+          const { data: relatedDisputes } = await supabaseAdmin.from('disputes')
+            .select('id').eq('order_id', beezioOrderId)
+            .in('status', ['open', 'investigating', 'awaiting_response']);
+          for (const item of relatedDisputes || []) {
+            const { error: disputeUpdateError } = await supabaseAdmin.from('disputes').update({
+              status: 'resolved', resolution_type: 'refund_full',
+              resolution: 'Refund confirmed by PayPal webhook',
+              resolved_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as any).eq('id', item.id);
+            if (disputeUpdateError) throw disputeUpdateError;
+            await notifyDisputeParties(supabaseAdmin, {
+              disputeId: String(item.id), event: 'resolved', resolutionType: 'refund_full',
+            });
+          }
         }
       }
     }
 
-    if (eventType.startsWith('CUSTOMER.DISPUTE.') || eventType.startsWith('RISK.DISPUTE.')) {
+    const isPayPalDisputeEvent = eventType.startsWith('CUSTOMER.DISPUTE.') ||
+      eventType.startsWith('RISK.DISPUTE.');
+    const providerDisputeClosed = eventType === 'CUSTOMER.DISPUTE.RESOLVED' ||
+      ['RESOLVED', 'CLOSED'].includes(String(resource?.status || '').toUpperCase());
+    // Resolved PayPal events must not reopen a dispute or re-freeze its earnings.
+    if (isPayPalDisputeEvent && !providerDisputeClosed) {
       const disputed = Array.isArray(resource?.disputed_transactions) ? resource.disputed_transactions : [];
       const possibleTxnIds = disputed
         .flatMap((tx: any) => [tx?.seller_transaction_id, tx?.capture_id, tx?.transaction_id])
@@ -150,15 +174,18 @@ export const handler: Handler = async (event) => {
           .limit(1)
           .maybeSingle();
 
-        if (!(existingDispute as any)?.id && orderRow?.buyer_id) {
-          await supabaseAdmin.from('disputes').insert({
+        let activeDisputeId = String((existingDispute as any)?.id || '');
+        if (!activeDisputeId && orderRow?.buyer_id) {
+          const { data: newCase, error: createCaseError } = await supabaseAdmin.from('disputes').insert({
             order_id: beezioOrderId,
             dispute_type: 'other',
             filed_by: orderRow.buyer_id,
             filed_against: orderRow.seller_id || null,
             description: `PayPal dispute ${eventId} (${eventType}). Review the PayPal event in webhook history and respond through the Beezio Issue Center.`,
             status: 'open',
-          } as any);
+          } as any).select('id').single();
+          if (createCaseError) throw createCaseError;
+          activeDisputeId = String(newCase?.id || '');
         }
 
         await supabaseAdmin
@@ -178,6 +205,10 @@ export const handler: Handler = async (event) => {
           .update({ status: 'on_hold_dispute', updated_at: new Date().toISOString() } as any)
           .eq('order_id', beezioOrderId)
           .in('status', ['held', 'ready']);
+
+        if (activeDisputeId) await notifyDisputeParties(supabaseAdmin, {
+          disputeId: activeDisputeId, event: 'opened',
+        });
       }
     }
 
