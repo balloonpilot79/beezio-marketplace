@@ -1,6 +1,6 @@
 // Each sale reserves two lifetime influencer slots: one for the seller's
-// recruiter and one for the affiliate's recruiter. Slot values are based on
-// the final advertised product price before sales tax.
+// recruiter and one for the affiliate's recruiter. Slot values are based only
+// on the seller ask, never on affiliate, shipping, Beezio, processing, or tax.
 export const REFERRER_BONUS_THRESHOLD = 30;
 export const REFERRER_BONUS_UNDER_THRESHOLD = 0.5;
 export const REFERRER_BONUS_AT_OR_ABOVE_THRESHOLD = 1;
@@ -11,18 +11,18 @@ export const INFLUENCER_BONUS_SLOT_COUNT = 2;
 const roundToCurrency = (value: number): number =>
   Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
-export function getReferrerBonusPerItem(finalAdvertisedPrice: number): number {
-  const price = Number.isFinite(finalAdvertisedPrice)
-    ? Math.max(0, finalAdvertisedPrice)
+export function getReferrerBonusPerItem(sellerAsk: number): number {
+  const price = Number.isFinite(sellerAsk)
+    ? Math.max(0, sellerAsk)
     : 0;
   return price <= REFERRER_BONUS_THRESHOLD
     ? REFERRER_BONUS_UNDER_THRESHOLD
     : REFERRER_BONUS_AT_OR_ABOVE_THRESHOLD;
 }
 
-export function getSmallOrderPlatformReallocation(finalAdvertisedPrice: number): number {
-  const price = Number.isFinite(finalAdvertisedPrice)
-    ? Math.max(0, finalAdvertisedPrice)
+export function getSmallOrderPlatformReallocation(sellerAsk: number): number {
+  const price = Number.isFinite(sellerAsk)
+    ? Math.max(0, sellerAsk)
     : 0;
   return price >= REFERRER_BONUS_REALLOCATION_MIN && price <= REFERRER_BONUS_THRESHOLD
     ? REFERRER_BONUS_REALLOCATION_TO_PLATFORM
@@ -34,21 +34,21 @@ export function getReferrerBonusTotal(finalAdvertisedPrice: number, quantity: nu
   return roundToCurrency(getReferrerBonusPerItem(finalAdvertisedPrice) * normalizedQuantity);
 }
 
-export function getInfluencerBonusPerSlot(finalAdvertisedPrice: number): number {
-  return getReferrerBonusPerItem(finalAdvertisedPrice);
+export function getInfluencerBonusPerSlot(sellerAsk: number): number {
+  return getReferrerBonusPerItem(sellerAsk);
 }
 
-export function getInfluencerReserveTotal(finalAdvertisedPrice: number, quantity = 1): number {
+export function getInfluencerReserveTotal(sellerAsk: number, quantity = 1): number {
   const normalizedQuantity = Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
   return roundToCurrency(
-    getInfluencerBonusPerSlot(finalAdvertisedPrice) *
+    getInfluencerBonusPerSlot(sellerAsk) *
       INFLUENCER_BONUS_SLOT_COUNT *
       normalizedQuantity
   );
 }
 
 export function getAssignedInfluencerPayoutTotal(
-  finalAdvertisedPrice: number,
+  sellerAsk: number,
   assignedInfluencerCount: number,
   quantity = 1
 ): number {
@@ -58,19 +58,19 @@ export function getAssignedInfluencerPayoutTotal(
   );
   const normalizedQuantity = Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
   return roundToCurrency(
-    getInfluencerBonusPerSlot(finalAdvertisedPrice) *
+    getInfluencerBonusPerSlot(sellerAsk) *
       normalizedCount *
       normalizedQuantity
   );
 }
 
 export function getUnassignedInfluencerReserveTotal(
-  finalAdvertisedPrice: number,
+  sellerAsk: number,
   assignedInfluencerCount: number,
   quantity = 1
 ): number {
   return roundToCurrency(
-    getInfluencerReserveTotal(finalAdvertisedPrice, quantity) -
-      getAssignedInfluencerPayoutTotal(finalAdvertisedPrice, assignedInfluencerCount, quantity)
+    getInfluencerReserveTotal(sellerAsk, quantity) -
+      getAssignedInfluencerPayoutTotal(sellerAsk, assignedInfluencerCount, quantity)
   );
 }
