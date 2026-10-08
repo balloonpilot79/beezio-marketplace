@@ -186,14 +186,14 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         ? TEST_ITEM_BEEZIO_FEE * quantity
         : (Number.isFinite(explicitPlatformFee)
             ? Math.max(0, explicitPlatformFee) * quantity
-            : (computeFixedBeezioPlatformFee(ask) + getSmallOrderPlatformReallocation(finalAdvertisedUnit)) * quantity)
+            : (computeFixedBeezioPlatformFee(ask) + getSmallOrderPlatformReallocation(ask)) * quantity)
     );
     const influencerPerSlotLine = round2(
       isTestItem
         ? TEST_ITEM_INFLUENCER_FEE * quantity
         : (Number.isFinite(explicitInfluencerAllocation)
             ? Math.max(0, explicitInfluencerAllocation) * quantity / 2
-            : getReferrerBonusTotal(finalAdvertisedUnit, quantity))
+            : getReferrerBonusTotal(ask, quantity))
     );
     const paypalAllowanceLine = round2(
       (Number.isFinite(explicitPayPalAllowance)
