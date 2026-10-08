@@ -86,7 +86,7 @@ const StoreSlugRoute: React.FC<StoreSlugRouteProps> = ({ mode = 'store' }) => {
     const cleanAffiliateId = String(affiliateId || '').trim();
 
     if (cleanSellerId) return { type: 'seller' as const, id: cleanSellerId };
-    if (cleanAffiliateId) return { type: 'affiliate' as const, id: cleanAffiliateId };
+    if (cleanAffiliateId) return { type: 'seller' as const, id: cleanAffiliateId };
     return null;
   };
 
@@ -168,7 +168,7 @@ const StoreSlugRoute: React.FC<StoreSlugRouteProps> = ({ mode = 'store' }) => {
           const affiliateRole = String((affiliateProfile as any)?.primary_role || (affiliateProfile as any)?.role || '').trim().toLowerCase();
 
           if (affiliateSettings?.affiliate_id || affiliateRole === 'affiliate') {
-            setStoreType('affiliate');
+            setStoreType('seller');
             setStoreId(cleanSlug);
             setLoadError(null);
             setLoading(false);
