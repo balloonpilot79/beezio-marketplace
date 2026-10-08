@@ -216,7 +216,7 @@ const handler: Handler = async (event) => {
 
     const { data: existingRows, error: existingError } = await supabaseAdmin
       .from('affiliate_products')
-      .select('id, affiliate_id')
+      .select('id, affiliate_id, is_active')
       .in('affiliate_id', affiliateIds)
       .eq('product_id', productId)
       .limit(affiliateIds.length);
@@ -226,6 +226,14 @@ const handler: Handler = async (event) => {
     }
 
     if (Array.isArray(existingRows) && existingRows.length >= affiliateIds.length) {
+      // Re-adding a previously unlisted product must reactivate it.
+      // Otherwise the API says "added" while the storefront still hides it.
+      const inactiveIds = existingRows.filter((row: any) => row.is_active === false).map((row: any) => row.id);
+      if (inactiveIds.length) {
+        const { error: reactivateError } = await supabaseAdmin
+          .from('affiliate_products').update({ is_active: true }).in('id', inactiveIds);
+        if (reactivateError) return json(500, { error: 'Failed to reactivate product', details: reactivateError.message });
+      }
       await ensureAffiliateStorefrontPlacement(supabaseAdmin, affiliateId, productId);
       return json(200, { ok: true, affiliate_id: affiliateId, product_id: productId, existing: true });
     }
@@ -279,11 +287,16 @@ const handler: Handler = async (event) => {
     try {
       const { data: afterRows } = await supabaseAdmin
         .from('affiliate_products')
-        .select('id')
+        .select('id,is_active')
         .in('affiliate_id', affiliateIds)
         .eq('product_id', productId)
         .limit(1);
       if (Array.isArray(afterRows) && afterRows.length > 0) {
+        if (afterRows[0].is_active === false) {
+          const { error: reactivateError } = await supabaseAdmin
+            .from('affiliate_products').update({ is_active: true }).eq('id', afterRows[0].id);
+          if (reactivateError) return json(500, { error: 'Failed to reactivate product', details: reactivateError.message });
+        }
         await ensureAffiliateStorefrontPlacement(supabaseAdmin, affiliateId, productId);
         return json(200, { ok: true, affiliate_id: affiliateId, product_id: productId, existing: true });
       }
