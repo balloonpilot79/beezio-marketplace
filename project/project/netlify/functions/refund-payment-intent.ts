@@ -1,6 +1,7 @@
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
-import { extractAuthHeader, getAuthedUser, requireAdmin, resolveProfileId } from './_lib/auth';
+import { requireAdmin } from './_lib/auth';
+import { notifyDisputeParties } from './_lib/dispute-alerts';
 import { writeAuditLog } from './_lib/audit';
 import { json, assertPost, parseJson } from './_lib/http';
 import { getPayPalAccessToken, getPayPalBaseUrl } from './_lib/paypal';
@@ -99,11 +100,12 @@ const cancelOrderPayoutsForRefund = async (supabaseAdmin: any, orderId: string, 
     .in('status', ['PENDING_HOLD', 'READY_TO_PAY', 'ON_HOLD_DISPUTE']);
 
   try {
-    await supabaseAdmin.rpc('record_order_money_ledger_reversal', {
+    const { error: reversalError } = await supabaseAdmin.rpc('record_order_money_ledger_reversal', {
       p_order_id: orderId,
       p_reason: 'refund',
       p_provider_capture_id: providerCaptureId,
     });
+    if (reversalError) throw reversalError;
   } catch {
     await supabaseAdmin
       .from('order_money_ledger')
@@ -118,6 +120,7 @@ const refundPayPalCapture = async (params: {
   currency: string;
   amount?: number;
   note?: string;
+  requestId: string;
 }) => {
   const accessToken = await getPayPalAccessToken();
   const baseUrl = await getPayPalBaseUrl();
@@ -136,6 +139,7 @@ const refundPayPalCapture = async (params: {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
+      'PayPal-Request-Id': params.requestId,
     },
     body: JSON.stringify(body),
   });
@@ -155,11 +159,13 @@ export const handler: Handler = async (event) => {
   try {
     assertPost(event.httpMethod);
 
-    const authHeader = extractAuthHeader(event as any);
-    if (!authHeader) return json(401, { error: 'Missing authorization header' });
-
-    const { user, error: authErr } = await getAuthedUser(authHeader);
-    if (!user) return json(401, { error: 'Unauthorized', details: authErr });
+    // Refunds move real money. Buyers can request a dispute, never execute a refund.
+    let admin: { userId: string; profileId: string };
+    try {
+      admin = await requireAdmin(event as any);
+    } catch (error: any) {
+      return json(Number(error?.statusCode) === 401 ? 401 : 403, { error: 'Admin approval required to issue refunds.' });
+    }
 
     const body = parseJson<Body>(event.body);
     const candidateIds = [
@@ -174,15 +180,7 @@ export const handler: Handler = async (event) => {
     const refundAmount = Number(body?.amount);
     const supabaseAdmin = createSupabaseAdmin();
 
-    let isAdmin = false;
-    try {
-      await requireAdmin(event as any);
-      isAdmin = true;
-    } catch {
-      isAdmin = false;
-    }
-
-    const profileId = (await resolveProfileId(user as any)) || String(user.id);
+    const profileId = admin.profileId || admin.userId;
     const selectOrder = async (column: 'id' | 'provider_capture_id' | 'provider_order_id', value: string) =>
       await supabaseAdmin
         .from('orders')
@@ -201,9 +199,9 @@ export const handler: Handler = async (event) => {
     const order = orderLookup.data as any;
     if (!order?.id) return json(404, { error: 'Order not found' });
 
-    const ownerIds = [normalize(order?.user_id), normalize(order?.buyer_id)].filter(Boolean);
-    if (!isAdmin && !ownerIds.includes(profileId) && !ownerIds.includes(String(user.id))) {
-      return json(403, { error: 'Forbidden' });
+    if (/refund|cancel/i.test(normalize(order?.payment_status)) ||
+        /refund|cancel/i.test(normalize(order?.status))) {
+      return json(409, { error: 'Order has already been refunded or canceled.', code: 'ALREADY_REFUNDED' });
     }
 
     const providerCaptureId = normalize(order?.provider_capture_id);
@@ -232,6 +230,7 @@ export const handler: Handler = async (event) => {
       currency: normalize(order?.currency) || 'USD',
       amount: Number.isFinite(refundAmount) && refundAmount > 0 ? refundAmount : undefined,
       note: normalize(body?.reason) || 'refund',
+      requestId: 'bzo_order_refund_' + String(order.id),
     });
 
     await cancelOrderPayoutsForRefund(supabaseAdmin, String(order.id), providerCaptureId);
@@ -247,6 +246,10 @@ export const handler: Handler = async (event) => {
     } catch {
       // Best-effort.
     }
+
+    const { data: disputesToResolve } = await supabaseAdmin.from('disputes')
+      .select('id').eq('order_id', String(order.id))
+      .in('status', ['open', 'investigating', 'awaiting_response']);
 
     try {
       await supabaseAdmin
@@ -264,6 +267,16 @@ export const handler: Handler = async (event) => {
         .in('status', ['open', 'investigating', 'awaiting_response']);
     } catch {
       // Best-effort.
+    }
+
+    for (const dispute of disputesToResolve || []) {
+      try {
+        await notifyDisputeParties(supabaseAdmin, {
+          disputeId: String(dispute.id), event: 'resolved', actorId: admin.userId, resolutionType: 'refund_full',
+        });
+      } catch (error) {
+        console.error('Refund recorded but dispute alert failed:', error);
+      }
     }
 
     await writeAuditLog({
