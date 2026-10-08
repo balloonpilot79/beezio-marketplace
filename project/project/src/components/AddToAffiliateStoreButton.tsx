@@ -480,30 +480,22 @@ const AddToAffiliateStoreButton: React.FC<AddToAffiliateStoreButtonProps> = ({
   };
 
   const resolveAffiliateStoreDestination = async (affiliateIdOverride?: string) => {
-    const activeAffiliateId = String(affiliateIdOverride || resolvedAffiliateId || affiliateProfileId || user?.id || '').trim();
-    if (!activeAffiliateId) return '/dashboard?section=affiliate&tab=products';
-
+    const memberId = String(affiliateIdOverride || resolvedAffiliateId || affiliateProfileId || user?.id || '').trim();
+    if (!memberId) return '/business?tab=products';
     try {
-      const { data } = await supabase
-        .from('affiliate_store_settings')
-        .select('subdomain, custom_domain')
-        .eq('affiliate_id', activeAffiliateId)
-        .maybeSingle();
-
-      const customDomain = String(data?.custom_domain || '').trim();
-      if (customDomain) {
-        return `https://${customDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')}`;
-      }
-
-      const subdomain = String(data?.subdomain || '').trim().toLowerCase();
-      if (subdomain) {
-        return `/store/${subdomain}`;
-      }
+      const [{ data: sellerSettings }, { data: legacyAffiliateSettings }] = await Promise.all([
+        supabase.from('store_settings').select('subdomain, custom_domain').eq('seller_id', memberId).maybeSingle(),
+        supabase.from('affiliate_store_settings').select('subdomain, custom_domain').eq('affiliate_id', memberId).maybeSingle(),
+      ]);
+      const settings = sellerSettings || legacyAffiliateSettings;
+      const domain = String(settings?.custom_domain || '').trim();
+      if (domain) return `https://${domain.replace(/^https?:\/\//, '').replace(/\/$/, '')}`;
+      const slug = String(settings?.subdomain || '').trim().toLowerCase();
+      if (slug) return `/store/${slug}`;
     } catch {
-      // Fallback route below keeps the storefront reachable without custom setup.
+      // The stable member-ID store route works without custom branding.
     }
-
-    return `/partner/${encodeURIComponent(activeAffiliateId)}`;
+    return `/store/id/${encodeURIComponent(memberId)}`;
   };
 
   const copyLink = () => {
