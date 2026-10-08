@@ -241,6 +241,16 @@ const LegacyAffiliateAboutRedirect = () => {
   return <Navigate to={`/partner/${affiliateId || ''}/about`} replace />;
 };
 
+const LegacyPartnerHomeRedirect = () => {
+  const { affiliateId = '' } = useParams<{ affiliateId: string }>();
+  const member = String(affiliateId).trim();
+  // Keep shared legacy affiliate store links alive, but use one storefront UI.
+  const path = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(member)
+    ? `/store/id/${encodeURIComponent(member)}`
+    : `/store/${encodeURIComponent(member)}`;
+  return <Navigate to={path} replace />;
+};
+
 const LegacyAffiliateProductRedirect = () => {
   const { affiliateId, productId } = useParams<{ affiliateId: string; productId: string }>();
   return <Navigate to={`/partner/${affiliateId || ''}/product/${productId || ''}`} replace />;
@@ -796,7 +806,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/store/id/:sellerId/about" element={<SellerAboutPage />} />
                     <Route path="/affiliate/:affiliateId" element={<LegacyAffiliateStoreRedirect />} />
                     <Route path="/affiliate/:affiliateId/about" element={<LegacyAffiliateAboutRedirect />} />
-                    <Route path="/partner/:affiliateId" element={<AffiliateStorePage />} />
+                    <Route path="/partner/:affiliateId" element={<LegacyPartnerHomeRedirect />} />
                     <Route path="/partner/:affiliateId/about" element={<AffiliateAboutPage />} />
                     <Route path="/affiliate/share" element={<AffiliateShareHubPage />} />
                     <Route path="/promo/product/:productId" element={<AffiliateSingleProductPromoPage />} />
