@@ -87,16 +87,21 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
             }
 
             const rawOptions: ShippingOption[] = parseRawShippingOptions(publicProduct.shipping_options).map(normalizeShippingOption);
-            const includedOption = rawOptions.find((option) => option.included_in_price === true);
+            const storedShipping = toFiniteNumber(
+              publicProduct.shipping_reserve_amount ??
+              publicProduct.shipping_price ??
+              publicProduct.shipping_cost
+            );
+            const sourceOption = rawOptions[0];
             const options: ShippingOption[] = [{
-              id: includedOption?.id || rawOptions[0]?.id || 'default',
-              name: 'Free Shipping',
-              cost: 0,
-              estimated_days: includedOption?.estimated_days || rawOptions[0]?.estimated_days || '3-5 business days',
-              origin_country: includedOption?.origin_country || rawOptions[0]?.origin_country,
-              origin_label: includedOption?.origin_label || rawOptions[0]?.origin_label,
-              processing_time: includedOption?.processing_time || rawOptions[0]?.processing_time,
-              included_in_price: true,
+              id: sourceOption?.id || 'default',
+              name: storedShipping > 0 ? 'Standard Shipping' : 'Free Shipping',
+              cost: Math.max(0, storedShipping),
+              estimated_days: sourceOption?.estimated_days || '3-5 business days',
+              origin_country: sourceOption?.origin_country,
+              origin_label: sourceOption?.origin_label,
+              processing_time: sourceOption?.processing_time,
+              included_in_price: false,
             }];
 
             setShippingOptions(options);
@@ -110,7 +115,7 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
         // fall back to direct query below
       }
 
-      let selectedColumns = ['shipping_options', 'requires_shipping', 'shipping_price', 'shipping_cost'];
+      let selectedColumns = ['shipping_options', 'requires_shipping', 'shipping_reserve_amount', 'shipping_price', 'shipping_cost'];
       let product: any = null;
       let error: any = null;
 
@@ -150,17 +155,21 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
       }
 
       const rawOptions: ShippingOption[] = parseRawShippingOptions(product.shipping_options).map(normalizeShippingOption);
-
-      const includedOption = rawOptions.find((option) => option.included_in_price === true);
+      const storedShipping = toFiniteNumber(
+        product.shipping_reserve_amount ??
+        product.shipping_price ??
+        product.shipping_cost
+      );
+      const sourceOption = rawOptions[0];
       const options: ShippingOption[] = [{
-        id: includedOption?.id || rawOptions[0]?.id || 'default',
-        name: 'Free Shipping',
-        cost: 0,
-        estimated_days: includedOption?.estimated_days || rawOptions[0]?.estimated_days || '3-5 business days',
-        origin_country: includedOption?.origin_country || rawOptions[0]?.origin_country,
-        origin_label: includedOption?.origin_label || rawOptions[0]?.origin_label,
-        processing_time: includedOption?.processing_time || rawOptions[0]?.processing_time,
-        included_in_price: true,
+        id: sourceOption?.id || 'default',
+        name: storedShipping > 0 ? 'Standard Shipping' : 'Free Shipping',
+        cost: Math.max(0, storedShipping),
+        estimated_days: sourceOption?.estimated_days || '3-5 business days',
+        origin_country: sourceOption?.origin_country,
+        origin_label: sourceOption?.origin_label,
+        processing_time: sourceOption?.processing_time,
+        included_in_price: false,
       }];
       
       setShippingOptions(options);
@@ -175,7 +184,7 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
       // Fallback to default shipping option
       const fallbackOption: ShippingOption = {
         id: 'fallback',
-        name: 'Free Shipping',
+        name: 'Shipping',
         cost: 0,
         estimated_days: '3-5 business days'
       };
