@@ -158,7 +158,8 @@ const AffiliateProductsPage: React.FC = () => {
       const { data, error } = await supabase
         .from('affiliate_products')
         .select('product_id,affiliate_id')
-        .in('affiliate_id', candidateIds);
+        .in('affiliate_id', candidateIds)
+        .eq('is_active', true);
       if (error) {
         console.warn('Could not load affiliate selections from DB:', error.message);
         return;
