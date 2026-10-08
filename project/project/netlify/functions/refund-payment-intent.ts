@@ -255,6 +255,7 @@ export const handler: Handler = async (event) => {
 
     const paypalStatus = normalize(refund.status).toUpperCase();
     if (paypalStatus === 'PENDING') {
+      await supabaseAdmin.from('orders').update({ payment_status: 'refund_pending', dispute_status: 'OPEN', updated_at: new Date().toISOString() } as any).eq('id', String(order.id));
       return json(202, {
         ok: true, action: 'refund_pending', refundId: refund.refundId, provider: 'paypal',
         message: 'Refund submitted to PayPal; payouts remain on hold until refund completion.',
