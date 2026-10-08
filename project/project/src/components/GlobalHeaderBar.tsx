@@ -58,7 +58,7 @@ const GlobalHeaderBar: React.FC = () => {
     hasBusinessAccess
       ? { label: "Business", href: "/business", icon: LayoutDashboard }
       : { label: "Sell & earn", href: "/start-earning", icon: Store },
-    ...(hasBusinessAccess ? [{ label: "Add product", href: "/business/products/add", icon: Plus }] : []),
+    ...(hasBusinessAccess ? [{ label: "My store", href: "/store-builder", icon: Store }] : []),
     { label: "Account", href: user ? "/account" : "/auth/login", icon: User },
     { label: "Cart", href: "/cart", icon: ShoppingCart },
   ];
@@ -180,12 +180,14 @@ const GlobalHeaderBar: React.FC = () => {
                       </Link>
                     )}
                     {hasBusinessAccess && (
-                      <Link
-                        to="/business"
-                        className="block rounded-lg px-3 py-3 text-slate-700 hover:bg-slate-50"
-                      >
-                        Business Center
-                      </Link>
+                      <>
+                        <Link to="/store-builder" className="flex items-center gap-2 rounded-lg bg-[#101820] px-3 py-3 font-bold text-[#ffcb05]">
+                          <Store className="h-4 w-4" /> Customize My Store
+                        </Link>
+                        <Link to="/business" className="block rounded-lg px-3 py-3 text-slate-700 hover:bg-slate-50">
+                          Business Center
+                        </Link>
+                      </>
                     )}
                     {hasBusinessAccess && (
                       <Link
@@ -279,6 +281,7 @@ const GlobalHeaderBar: React.FC = () => {
           )}
           {hasBusinessAccess && isBusiness ? (
             <>
+              <Link to="/store-builder" className="bz-shopping-link text-[#ffdb55]">Customize My Store</Link>
               <Link to="/business?section=seller&tab=products" className="bz-shopping-link">My products</Link>
               <Link to="/business?tab=orders" className="bz-shopping-link">Orders</Link>
               <Link to="/business?tab=financials" className="bz-shopping-link">Earnings</Link>
@@ -327,6 +330,7 @@ const GlobalHeaderBar: React.FC = () => {
             <MarketplaceSearch />
             {hasBusinessAccess && (
               <div className="grid grid-cols-2 gap-2">
+                <Link to="/store-builder" className="bz-button bz-button-gold col-span-2"><Store className="h-4 w-4" /> Customize My Store</Link>
                 <Link to="/business/products/add" className="bz-button bz-button-gold"><Plus className="h-4 w-4" /> Add product</Link>
                 <Link to="/business?section=seller&tab=products" className="bz-button bz-button-outline">My products</Link>
                 <Link to="/business?tab=orders" className="bz-button bz-button-outline">Orders</Link>
