@@ -199,7 +199,7 @@ const handler: Handler = async (event) => {
       storeSlug = storeRaw.toLowerCase();
 
       // Do slug lookups in parallel (fast path).
-      const [{ data: fromStorefront }, { data: fromSettings }, { data: fromProfiles }] = await Promise.all([
+      const [{ data: fromStorefront }, { data: fromSettings }, { data: fromAffiliateSettings }, { data: fromProfiles }] = await Promise.all([
         supabaseAdmin
           .from('storefronts')
           .select('id,owner_id,type,name,slug,custom_domain,logo_url,description,banner_url,store_theme,product_page_template,layout_config,theme_settings,color_scheme,social_links,business_hours,shipping_policy,return_policy,custom_css,is_active')
@@ -207,6 +207,7 @@ const handler: Handler = async (event) => {
           .eq('is_active', true)
           .maybeSingle(),
         supabaseAdmin.from('store_settings').select('seller_id').eq('subdomain', storeSlug).maybeSingle(),
+        supabaseAdmin.from('affiliate_store_settings').select('affiliate_id').eq('subdomain', storeSlug).maybeSingle(),
         supabaseAdmin.from('profiles').select('id, role, primary_role').eq('subdomain', storeSlug).maybeSingle(),
       ]);
 
@@ -217,6 +218,9 @@ const handler: Handler = async (event) => {
 
       const settingsId = String((fromSettings as any)?.seller_id || '').trim();
       if (!sellerId && settingsId) sellerId = settingsId;
+      if (!sellerId && (fromAffiliateSettings as any)?.affiliate_id) {
+        sellerId = String((fromAffiliateSettings as any).affiliate_id).trim();
+      }
 
       if (!sellerId) {
         const id = String((fromProfiles as any)?.id || '').trim();
@@ -233,9 +237,10 @@ const handler: Handler = async (event) => {
     const profileSelect = 'id,user_id,full_name,bio,location,store_theme,store_banner,store_logo,subdomain,custom_domain,social_links,business_hours,shipping_policy,return_policy,template_id,product_page_template,layout_config,theme_settings,custom_css,color_scheme';
     const settingsSelect = 'seller_id,store_name,store_description,store_theme,store_banner,store_logo,subdomain,custom_domain,social_links,business_hours,shipping_policy,return_policy,template_id,product_page_template,layout_config,theme_settings,custom_css,color_scheme';
 
-    const [{ data: profile, error: profileError }, { data: storeSettings, error: storeSettingsError }] = await Promise.all([
+    const [{ data: profile, error: profileError }, { data: storeSettings, error: storeSettingsError }, { data: affiliateSettings }] = await Promise.all([
       selectMaybeSingleResilient(supabaseAdmin, 'profiles', profileSelect, 'id', sellerId),
       selectMaybeSingleResilient(supabaseAdmin, 'store_settings', settingsSelect, 'seller_id', sellerId),
+      selectMaybeSingleResilient(supabaseAdmin, 'affiliate_store_settings', settingsSelect.replace('seller_id,', 'affiliate_id,'), 'affiliate_id', sellerId),
     ]);
 
     if (profileError) {
@@ -245,6 +250,7 @@ const handler: Handler = async (event) => {
       console.warn('[public-store-get] store settings lookup error (non-fatal):', (storeSettingsError as any)?.message || String(storeSettingsError));
     }
 
+    const memberSettings = storeSettings || affiliateSettings;
     const hasDedicatedStorefront = Boolean(brandStorefront?.id);
     const houseBrandIdentity = resolveHouseBrandIdentity(
       brandStorefront?.slug || storeSlug,
@@ -253,24 +259,24 @@ const handler: Handler = async (event) => {
     const mergedSeller: any = {
       id: sellerId,
       storefront_id: brandStorefront?.id || null,
-      full_name: houseBrandIdentity?.name ?? brandStorefront?.name ?? (profile as any)?.full_name ?? (storeSettings as any)?.store_name ?? 'Store',
-      bio: houseBrandIdentity?.about ?? (hasDedicatedStorefront ? brandStorefront?.description ?? '' : (profile as any)?.bio ?? (storeSettings as any)?.store_description ?? ''),
-      store_theme: hasDedicatedStorefront ? brandStorefront?.store_theme ?? 'modern' : (storeSettings as any)?.store_theme ?? (profile as any)?.store_theme ?? 'modern',
-      store_banner: hasDedicatedStorefront ? brandStorefront?.banner_url ?? null : (storeSettings as any)?.store_banner ?? (profile as any)?.store_banner ?? null,
-      store_logo: hasDedicatedStorefront ? brandStorefront?.logo_url ?? houseBrandIdentity?.logoUrl ?? null : (storeSettings as any)?.store_logo ?? (profile as any)?.store_logo ?? null,
-      subdomain: (brandStorefront?.slug ?? (storeSettings as any)?.subdomain ?? (profile as any)?.subdomain ?? storeSlug) || null,
-      custom_domain: hasDedicatedStorefront ? brandStorefront?.custom_domain ?? null : (storeSettings as any)?.custom_domain ?? (profile as any)?.custom_domain ?? null,
+      full_name: houseBrandIdentity?.name ?? brandStorefront?.name ?? (profile as any)?.full_name ?? (memberSettings as any)?.store_name ?? 'Store',
+      bio: houseBrandIdentity?.about ?? (hasDedicatedStorefront ? brandStorefront?.description ?? '' : (profile as any)?.bio ?? (memberSettings as any)?.store_description ?? ''),
+      store_theme: hasDedicatedStorefront ? brandStorefront?.store_theme ?? 'modern' : (memberSettings as any)?.store_theme ?? (profile as any)?.store_theme ?? 'modern',
+      store_banner: hasDedicatedStorefront ? brandStorefront?.banner_url ?? null : (memberSettings as any)?.store_banner ?? (profile as any)?.store_banner ?? null,
+      store_logo: hasDedicatedStorefront ? brandStorefront?.logo_url ?? houseBrandIdentity?.logoUrl ?? null : (memberSettings as any)?.store_logo ?? (profile as any)?.store_logo ?? null,
+      subdomain: (brandStorefront?.slug ?? (memberSettings as any)?.subdomain ?? (profile as any)?.subdomain ?? storeSlug) || null,
+      custom_domain: hasDedicatedStorefront ? brandStorefront?.custom_domain ?? null : (memberSettings as any)?.custom_domain ?? (profile as any)?.custom_domain ?? null,
       location: hasDedicatedStorefront ? null : (profile as any)?.location ?? null,
-      social_links: hasDedicatedStorefront ? brandStorefront?.social_links ?? {} : (storeSettings as any)?.social_links ?? (profile as any)?.social_links ?? {},
-      business_hours: hasDedicatedStorefront ? brandStorefront?.business_hours ?? null : (storeSettings as any)?.business_hours ?? (profile as any)?.business_hours ?? null,
-      shipping_policy: hasDedicatedStorefront ? brandStorefront?.shipping_policy ?? null : (storeSettings as any)?.shipping_policy ?? (profile as any)?.shipping_policy ?? null,
-      return_policy: hasDedicatedStorefront ? brandStorefront?.return_policy ?? null : (storeSettings as any)?.return_policy ?? (profile as any)?.return_policy ?? null,
-      template_id: hasDedicatedStorefront ? null : (storeSettings as any)?.template_id ?? (profile as any)?.template_id ?? null,
-      product_page_template: hasDedicatedStorefront ? brandStorefront?.product_page_template ?? null : (storeSettings as any)?.product_page_template ?? (profile as any)?.product_page_template ?? null,
-      layout_config: hasDedicatedStorefront ? brandStorefront?.layout_config ?? null : (storeSettings as any)?.layout_config ?? (profile as any)?.layout_config ?? null,
-      theme_settings: hasDedicatedStorefront ? brandStorefront?.theme_settings ?? null : (storeSettings as any)?.theme_settings ?? (profile as any)?.theme_settings ?? null,
-      custom_css: hasDedicatedStorefront ? brandStorefront?.custom_css ?? null : (storeSettings as any)?.custom_css ?? (profile as any)?.custom_css ?? null,
-      color_scheme: hasDedicatedStorefront ? brandStorefront?.color_scheme ?? null : (storeSettings as any)?.color_scheme ?? (profile as any)?.color_scheme ?? null,
+      social_links: hasDedicatedStorefront ? brandStorefront?.social_links ?? {} : (memberSettings as any)?.social_links ?? (profile as any)?.social_links ?? {},
+      business_hours: hasDedicatedStorefront ? brandStorefront?.business_hours ?? null : (memberSettings as any)?.business_hours ?? (profile as any)?.business_hours ?? null,
+      shipping_policy: hasDedicatedStorefront ? brandStorefront?.shipping_policy ?? null : (memberSettings as any)?.shipping_policy ?? (profile as any)?.shipping_policy ?? null,
+      return_policy: hasDedicatedStorefront ? brandStorefront?.return_policy ?? null : (memberSettings as any)?.return_policy ?? (profile as any)?.return_policy ?? null,
+      template_id: hasDedicatedStorefront ? null : (memberSettings as any)?.template_id ?? (profile as any)?.template_id ?? null,
+      product_page_template: hasDedicatedStorefront ? brandStorefront?.product_page_template ?? null : (memberSettings as any)?.product_page_template ?? (profile as any)?.product_page_template ?? null,
+      layout_config: hasDedicatedStorefront ? brandStorefront?.layout_config ?? null : (memberSettings as any)?.layout_config ?? (profile as any)?.layout_config ?? null,
+      theme_settings: hasDedicatedStorefront ? brandStorefront?.theme_settings ?? null : (memberSettings as any)?.theme_settings ?? (profile as any)?.theme_settings ?? null,
+      custom_css: hasDedicatedStorefront ? brandStorefront?.custom_css ?? null : (memberSettings as any)?.custom_css ?? (profile as any)?.custom_css ?? null,
+      color_scheme: hasDedicatedStorefront ? brandStorefront?.color_scheme ?? null : (memberSettings as any)?.color_scheme ?? (profile as any)?.color_scheme ?? null,
     };
 
     const sellerAliases = Array.from(
@@ -399,74 +405,73 @@ const handler: Handler = async (event) => {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
-    const sharedSlug = String(mergedSeller.subdomain || storeSlug || '').trim().toLowerCase();
-    if (sharedSlug && !brandStorefront?.id) {
-      const { data: affiliateSettingsRow } = await supabaseAdmin
-        .from('affiliate_store_settings')
-        .select('affiliate_id')
-        .eq('subdomain', sharedSlug)
-        .maybeSingle();
-
-      const sharedAffiliateId = String((affiliateSettingsRow as any)?.affiliate_id || '').trim();
-      if (sharedAffiliateId) {
-        const [{ data: affiliateRows }, { data: affiliateProducts }] = await Promise.all([
-          supabaseAdmin
-            .from('affiliate_products')
-            .select('product_id, display_order, is_featured')
-            .eq('affiliate_id', sharedAffiliateId),
-          supabaseAdmin
-            .from('affiliate_products')
-            .select('product_id')
-            .eq('affiliate_id', sharedAffiliateId),
-        ]);
-
-        const affiliateProductIds = Array.from(
-          new Set(
-            (affiliateProducts || [])
-              .map((row: any) => String(row?.product_id || '').trim())
-              .filter(Boolean)
-          )
-        );
-
+    // Every member has one public storefront. Seller-owned products and active
+    // affiliate selections are two product sources for that same member ID.
+    // Do not merge by slug: a member's old seller/affiliate slugs may differ.
+    // Dedicated admin brand storefronts remain deliberately isolated.
+    if (!brandStorefront?.id) {
+      const { data: affiliateRows, error: affiliateRowsError } = await supabaseAdmin
+        .from('affiliate_products')
+        .select('product_id,display_order,is_featured,is_active')
+        .in('affiliate_id', sellerAliases)
+        .eq('is_active', true)
+        .limit(500);
+      if (affiliateRowsError) {
+        console.warn('[public-store-get] Unable to load member affiliate selections:', affiliateRowsError.message);
+      } else {
+        const affiliateProductIds = Array.from(new Set(
+          (affiliateRows || []).map((row: any) => String(row?.product_id || '').trim()).filter(Boolean)
+        ));
         if (affiliateProductIds.length) {
-          const { data: promotedProducts } = await supabaseAdmin
+          const { data: promotedProducts, error: promotedError } = await supabaseAdmin
             .from('products')
             .select(selectFields)
             .in('id', affiliateProductIds.slice(0, 500));
+          if (promotedError) {
+            console.warn('[public-store-get] Unable to hydrate member affiliate products:', promotedError.message);
+          } else {
+            const externalSellerIds = Array.from(new Set((promotedProducts || [])
+              .map((product: any) => String(product?.seller_id || '').trim())
+              .filter((id: string) => Boolean(id) && !sellerAliases.includes(id))));
+            const sellerNameById = new Map<string, string>();
+            if (externalSellerIds.length) {
+              const { data: sellerProfiles } = await supabaseAdmin.from('profiles')
+                .select('id,full_name').in('id', externalSellerIds.slice(0, 500));
+              (sellerProfiles || []).forEach((seller: any) => {
+                const id = String(seller?.id || '').trim();
+                const name = String(seller?.full_name || '').trim();
+                if (id && name) sellerNameById.set(id, name);
+              });
+            }
+            const orderById = new Map<string, any>();
+            (affiliateRows || []).forEach((row: any) => orderById.set(String(row.product_id), row));
+            const combinedById = new Map<string, any>();
+            orderedProducts.forEach((product: any) => combinedById.set(String(product.id), product));
 
-          const promotedOrderById = new Map<string, any>();
-          (affiliateRows || []).forEach((row: any) => {
-            const productId = String(row?.product_id || '').trim();
-            if (productId) promotedOrderById.set(productId, row);
-          });
-
-          const combinedById = new Map<string, any>();
-          orderedProducts.forEach((product: any) => {
-            const productId = String(product?.id || '').trim();
-            if (productId) combinedById.set(productId, product);
-          });
-
-          (promotedProducts || [])
-            .filter((product: any) => isPublicAffiliateProduct(product))
-            .forEach((product: any) => {
-              const productId = String(product?.id || '').trim();
-              if (!productId || combinedById.has(productId)) return;
-              const order = promotedOrderById.get(productId);
-              combinedById.set(productId, sanitizeSupplyLineProduct({
-                ...applyStorefrontProductPricing(normalizeLegacyStorefrontProduct(product)),
-                affiliate_id: sharedAffiliateId,
-                display_order: Number.isFinite(Number(order?.display_order)) ? Number(order.display_order) : 999,
-                is_featured: Boolean(order?.is_featured),
-              }));
+            (promotedProducts || []).filter((product: any) => isPublicAffiliateProduct(product))
+              .forEach((product: any) => {
+                const productId = String(product?.id || '').trim();
+                const actualSellerId = String(product?.seller_id || '').trim();
+                if (!productId || combinedById.has(productId)) return;
+                const selected = orderById.get(productId);
+                const externalProduct = !sellerAliases.includes(actualSellerId);
+                combinedById.set(productId, sanitizeSupplyLineProduct({
+                  ...applyStorefrontProductPricing(normalizeLegacyStorefrontProduct(product)),
+                  ...(externalProduct ? { affiliate_id: sellerId } : {}),
+                  profiles: { full_name: sellerNameById.get(actualSellerId) || 'Seller' },
+                  storefront_slug: mergedSeller.subdomain || storeSlug || null,
+                  display_order: Number.isFinite(Number(selected?.display_order)) ? Number(selected.display_order) : 999,
+                  is_featured: Boolean(selected?.is_featured),
+                }));
+              });
+            orderedProducts.splice(0, orderedProducts.length, ...Array.from(combinedById.values()));
+            orderedProducts.sort((a: any, b: any) => {
+              if (a.is_featured && !b.is_featured) return -1;
+              if (!a.is_featured && b.is_featured) return 1;
+              if (a.display_order !== b.display_order) return a.display_order - b.display_order;
+              return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             });
-
-          orderedProducts.splice(0, orderedProducts.length, ...Array.from(combinedById.values()));
-          orderedProducts.sort((a: any, b: any) => {
-            if (a.is_featured && !b.is_featured) return -1;
-            if (!a.is_featured && b.is_featured) return 1;
-            if (a.display_order !== b.display_order) return a.display_order - b.display_order;
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-          });
+          }
         }
       }
     }
