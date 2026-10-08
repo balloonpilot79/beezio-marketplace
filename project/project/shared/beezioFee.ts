@@ -8,8 +8,8 @@
 export const DEFAULT_BEEZIO_PLATFORM_RATE = 0;
 export const DEFAULT_BEEZIO_UNDER_THRESHOLD_FLAT_FEE = 1;
 export const DEFAULT_BEEZIO_PERCENT_RATE_THRESHOLD = 50;
-export const DEFAULT_BEEZIO_MIN_NET_PROFIT = 1;
-export const DEFAULT_BEEZIO_PLATFORM_FEE_MIN = 1;
+export const DEFAULT_BEEZIO_MIN_NET_PROFIT = 2.25;
+export const DEFAULT_BEEZIO_PLATFORM_FEE_MIN = 2.25;
 export const DEFAULT_BEEZIO_PLATFORM_FEE_CAP = Number.MAX_SAFE_INTEGER;
 export const DEFAULT_BEEZIO_LARGE_ORDER_THRESHOLD = Number.MAX_SAFE_INTEGER;
 export const DEFAULT_BEEZIO_LARGE_ORDER_FLAT_FEE = 0;
@@ -36,11 +36,11 @@ export function computeFixedBeezioPlatformFee(sellerAsk: number): number {
     ? Math.max(0, toMoney(sellerAsk))
     : 0;
   if (price <= 0) return 0;
-  // Internal per-item policy, based only on seller payout before shipping.
-  // No cap: each started $25 bracket above $50 adds one dollar.
-  if (price <= 15) return 1;
-  if (price <= 50) return 2;
-  return Math.ceil(Math.round(price * 100) / 2500);
+  // Internal per-item policy, based only on seller ask before affiliate,
+  // shipping, influencer, processing, or tax. Beezio never earns less than
+  // $2.25 on a paid item; higher seller-ask brackets keep the stepped model.
+  if (price <= 50) return 2.25;
+  return Math.max(2.25, Math.ceil(Math.round(price * 100) / 2500));
 }
 
 export function computeBeezioPlatformFee(
