@@ -2,6 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { extractAuthHeader, getAuthedUser, requireAdmin } from './_lib/auth';
 import { json, assertPost, parseJson } from './_lib/http';
+import { notifyDisputeParties } from './_lib/dispute-alerts';
 
 type Body = {
   disputeId?: string;
@@ -41,11 +42,15 @@ export const handler: Handler = async (event) => {
 
     const { data: dispute } = await supabaseAdmin
       .from('disputes')
-      .select('id, filed_by, filed_against')
+      .select('id, filed_by, filed_against, status')
       .eq('id', disputeId)
       .maybeSingle();
 
     if (!(dispute as any)?.id) return json(404, { error: 'Dispute not found' });
+
+    if (['resolved', 'closed'].includes(normalize((dispute as any)?.status))) {
+      return json(409, { error: 'This dispute is closed. Please open a new support request.' });
+    }
 
     const filedBy = normalize((dispute as any)?.filed_by);
     const filedAgainst = normalize((dispute as any)?.filed_against);
@@ -71,7 +76,11 @@ export const handler: Handler = async (event) => {
       .update({ updated_at: new Date().toISOString() } as any)
       .eq('id', disputeId);
 
-    return json(200, { message: msg });
+    const alerts = await notifyDisputeParties(supabaseAdmin, {
+      disputeId, event: 'message', actorId: senderUserId, messageId: String(msg.id),
+    });
+
+    return json(200, { message: msg, alerts });
   } catch (e) {
     return json(500, { error: 'Unexpected error', details: e instanceof Error ? e.message : String(e) });
   }
