@@ -314,7 +314,7 @@ const handler: Handler = async (event) => {
         store_name: sellerName,
         subdomain: productStorefront.slug || storeSettings?.subdomain || null,
         custom_domain: productStorefront.custom_domain || null,
-        shipping_policy: 'Free shipping. Shipping costs are included in each physical product price.',
+        shipping_policy: 'Shipping is shown separately from the product price and added at checkout.',
         return_policy: productStorefront.return_policy || storeSettings?.return_policy || null,
       };
     }
