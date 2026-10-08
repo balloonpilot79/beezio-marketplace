@@ -723,6 +723,29 @@ export const handler: Handler = async (event) => {
     const paypalFixed = LOCKED_PAYPAL_FIXED;
     const payoutBuffer = LOCKED_PAYOUT_BUFFER;
 
+    // Resolve the actual checkout tax rate before pricing items so the hidden
+    // PayPal allowance covers the percentage PayPal charges on tax too.
+    const taxCollectionDisabled = String(process.env.DISABLE_TAX_COLLECTION || '').trim().toLowerCase() === 'true';
+    const configuredPaymentTaxRate = String(process.env.PAYMENT_TAX_RATE || '').trim()
+      ? Number(process.env.PAYMENT_TAX_RATE) : Number.NaN;
+    const configuredFallbackTaxRate = String(process.env.TAX_RATE || '').trim()
+      ? Number(process.env.TAX_RATE) : Number.NaN;
+    const shippingAddress = body?.shipping_info || {};
+    const fallbackTaxRate =
+      Number.isFinite(configuredPaymentTaxRate) && configuredPaymentTaxRate >= 0
+        ? configuredPaymentTaxRate
+        : Number.isFinite(configuredFallbackTaxRate) && configuredFallbackTaxRate >= 0
+          ? configuredFallbackTaxRate
+          : 0.07;
+    const taxResolution = resolveLocationTaxRate({
+      country: shippingAddress?.country,
+      state: shippingAddress?.state,
+      postalCode: shippingAddress?.zip || shippingAddress?.postal_code,
+      configuredRatesJson: process.env.PAYMENT_TAX_RATES_JSON,
+      fallbackRate: fallbackTaxRate,
+      disabled: taxCollectionDisabled,
+    });
+
     const supabaseAdmin = createSupabaseAdmin();
     const buyerId = await resolveProfileId(supabaseAdmin, requestedBuyerId);
     const storefrontContext = await resolveStorefrontContext(supabaseAdmin, storefrontId, orderSource);
@@ -1075,6 +1098,7 @@ export const handler: Handler = async (event) => {
             paypalPercent: paypalPct,
             paypalFixed,
             payoutBuffer,
+            estimatedTaxRate: taxResolution.rate,
           });
       const listingUnit = isTestItemTitle(title)
         ? round2(TEST_ITEM_PRICE)
@@ -1437,28 +1461,6 @@ export const handler: Handler = async (event) => {
     const shippingItems = applyShippingAllocations(computedItems, shippingLines);
     computedItems.splice(0, computedItems.length, ...shippingItems);
     const shippingAmount = round2(shippingLines.reduce((total, amount) => total + amount, 0));
-    const taxCollectionDisabled = String(process.env.DISABLE_TAX_COLLECTION || '').trim().toLowerCase() === 'true';
-    const configuredPaymentTaxRate = String(process.env.PAYMENT_TAX_RATE || '').trim()
-      ? Number(process.env.PAYMENT_TAX_RATE) : Number.NaN;
-    const configuredFallbackTaxRate = String(process.env.TAX_RATE || '').trim()
-      ? Number(process.env.TAX_RATE) : Number.NaN;
-    const shippingAddress = body?.shipping_info || {};
-    const fallbackTaxRate =
-      Number.isFinite(configuredPaymentTaxRate) && configuredPaymentTaxRate >= 0
-        ? configuredPaymentTaxRate
-        : Number.isFinite(configuredFallbackTaxRate) && configuredFallbackTaxRate >= 0
-          ? configuredFallbackTaxRate
-          : taxAmountClient > 0 && subtotalListing > 0
-            ? taxAmountClient / (subtotalListing + shippingAmount)
-            : 0.07;
-    const taxResolution = resolveLocationTaxRate({
-      country: shippingAddress?.country,
-      state: shippingAddress?.state,
-      postalCode: shippingAddress?.zip || shippingAddress?.postal_code,
-      configuredRatesJson: process.env.PAYMENT_TAX_RATES_JSON,
-      fallbackRate: fallbackTaxRate,
-      disabled: taxCollectionDisabled,
-    });
     const taxAmount = round2((subtotalListing + shippingAmount) * taxResolution.rate);
 
     // SupplyLine Plus shipping is charged separately. Before
