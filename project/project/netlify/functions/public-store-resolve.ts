@@ -111,7 +111,9 @@ const handler: Handler = async (event) => {
     }
 
     if (affiliateId) {
-      const body = { ok: true, store_type: 'affiliate', store_id: affiliateId };
+      // Legacy affiliate-only URLs now render the SAME member store,
+      // with the member's own products and affiliate selections together.
+      const body = { ok: true, store_type: 'seller', store_id: affiliateId };
       setCache(cacheKey, body, 5 * 60_000);
       return json(200, body);
     }
@@ -123,7 +125,7 @@ const handler: Handler = async (event) => {
       return json(200, body);
     }
     if (latestAffiliateProfile?.id) {
-      const body = { ok: true, store_type: 'affiliate', store_id: String(latestAffiliateProfile.id).trim() };
+      const body = { ok: true, store_type: 'seller', store_id: String(latestAffiliateProfile.id).trim() };
       setCache(cacheKey, body, 5 * 60_000);
       return json(200, body);
     }
