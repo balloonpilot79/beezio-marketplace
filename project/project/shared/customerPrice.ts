@@ -77,13 +77,14 @@ export function computeFixedTierPricing(params: {
 
   for (let index = 0; index < 100; index += 1) {
     iterations = index + 1;
-    influencerAllocation = getInfluencerReserveTotal(finalAdvertisedPrice);
+    influencerAllocation = getInfluencerReserveTotal(sellerPayout);
     platformFee = round2(
       computeFixedBeezioPlatformFee(sellerPayout) +
-        getSmallOrderPlatformReallocation(finalAdvertisedPrice)
+        getSmallOrderPlatformReallocation(sellerPayout)
     );
+    const estimatedTaxForProcessing = round2(finalAdvertisedPrice * estimatedTaxRate);
     paypalProcessingAllowance = ceil2(
-      finalAdvertisedPrice * paypalPercent + paypalFixed
+      (finalAdvertisedPrice + estimatedTaxForProcessing) * paypalPercent + paypalFixed
     );
     const nextPrice = ceil2(
       requiredBase +
@@ -97,13 +98,14 @@ export function computeFixedTierPricing(params: {
 
   // Re-evaluate once at the settled price so every returned tier is guaranteed
   // to match the displayed price.
-  influencerAllocation = getInfluencerReserveTotal(finalAdvertisedPrice);
+  influencerAllocation = getInfluencerReserveTotal(sellerPayout);
   platformFee = round2(
     computeFixedBeezioPlatformFee(sellerPayout) +
-      getSmallOrderPlatformReallocation(finalAdvertisedPrice)
+      getSmallOrderPlatformReallocation(sellerPayout)
   );
+  const estimatedTaxForProcessing = round2(finalAdvertisedPrice * estimatedTaxRate);
   paypalProcessingAllowance = ceil2(
-    finalAdvertisedPrice * paypalPercent + paypalFixed
+    (finalAdvertisedPrice + estimatedTaxForProcessing) * paypalPercent + paypalFixed
   );
   const coveredPrice = ceil2(
     requiredBase +
