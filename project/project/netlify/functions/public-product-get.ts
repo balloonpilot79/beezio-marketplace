@@ -263,6 +263,40 @@ const handler: Handler = async (event) => {
       }
     }
 
+    // Generic member stores do not require a dedicated storefronts row.
+    // Credit this member as affiliate ONLY when this product was actively
+    // selected from the marketplace and belongs to somebody else.
+    if (requestedStore && !purchaseAttribution?.affiliate_id && !purchaseAttribution?.storefront_id) {
+      const token = requestedStore.toLowerCase();
+      const isMemberId = isUuid(token);
+      let memberId = '';
+      if (isMemberId) {
+        const { data: member } = await supabaseAdmin.from('profiles')
+          .select('id').or(`id.eq.${token},user_id.eq.${token}`).maybeSingle();
+        memberId = String(member?.id || '').trim();
+      } else {
+        const [{ data: sellerSetting }, { data: affiliateSetting }] = await Promise.all([
+          supabaseAdmin.from('store_settings').select('seller_id').eq('subdomain', token).maybeSingle(),
+          supabaseAdmin.from('affiliate_store_settings').select('affiliate_id').eq('subdomain', token).maybeSingle(),
+        ]);
+        memberId = String(sellerSetting?.seller_id || affiliateSetting?.affiliate_id || '').trim();
+      }
+      if (memberId && memberId !== sellerId) {
+        const { data: selected, error: selectedError } = await supabaseAdmin
+          .from('affiliate_products')
+          .select('id')
+          .eq('affiliate_id', memberId)
+          .eq('product_id', productIdRaw)
+          .eq('is_active', true)
+          .limit(1);
+        if (selectedError) {
+          console.warn('[public-product-get] Member affiliate selection check failed:', selectedError.message);
+        } else if (selected?.length && (product as any)?.affiliate_enabled !== false) {
+          purchaseAttribution = { affiliate_id: memberId };
+        }
+      }
+    }
+
     const { data: placementRows } = await supabaseAdmin
       .from('storefront_products')
       .select('storefront_id')
