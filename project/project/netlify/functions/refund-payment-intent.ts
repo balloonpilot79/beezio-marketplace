@@ -230,7 +230,7 @@ export const handler: Handler = async (event) => {
       currency: normalize(order?.currency) || 'USD',
       amount: Number.isFinite(refundAmount) && refundAmount > 0 ? refundAmount : undefined,
       note: normalize(body?.reason) || 'refund',
-      requestId: 'bzo_order_refund_' + String(order.id),
+      requestId: 'bzo_capture_refund_' + String(order.id),
     });
 
     await cancelOrderPayoutsForRefund(supabaseAdmin, String(order.id), providerCaptureId);
