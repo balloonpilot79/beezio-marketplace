@@ -205,7 +205,7 @@ export function calculatePayouts(
       ? 1
       : 0;
   const referralBonus = getAssignedInfluencerPayoutTotal(
-    salePrice,
+    sellerPayout,
     assignedInfluencerCount
   );
   const processingFee = roundUpToTwoDecimals(
