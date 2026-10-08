@@ -74,6 +74,23 @@ const logAccountRefundHistory = async (
   );
 };
 
+const holdOrderPayoutsForRefund = async (supabaseAdmin: any, orderId: string) => {
+  const nowIso = new Date().toISOString();
+  const { error: orderError } = await supabaseAdmin.from('orders')
+    .update({ dispute_status: 'OPEN', updated_at: nowIso } as any).eq('id', orderId);
+  if (orderError) throw orderError;
+  for (const table of ['payout_ledger', 'payout_snapshots']) {
+    const { error } = await supabaseAdmin.from(table)
+      .update({ status: 'ON_HOLD_DISPUTE', updated_at: nowIso } as any)
+      .eq('order_id', orderId).in('status', ['PENDING_HOLD', 'READY_TO_PAY']);
+    if (error) throw error;
+  }
+  const { error: moneyError } = await supabaseAdmin.from('order_money_ledger')
+    .update({ status: 'on_hold_dispute', updated_at: nowIso } as any)
+    .eq('order_id', orderId).in('status', ['held', 'ready']);
+  if (moneyError) throw moneyError;
+};
+
 const cancelOrderPayoutsForRefund = async (supabaseAdmin: any, orderId: string, providerCaptureId: string) => {
   const nowIso = new Date().toISOString();
 
@@ -225,6 +242,9 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    // Protect this order before asking PayPal to move funds. This is not an approval
+    // for unrelated orders and cannot shorten the normal 14-day payout hold.
+    await holdOrderPayoutsForRefund(supabaseAdmin, String(order.id));
     const refund = await refundPayPalCapture({
       captureId: providerCaptureId,
       currency: normalize(order?.currency) || 'USD',
@@ -232,6 +252,21 @@ export const handler: Handler = async (event) => {
       note: normalize(body?.reason) || 'refund',
       requestId: 'bzo-r-' + String(order.id).replace(/-/g, ''),
     });
+
+    const paypalStatus = normalize(refund.status).toUpperCase();
+    if (paypalStatus === 'PENDING') {
+      return json(202, {
+        ok: true, action: 'refund_pending', refundId: refund.refundId, provider: 'paypal',
+        message: 'Refund submitted to PayPal; payouts remain on hold until refund completion.',
+      });
+    }
+    if (paypalStatus !== 'COMPLETED') {
+      return json(502, {
+        error: 'PayPal did not confirm completion. The order and related payouts remain on hold.',
+        code: 'PAYPAL_REFUND_NOT_COMPLETED',
+        provider_status: paypalStatus || 'UNKNOWN',
+      });
+    }
 
     await cancelOrderPayoutsForRefund(supabaseAdmin, String(order.id), providerCaptureId);
 
