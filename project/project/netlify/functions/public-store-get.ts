@@ -366,10 +366,26 @@ const handler: Handler = async (event) => {
       return json(500, { ok: false, error: 'Failed to load products', details });
     }
 
+    const productCandidates = [
+      ...sellerOwnedProducts,
+      ...curatedProducts.filter((product: any) => sellerAliases.includes(String(product.seller_id)) || isPublicAffiliateProduct(product)),
+    ].filter((product: any) => isVisibleStorefrontProduct(product));
+    const otherSellerIds = Array.from(new Set(productCandidates
+      .map((product: any) => String(product?.seller_id || '').trim())
+      .filter((id: string) => Boolean(id) && !sellerAliases.includes(id))));
+    const sellerDisplayNames = new Map<string, string>();
+    if (otherSellerIds.length) {
+      const { data: sellerProfiles } = await supabaseAdmin.from('profiles')
+        .select('id,full_name').in('id', otherSellerIds.slice(0, 500));
+      (sellerProfiles || []).forEach((row: any) => {
+        const id = String(row?.id || '').trim();
+        const name = String(row?.full_name || '').trim();
+        if (id && name) sellerDisplayNames.set(id, name);
+      });
+    }
+
     const productsById = new Map<string, any>();
-    [...sellerOwnedProducts, ...curatedProducts.filter((product: any) => sellerAliases.includes(String(product.seller_id)) || isPublicAffiliateProduct(product))]
-      .filter((product: any) => isVisibleStorefrontProduct(product))
-      .forEach((product: any) => {
+    productCandidates.forEach((product: any) => {
         const productId = String(product?.id || '').trim();
         if (productId) productsById.set(productId, product);
       });
@@ -380,7 +396,7 @@ const handler: Handler = async (event) => {
       return sanitizeSupplyLineProduct({
         ...applyStorefrontProductPricing(normalizeLegacyStorefrontProduct(product)),
         ...storefrontProductAttribution(brandStorefront, orderSetting, product),
-        profiles: { full_name: mergedSeller.full_name },
+        profiles: { full_name: sellerDisplayNames.get(String(product?.seller_id || '').trim()) || mergedSeller.full_name },
         storefront_slug: brandStorefront?.slug || storeSlug || null,
         shipping_cost: getProductShipping(product),
         shipping_price: getProductShipping(product),
