@@ -187,6 +187,12 @@ const GlobalHeaderBar: React.FC = () => {
                         <Link to="/business" className="block rounded-lg px-3 py-3 text-slate-700 hover:bg-slate-50">
                           Business Center
                         </Link>
+                        <Link to="/business/promote" className="block rounded-lg px-3 py-3 font-semibold text-slate-800 hover:bg-slate-50">
+                          Product Links & QR Codes
+                        </Link>
+                        <Link to="/business/invites" className="block rounded-lg px-3 py-3 font-semibold text-slate-800 hover:bg-slate-50">
+                          Influencer Invite Tools
+                        </Link>
                       </>
                     )}
                     {hasBusinessAccess && (
@@ -331,6 +337,8 @@ const GlobalHeaderBar: React.FC = () => {
             {hasBusinessAccess && (
               <div className="grid grid-cols-2 gap-2">
                 <Link to="/store-builder" className="bz-button bz-button-gold col-span-2"><Store className="h-4 w-4" /> Customize My Store</Link>
+                <Link to="/business/promote" className="bz-button bz-button-outline col-span-2">Product Links & QR Codes</Link>
+                <Link to="/business/invites" className="bz-button bz-button-outline col-span-2">Influencer Invite Tools</Link>
                 <Link to="/business/products/add" className="bz-button bz-button-gold"><Plus className="h-4 w-4" /> Add product</Link>
                 <Link to="/business?section=seller&tab=products" className="bz-button bz-button-outline">My products</Link>
                 <Link to="/business?tab=orders" className="bz-button bz-button-outline">Orders</Link>
