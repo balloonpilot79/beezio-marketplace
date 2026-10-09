@@ -63,7 +63,7 @@ const StoreBuilderPage: React.FC = () => {
             <p className="max-w-2xl text-xs leading-5 text-slate-600">
               All products appear in the same store. Shoppers can see the original seller of each item; payouts still follow the correct seller and affiliate.
             </p>
-            <Link to="/business?tab=influencer-promo" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-indigo-700">
+            <Link to="/business/invites" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-indigo-700">
               <Megaphone className="h-4 w-4" /> Influencer sharing tools
             </Link>
           </div>
