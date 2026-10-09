@@ -140,6 +140,20 @@ const InfluencerDashboard: React.FC = () => {
     }
   };
 
+  const downloadInviteQr = () => {
+    const svg = document.getElementById('beezio-influencer-signup-qr');
+    if (!svg || !codeForLink) return;
+    const markup = new XMLSerializer().serializeToString(svg);
+    const blobUrl = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = 'beezio-influencer-signup-qr.svg';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(blobUrl);
+  };
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -193,8 +207,10 @@ const InfluencerDashboard: React.FC = () => {
 
       <div className="mt-4 grid gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:grid-cols-[180px_1fr] sm:p-6">
         <div className="flex flex-col items-center justify-center gap-2 rounded-xl bg-white p-4">
-          {codeForLink ? <QRCodeSVG value={signupLink} size={144} includeMargin aria-label="Influencer signup QR code" /> : <QrCode className="h-16 w-16 text-slate-300" />}
+          {codeForLink ? <QRCodeSVG id="beezio-influencer-signup-qr" value={signupLink} size={144} includeMargin aria-label="Influencer signup QR code" /> : <QrCode className="h-16 w-16 text-slate-300" />}
           <span className="text-center text-xs font-bold text-slate-700">Scan to join through you</span>
+          <button type="button" disabled={!codeForLink} onClick={downloadInviteQr}
+            className="mt-1 min-h-10 rounded-lg border border-amber-300 bg-amber-50 px-3 text-xs font-bold text-amber-900 disabled:opacity-50">Download QR for flyers</button>
         </div>
         <div className="space-y-3">
           <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900"><Megaphone className="h-5 w-5 text-amber-700" /> Ready-to-share invitation</h3>
