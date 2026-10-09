@@ -518,14 +518,14 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
                 <span><span className="block text-xs font-medium text-amber-200">Step 1 · Your website</span>Customize My Store</span>
                 <span aria-hidden="true">→</span>
               </Link>
-              <Link to="/marketplace"
+              <Link to="/business/promote"
                 className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900">
-                <span><span className="block text-xs font-medium text-slate-500">Step 2 · Affiliate tools</span>Find Products to Promote</span>
+                <span><span className="block text-xs font-medium text-slate-500">Product sharing toolkit</span>Product Links, QR & Posts</span>
                 <span aria-hidden="true">→</span>
               </Link>
-              <Link to={businessBasePath + '?section=' + (businessSectionForShell || 'seller') + '&tab=influencer-promo'}
+              <Link to="/business/invites"
                 className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900">
-                <span><span className="block text-xs font-medium text-slate-500">Step 3 · Influencer tools</span>Invite Sellers & Affiliates</span>
+                <span><span className="block text-xs font-medium text-slate-500">Influencer sharing toolkit</span>My Referral Links & Invites</span>
                 <span aria-hidden="true">→</span>
               </Link>
             </div>
