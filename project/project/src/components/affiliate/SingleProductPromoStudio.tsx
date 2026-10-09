@@ -443,9 +443,9 @@ export default function SingleProductPromoStudio(props: Props) {
   // Product cards link directly to their OWN QR/share kit. Resolve the URL
   // selection after asynchronous product loading; never show another item first.
   const selectedProduct = useMemo(
-    () => effectiveProducts.find((product) => product.id === requestedProductId) ||
-      effectiveProducts.find((product) => product.id === selectedProductId) ||
-      effectiveProducts[0] || null,
+    () => requestedProductId
+      ? effectiveProducts.find((product) => product.id === requestedProductId) || null
+      : effectiveProducts.find((product) => product.id === selectedProductId) || effectiveProducts[0] || null,
     [effectiveProducts, requestedProductId, selectedProductId]
   );
   const audience = useMemo(
@@ -640,6 +640,12 @@ export default function SingleProductPromoStudio(props: Props) {
           </div>
         </div>
       </div>
+
+      {requestedProductId && !loadingProducts && !selectedProduct ? (
+        <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          This product is not in your active seller or affiliate selections. Add it to your store from the marketplace before sharing a tracked promotion, or choose another product above.
+        </div>
+      ) : null}
 
       {!loadingProducts && effectiveProducts.length === 0 ? (
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
