@@ -361,6 +361,7 @@ export default function SingleProductPromoStudio(props: Props) {
           .from('affiliate_products')
           .select('product_id,display_order')
           .in('affiliate_id', ownerAliases)
+          .eq('is_active', true)
           .order('display_order', { ascending: true })
           .limit(300);
 
