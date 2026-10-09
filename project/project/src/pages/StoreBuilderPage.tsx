@@ -33,7 +33,7 @@ const StoreBuilderPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#faf9f5] pb-16">
-      <div className="mx-auto max-w-6xl px-3 pt-5 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1560px] px-3 pt-5 sm:px-6 lg:px-8">
         <Link to="/business" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-slate-700">
           <ArrowLeft className="h-4 w-4" /> Back to Business Center
         </Link>
@@ -69,7 +69,7 @@ const StoreBuilderPage: React.FC = () => {
           </div>
         </div>
       </div>
-      <div className="mx-auto max-w-6xl px-2 pt-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1560px] px-2 pt-4 sm:px-6 lg:px-8">
         <StoreCustomization userId={ownerId} role="seller" />
       </div>
     </div>
