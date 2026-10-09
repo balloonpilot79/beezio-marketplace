@@ -10,6 +10,7 @@ import { apiPost } from '../../utils/netlifyApi';
 import { fetchAccountOwnedProducts } from '../../utils/accountOwnedProducts';
 import { buildPromoterReferralParams } from '../../utils/promoAttribution';
 import { QRCodeSVG } from 'qrcode.react';
+import { useSearchParams } from 'react-router-dom';
 
 type PromoProduct = {
   id: string;
@@ -218,6 +219,8 @@ const buildPosterSvg = (
 };
 
 export default function SingleProductPromoStudio(props: Props) {
+  const [queryParams, setQueryParams] = useSearchParams();
+  const requestedProductId = String(queryParams.get('product') || '').trim();
   const { profile, user } = useAuth();
   const { generateAffiliateLink } = useAffiliate();
   const [loadedProducts, setLoadedProducts] = useState<PromoProduct[]>([]);
@@ -436,9 +439,13 @@ export default function SingleProductPromoStudio(props: Props) {
     }
   }, [effectiveProducts, selectedProductId]);
 
+  // Product cards link directly to their OWN QR/share kit. Resolve the URL
+  // selection after asynchronous product loading; never show another item first.
   const selectedProduct = useMemo(
-    () => effectiveProducts.find((product) => product.id === selectedProductId) || effectiveProducts[0] || null,
-    [effectiveProducts, selectedProductId]
+    () => effectiveProducts.find((product) => product.id === requestedProductId) ||
+      effectiveProducts.find((product) => product.id === selectedProductId) ||
+      effectiveProducts[0] || null,
+    [effectiveProducts, requestedProductId, selectedProductId]
   );
   const audience = useMemo(
     () => audiencePresets.find((preset) => preset.id === selectedAudience) || audiencePresets[0],
@@ -609,6 +616,9 @@ export default function SingleProductPromoStudio(props: Props) {
                       type="button"
                       onClick={() => {
                         setSelectedProductId(product.id);
+                        if (requestedProductId && product.id !== requestedProductId) {
+                          setQueryParams({}, { replace: true });
+                        }
                         setProductMenuOpen(false);
                       }}
                       className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm transition ${
