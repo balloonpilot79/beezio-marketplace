@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Copy, Link as LinkIcon } from 'lucide-react';
+import { Copy, Link as LinkIcon, Megaphone, QrCode } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { copyTextToClipboard } from '../utils/clipboard';
@@ -113,13 +114,16 @@ const InfluencerDashboard: React.FC = () => {
   }, [profile?.id]);
 
   const codeForLink = useMemo(() => {
-    return getInfluencerPublicCode({
-      username: profile?.username,
-      storeSlug,
-      storeName,
-      referralCode: stats?.referral_code,
-      profileId: profile?.id,
-    });
+    // Prefer a permanent referral code. The public resolver also accepts the
+    // canonical profile UUID, so never publish a truncated/unresolvable fallback.
+    return String(stats?.referral_code || (profile as any)?.referral_code || profile?.id ||
+      getInfluencerPublicCode({
+        username: profile?.username,
+        storeSlug,
+        storeName,
+        referralCode: stats?.referral_code,
+        profileId: profile?.id,
+      }) || '').trim();
   }, [profile?.id, profile?.username, stats?.referral_code, storeName, storeSlug]);
 
   const signupLink = useMemo(() => {
@@ -149,13 +153,6 @@ const InfluencerDashboard: React.FC = () => {
       {error ? (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</div>
       ) : null}
-
-      <div id="influencer-promo" className="scroll-mt-32">
-        <InfluencerRecruitPromoStudio
-          code={codeForLink}
-          influencerName={String((profile as any)?.full_name || (profile as any)?.email || '')}
-        />
-      </div>
 
       <div id="invite-link" className="rounded-xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-3">
@@ -192,6 +189,35 @@ const InfluencerDashboard: React.FC = () => {
         <p className="mt-2 text-xs text-gray-500">
           Text invite opens your SMS app. Messenger copies the complete tracked invite before opening Messenger.
         </p>
+      </div>
+
+      <div className="mt-4 grid gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:grid-cols-[180px_1fr] sm:p-6">
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl bg-white p-4">
+          {codeForLink ? <QRCodeSVG value={signupLink} size={144} includeMargin aria-label="Influencer signup QR code" /> : <QrCode className="h-16 w-16 text-slate-300" />}
+          <span className="text-center text-xs font-bold text-slate-700">Scan to join through you</span>
+        </div>
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900"><Megaphone className="h-5 w-5 text-amber-700" /> Ready-to-share invitation</h3>
+          <p className="text-sm leading-6 text-slate-700">
+            Start your free Beezio store, list your own products, or earn commission promoting marketplace items. I use Beezio to help people earn from real product sales. Join through my link:
+          </p>
+          <p className="break-all rounded-lg bg-white px-3 py-2 text-xs font-medium text-slate-800">{signupLink}</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => void copyTextToClipboard(`Start selling or promoting real products on Beezio. Build your own free store and earn from qualifying product sales. Join through my link: ${signupLink}`)}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white"><Copy className="h-4 w-4" /> Copy invitation</button>
+            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(signupLink)}`} target="_blank" rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-slate-800">Share on Facebook</a>
+            <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(signupLink)}&text=${encodeURIComponent('Sell your own products or earn promoting marketplace products on Beezio.')}`} target="_blank" rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-slate-800">Share on X</a>
+          </div>
+          <p className="text-xs text-slate-600">Joining connects a qualifying new business account to your influencer referral. Earnings are recorded only when qualifying product sales occur, subject to Beezio payout rules.</p>
+        </div>
+      </div>
+      <div id="influencer-promo" className="mt-6 scroll-mt-32">
+        <InfluencerRecruitPromoStudio
+          code={codeForLink}
+          influencerName={String((profile as any)?.full_name || (profile as any)?.email || '')}
+        />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
