@@ -65,7 +65,7 @@ export const PaymentMonitoringDashboard: React.FC = () => {
   const determineUserType = async () => {
     try {
       const { data } = await supabase
-        .from('profiles')
+        .from('profile_directory')
         .select('user_type')
         .eq('id', user?.id)
         .single()

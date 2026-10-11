@@ -262,7 +262,7 @@ export const quickProofTest = async () => {
     // Try one real database call
     try {
       console.log('\nTesting actual database call...');
-      const { data, error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
+      const { data, error } = await supabase.from('profile_directory').select('count', { count: 'exact', head: true });
       
       if (error) {
         console.log('❌ Database call failed:');

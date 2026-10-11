@@ -37,7 +37,7 @@ async function resolveAffiliateProfileId(supabaseClient: any, rawCandidate: stri
   if (!isUuid(candidate)) {
     try {
       const { data } = await supabaseClient
-        .from('profiles')
+        .from('profile_directory')
         .select('id')
         .or(`id.eq.${candidate},user_id.eq.${candidate}`)
         .maybeSingle();
@@ -52,7 +52,7 @@ async function resolveAffiliateProfileId(supabaseClient: any, rawCandidate: stri
   try {
     const [{ data: profileRow }, { data: affiliateSettingsRow }] = await Promise.all([
       supabaseClient
-        .from('profiles')
+        .from('profile_directory')
         .select('id, role, primary_role')
         .eq('id', resolvedId)
         .maybeSingle(),
@@ -146,7 +146,7 @@ async function resolveAffiliateIdFromToken(affiliateRef: string): Promise<string
   // Recruitment links often use profiles.referral_code (e.g., JOHN2024) or username.
   try {
     const { data } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('id')
       .or(`referral_code.ilike.${affiliateRef},username.ilike.${affiliateRef},id.eq.${affiliateRef}`)
       .maybeSingle();

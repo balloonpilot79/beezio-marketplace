@@ -20,7 +20,7 @@ export async function resolveProfileIdForUser(userId: string): Promise<string> {
 
   try {
     const { data, error } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('id')
       .or(`id.eq.${uid},user_id.eq.${uid}`)
       .limit(1)
@@ -52,7 +52,7 @@ export async function ensureProfileIdForUser(user: MinimalUser): Promise<string>
 
   try {
     const { data, error } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('id')
       .eq('user_id', uid)
       .maybeSingle();

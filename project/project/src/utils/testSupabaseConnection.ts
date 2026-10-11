@@ -6,7 +6,7 @@ export const testSupabaseConnection = async () => {
     
     // Test 1: Basic connection
     const { data: connectionTest, error: connectionError } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('count(*)')
       .limit(1);
     

@@ -444,7 +444,7 @@ export default function PlatformAdminDashboard() {
     const { start, end } = getDateRange(timeFilter);
 
     const { data: admins } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('id, user_id, email')
       .eq('role', 'admin');
 
@@ -488,7 +488,7 @@ export default function PlatformAdminDashboard() {
     const userId = authData.user.id;
 
     const { data: profileById } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('id')
       .eq('id', userId)
       .maybeSingle();
@@ -497,7 +497,7 @@ export default function PlatformAdminDashboard() {
     const userEmail = authData.user.email;
     if (userEmail) {
       const { data: profileByEmail } = await supabase
-        .from('profiles')
+        .from('profile_directory')
         .select('id')
         .eq('email', userEmail)
         .maybeSingle();
@@ -886,7 +886,7 @@ export default function PlatformAdminDashboard() {
             .select('amount')
             .gte('created_at', start.toISOString())
             .lte('created_at', end.toISOString()),
-          supabase.from('profiles').select('id, role').eq('role', 'seller'),
+          supabase.from('profile_directory').select('id, role').eq('role', 'seller'),
           supabase
             .from('transactions')
             .select('id')
@@ -1142,7 +1142,7 @@ export default function PlatformAdminDashboard() {
           .select('influencer_id,influencer_earnings,created_at')
           .gte('created_at', dayStart),
         supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('id,email,full_name,created_at')
           .gte('created_at', dayStart),
         supabase
@@ -1419,7 +1419,7 @@ export default function PlatformAdminDashboard() {
       let profileDirectory = new Map<string, { full_name: string; email: string }>();
       if (userIds.length) {
         const { data: directoryRows, error: directoryError } = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('user_id,full_name,email')
           .in('user_id', userIds);
         if (directoryError) throw directoryError;

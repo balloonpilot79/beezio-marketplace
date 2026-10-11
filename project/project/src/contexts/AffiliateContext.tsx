@@ -123,7 +123,7 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
 
         // Otherwise fetch from database
         const { data, error } = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('referral_code')
           .eq('user_id', user.id)
           .single();

@@ -507,7 +507,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
           if (sellerIds.length) {
             try {
               const { data: sellers } = await supabase
-                .from('profiles')
+                .from('profile_directory')
                 .select('id,full_name,email')
                 .in('id', sellerIds);
               ((sellers as any[]) || []).forEach((seller: any) => {
@@ -613,7 +613,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
             .eq('affiliate_id', activeSellerId)
             .maybeSingle(),
           supabase
-            .from('profiles')
+            .from('profile_directory')
             .select('subdomain')
             .eq('id', activeSellerId)
             .maybeSingle(),

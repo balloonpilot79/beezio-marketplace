@@ -40,7 +40,7 @@ const AffiliateAboutPage: React.FC<AffiliateAboutPageProps> = ({ affiliateId: pr
         }
 
         const { data: affiliateRecord } = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('*')
           .or(`id.eq.${lookupId},user_id.eq.${lookupId}`)
           .maybeSingle();

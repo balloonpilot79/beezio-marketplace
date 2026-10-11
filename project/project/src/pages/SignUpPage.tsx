@@ -194,7 +194,7 @@ const SignUpPage: React.FC = () => {
       if (isUuid) profileFilters.push(`id.eq.${trimmed}`);
 
       const { data: profileRows, error: profileError } = await supabase
-        .from("profiles")
+        .from('profile_directory')
         .select("id, full_name, username")
         .or(profileFilters.join(","))
         .limit(1);
@@ -266,7 +266,7 @@ const SignUpPage: React.FC = () => {
         .eq("subdomain", slug)
         .maybeSingle(),
       supabase
-        .from("profiles")
+        .from('profile_directory')
         .select("id")
         .eq("subdomain", slug)
         .maybeSingle(),
@@ -544,7 +544,7 @@ const SignUpPage: React.FC = () => {
           for (let attempt = 0; attempt < 5; attempt++) {
             try {
               const { data } = await supabase
-                .from("profiles")
+                .from('profile_directory')
                 .select("id")
                 .eq("user_id", userId)
                 .maybeSingle();

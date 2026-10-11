@@ -49,7 +49,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
         .from('product_reviews')
         .select(`
           *,
-          profiles:reviewer_id (
+          profiles:profile_directory!reviewer_id (
             full_name
           )
         `)

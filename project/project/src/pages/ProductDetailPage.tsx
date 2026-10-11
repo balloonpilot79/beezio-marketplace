@@ -1044,7 +1044,7 @@ const ProductDetailPage: React.FC = () => {
             .select(
               `
             *,
-            profiles:seller_id (
+            profiles:profile_directory (
               full_name
             )
           `

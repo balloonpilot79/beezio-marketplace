@@ -285,7 +285,7 @@ export async function fetchProductReviews(productId: string, limit: number = 20)
     'verified_purchase',
     'reviewer_id',
     'buyer_id',
-    'profiles:reviewer_id(full_name)',
+    'profiles:profile_directory!reviewer_id(full_name)',
   ];
   let lastError: any = null;
 
@@ -311,10 +311,10 @@ export async function fetchProductReviews(productId: string, limit: number = 20)
 
     const message = String(error?.message || '').toLowerCase();
     if (
-      selectedColumns.includes('profiles:reviewer_id(full_name)') &&
+      selectedColumns.includes('profiles:profile_directory!reviewer_id(full_name)') &&
       (message.includes('relationship') || message.includes('embed') || message.includes('reviewer_id'))
     ) {
-      selectedColumns = selectedColumns.filter((column) => column !== 'profiles:reviewer_id(full_name)');
+      selectedColumns = selectedColumns.filter((column) => column !== 'profiles:profile_directory!reviewer_id(full_name)');
       continue;
     }
 

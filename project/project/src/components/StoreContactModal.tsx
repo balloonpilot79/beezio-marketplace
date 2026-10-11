@@ -73,7 +73,7 @@ const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, 
         return;
       }
       const { data } = await supabase
-        .from('profiles')
+        .from('profile_directory')
         .select('id, user_id')
         .or(`id.eq.${raw},user_id.eq.${raw}`)
         .maybeSingle();

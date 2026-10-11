@@ -148,7 +148,7 @@ const StoreSlugRoute: React.FC<StoreSlugRouteProps> = ({ mode = 'store' }) => {
         if (isUuid(cleanSlug)) {
           const [{ data: sellerProfile }, { data: affiliateSettings }, { data: affiliateProfile }] = await Promise.all([
             supabase
-              .from('profiles')
+              .from('profile_directory')
               .select('id, role, primary_role')
               .or(`id.eq.${cleanSlug},user_id.eq.${cleanSlug}`)
               .maybeSingle(),
@@ -158,7 +158,7 @@ const StoreSlugRoute: React.FC<StoreSlugRouteProps> = ({ mode = 'store' }) => {
               .eq('affiliate_id', cleanSlug)
               .maybeSingle(),
             supabase
-              .from('profiles')
+              .from('profile_directory')
               .select('id, role, primary_role')
               .or(`id.eq.${cleanSlug},user_id.eq.${cleanSlug}`)
               .maybeSingle(),
@@ -241,7 +241,7 @@ const StoreSlugRoute: React.FC<StoreSlugRouteProps> = ({ mode = 'store' }) => {
         try {
           const { data: profileSlugMatch, error: profileSlugError } = await withTimeout(
             supabase
-              .from('profiles')
+              .from('profile_directory')
               .select('id')
               .eq('subdomain', cleanSlug)
               .maybeSingle(),

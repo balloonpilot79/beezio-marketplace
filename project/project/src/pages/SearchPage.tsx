@@ -265,7 +265,7 @@ const SearchPage: React.FC = () => {
             affiliate_payout_amount,
             average_rating,
             review_count,
-            profiles!products_seller_id_fkey(full_name, location),
+            profiles:profile_directory(full_name, location),
             categories(name)
           `)
           .eq('is_active', true);

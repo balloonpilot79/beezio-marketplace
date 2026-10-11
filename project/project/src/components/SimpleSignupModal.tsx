@@ -69,7 +69,7 @@ const SimpleSignupModal: React.FC<SimpleSignupModalProps> = ({ isOpen, onClose, 
         const [{ data: sellerMatch }, { data: affiliateMatch }, { data: profileMatch }] = await Promise.all([
           supabase.from('store_settings').select('seller_id').eq('subdomain', slug).maybeSingle(),
           supabase.from('affiliate_store_settings').select('affiliate_id').eq('subdomain', slug).maybeSingle(),
-          supabase.from('profiles').select('id').eq('subdomain', slug).maybeSingle(),
+          supabase.from('profile_directory').select('id').eq('subdomain', slug).maybeSingle(),
         ]);
 
         if (!alive) return;

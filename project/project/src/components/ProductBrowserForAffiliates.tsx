@@ -132,7 +132,7 @@ const ProductBrowserForAffiliates: React.FC = () => {
         .from('products')
         .select(`
           *,
-          profiles!products_seller_id_fkey (full_name),
+          profiles:profile_directory (full_name),
           categories:category_id (name)
         `)
         .eq('is_active', true)

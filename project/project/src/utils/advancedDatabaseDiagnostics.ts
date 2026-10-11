@@ -116,7 +116,7 @@ export const runDatabaseDiagnostics = async () => {
     
     // Test 1: Count query (should work with most RLS policies)
     const { data: countData, error: countError } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('*', { count: 'exact', head: true });
     
     if (countError) {

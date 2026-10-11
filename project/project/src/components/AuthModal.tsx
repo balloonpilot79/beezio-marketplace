@@ -182,7 +182,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
     ] = await Promise.all([
       supabase.from('store_settings').select('seller_id').eq('subdomain', slug).maybeSingle(),
       supabase.from('affiliate_store_settings').select('affiliate_id').eq('subdomain', slug).maybeSingle(),
-      supabase.from('profiles').select('id').eq('subdomain', slug).maybeSingle(),
+      supabase.from('profile_directory').select('id').eq('subdomain', slug).maybeSingle(),
     ]);
 
     if (!isIgnorableLookupError(sellerCheckError)) throw sellerCheckError;
@@ -408,7 +408,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           try {
             for (let attempt = 0; attempt < 5; attempt++) {
               const { data: newProfile } = await supabase
-                .from('profiles')
+                .from('profile_directory')
                 .select('id')
                 .or(`id.eq.${result.user.id},user_id.eq.${result.user.id}`)
                 .maybeSingle();

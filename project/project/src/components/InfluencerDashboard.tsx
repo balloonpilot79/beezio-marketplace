@@ -56,7 +56,7 @@ const InfluencerDashboard: React.FC = () => {
       try {
         const [{ data }, { data: referralRows, error: referralError }] = await Promise.all([
           supabase
-            .from('profiles')
+            .from('profile_directory')
             .select('id, username, referral_code')
             .eq('id', profileId)
             .maybeSingle(),

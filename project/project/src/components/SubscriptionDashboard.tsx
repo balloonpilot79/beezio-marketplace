@@ -53,7 +53,7 @@ const SubscriptionDashboard: React.FC = () => {
         .select(`
           *,
           products (title, subscription_interval, commission_rate),
-          profiles:customer_id (full_name, email)
+          profiles:profile_directory (full_name, email)
         `)
         .eq('affiliate_id', profile?.id)
         .order('created_at', { ascending: false });

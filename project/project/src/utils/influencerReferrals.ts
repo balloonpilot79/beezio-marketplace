@@ -54,7 +54,7 @@ export async function getInfluencerReferralForProfile(params: {
   }
 
   const { data: profileRow } = await supabase
-    .from('profiles')
+    .from('profile_directory')
     .select('recruited_by_influencer_id')
     .eq('id', recruitedProfileId)
     .maybeSingle();

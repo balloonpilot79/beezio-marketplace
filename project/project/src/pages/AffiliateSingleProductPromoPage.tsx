@@ -227,7 +227,7 @@ export default function AffiliateSingleProductPromoPage() {
 
       try {
         const { data } = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('full_name,email')
           .eq('id', owner)
           .maybeSingle();

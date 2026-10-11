@@ -439,7 +439,7 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
             flat_commission_amount,
             images,
             is_active,
-            profiles!products_seller_id_fkey (full_name)
+            profiles:profile_directory (full_name)
           )
         `)
         .in('affiliate_id', affiliateIds)

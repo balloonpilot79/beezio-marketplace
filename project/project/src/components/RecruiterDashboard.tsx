@@ -70,7 +70,7 @@ export default function RecruiterDashboard() {
           recruit_id,
           recruited_at,
           total_passive_earnings,
-          profiles!affiliate_recruiters_recruit_id_fkey (
+          profiles:profile_directory!affiliate_recruiters_recruit_id_fkey (
             id,
             full_name,
             username
@@ -100,7 +100,7 @@ export default function RecruiterDashboard() {
           status,
           created_at,
           order_id,
-          profiles!recruiter_earnings_recruit_id_fkey (
+          profiles:profile_directory!recruiter_earnings_recruit_id_fkey (
             full_name
           )
         `)

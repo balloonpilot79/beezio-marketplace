@@ -113,7 +113,7 @@ const StoreSlugCustomPageRoute: React.FC = () => {
         // Fallback: some deployments store the slug on profiles.
         try {
           const { data: profileSlugMatch, error: profileSlugError } = await supabase
-            .from('profiles')
+            .from('profile_directory')
             .select('id')
             .eq('subdomain', cleanSlug)
             .maybeSingle();

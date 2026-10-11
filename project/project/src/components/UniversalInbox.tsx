@@ -157,7 +157,7 @@ const UniversalInbox: React.FC<UniversalInboxProps> = ({ embedded = false }) => 
   const loadUserNames = async (userIds: string[]) => {
     const unique = Array.from(new Set(userIds)).filter(Boolean);
     if (unique.length === 0) return;
-    const { data } = await supabase.from('profiles').select('user_id, full_name').in('user_id', unique);
+    const { data } = await supabase.from('profile_directory').select('user_id, full_name').in('user_id', unique);
     const next: Record<string, string> = {};
     for (const p of (data as any[]) || []) {
       if (p?.user_id) next[String(p.user_id)] = String(p.full_name || 'User');

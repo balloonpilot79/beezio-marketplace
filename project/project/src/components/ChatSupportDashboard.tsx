@@ -38,7 +38,7 @@ const ChatSupportDashboard: React.FC<ChatSupportDashboardProps> = ({ canManageSu
           .from('chat_logs')
           .select(`
             *,
-            profiles:user_id (
+            profiles:profile_directory (
               email,
               role
             )

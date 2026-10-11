@@ -189,7 +189,7 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
 
         console.log('[AffiliateStorePage] Fetching affiliate profile from database...');
         const { data: affiliateRecord, error: affiliateError } = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('*')
           .or(`id.eq.${lookupId},user_id.eq.${lookupId}`)
           .maybeSingle();
@@ -288,7 +288,7 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
                 track_inventory,
                 in_stock,
                 seller_id,
-                profiles!products_seller_id_fkey (full_name)
+                profiles:profile_directory (full_name)
               )
             `)
             .eq('affiliate_id', canonicalId)

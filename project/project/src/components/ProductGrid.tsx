@@ -171,7 +171,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
         .from('products')
         .select(`
           *,
-          profiles:seller_id (
+          profiles:profile_directory (
             full_name,
             location
           )

@@ -38,7 +38,7 @@ const FundraiserStorePage: React.FC<FundraiserStorePageProps> = ({ fundraiserId:
         setLoading(true);
         
         const { data: fundraiserRecord, error: fundraiserError } = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('*')
           .or(`id.eq.${fundraiserId},user_id.eq.${fundraiserId}`)
           .maybeSingle();
@@ -74,7 +74,7 @@ const FundraiserStorePage: React.FC<FundraiserStorePageProps> = ({ fundraiserId:
                 stock_quantity,
                 is_active, status, is_promotable, affiliate_enabled, total_inventory, in_stock, track_inventory,
                 seller_id,
-                profiles!products_seller_id_fkey (full_name)
+                profiles:profile_directory (full_name)
               )
             `)
             .eq('fundraiser_id', canonicalId)

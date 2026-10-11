@@ -70,7 +70,7 @@ const AdminUrlProductImporter = ({
       const user = authData?.user;
       if (!user?.id) return;
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profile_directory')
         .select('id,user_id')
         .or(`id.eq.${user.id},user_id.eq.${user.id}`);
       const ownerIds = Array.from(new Set([user.id, ...((profiles as any[]) || []).flatMap((row) => [row?.id, row?.user_id])].map(String).filter(Boolean)));

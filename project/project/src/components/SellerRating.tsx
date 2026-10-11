@@ -54,7 +54,7 @@ const SellerRating: React.FC<SellerRatingProps> = ({
         .from('seller_ratings')
         .select(`
           *,
-          profiles:rater_id (
+          profiles:profile_directory!rater_id (
             full_name
           )
         `)

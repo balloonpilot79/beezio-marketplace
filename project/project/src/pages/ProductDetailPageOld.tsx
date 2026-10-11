@@ -51,7 +51,7 @@ const ProductDetailPage: React.FC = () => {
         .from('products')
         .select(`
           *,
-          profiles:seller_id (
+          profiles:profile_directory (
             full_name,
             location
           )

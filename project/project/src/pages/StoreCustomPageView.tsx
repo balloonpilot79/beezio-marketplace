@@ -81,7 +81,7 @@ const StoreCustomPageView: React.FC<StoreCustomPageViewProps> = ({ ownerId, owne
         }
 
         const { data: ownerData, error: ownerError } = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('id, full_name, username, avatar_url')
           .eq('id', ownerId)
           .maybeSingle();

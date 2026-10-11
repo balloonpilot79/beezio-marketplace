@@ -82,7 +82,7 @@ export default function CustomPageView() {
       
       // First, find the owner by username
       const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
+        .from('profile_directory')
         .select('id, full_name, username, avatar_url')
         .eq('username', username)
         .single();

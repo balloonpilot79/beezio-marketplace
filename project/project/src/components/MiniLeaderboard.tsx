@@ -53,7 +53,7 @@ export const MiniLeaderboard: React.FC<MiniLeaderboardProps> = ({
           total_commission_earned,
           total_points,
           level,
-          profiles:user_id (
+          profiles:profile_directory (
             full_name,
             avatar_url
           )

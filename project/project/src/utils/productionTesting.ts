@@ -72,7 +72,7 @@ export const testDatabaseConnectionSafe = async () => {
     
     // Try the simplest possible query first
     const { data, error } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('id', { count: 'exact', head: true })
       .limit(1);
     

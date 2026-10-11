@@ -40,7 +40,7 @@ const SellerAboutPage: React.FC<SellerAboutPageProps> = ({ sellerId: propSellerI
         }
 
         const { data: sellerData } = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('*')
           .or(`id.eq.${lookupId},user_id.eq.${lookupId}`)
           .maybeSingle();

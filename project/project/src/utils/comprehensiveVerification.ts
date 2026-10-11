@@ -18,7 +18,7 @@ export const testDatabaseConnection = async () => {
     console.log('🔍 Supabase client initialized, testing connection...');
     
     const { data, error } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('count()', { count: 'exact', head: true });
     
     if (error) {

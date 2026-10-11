@@ -191,7 +191,7 @@ const IssueCenterPage: React.FC<IssueCenterPageProps> = ({
     const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
     if (uniqueIds.length === 0) return;
     const { data } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('id, user_id, full_name, email, role, primary_role')
       .in('user_id', uniqueIds);
     if (data && Array.isArray(data)) {
@@ -222,7 +222,7 @@ const IssueCenterPage: React.FC<IssueCenterPageProps> = ({
     if (!trimmed) return null;
     if (trimmed.includes('@')) {
       const { data } = await supabase
-        .from('profiles')
+        .from('profile_directory')
         .select('user_id')
         .eq('email', trimmed)
         .maybeSingle();
@@ -230,7 +230,7 @@ const IssueCenterPage: React.FC<IssueCenterPageProps> = ({
     }
 
     const { data } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('user_id')
       .or(`id.eq.${trimmed},user_id.eq.${trimmed}`)
       .maybeSingle();

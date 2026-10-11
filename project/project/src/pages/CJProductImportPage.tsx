@@ -594,7 +594,7 @@ const CJProductImportPage: React.FC<CJProductImportPageProps> = ({ embedded = fa
     // - profiles.user_id == auth.users.id
     // Some legacy accounts may be missing the profiles row entirely; attempt to create it.
     const { data, error } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('id')
       .or(`user_id.eq.${user.id},id.eq.${user.id}`)
       .maybeSingle();

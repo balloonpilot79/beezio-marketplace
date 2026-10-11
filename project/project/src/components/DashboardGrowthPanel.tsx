@@ -158,7 +158,7 @@ const DashboardGrowthPanel: React.FC<Props> = ({ activeSection, visibleRoles, en
         const recruitedByInfluencerId = String((referralRows[0] as any)?.influencer_profile_id || '').trim() || null;
         if (recruitedByInfluencerId) {
           const { data: referrerRow } = await supabase
-            .from('profiles')
+            .from('profile_directory')
             .select('full_name,username,referral_code')
             .eq('id', recruitedByInfluencerId)
             .maybeSingle();

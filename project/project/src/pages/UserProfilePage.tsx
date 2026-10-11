@@ -24,7 +24,7 @@ const UserProfilePage: React.FC = () => {
     let cancelled = false;
     void (async () => {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('profile_directory')
         .select('sale_email_notifications')
         .eq('id', profileId)
         .maybeSingle();

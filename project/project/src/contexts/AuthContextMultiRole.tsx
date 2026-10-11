@@ -404,7 +404,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // row whose profiles.id equals auth.users.id plus a business row keyed by user_id.
       try {
         const byUserIdRaw = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('*')
           .eq('user_id', uid);
         if (!byUserIdRaw.error && Array.isArray(byUserIdRaw.data) && byUserIdRaw.data.length > 0) {
@@ -416,7 +416,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         const byIdRaw = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('*')
           .eq('id', uid)
           .limit(1)
@@ -436,7 +436,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const byUserId = await selectProfilesFlexible((columns) =>
           supabase
-            .from('profiles')
+            .from('profile_directory')
             .select(columns)
             .eq('user_id', uid)
         );
@@ -446,7 +446,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const byId = await selectProfilesFlexible((columns) =>
           supabase
-            .from('profiles')
+            .from('profile_directory')
             .select(columns)
             .eq('id', uid)
             .maybeSingle()
@@ -472,7 +472,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const preferredRole = getStoredRole();
       let refetch = await supabase
-        .from('profiles')
+        .from('profile_directory')
         .select('*')
         .eq('user_id', authUser.id);
 
@@ -483,7 +483,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (!refetchProfile && (!refetch.error || isMissingColumnError(refetch.error, 'user_id'))) {
         refetch = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('*')
           .eq('id', authUser.id)
           .limit(1)
@@ -506,7 +506,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const ensureMinimalProfileExists = async (authUser: User) => {
     try {
       const { data: existing, error: existsError } = await supabase
-        .from('profiles')
+        .from('profile_directory')
         .select('id')
         .eq('user_id', authUser.id)
         .maybeSingle();
@@ -924,7 +924,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let profileError: any = null;
         if (data.session) {
           const profileResult = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select(PROFILE_SELECT_COLUMNS.join(','))
           .eq('user_id', data.user.id)
           .maybeSingle();
@@ -955,7 +955,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (profileError.code === '23505') { // Unique constraint violation
             console.log('[AuthContext] Profile already exists, fetching...');
             const { data: existingProfile, error: fetchError } = await supabase
-              .from('profiles')
+              .from('profile_directory')
               .select(PROFILE_SELECT_COLUMNS.join(','))
               .eq('id', data.user.id)
               .single();

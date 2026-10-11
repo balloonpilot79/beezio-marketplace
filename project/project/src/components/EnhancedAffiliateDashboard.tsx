@@ -298,7 +298,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
             .eq('affiliate_id', partnerOwnerId)
             .maybeSingle(),
           supabase
-            .from('profiles')
+            .from('profile_directory')
             .select('subdomain')
             .eq('id', partnerOwnerId)
             .maybeSingle(),
@@ -533,7 +533,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
         .from('products')
         .select(`
           *,
-          profiles(full_name)
+          profiles:profile_directory(full_name)
         `)
         .limit(20);
 
@@ -633,7 +633,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
                   is_active,
                   is_promotable,
                   status,
-                  profiles(full_name)
+                  profiles:profile_directory(full_name)
                 )
               `)
               .in('affiliate_id', affiliateOwnerIds)
@@ -712,7 +712,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
         }
 
         const { data: downline, error: downlineError } = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('id, full_name, email, created_at, total_sales, total_commission')
           .in('referred_by_affiliate_id', affiliateOwnerIds);
         if (!downlineError && downline) {

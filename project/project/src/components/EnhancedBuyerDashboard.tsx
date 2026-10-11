@@ -399,7 +399,7 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
           setOrders([]);
         } else if (sellerIds.length > 0) {
           const { data: sellersData } = await supabase
-            .from('profiles')
+            .from('profile_directory')
             .select('id, full_name')
             .in('id', sellerIds);
           const nameById: Record<string, string> = {};

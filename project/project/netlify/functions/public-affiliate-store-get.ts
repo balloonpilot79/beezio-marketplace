@@ -128,7 +128,7 @@ const handler: Handler = async (event) => {
           .maybeSingle(),
         supabaseAdmin
           .from('profiles')
-          .select('*')
+          .select('id,user_id,full_name,role,primary_role,bio,website,location,avatar_url,created_at,updated_at,average_rating,review_count,store_logo_url,store_banner_url,referral_code,username,subdomain,influencer_enabled')
           .eq('subdomain', normalizedSlug)
           .maybeSingle(),
       ]);
@@ -145,7 +145,7 @@ const handler: Handler = async (event) => {
     const lookup = canonicalAffiliateId || affiliateRaw;
     const { data: profileCandidate } = await supabaseAdmin
       .from('profiles')
-      .select('*')
+      .select('id,user_id,full_name,role,primary_role,bio,website,location,avatar_url,created_at,updated_at,average_rating,review_count,store_logo_url,store_banner_url,referral_code,username,subdomain,influencer_enabled')
       .or(`id.eq.${lookup},user_id.eq.${lookup}`)
       .maybeSingle();
     if (profileCandidate) {

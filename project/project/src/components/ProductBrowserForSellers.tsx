@@ -98,7 +98,7 @@ const ProductBrowserForSellers: React.FC<SellerProductBrowserProps> = ({ sellerI
         .from('products')
         .select(`
           *,
-          profiles!products_seller_id_fkey (full_name)
+          profiles:profile_directory (full_name)
         `)
         .or('is_active.eq.true,is_promotable.eq.true,status.eq.active')
         .order('created_at', { ascending: false });

@@ -81,7 +81,7 @@ const AdminProductHubPage: React.FC = () => {
       let profileById = new Map<string, { full_name?: string | null; email?: string | null }>();
       if (sellerIds.length) {
         const { data: profileRows, error: profileError } = await supabase
-          .from('profiles')
+          .from('profile_directory')
           .select('id,full_name,email')
           .in('id', sellerIds);
         if (!profileError) {
@@ -115,7 +115,7 @@ const AdminProductHubPage: React.FC = () => {
     const userEmail = String(authData.user.email || '').trim();
 
     const { data: profileById } = await supabase
-      .from('profiles')
+      .from('profile_directory')
       .select('id')
       .eq('id', userId)
       .maybeSingle();
@@ -123,7 +123,7 @@ const AdminProductHubPage: React.FC = () => {
 
     if (userEmail) {
       const { data: profileByEmail } = await supabase
-        .from('profiles')
+        .from('profile_directory')
         .select('id')
         .eq('email', userEmail)
         .maybeSingle();

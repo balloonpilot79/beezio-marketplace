@@ -166,8 +166,8 @@ const mapProductRowToMarketplaceProduct = (row: ProductRowWithJoins): Marketplac
   };
 };
 
-const baseSelectWithCategories = `*, profiles:seller_id ( full_name ), categories:category_id ( name )`;
-const baseSelectNoCategories = `*, profiles:seller_id ( full_name )`;
+const baseSelectWithCategories = `*, profiles:profile_directory ( full_name ), categories:category_id ( name )`;
+const baseSelectNoCategories = `*, profiles:profile_directory ( full_name )`;
 
 const extractMissingColumnName = (message: string): string | null => {
   const match = message.match(/Could not find the ['"]([^'"]+)['"] column/i);

@@ -40,7 +40,7 @@ const ProductBrowserForFundraisers: React.FC = () => {
         .from('products')
         .select(`
           *,
-          profiles!products_seller_id_fkey (full_name)
+          profiles:profile_directory (full_name)
         `)
         .eq('is_active', true)
         .eq('is_promotable', true)

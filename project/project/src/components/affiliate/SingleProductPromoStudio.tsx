@@ -289,7 +289,7 @@ export default function SingleProductPromoStudio(props: Props) {
       if (sellerIds.length) {
         try {
           const { data: sellerRows } = await supabase
-            .from('profiles')
+            .from('profile_directory')
             .select('id,full_name,email')
             .in('id', sellerIds);
           ((sellerRows as any[]) || []).forEach((seller: any) => {
