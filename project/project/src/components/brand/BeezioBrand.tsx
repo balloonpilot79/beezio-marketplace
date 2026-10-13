@@ -36,7 +36,7 @@ export const audiences = [
     title: "Your recommendations drive growth.",
     description:
       "Affiliates are at the heart of Beezio: helping shoppers discover products and sellers reach new customers. Build your free store, share your picks, and earn commissions on qualifying sales you generate.",
-    action: "Explore affiliate stores",
+    action: "Explore affiliate earning",
     href: "/affiliates",
   },
   {

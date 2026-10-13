@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 
@@ -13,6 +14,8 @@ interface StoreContactModalProps {
 
 const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, ownerId, ownerType, storeName, storefrontId }) => {
   const { user, profile } = useAuth();
+  const location = useLocation();
+  const returnPath = encodeURIComponent(location.pathname + location.search + location.hash);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
@@ -224,6 +227,10 @@ const StoreContactModal: React.FC<StoreContactModalProps> = ({ isOpen, onClose, 
         {!user?.id ? (
           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
             Sign in to message <strong>{storeName || 'this store'}</strong>.
+            <div className="mt-3 flex flex-wrap gap-3">
+              <Link to={`/account/login?next=${returnPath}`} onClick={onClose} className="rounded-lg bg-slate-900 px-4 py-2 font-semibold" style={{ color: '#ffffff' }}>Sign in</Link>
+              <Link to={`/account/signup?next=${returnPath}`} onClick={onClose} className="rounded-lg border border-yellow-300 bg-white px-4 py-2 font-semibold" style={{ color: '#854d0e' }}>Create shopper account</Link>
+            </div>
           </div>
         ) : resolvedOwnerUserId === user.id ? (
           <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">

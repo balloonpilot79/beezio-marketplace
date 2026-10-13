@@ -89,7 +89,7 @@ const faqSections = [
       {
         question: 'Do I need an account to shop?',
         answer:
-          'You can browse without an account. Creating an account lets you track orders, save favorites, and contact support faster.'
+          'You can browse products and build a cart without an account. Sign in or create a free shopper account before checkout so your orders, receipts, tracking, and support stay linked to you.'
       }
     ]
   },

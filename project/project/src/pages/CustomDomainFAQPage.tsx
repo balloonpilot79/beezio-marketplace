@@ -1,8 +1,9 @@
+import { NETLIFY_APEX_IP, NETLIFY_SITE_HOST } from '../utils/storeDomainDns';
 import React from 'react';
 import { AlertCircle, CheckCircle, Clock, Copy, ExternalLink, Globe, HelpCircle } from 'lucide-react';
 
-const DNS_TARGET = 'beezio-marketplace.netlify.app';
-const ROOT_IP = '104.198.14.52';
+const DNS_TARGET = NETLIFY_SITE_HOST;
+const ROOT_IP = NETLIFY_APEX_IP;
 
 const CustomDomainFAQPage: React.FC = () => {
   const copy = (value: string) => {

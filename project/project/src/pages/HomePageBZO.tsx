@@ -188,8 +188,8 @@ export default function HomePageBZO() {
             ) : (
               <Link to="/store/marebelle" className="hm-brand-feature">
                 <img
-                  src="/marebelle-editorial-hero.png"
-                  alt="Discover MareBelle's beauty and lifestyle collection"
+                  src="/marebelle-editorial-logo.png"
+                  alt="Discover MareBelle’s horse-inspired clothing collection"
                 />
                 <span>
                   Independent brands. Made to discover. <ArrowRight size={18} />
@@ -347,7 +347,7 @@ export default function HomePageBZO() {
             </p>
           </div>
           <Link to="/affiliates" className="bz-button bz-button-gold">
-            Explore affiliate stores <ArrowRight size={17} />
+            Explore affiliate earning <ArrowRight size={17} />
           </Link>
         </section>
         <section id="stores" className="hm-stores-section">

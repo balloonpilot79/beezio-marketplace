@@ -1,5 +1,7 @@
 import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
+import { shouldOpenProductDetailsBeforePurchase } from '../../shared/productOptionSelection';
+import { getProductInventoryLimit } from '../../shared/productInventoryLimit';
 import React, { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Award, ExternalLink, Heart, ShoppingCart, Star } from 'lucide-react';
@@ -129,6 +131,7 @@ const CanonicalProductCard: React.FC<Props> = ({
   ) : null;
   const purchaseVisible = forcePurchaseCtas || ctaMode === 'storefront' || product.is_active === true || product.is_promotable === true || String(product.status || '').toLowerCase() === 'active';
   const hasVariants = Boolean(product.has_variants) || (Array.isArray(product.product_variants) && product.product_variants.length > 0) || (Array.isArray(product.variants) && product.variants.length > 0);
+  const requiresProductDetails = shouldOpenProductDetailsBeforePurchase(product);
   const stock = Number.isFinite(product.stock_quantity) ? Number(product.stock_quantity) : Number.isFinite(product.total_inventory) ? Number(product.total_inventory) : null;
   const outOfStock = product.track_inventory !== false && ((stock !== null && stock <= 0) || (stock === null && product.in_stock === false));
   const sellerAsk = Number(product.seller_ask ?? product.seller_amount ?? buyerPrice);
@@ -145,7 +148,7 @@ const CanonicalProductCard: React.FC<Props> = ({
     sellerName: product.profiles?.full_name || 'Seller',
     shippingCost: getProductShipping(product),
     combinedShipping: getCombinedShippingPolicy(product),
-    maxQuantity: stock === null ? undefined : Math.max(0, stock),
+    maxQuantity: getProductInventoryLimit(product) ?? undefined,
     commission_rate: commission.value,
     commission_type: commission.type === 'flat' ? 'flat_rate' : 'percentage',
     flat_commission_amount: commission.type === 'flat' ? commission.value : 0,
@@ -156,7 +159,7 @@ const CanonicalProductCard: React.FC<Props> = ({
   const handleAddToCart = (event: React.MouseEvent) => {
     stop(event);
     if (outOfStock) return;
-    if (hasVariants) {
+    if (requiresProductDetails) {
       navigate(productUrl, { state: { from: `${location.pathname}${location.search}` } });
       return;
     }
@@ -167,7 +170,7 @@ const CanonicalProductCard: React.FC<Props> = ({
   const handleBuyNow = (event: React.MouseEvent) => {
     stop(event);
     if (outOfStock) return;
-    if (hasVariants) {
+    if (requiresProductDetails) {
       navigate(productUrl, { state: { from: `${location.pathname}${location.search}` } });
       return;
     }

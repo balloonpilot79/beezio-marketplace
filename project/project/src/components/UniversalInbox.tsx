@@ -90,7 +90,7 @@ interface UniversalInboxProps {
 }
 
 const UniversalInbox: React.FC<UniversalInboxProps> = ({ embedded = false }) => {
-  const PLATFORM_SUPPORT_EMAIL = 'mail@beezio.co';
+  const PLATFORM_SUPPORT_EMAIL = 'support@beezio.co';
   const { profile, user, hasRole } = useAuth();
 
   const isDev = Boolean(import.meta.env.DEV);

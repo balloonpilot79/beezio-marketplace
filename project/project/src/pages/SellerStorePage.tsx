@@ -1,3 +1,4 @@
+import MareBelleCollectionHero from '../components/storefront/MareBelleCollectionHero';
 import CompactStoreHeader from '../components/storefront/CompactStoreHeader';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import React, { useEffect, useState } from 'react';
@@ -1067,20 +1068,20 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                   ? { borderColor: '#ffffff2b', backgroundColor: '#ffffff0d', color: '#ffffff' }
                   : { borderColor: '#e2e8f0', backgroundColor: '#f8fafc', color: '#475569' }}
               >
-                <a href="#products" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">{products.length > 0 ? 'Shop' : 'Collection'}</a>
+                <a href="#products" className="rounded-full px-4 py-2 transition-opacity hover:opacity-80" style={{ color: hasEditorialBrand ? '#ffffff' : textColor }}>{products.length > 0 ? 'Shop' : 'Collection'}</a>
               {aboutCustomPage && !hasEditorialBrand ? (
                 <Link
                   to={`${storeHomePath === '/' ? '' : storeHomePath}/${aboutCustomPage.page_slug}`.replace('//', '/')}
-                  className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900"
+                  className="rounded-full px-4 py-2 transition-opacity hover:opacity-80" style={{ color: hasEditorialBrand ? '#ffffff' : textColor }}
                 >
                   About
                 </Link>
               ) : hasEditorialBrand ? (
-                <a href="#about" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">
+                <a href="#about" className="rounded-full px-4 py-2 transition-opacity hover:opacity-80" style={{ color: hasEditorialBrand ? '#ffffff' : textColor }}>
                   About
                 </a>
               ) : (
-                <Link to={aboutPath} className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">
+                <Link to={aboutPath} className="rounded-full px-4 py-2 transition-opacity hover:opacity-80" style={{ color: hasEditorialBrand ? '#ffffff' : textColor }}>
                   About
                 </Link>
               )}
@@ -1088,13 +1089,13 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                 <Link
                   key={page.page_slug}
                   to={`${storeHomePath === '/' ? '' : storeHomePath}/${page.page_slug}`.replace('//', '/')}
-                  className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900"
+                  className="rounded-full px-4 py-2 transition-opacity hover:opacity-80" style={{ color: hasEditorialBrand ? '#ffffff' : textColor }}
                 >
                   {page.page_title}
                 </Link>
               ))}
               {hasPolicies && (
-                <a href="#policies" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-slate-900">
+                <a href="#policies" className="rounded-full px-4 py-2 transition-opacity hover:opacity-80" style={{ color: hasEditorialBrand ? '#ffffff' : textColor }}>
                   Policies
                 </a>
               )}
@@ -1158,6 +1159,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             className="overflow-hidden border shadow-[0_32px_100px_rgba(0,0,0,0.24)]"
             style={{ background: isLovingNutrition ? 'radial-gradient(circle at 50% 35%, #176b50 0%, #063c2f 58%, #03271f 100%)' : '#080808', borderColor: `${editorialAccentColor}66` }}
           >
+            {isMareBelle ? <MareBelleCollectionHero products={products} productBasePath={productBasePath} /> : (
             <div className={`relative overflow-hidden ${isMareBelle ? 'h-[260px] sm:h-[340px] lg:h-[420px]' : 'h-[300px] sm:h-[380px] lg:h-[460px]'}`}>
               <img
                 src={editorialHeroUrl}
@@ -1167,6 +1169,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                   : 'absolute inset-0 h-full w-full object-cover object-top'}
               />
             </div>
+            )}
             <div className="flex flex-col gap-4 border-t px-6 py-6 text-white sm:flex-row sm:items-center sm:justify-between lg:px-10" style={{ borderColor: `${editorialAccentColor}55` }}>
               <div>
                 <div className="text-xs font-bold uppercase tracking-[0.28em]" style={{ color: editorialAccentColor }}>{brandKicker}</div>

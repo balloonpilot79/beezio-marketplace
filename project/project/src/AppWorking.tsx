@@ -44,10 +44,6 @@ const InfluencerRecruitPromoPage = lazy(() => import('./pages/InfluencerRecruitP
 const AffiliateShareHubPage = lazy(() => import('./pages/AffiliateShareHubPage'));
 const AffiliateSingleProductPromoPage = lazy(() => import('./pages/AffiliateSingleProductPromoPage'));
 const MarketplacePage = lazy(() => import('./pages/MarketplacePageDual'));
-const SearchPage = lazy(() => import('./pages/SearchPage'));
-const DashboardPreview = lazy(() => import('./pages/DashboardPreview'));
-const AffiliateDashboardPreview = lazy(() => import('./pages/AffiliateDashboardPreview'));
-const BuyerDashboardPreview = lazy(() => import('./pages/BuyerDashboardPreview'));
 const SignUpPage = lazy(() => import('./pages/SignUpPage'));
 const SellerStorePage = lazy(() => import('./pages/SellerStorePage'));
 const AffiliateStorePage = lazy(() => import('./pages/AffiliateStorePage'));
@@ -61,10 +57,8 @@ const EarningsDashboard = lazy(() => import('./components/EarningsDashboard'));
 const PlatformAdminDashboard = lazy(() => import('./components/PlatformAdminDashboard'));
 const PlatformSettings = lazy(() => import('./components/PlatformSettings'));
 const OrderManagement = lazy(() => import('./components/OrderManagement'));
-const RevolutionaryShowcaseSimple = lazy(() => import('./components/RevolutionaryShowcaseSimple'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 const DebugServiceWorkerPage = lazy(() => import('./pages/DebugServiceWorkerPage'));
-const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const TermsOfService = lazy(() => import('./pages/legal/TermsOfService'));
 const SellerTerms = lazy(() => import('./pages/legal/SellerTerms'));
 const PartnerTerms = lazy(() => import('./pages/legal/PartnerTerms'));
@@ -306,6 +300,11 @@ const StoreSettingsRoute = () => <Navigate to="/business?tab=store-customization
 
 // Beautiful Home Page Component (DEPRECATED - using HomePageBZO)
 // Removed to avoid build errors - see HomePageBZO.tsx for active homepage
+
+const LegacySearchRedirect = () => {
+  const location = useLocation();
+  return <Navigate to={`/marketplace${location.search}${location.hash}`} replace />;
+};
 
 const AppWorking: React.FC = () => {
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; mode: 'login' | 'register'; audience: 'buyer' | 'business' }>({ isOpen: false, mode: 'login', audience: 'business' });
@@ -739,7 +738,7 @@ const AppWorking: React.FC = () => {
                   <Routes>
                     <Route path="/" element={<HomeOrDashboard />} />
                     <Route path="/home" element={<HomeOrDashboard />} />
-                    <Route path="/revolutionary" element={<RevolutionaryShowcaseSimple />} />
+                    <Route path="/revolutionary" element={<Navigate to="/how-it-works" replace />} />
                     <Route path="/marketplace" element={<MarketplacePage />} />
                     <Route path="/digital-products" element={<Navigate to="/marketplace" replace />} />
                     <Route path="/products" element={<MarketplacePage />} />
@@ -748,7 +747,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/insurance/:slug" element={<InsurancePublicRoute><InsuranceListingPage /></InsurancePublicRoute>} />
                     <Route path="/stores" element={<StoresPage />} />
                     <Route path="/about" element={<AboutPage />} />
-                    <Route path="/search" element={<SearchPage />} />
+                    <Route path="/search" element={<LegacySearchRedirect />} />
                     <Route path="/product/:productId" element={<ProductDetailPage />} />
                     <Route path="/:storeSlug/product/:productId" element={<ProductDetailPage />} />
                     <Route path="/store/:storeSlug/product/:productId" element={<ProductDetailPage />} />
@@ -797,9 +796,9 @@ const AppWorking: React.FC = () => {
                     <Route path="/dashboard/store-settings" element={<StoreSettingsRoute />} />
                     <Route path="/add-product" element={<BusinessRoute><SellerProductFormPage /></BusinessRoute>} />
                     <Route path="/add-product-old" element={<AddProductPage />} />
-                    <Route path="/dashboard-preview" element={<DashboardPreview />} />
-                    <Route path="/affiliate-dashboard-preview" element={<AffiliateDashboardPreview />} />
-                    <Route path="/buyer-dashboard-preview" element={<BuyerDashboardPreview />} />
+                    <Route path="/dashboard-preview" element={<Navigate to="/sellers" replace />} />
+                    <Route path="/affiliate-dashboard-preview" element={<Navigate to="/affiliates" replace />} />
+                    <Route path="/buyer-dashboard-preview" element={<Navigate to="/join" replace />} />
                     {/* Public store URLs (slug-based) */}
                     <Route path="/store/:storeSlug" element={<StoreSlugRoute />} />
                     <Route path="/store/:storeSlug/about" element={<StoreSlugRoute mode="about" />} />
@@ -828,7 +827,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/earnings" element={<BusinessRoute><EarningsDashboard /></BusinessRoute>} />
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/debug-sw" element={<DebugServiceWorkerPage />} />
-                    <Route path="/privacy" element={<PrivacyPage />} />
+                    <Route path="/privacy" element={<Navigate to="/legal/privacy" replace />} />
                     <Route path="/terms" element={<Navigate to="/legal/terms" replace />} />
                     <Route path="/legal/terms" element={<TermsOfService />} />
                     <Route path="/legal/payments-payouts" element={<PaymentsRolesPayouts />} />

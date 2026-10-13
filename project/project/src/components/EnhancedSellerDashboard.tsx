@@ -1471,7 +1471,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
             {activeTab === 'messages' && (
               <div className="space-y-4">
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  Internal platform messaging uses <strong>mail@beezio.co</strong>.
+                  For help, contact <strong>support@beezio.co</strong>.
                 </div>
                 <UniversalInbox embedded />
               </div>

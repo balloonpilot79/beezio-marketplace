@@ -53,7 +53,7 @@ const DisputePolicy: React.FC = () => (
       </p>
     </section>
     <section>
-      <h2 className="text-xl font-semibold text-gray-900">6. Insurance Promotion Compliance</h2>
+      <h2 className="text-xl font-semibold text-gray-900">7. Insurance Promotion Compliance</h2>
       <p>
         If Beezio determines an insurance storefront or partner promotion used prohibited language such as guaranteed
         approval, guaranteed coverage, cold-lead claims, or multi-agent blast promises, related payouts may be held,

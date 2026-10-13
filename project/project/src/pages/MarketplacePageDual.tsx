@@ -621,7 +621,7 @@ const MarketplacePageDual: React.FC = () => {
             Showing <strong>{filteredProducts.length}</strong> products
             {selectedCategory !== 'All' && ` in ${selectedCategoryLabel}`}
           </span>
-          <Link to="/start-earning" className="text-sm font-semibold text-[#0f6cbf] hover:underline">
+          <Link to={canAddToStore ? '/business/promote' : '/signup'} className="text-sm font-semibold text-[#0f6cbf] hover:underline">
             {canAddToStore ? 'Add products to your storefront from this marketplace' : 'Create a business account to add products'}
           </Link>
         </div>

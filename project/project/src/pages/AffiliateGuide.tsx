@@ -1,52 +1,34 @@
 import React from 'react';
-import { BarChart3, BookOpen, DollarSign, Globe, Heart, Link2, QrCode, Share2, ShoppingBag, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { BarChart3, BookOpen, DollarSign, Globe, Link2, QrCode, Share2, ShoppingBag, Users } from 'lucide-react';
 
 const AffiliateGuide: React.FC = () => {
   const launchChannels = [
-    {
-      title: 'Physical Products',
-      detail: 'Promote marketplace products from Beezio sellers and earn on completed sales.',
-      icon: ShoppingBag,
-    },
-    {
-      title: 'Digital Products',
-      detail: 'Mix downloadable or digital offers into the same promotion flow and store experience.',
-      icon: Globe,
-    },
-    {
-      title: 'Insurance Leads',
-      detail: 'Send warm shoppers to vetted insurance storefronts and earn on qualified delivered leads.',
-      icon: Heart,
-    },
-    {
-      title: 'Influencer Referrals',
-      detail: 'Recruit new partners with your code and earn recurring influencer income on their activity.',
-      icon: Users,
-    },
+    { title: 'Physical Products', detail: 'Choose eligible products in the marketplace and review the commission offered for each completed sale.', icon: ShoppingBag },
+    { title: 'Your Free Store', detail: 'Add marketplace products to your custom storefront alongside any products you sell yourself. One business account uses one shared store.', icon: Globe },
+    { title: 'Tracked Links & QR Codes', detail: 'Open a product’s promotion tools to share its tracked link or QR code with your audience.', icon: QrCode },
+    { title: 'Influencer Referrals', detail: 'Use your personal signup referral link to introduce sellers and affiliates. Earn on their eligible qualifying product sales, not their signups.', icon: Users },
   ];
-
   const promotionMethods = [
-    'Site-wide marketplace links for broad promotion',
-    'Product-specific links for focused campaigns',
-    'Insurance storefront links for lead-based promotions',
-    'QR codes for print, events, and offline traffic',
-    'Affiliate store pages that mix products and insurance',
-    'Influencer referral links to recruit other partners',
+    'Your custom storefront with a curated product collection',
+    'Product-specific tracked links from promotion tools',
+    'QR codes for print, events, and offline promotion',
+    'Social posts and content with accurate product details',
+    'Clear disclosure when you may receive a commission',
+    'Your influencer referral link for seller and affiliate signups',
   ];
-
   const launchRules = [
-    'Affiliates, sellers, influencers, and insurance agents all join free.',
-    'Beezio fee and influencer logic stay consistent across supported offers.',
-    'Insurance is not cold lead traffic. It is vetted warm inbound traffic with verification and review.',
-    'Payout tracking updates in real time, but release still follows hold, dispute, and fraud protections.',
-    'Affiliates can mix physical products, digital offers, and insurance promotions inside one store strategy.',
+    'Sellers, affiliates, and influencers can join free. No inventory purchase is required for affiliate promotion.',
+    'Affiliate commissions are set by the seller and already included in the selling price.',
+    'Influencer earnings come from eligible, attributed product sales. Signups alone do not earn money; income is not guaranteed.',
+    'Earnings have a 14-day hold from completed payment. Eligible balances of at least $5 are paid through PayPal on the 15th and last calendar day of each month.',
+    'Refunds, disputes, verification, and payout policies apply. An order issue pauses only that order’s related funds.',
   ];
-
   const earningFlow = [
-    'Choose products, digital offers, insurance storefronts, or all three.',
-    'Generate a site-wide link, product link, insurance link, QR code, or influencer signup link.',
-    'Share through social, community, direct outreach, content, or local promotion.',
-    'Track clicks, orders, delivered leads, held payouts, and influencer referrals from the dashboard.',
+    'Create or sign in to your free business account.',
+    'Choose eligible physical products and add them to your store, or open their promotion tools for tracked links and QR codes.',
+    'Share through social content, community or local promotion, and disclose your commission relationship.',
+    'Review attributed sales, referrals, held earnings, and payout status in your Business Center.',
   ];
 
   return (
@@ -61,15 +43,20 @@ const AffiliateGuide: React.FC = () => {
             <h1 className="mt-6 text-4xl font-black tracking-tight text-slate-900 sm:text-6xl">
               One partner account.
               <br />
-              Multiple earning channels.
+              Promote products. Earn on sales.
             </h1>
             <p className="mt-6 max-w-3xl text-lg text-slate-600">
-              Beezio lets partners promote physical products, digital offers, and insurance storefronts from the same platform while also building influencer earnings through recruited partners.
+              Build a free store around eligible physical products, share tracked links, and earn when your recommendations generate qualifying sales. You can also use your influencer referral link to introduce sellers and affiliates.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3 text-sm font-semibold">
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link to="/business/promote" className="rounded-full bg-slate-900 px-5 py-3 font-semibold" style={{ color: '#ffffff' }}>Open promotion tools</Link>
+              <Link to="/signup" className="rounded-full border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-900">Create a business account</Link>
+              <Link to="/marketplace" className="rounded-full border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-900">Browse products</Link>
+            </div>
+            <div className="mt-5 flex flex-wrap gap-3 text-sm font-semibold">
               <div className="rounded-full bg-[#131921] px-4 py-2 text-white">Free to join</div>
               <div className="rounded-full bg-white px-4 py-2 text-slate-700 shadow-sm">Real-time tracking</div>
-              <div className="rounded-full bg-white px-4 py-2 text-slate-700 shadow-sm">Products + Digital + Insurance</div>
+              <div className="rounded-full bg-white px-4 py-2 text-slate-700 shadow-sm">Physical products</div>
               <div className="rounded-full bg-white px-4 py-2 text-slate-700 shadow-sm">Influencer referrals</div>
             </div>
           </div>
@@ -148,7 +135,7 @@ const AffiliateGuide: React.FC = () => {
             <div className="rounded-2xl border border-slate-200 p-4">
               <BarChart3 className="h-5 w-5 text-blue-600" />
               <div className="mt-3 text-sm font-semibold text-slate-900">Track what is working</div>
-              <p className="mt-2 text-sm text-slate-600">Use dashboard analytics to compare clicks, delivered leads, orders, held payouts, and referral performance.</p>
+              <p className="mt-2 text-sm text-slate-600">Use your Business Center to review attributed sales, held earnings, payouts, and eligible referrals.</p>
             </div>
             <div className="rounded-2xl border border-slate-200 p-4">
               <Users className="h-5 w-5 text-violet-600" />

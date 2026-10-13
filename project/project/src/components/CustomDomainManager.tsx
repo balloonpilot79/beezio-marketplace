@@ -1,3 +1,4 @@
+import { NETLIFY_APEX_IP, NETLIFY_SITE_HOST } from '../utils/storeDomainDns';
 import React, { useState, useEffect } from 'react';
 import { Globe, CheckCircle, AlertCircle, Copy, ExternalLink, HelpCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -91,8 +92,8 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
 
       const cleanDomain = domainToVerify.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
       const isRootDomain = cleanDomain.split('.').length === 2;
-      const expectedCname = 'beezio-marketplace.netlify.app';
-      const expectedRootIp = '104.198.14.52';
+      const expectedCname = NETLIFY_SITE_HOST;
+      const expectedRootIp = NETLIFY_APEX_IP;
 
       const fetchDns = async (name: string, type: string) => {
         const url = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=${type}`;
@@ -482,7 +483,7 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
           <div>2) In your DNS provider, add the record(s) below:</div>
           <div className="mt-2">
             <div className="font-medium text-gray-800">Root domain (example.com)</div>
-            <div>A @ to 104.198.14.52</div>
+            <div>A @ to {NETLIFY_APEX_IP}</div>
             <div>CNAME www to beezio-marketplace.netlify.app</div>
           </div>
           <div className="mt-2">
@@ -591,7 +592,7 @@ const CustomDomainManager: React.FC<CustomDomainManagerProps> = ({ userId, role,
                         <div className="grid grid-cols-4 gap-2 text-gray-800">
                           <span className="font-mono bg-gray-100 px-2 py-1 rounded">A</span>
                           <span className="font-mono bg-gray-100 px-2 py-1 rounded">@</span>
-                          <span className="font-mono bg-gray-100 px-2 py-1 rounded">104.198.14.52</span>
+                          <span className="font-mono bg-gray-100 px-2 py-1 rounded">{NETLIFY_APEX_IP}</span>
                           <span className="font-mono bg-gray-100 px-2 py-1 rounded">3600</span>
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-gray-800">
