@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-vi.mock('./_lib/email', () => ({ sendTransactionalEmail: vi.fn() }));
-import { sendTransactionalEmail } from './_lib/email';
-import contactSubmit from './contact-submit.mts';
+vi.mock('../../netlify/functions/_lib/email', () => ({ sendTransactionalEmail: vi.fn() }));
+import { sendTransactionalEmail } from '../../netlify/functions/_lib/email';
+import contactSubmit from '../../netlify/functions/contact-submit.mts';
 const send = vi.mocked(sendTransactionalEmail);
 const valid = { name: 'Shopper', email: 'shopper@example.com', message: 'Please help me with my order.', website: '' };
 const post = (body: unknown) => contactSubmit(new Request('https://beezio.co/api/contact', { method: 'POST', body: JSON.stringify(body) }));
