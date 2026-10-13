@@ -26,7 +26,6 @@ import AffiliateShareWidget from '../components/AffiliateShareWidget';
 import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
 import { getAffiliateAmount, resolveAffiliateCommission } from '../utils/pricing';
 import { getBuyerFacingProductPrice, getProductShipping } from '../utils/buyerPrice';
-import { getProductIdentifierLines } from '../utils/productIdentifiers';
 import { normalizeAccountRole } from '../utils/accountRoles';
 import { fetchProductById, getVariantOptions, resolveImageUrl, resolveVariant, type ProductVariant } from '../services/productService';
 import { getCJProductInventory } from '../services/cjDropshipping';
@@ -1888,16 +1887,6 @@ const ProductDetailPage: React.FC = () => {
           {/* Title, Rating, Price */}
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.title}</h1>
-
-            {getProductIdentifierLines(product, selectedVariant).length > 0 && (
-              <div className="mb-3 space-y-1">
-                {getProductIdentifierLines(product, selectedVariant).map((line) => (
-                  <div key={line} className="text-sm text-amber-700 font-medium">
-                    {line}
-                  </div>
-                ))}
-              </div>
-            )}
 
             {Number(product.average_rating) > 0 && Number(product.review_count) > 0 && (
               <div className="flex items-center space-x-2 mb-3">

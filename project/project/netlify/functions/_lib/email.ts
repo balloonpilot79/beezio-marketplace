@@ -2,6 +2,7 @@ type EmailPayload = {
   to: string;
   subject: string;
   html: string;
+  replyTo?: string;
 };
 
 type OrderItemLine = {
@@ -44,6 +45,7 @@ export async function sendTransactionalEmail(payload: EmailPayload): Promise<{ s
         to: [to],
         subject: payload.subject,
         html: payload.html,
+        ...(payload.replyTo ? { reply_to: payload.replyTo } : {}),
       }),
     });
 

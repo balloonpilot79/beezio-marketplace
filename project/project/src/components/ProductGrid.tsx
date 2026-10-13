@@ -21,12 +21,10 @@ import {
   resolveAffiliateCommission,
 } from '../utils/pricing';
 import { getBuyerFacingProductPrice, getProductShipping } from '../utils/buyerPrice';
-import { getProductIdentifierLines } from '../utils/productIdentifiers';
 import { normalizeProductImages, resolveProductImageFromList } from '../utils/imageHelpers';
 import { formatMoneyDisplay } from '../utils/moneyDisplay';
 import { getReferralAttribution } from '../utils/referralTracking';
 import { resolveCheckoutAttribution } from '../utils/checkoutAttribution';
-import { setPostAuthPath } from '../utils/storefrontScope';
 import { normalizeAccountRole } from '../utils/accountRoles';
 
 interface Product {
@@ -125,14 +123,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
     return formatMoneyDisplay(value);
   };
 
-  const requireBuyerAccount = () => {
-    if (user) return false;
-    const nextPath = `${location.pathname}${location.search}${location.hash || ''}`;
-    setPostAuthPath(nextPath);
-    window.alert('Please sign in or create an account to continue with your purchase.');
-    navigate(`/account/login?next=${encodeURIComponent(nextPath)}`);
-    return true;
-  };
+
 
   // Grid layout configurations
   const gridClasses = {
@@ -316,7 +307,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
             average_rating: Number.isFinite(averageRating) ? averageRating : 0,
             review_count: Number.isFinite(reviewCount) ? Math.max(0, reviewCount) : 0
           };
-          const identifierLines = getProductIdentifierLines(normalizedProduct);
           const heroImage = resolveProductImageFromList(normalizedProduct.images, normalizedProduct.id);
           const rawStock =
             (normalizedProduct as any).stock_quantity ??
@@ -403,7 +393,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
             Boolean((normalizedProduct as any)?.has_variants) ||
             (Array.isArray((normalizedProduct as any)?.product_variants) && (normalizedProduct as any).product_variants.length > 0) ||
             (Array.isArray(rawVariants) && rawVariants.length > 0);
-          const requiresOptionSelection = hasVariants && !isStorefrontCtas;
+          const requiresOptionSelection = hasVariants || isStorefrontCtas;
 
           const productSellerName = normalizedProduct.profiles?.full_name || storefrontBrand?.name || 'Seller';
           const shippingCost = getProductShipping(normalizedProduct);
@@ -422,7 +412,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
             e.stopPropagation();
 
             if (isUnavailable) return;
-            if (shouldShowPurchaseCtas && requireBuyerAccount()) return;
 
             if (requiresOptionSelection) {
               navigate(productPathWithAttribution, { state: backState });
@@ -457,7 +446,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
             e.stopPropagation();
 
             if (isUnavailable) return;
-            if (shouldShowPurchaseCtas && requireBuyerAccount()) return;
 
             if (requiresOptionSelection) {
               navigate(productPathWithAttribution, { state: backState });
@@ -609,16 +597,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                 </div>
               )}
 
-              {identifierLines.length > 0 && (
-                <div className="mb-2 space-y-1">
-                  {identifierLines.map((line) => (
-                    <div key={line} className="text-xs text-amber-700 font-medium">
-                      {line}
-                    </div>
-                  ))}
-                </div>
-              )}
-              
               {/* Rating Display */}
               {normalizedProduct.average_rating > 0 && normalizedProduct.review_count > 0 && (
                 <div className="flex items-center space-x-2 mb-2">
