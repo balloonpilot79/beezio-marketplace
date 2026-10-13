@@ -802,7 +802,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   // rendered identity tied to the storefront slug so owner-profile fallbacks,
   // stale API caches, or legacy store settings can never cross-brand a page.
   const displayStoreName = protectedBrandName || String(seller?.full_name || 'Store');
-  const brandKicker = houseBrandIdentity?.kicker || 'An independent brand powered by Beezio';
+  const brandKicker = houseBrandIdentity?.kicker || '';
   const hasEditorialBrand = isMareBelle || isRedTail || isLovingNutrition;
   const editorialHeroUrl = houseBrandIdentity?.heroUrl || '';
   const editorialLogoUrl = houseBrandIdentity?.logoUrl || '';
@@ -1341,7 +1341,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                   </>
                 ) : (
                   <div className="mt-5 space-y-4 text-sm leading-6" style={{ color: textColor }}>
-                    <p>{brandKicker}</p>
+                    {brandKicker && <p>{brandKicker}</p>}
                     <p>Secure checkout, order support, and verified reviews are provided through Beezio.</p>
                     <div className="inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-bold shadow-sm">Built with Beezio</div>
                   </div>
