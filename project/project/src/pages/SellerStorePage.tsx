@@ -781,8 +781,9 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   const storefrontSectionOrder = Array.isArray((seller?.layout_config as any)?.storefront_sections)
     ? ((seller?.layout_config as any)?.storefront_sections as string[])
     : ['hero', 'search', 'categories', 'featured', 'about', 'policies', 'contact'];
-  const hasCustomSectionOrder = Array.isArray((seller?.layout_config as any)?.storefront_sections);
-  const customSectionOrder = Array.from(new Set([...storefrontSectionOrder, 'hero', 'search', 'categories', 'featured', 'about', 'policies', 'contact']));
+  const defaultSectionOrder = ['hero', 'search', 'categories', 'featured', 'about', 'policies', 'contact'];
+  const customSectionOrder = Array.from(new Set([...storefrontSectionOrder, ...defaultSectionOrder])).filter((sectionId) => defaultSectionOrder.includes(sectionId));
+  const hasCustomSectionOrder = customSectionOrder.some((sectionId, index) => sectionId !== defaultSectionOrder[index]);
   const orderedStorefrontSections = storefrontSectionOrder.filter((sectionId, index, items) => {
     if ((sectionId === 'search' || sectionId === 'categories') && items.slice(0, index).some((value) => value === 'search' || value === 'categories')) {
       return false;
