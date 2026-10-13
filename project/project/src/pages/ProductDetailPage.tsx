@@ -1,6 +1,7 @@
 import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import { productWithSelectedVariant } from '../../shared/productShipping';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
+import { getProductInventoryLimit } from '../../shared/productInventoryLimit';
 import { DEFAULT_PHYSICAL_RETURN_POLICY } from '../utils/returnPolicy';
 import React, { useState, useEffect, useMemo } from 'react';
 import { flushSync } from 'react-dom';
@@ -379,17 +380,8 @@ const ProductDetailPage: React.FC = () => {
     [product?.lineage, (product as any)?.dropship_provider, (product as any)?.source_platform, (product as any)?.source, (product as any)?.inventory_source, (product as any)?.cj_product_id, (product as any)?.cj_pid, (product as any)?.cj_spu, (product as any)?.display_search_code]
   );
 
-  const effectiveStockQty = useMemo(() => {
-    const variantStock = selectedVariant?.inventory;
-    if (Number.isFinite(variantStock)) {
-      return Math.max(0, Math.floor(variantStock as number));
-    }
-    const productStock = Number((product as any)?.stock_quantity ?? (product as any)?.total_inventory);
-    if (Number.isFinite(productStock)) {
-      return Math.max(0, Math.floor(productStock));
-    }
-    return null;
-  }, [product?.stock_quantity, (product as any)?.total_inventory, selectedVariant]);
+  const effectiveStockQty = useMemo(() => getProductInventoryLimit(product, selectedVariant) ?? null,
+    [product, selectedVariant]);
 
   const isOutOfStock = useMemo(() => {
     if (!product) return false;
@@ -1364,22 +1356,8 @@ const ProductDetailPage: React.FC = () => {
       const lineage = String((product as any)?.lineage || '').toUpperCase();
       const provider = String((product as any)?.dropship_provider || '').toLowerCase();
       const isCJ = lineage === 'CJ' || lineage === 'SUPPLYLINE PLUS' || provider === 'cj';
-      const tracksInventory = (product as any)?.track_inventory !== false;
-
-      if (isCJ && !tracksInventory) {
-        return null;
-      }
-
-      const variantStock = selectedVariant?.inventory;
-      if (Number.isFinite(variantStock)) {
-        const normalized = Math.max(0, Math.floor(variantStock as number));
-        return normalized;
-      }
-      const productStock = (product as any)?.stock_quantity;
-      if (Number.isFinite(productStock)) {
-        const normalized = Math.max(0, Math.floor(productStock));
-        return normalized;
-      }
+      const stockLimit = getProductInventoryLimit(product, selectedVariant);
+      if (stockLimit !== undefined) return stockLimit;
 
       if (isCJ) {
         let cjProductId = String(

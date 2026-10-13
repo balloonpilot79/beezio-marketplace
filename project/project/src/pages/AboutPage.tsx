@@ -78,8 +78,8 @@ const AboutPage: React.FC = () => {
 
           <Section title="Pricing transparency">
             <p>
-              Buyers see a single retail price before checkout. Physical-product shipping is included in that price, so buyers
-              see free shipping; applicable taxes are calculated at checkout.
+              Buyers see the product price before checkout. Shipping and applicable taxes are shown separately in the final
+              checkout total. Review the product’s shipping cost and delivery estimate before purchasing.
             </p>
           </Section>
 

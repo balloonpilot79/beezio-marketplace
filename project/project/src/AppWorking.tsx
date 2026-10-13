@@ -75,6 +75,7 @@ const DisputePolicy = lazy(() => import('./pages/legal/DisputePolicy'));
 const PayoutPolicy = lazy(() => import('./pages/legal/PayoutPolicy'));
 const PrivacyPolicy = lazy(() => import('./pages/legal/PrivacyPolicy'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
+const HelpCenterPage = lazy(() => import('./pages/HelpCenterPage'));
 const CustomDomainFAQPage = lazy(() => import('./pages/CustomDomainFAQPage'));
 const StorefrontSetupFAQPage = lazy(() => import('./pages/StorefrontSetupFAQPage'));
 const ReturnsPage = lazy(() => import('./pages/ReturnsPage'));
@@ -448,6 +449,7 @@ const AppWorking: React.FC = () => {
       'returns',
       'shipping',
       'faq',
+      'help-center',
       'affiliate-guide',
       'store',
       'partner',
@@ -839,6 +841,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/legal/privacy" element={<PrivacyPolicy />} />
                     <Route path="/returns" element={<ReturnsPage />} />
                     <Route path="/shipping" element={<ShippingPage />} />
+                    <Route path="/help-center" element={<HelpCenterPage />} />
                     <Route path="/faq" element={<FAQPage />} />
                     <Route path="/faq/storefronts" element={<StorefrontSetupFAQPage />} />
                     <Route path="/faq/custom-domains" element={<CustomDomainFAQPage />} />

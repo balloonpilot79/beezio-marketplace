@@ -14,7 +14,7 @@ const faqSections = [
       {
         question: 'How do I create an account?',
         answer:
-          'Click Sign Up, choose your role (seller, partner, or buyer), and complete the profile prompts. You can switch roles later.'
+          'Create a shopper account for purchases, or a free business account for selling, affiliate promotion, and influencer referrals. One business account includes all three tools and one shared store.'
       },
       {
         question: 'Is Beezio secure?',
@@ -69,7 +69,7 @@ const faqSections = [
       {
         question: 'How do I share products?',
         answer:
-          'Use the partner tools area to generate shareable links or QR codes for products and stores.'
+          'Choose a product in your Business Center or store and open its promotion tools to get tracked links and QR codes. Influencers use Influencer tools to get their signup referral link.'
       },
       {
         question: `Is the ${getPartnerProgramLabel()} active?`,
@@ -99,12 +99,12 @@ const faqSections = [
       {
         question: 'How do sellers get paid?',
         answer:
-          'Payouts are handled through the payment processor connected in the seller dashboard.'
+          'Eligible seller, affiliate, and influencer payouts are sent through PayPal. Add your PayPal payout email and required payout details in your Business Center.'
       },
       {
         question: 'How long do payouts take?',
         answer:
-          'Most payouts land within a few business days once an order is confirmed.'
+          'Earnings have a 14-day hold from completed order payment. After the hold, eligible balances of at least $5 are processed on the 15th and last calendar day of each month through PayPal. Early payout cannot bypass the hold. Disputes pause only the affected order’s funds; other eligible earnings release normally.'
       },
       {
         question: 'Do sellers or affiliates pay monthly fees?',
