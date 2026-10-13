@@ -781,6 +781,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   const storefrontSectionOrder = Array.isArray((seller?.layout_config as any)?.storefront_sections)
     ? ((seller?.layout_config as any)?.storefront_sections as string[])
     : ['hero', 'search', 'categories', 'featured', 'about', 'policies', 'contact'];
+  const hasCustomSectionOrder = Array.isArray((seller?.layout_config as any)?.storefront_sections);
+  const customSectionOrder = Array.from(new Set([...storefrontSectionOrder, 'hero', 'search', 'categories', 'featured', 'about', 'policies', 'contact']));
   const orderedStorefrontSections = storefrontSectionOrder.filter((sectionId, index, items) => {
     if ((sectionId === 'search' || sectionId === 'categories') && items.slice(0, index).some((value) => value === 'search' || value === 'categories')) {
       return false;
@@ -818,8 +820,10 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   }, [canonicalStorefrontId, storeRouteId]);
 
   const renderStorefrontSection = (sectionId: string) => {
+    if (sectionId === 'hero') return renderStoreHero();
+    if (sectionId === 'contact' && showContactButton) return (<div className="mb-4 rounded-[24px] border bg-white p-5 text-center" style={{ borderColor: secondaryColor }}><p style={{ color: textColor }}>Need help before checkout?</p><button onClick={() => setContactModal(true)} className="mt-3 rounded-full px-5 py-3 text-sm font-semibold text-white" style={{ backgroundColor: primaryColor }}>Contact this store</button></div>);
     if (sectionId === 'search' || sectionId === 'categories') {
-      if (products.length === 0 || (!showSearchBar && !showCategoryFilters)) return null;
+      if (products.length === 0 || (!showSearchBar && !showCategoryFilters) || (hasCustomSectionOrder && ((sectionId === 'search' && !showSearchBar) || (sectionId === 'categories' && !showCategoryFilters)))) return null;
       return (
         <div key="browse-controls" className="mb-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-3 hidden lg:flex flex-wrap items-center justify-between gap-2">
@@ -829,7 +833,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
             </div>
           </div>
           <div className="flex flex-col gap-3">
-            {showSearchBar && (
+            {showSearchBar && (!hasCustomSectionOrder || sectionId === 'search') && (
               <label className="relative block">
                 <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
                 <input
@@ -842,7 +846,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                 />
               </label>
             )}
-            {showCategoryFilters && (
+            {showCategoryFilters && (!hasCustomSectionOrder || sectionId === 'categories') && (
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {categories.map(category => (
                   <button
@@ -925,6 +929,125 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
 
     return null;
   };
+
+  const renderStoreHero = () => (<>
+      {showStoreIntroSection && hasEditorialBrand && (
+        <div className="hidden lg:block mx-auto max-w-[1440px] px-3 pt-4 sm:px-6 lg:px-8 lg:pt-7">
+          <section
+            className="overflow-hidden border shadow-[0_32px_100px_rgba(0,0,0,0.24)]"
+            style={{ background: isLovingNutrition ? 'radial-gradient(circle at 50% 35%, #176b50 0%, #063c2f 58%, #03271f 100%)' : '#080808', borderColor: `${editorialAccentColor}66` }}
+          >
+            {isMareBelle ? <MareBelleCollectionHero products={products} productBasePath={productBasePath} /> : (
+            <div className={`relative overflow-hidden ${isMareBelle ? 'h-[260px] sm:h-[340px] lg:h-[420px]' : 'h-[300px] sm:h-[380px] lg:h-[460px]'}`}>
+              <img
+                src={editorialHeroUrl}
+                alt={`${displayStoreName} storefront artwork`}
+                className={isLovingNutrition
+                  ? 'absolute inset-0 h-full w-full object-contain p-4 sm:p-7'
+                  : 'absolute inset-0 h-full w-full object-cover object-top'}
+              />
+            </div>
+            )}
+            <div className="flex flex-col gap-4 border-t px-6 py-6 text-white sm:flex-row sm:items-center sm:justify-between lg:px-10" style={{ borderColor: `${editorialAccentColor}55` }}>
+              <div>
+                <div className="text-xs font-bold uppercase tracking-[0.28em]" style={{ color: editorialAccentColor }}>{brandKicker}</div>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-white/90">
+                  {products.length > 0
+                    ? `Shop the live ${displayStoreName} collection below.`
+                    : 'This is the brand direction. The shoppable collection will appear here only when real products are published.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {products.length > 0 ? (
+                  <a href="#products" className="rounded-none px-6 py-3 text-sm font-bold text-white" style={{ backgroundColor: editorialAccentColor }}>Shop the collection</a>
+                ) : null}
+                {showContactButton ? (
+                  <button onClick={() => setContactModal(true)} className="border border-white/30 px-6 py-3 text-sm font-bold text-white hover:bg-white/10">Contact</button>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showStoreIntroSection && !hasEditorialBrand && (
+        <div className="hidden lg:block mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
+          <section className="overflow-hidden rounded-[36px] border border-white/40 bg-white shadow-[0_32px_100px_rgba(15,23,42,0.16)]">
+            <div
+              className="relative min-h-[380px] lg:min-h-[500px]"
+              style={{
+                background: storeHeroImage
+                  ? `linear-gradient(135deg, rgba(15,23,42,0.38), rgba(15,23,42,0.12)), url(${storeHeroImage}) center/cover`
+                  : `linear-gradient(135deg, ${primaryColor}, ${accentColor} 55%, ${secondaryColor})`,
+              }}
+            >
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 18% 24%, white 0 2px, transparent 3px), radial-gradient(circle at 72% 68%, white 0 1px, transparent 2px)', backgroundSize: '48px 48px, 34px 34px' }} />
+              <div className="relative grid min-h-[380px] gap-10 px-7 py-12 sm:px-10 md:py-16 lg:min-h-[500px] lg:grid-cols-[minmax(0,1.6fr)_380px] lg:items-end lg:px-16 lg:py-20">
+                <div className="max-w-3xl">
+                  <div className="flex items-center gap-4">
+                    {storeLogoUrl ? (
+                      <img
+                        src={storeLogoUrl}
+                        alt={`${displayStoreName} logo`}
+                        className="h-16 w-16 rounded-2xl border border-white/30 bg-white/90 object-cover shadow-lg"
+                      />
+                    ) : (
+                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-2xl font-bold text-white shadow-lg">
+                        {displayStoreName.charAt(0) || 'S'}
+                      </div>
+                    )}
+                    <div>
+                      <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-7xl">
+                        {displayStoreName}
+                      </h1>
+                      {storeTagline ? (
+                        <p className="mt-3 max-w-2xl text-base leading-7 text-white/88 md:text-lg">{storeTagline}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="mt-7 text-xs font-bold uppercase tracking-[0.24em] text-white/75">{brandKicker}</div>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <a
+                      href="#products"
+                      className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      {products.length > 0 ? 'Shop collection' : 'Discover the story'}
+                    </a>
+                    {showContactButton ? (
+                      <button
+                        onClick={() => setContactModal(true)}
+                        className="inline-flex items-center rounded-full border px-5 py-2.5 text-sm font-semibold text-white transition"
+                        style={{ borderColor: 'rgba(255,255,255,0.35)', backgroundColor: 'rgba(255,255,255,0.1)' }}
+                      >
+                        Contact
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="max-w-sm rounded-[30px] border border-white/25 bg-slate-950/25 p-6 text-white shadow-2xl backdrop-blur-md lg:justify-self-end">
+                  <div className="text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-white/75">{products.length > 0 ? 'Shop details' : 'Brand preview'}</div>
+                  {products.length > 0 ? (
+                    <div className="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+                      <div><div className="text-2xl font-black">{heroProductCount}</div><div className="text-sm text-white/78">products live</div></div>
+                      <div><div className="text-2xl font-black">{storeStats.reviewCount > 0 ? storeStats.rating.toFixed(1) : 'New'}</div><div className="text-sm text-white/78">customer rating</div></div>
+                      <div><div className="text-2xl font-black">{storeStats.reviewCount}</div><div className="text-sm text-white/78">verified reviews</div></div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 space-y-3">
+                      <div className="text-2xl font-black">Opening collection</div>
+                      <p className="text-sm leading-6 text-white/80">The branded storefront is live while its first products are being prepared.</p>
+                      <div className="inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold">Built with Beezio</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+  </>);
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -1153,125 +1276,11 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         </div>
       </header>
 
-      {hasEditorialBrand && (
-        <div className="hidden lg:block mx-auto max-w-[1440px] px-3 pt-4 sm:px-6 lg:px-8 lg:pt-7">
-          <section
-            className="overflow-hidden border shadow-[0_32px_100px_rgba(0,0,0,0.24)]"
-            style={{ background: isLovingNutrition ? 'radial-gradient(circle at 50% 35%, #176b50 0%, #063c2f 58%, #03271f 100%)' : '#080808', borderColor: `${editorialAccentColor}66` }}
-          >
-            {isMareBelle ? <MareBelleCollectionHero products={products} productBasePath={productBasePath} /> : (
-            <div className={`relative overflow-hidden ${isMareBelle ? 'h-[260px] sm:h-[340px] lg:h-[420px]' : 'h-[300px] sm:h-[380px] lg:h-[460px]'}`}>
-              <img
-                src={editorialHeroUrl}
-                alt={`${displayStoreName} storefront artwork`}
-                className={isLovingNutrition
-                  ? 'absolute inset-0 h-full w-full object-contain p-4 sm:p-7'
-                  : 'absolute inset-0 h-full w-full object-cover object-top'}
-              />
-            </div>
-            )}
-            <div className="flex flex-col gap-4 border-t px-6 py-6 text-white sm:flex-row sm:items-center sm:justify-between lg:px-10" style={{ borderColor: `${editorialAccentColor}55` }}>
-              <div>
-                <div className="text-xs font-bold uppercase tracking-[0.28em]" style={{ color: editorialAccentColor }}>{brandKicker}</div>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-white/90">
-                  {products.length > 0
-                    ? `Shop the live ${displayStoreName} collection below.`
-                    : 'This is the brand direction. The shoppable collection will appear here only when real products are published.'}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                {products.length > 0 ? (
-                  <a href="#products" className="rounded-none px-6 py-3 text-sm font-bold text-white" style={{ backgroundColor: editorialAccentColor }}>Shop the collection</a>
-                ) : null}
-                {showContactButton ? (
-                  <button onClick={() => setContactModal(true)} className="border border-white/30 px-6 py-3 text-sm font-bold text-white hover:bg-white/10">Contact</button>
-                ) : null}
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
+      {!hasCustomSectionOrder && renderStoreHero()}
 
-      {showStoreIntroSection && !hasEditorialBrand && (
-        <div className="hidden lg:block mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
-          <section className="overflow-hidden rounded-[36px] border border-white/40 bg-white shadow-[0_32px_100px_rgba(15,23,42,0.16)]">
-            <div
-              className="relative min-h-[380px] lg:min-h-[500px]"
-              style={{
-                background: storeHeroImage
-                  ? `linear-gradient(135deg, rgba(15,23,42,0.38), rgba(15,23,42,0.12)), url(${storeHeroImage}) center/cover`
-                  : `linear-gradient(135deg, ${primaryColor}, ${accentColor} 55%, ${secondaryColor})`,
-              }}
-            >
-              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 18% 24%, white 0 2px, transparent 3px), radial-gradient(circle at 72% 68%, white 0 1px, transparent 2px)', backgroundSize: '48px 48px, 34px 34px' }} />
-              <div className="relative grid min-h-[380px] gap-10 px-7 py-12 sm:px-10 md:py-16 lg:min-h-[500px] lg:grid-cols-[minmax(0,1.6fr)_380px] lg:items-end lg:px-16 lg:py-20">
-                <div className="max-w-3xl">
-                  <div className="flex items-center gap-4">
-                    {storeLogoUrl ? (
-                      <img
-                        src={storeLogoUrl}
-                        alt={`${displayStoreName} logo`}
-                        className="h-16 w-16 rounded-2xl border border-white/30 bg-white/90 object-cover shadow-lg"
-                      />
-                    ) : (
-                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-2xl font-bold text-white shadow-lg">
-                        {displayStoreName.charAt(0) || 'S'}
-                      </div>
-                    )}
-                    <div>
-                      <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-7xl">
-                        {displayStoreName}
-                      </h1>
-                      {storeTagline ? (
-                        <p className="mt-3 max-w-2xl text-base leading-7 text-white/88 md:text-lg">{storeTagline}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="mt-7 text-xs font-bold uppercase tracking-[0.24em] text-white/75">{brandKicker}</div>
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <a
-                      href="#products"
-                      className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition"
-                      style={{ backgroundColor: primaryColor }}
-                    >
-                      {products.length > 0 ? 'Shop collection' : 'Discover the story'}
-                    </a>
-                    {showContactButton ? (
-                      <button
-                        onClick={() => setContactModal(true)}
-                        className="inline-flex items-center rounded-full border px-5 py-2.5 text-sm font-semibold text-white transition"
-                        style={{ borderColor: 'rgba(255,255,255,0.35)', backgroundColor: 'rgba(255,255,255,0.1)' }}
-                      >
-                        Contact
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="max-w-sm rounded-[30px] border border-white/25 bg-slate-950/25 p-6 text-white shadow-2xl backdrop-blur-md lg:justify-self-end">
-                  <div className="text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-white/75">{products.length > 0 ? 'Shop details' : 'Brand preview'}</div>
-                  {products.length > 0 ? (
-                    <div className="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-                      <div><div className="text-2xl font-black">{heroProductCount}</div><div className="text-sm text-white/78">products live</div></div>
-                      <div><div className="text-2xl font-black">{storeStats.reviewCount > 0 ? storeStats.rating.toFixed(1) : 'New'}</div><div className="text-sm text-white/78">customer rating</div></div>
-                      <div><div className="text-2xl font-black">{storeStats.reviewCount}</div><div className="text-sm text-white/78">verified reviews</div></div>
-                    </div>
-                  ) : (
-                    <div className="mt-4 space-y-3">
-                      <div className="text-2xl font-black">Opening collection</div>
-                      <p className="text-sm leading-6 text-white/80">The branded storefront is live while its first products are being prepared.</p>
-                      <div className="inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold">Built with Beezio</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
-      
       {/* Products Section */}
       <div id="products" className="mx-auto max-w-[1440px] scroll-mt-20 px-3 py-3 sm:px-6 md:scroll-mt-32 md:py-8 lg:px-8">
-        {orderedStorefrontSections.map((sectionId) => renderStorefrontSection(sectionId))}
+        {(hasCustomSectionOrder ? customSectionOrder : orderedStorefrontSections).map((sectionId) => <React.Fragment key={sectionId}>{renderStorefrontSection(sectionId)}</React.Fragment>)}
 
         {/* Products Grid */}
         {filteredProducts.length === 0 && hasEditorialBrand ? (
@@ -1388,7 +1397,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         {/* Store Customization Panel intentionally hidden on storefront */}
       </div>
 
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">{renderStorefrontSection('about')}</div>
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">{!hasCustomSectionOrder && renderStorefrontSection('about')}</div>
       <footer id="policies" className="border-t border-slate-200 bg-white/95">
         <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
           <nav aria-label="Store information" className="mb-5 flex flex-wrap gap-5 text-sm font-semibold"><Link to={aboutPath}>About us</Link><a href="#policies">Policies</a>{showContactButton && <button onClick={() => setContactModal(true)}>Contact</button>}</nav>

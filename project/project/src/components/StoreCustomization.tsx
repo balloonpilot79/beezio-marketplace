@@ -1179,8 +1179,9 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                 </div>
 
                 <div className="space-y-3 p-3">
-                  {isFeatureEnabled('hero') && (
-                    <div className="overflow-hidden rounded-[24px] border bg-white" style={{ borderColor: `${previewColors.secondary}80` }}>
+                  {storefrontSections.map((featureId) => {
+                    if (!isFeatureEnabled(featureId)) return null;
+                    if (featureId === 'hero') return (<div key={featureId} className="overflow-hidden rounded-[24px] border bg-white" style={{ borderColor: `${previewColors.secondary}80` }}>
                       {storeSettings.store_banner ? (
                         <div className="h-36 w-full bg-cover bg-center" style={{ backgroundImage: `url(${storeSettings.store_banner})` }} />
                       ) : (
@@ -1194,11 +1195,13 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                           Shop now
                         </div>
                       </div>
-                    </div>
-                  )}
-
-                  {storefrontSections.map((featureId) => {
-                    if (!isFeatureEnabled(featureId) || featureId === 'hero' || featureId === 'contact') return null;
+                    </div>);
+                    if (featureId === 'contact') return (<div key={featureId} className="rounded-[22px] border bg-white p-4 text-center" style={{ borderColor: `${previewColors.secondary}80` }}>
+                      <div className="text-sm font-semibold" style={{ color: previewColors.text }}>Need help before checkout?</div>
+                      <div className="mt-3 inline-flex rounded-full px-4 py-2 text-xs font-semibold text-white" style={{ backgroundColor: previewColors.accent }}>
+                        Contact this store
+                      </div>
+                    </div>);
 
                     if (featureId === 'search') {
                       return (
@@ -1271,14 +1274,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                     return null;
                   })}
 
-                  {isFeatureEnabled('contact') && (
-                    <div className="rounded-[22px] border bg-white p-4 text-center" style={{ borderColor: `${previewColors.secondary}80` }}>
-                      <div className="text-sm font-semibold" style={{ color: previewColors.text }}>Need help before checkout?</div>
-                      <div className="mt-3 inline-flex rounded-full px-4 py-2 text-xs font-semibold text-white" style={{ backgroundColor: previewColors.accent }}>
-                        Contact this store
-                      </div>
-                    </div>
-                  )}
+
                 </div>
               </div>
             </div>
