@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ExternalLink, Store } from 'lucide-react';
+import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
 
 interface SellerAboutPageProps {
   sellerId?: string;
@@ -120,26 +121,32 @@ const SellerAboutPage: React.FC<SellerAboutPageProps> = ({ sellerId: propSellerI
   }
 
   const storeName = storeSettings?.store_name || seller.full_name || 'Store';
+  const brand = resolveHouseBrandIdentity(storeRouteId, storeSettings?.theme_settings?.brand_personality);
+  const brandBackground = brand ? (brand.slug === 'marebelle' ? '#e8dfcd' : '#f8fafc') : (storeSettings?.color_scheme?.background || '#f8fafc');
+  const accentColor = brand?.accentColor || storeSettings?.color_scheme?.accent || '#64748b';
+  const headerColor = brand ? '#070707' : '#ffffff';
+  const headerText = brand ? '#ffffff' : '#0f172a';
+  const logoUrl = storeSettings?.store_logo || brand?.logoUrl;
   const aboutCopy = storeSettings?.store_description || seller.bio || 'This store is building its story.';
   const storeHomePath = isCustomDomain
     ? '/'
     : normalizedSlug
-      ? `/${normalizedSlug}`
+      ? `/store/${normalizedSlug}`
       : `/store/${encodeURIComponent(String(storeRouteId))}`;
   const aboutPath = isCustomDomain
     ? '/about'
     : normalizedSlug
-      ? `/${normalizedSlug}/about`
+      ? `/store/${normalizedSlug}/about`
       : `/store/${encodeURIComponent(String(storeRouteId))}/about`;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
+    <div className="min-h-screen" style={{ backgroundColor: brandBackground }}>
+      <header className="sticky top-0 z-40 backdrop-blur border-b" style={{ backgroundColor: headerColor, borderColor: accentColor }}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-4 justify-between">
           <Link to={storeHomePath} className="flex items-center gap-3">
-            {storeSettings?.store_logo ? (
+            {logoUrl ? (
               <img
-                src={storeSettings.store_logo}
+                src={logoUrl}
                 alt={`${storeName} logo`}
                 className="w-10 h-10 rounded-xl object-cover border border-slate-200 bg-white"
                 onError={(e) => {
@@ -152,16 +159,16 @@ const SellerAboutPage: React.FC<SellerAboutPageProps> = ({ sellerId: propSellerI
               </div>
             )}
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Storefront</div>
-              <div className="text-lg font-semibold text-slate-900">{storeName}</div>
+              {brand?.headerLabel && <div className="text-xs uppercase tracking-wide" style={{ color: accentColor }}>{brand.headerLabel}</div>}
+              <div className="text-lg font-semibold" style={{ color: headerText }}>{storeName}</div>
             </div>
           </Link>
 
-          <nav className="flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-600">
-            <Link to={storeHomePath} className="hover:text-slate-900 transition-colors">
+          <nav className="flex flex-wrap items-center gap-3 text-sm font-semibold" style={{ color: headerText }}>
+            <Link to={storeHomePath} className="transition-opacity hover:opacity-80" style={{ color: headerText }}>
               Products
             </Link>
-            <Link to={aboutPath} className="hover:text-slate-900 transition-colors">
+            <Link to={aboutPath} className="transition-opacity hover:opacity-80" style={{ color: headerText }}>
               About
             </Link>
           </nav>
@@ -169,7 +176,8 @@ const SellerAboutPage: React.FC<SellerAboutPageProps> = ({ sellerId: propSellerI
           {!isCustomDomain && (
             <Link
               to={storeHomePath}
-              className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-sm font-semibold text-slate-700"
+              className="flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors text-sm font-semibold"
+              style={{ color: headerText, borderColor: accentColor }}
             >
               <Store className="w-4 h-4" />
               Back to Store
@@ -178,12 +186,12 @@ const SellerAboutPage: React.FC<SellerAboutPageProps> = ({ sellerId: propSellerI
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-10">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-          <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 mb-4">
+      <section className="max-w-6xl mx-auto px-4 py-10">
+        <div className="rounded-2xl border shadow-sm p-8" style={{ backgroundColor: brand ? '#faf7f1' : '#ffffff', borderColor: accentColor }}>
+          <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.2em] mb-4" style={{ color: accentColor }}>
             About the store
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-4">{storeName}</h1>
+          <h1 className={`text-3xl font-bold text-slate-900 mb-4 ${brand ? 'font-serif' : ''}`}>{storeName}</h1>
           <p className="text-slate-600 text-lg leading-relaxed">{aboutCopy}</p>
 
           {storeSettings?.custom_domain && (
@@ -193,7 +201,7 @@ const SellerAboutPage: React.FC<SellerAboutPageProps> = ({ sellerId: propSellerI
             </div>
           )}
         </div>
-      </main>
+      </section>
     </div>
   );
 };

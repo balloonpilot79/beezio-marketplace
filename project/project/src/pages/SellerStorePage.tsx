@@ -1029,7 +1029,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         <style>{seller.custom_css}</style>
       )}
       
-      <CompactStoreHeader name={displayStoreName} logoUrl={effectiveStoreLogoUrl} homePath={storeHomePath} inverse={hasEditorialBrand} accentColor={hasEditorialBrand ? editorialAccentColor : primaryColor} label={houseBrandIdentity?.headerLabel || 'Independent shop'} onContact={showContactButton ? () => setContactModal(true) : undefined} />
+      <CompactStoreHeader name={displayStoreName} logoUrl={effectiveStoreLogoUrl} homePath={storeHomePath} inverse={hasEditorialBrand} accentColor={hasEditorialBrand ? editorialAccentColor : primaryColor} label={houseBrandIdentity?.headerLabel || ''} onContact={showContactButton ? () => setContactModal(true) : undefined} />
       <header
         className="hidden lg:block sticky top-0 z-40 border-b shadow-sm backdrop-blur"
         style={hasEditorialBrand
@@ -1055,7 +1055,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               </div>
             )}
             <div className="leading-tight">
-              <div className="text-[0.65rem] font-bold uppercase tracking-[0.3em]" style={{ color: hasEditorialBrand ? editorialAccentColor : accentColor }}>{houseBrandIdentity?.headerLabel || 'Independent shop'}</div>
+              {houseBrandIdentity?.headerLabel && <div className="text-[0.65rem] font-bold uppercase tracking-[0.3em]" style={{ color: editorialAccentColor }}>{houseBrandIdentity.headerLabel}</div>}
               <div className={`text-xl tracking-tight ${hasEditorialBrand ? 'font-serif font-semibold' : 'font-black'}`} style={{ color: hasEditorialBrand ? '#ffffff' : textColor }}>{displayStoreName}</div>
             </div>
             </Link>
@@ -1283,7 +1283,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                   <Link to="/dashboard" className="border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-800">Open brand dashboard</Link>
                 </div>
               ) : null}
-              <div className="mt-8 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Independent storefront • Powered by Beezio</div>
+              <div className="mt-8 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Powered by Beezio</div>
             </div>
           </section>
         ) : filteredProducts.length === 0 ? (
@@ -1411,7 +1411,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                 ) : (
                   <div className="flex items-start gap-3">
                     <Award className="mt-0.5 h-4 w-4 text-slate-700" />
-                    <div><div className="font-semibold text-slate-900">Independent brand</div><div>Storefront and checkout powered by Beezio.</div></div>
+                    <div><div className="font-semibold text-slate-900">Shopping & support</div><div>Storefront and checkout powered by Beezio.</div></div>
                   </div>
                 )}
               </div>

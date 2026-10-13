@@ -4,7 +4,7 @@ import { Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContextMultiRole';
 import StorefrontShoppingLinks from './StorefrontShoppingLinks';
 
-export default function CompactStoreHeader({ name, logoUrl, homePath, inverse = false, accentColor = '#c7a34a', label = 'Independent shop', productHref = '#products', onContact }: {
+export default function CompactStoreHeader({ name, logoUrl, homePath, inverse = false, accentColor = '#c7a34a', label = '', productHref = '#products', onContact }: {
   name: string; logoUrl?: string | null; homePath: string; inverse?: boolean; accentColor?: string; label?: string; productHref?: string; onContact?: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -16,7 +16,7 @@ export default function CompactStoreHeader({ name, logoUrl, homePath, inverse = 
       <div className="flex h-16 items-center gap-2 px-3">
         <Link to={homePath} className="flex min-w-0 flex-1 items-center gap-2">
           {logoUrl ? <img src={logoUrl} alt="" style={{ boxShadow: `0 0 0 1px ${accentColor}` }} className="h-10 w-10 shrink-0 rounded-xl bg-white object-contain p-0.5" /> : <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400 font-bold text-slate-900">{name.charAt(0)}</span>}
-          <span className="min-w-0"><span className="block truncate text-[8px] font-bold uppercase tracking-[0.18em]" style={{ color: accentColor }}>{label}</span><span className={`block truncate leading-tight ${inverse ? 'font-serif text-xl font-semibold' : 'text-base font-bold'}`} style={{ color: inverse ? '#ffffff' : '#101820' }}>{name}</span></span>
+          <span className="min-w-0">{label && <span className="block truncate text-[8px] font-bold uppercase tracking-[0.18em]" style={{ color: accentColor }}>{label}</span>}<span className={`block truncate leading-tight ${inverse ? 'font-serif text-xl font-semibold' : 'text-base font-bold'}`} style={{ color: inverse ? '#ffffff' : '#101820' }}>{name}</span></span>
         </Link>
         <StorefrontShoppingLinks inverse={inverse} compact />
         <button type="button" onClick={() => setOpen(!open)} aria-label={open ? 'Close store menu' : 'Open store menu'} aria-expanded={open} aria-controls="compact-store-menu" style={{ color: inverse ? '#ffffff' : '#101820' }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg">

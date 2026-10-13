@@ -611,7 +611,7 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
               </div>
             )}
             <div className="leading-tight">
-              <div className="text-[0.6rem] font-semibold uppercase tracking-[0.28em]" style={{ color: accentColor }}>Independent shop</div>
+              
               <div className="text-lg font-semibold" style={{ color: textColor }}>{storeName}</div>
             </div>
           </Link>

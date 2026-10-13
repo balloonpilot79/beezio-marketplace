@@ -220,9 +220,6 @@ export default function CustomPageView() {
                 />
               )}
               <div>
-                 <h2 className="text-sm text-gray-600">
-                  Independent storefront
-                 </h2>
                 <h1 className="text-2xl font-bold text-gray-900">{owner.full_name}</h1>
               </div>
             </div>
