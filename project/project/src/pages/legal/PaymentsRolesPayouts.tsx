@@ -2,7 +2,7 @@ import React from 'react';
 import LegalPageLayout from './LegalPageLayout';
 
 const PaymentsRolesPayouts: React.FC = () => (
-  <LegalPageLayout title="Payments, Roles, and Payout System" updated="October 7, 2026">
+  <LegalPageLayout title="Payments, Roles, and Payout System" updated="October 12, 2026">
     <section>
       <h2 className="text-xl font-semibold text-gray-900">1. Platform Roles</h2>
       <ul className="list-disc list-inside space-y-2">
@@ -38,11 +38,11 @@ const PaymentsRolesPayouts: React.FC = () => (
     <section>
       <h2 className="text-xl font-semibold text-gray-900">4. Hold and Payout Schedule</h2>
       <ul className="list-disc list-inside space-y-2">
-        <li>Standard seller, affiliate, and influencer earnings are subject to Beezio&apos;s current payout hold.</li>
-        <li>Beezio administrative accounts may be exempt from the standard hold when funds are needed to purchase or fulfill an order.</li>
+        <li>Seller, affiliate, and influencer earnings are held for 14 days from completed order payment, not delivery.</li>
+        <li>Early payout cannot bypass the hold, including for administrative accounts.</li>
         <li>Eligible payouts are processed according to Beezio&apos;s current payout schedule.</li>
         <li>Physical-product seller payouts require valid shipment tracking when tracking is required for the order.</li>
-        <li>Disputes, chargebacks, fraud review, or missing tracking can pause a related payout until the issue is resolved.</li>
+        <li>Disputes, chargebacks, fraud review, or missing tracking pause only the affected order’s related funds. Other eligible earnings release normally.</li>
       </ul>
     </section>
 

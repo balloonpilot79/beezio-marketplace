@@ -73,6 +73,7 @@ export function useProductPromoterCount(productId: string) {
 
 export const ProductPromoterCountBadge: React.FC<{ productId: string; className?: string }> = ({ productId, className = '' }) => {
   const count = useProductPromoterCount(productId);
+  if (count <= 0) return null;
   return (
     <div className={`inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm border border-slate-200 ${className}`}>
       <Users className="h-3.5 w-3.5" />

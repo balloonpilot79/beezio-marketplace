@@ -95,6 +95,7 @@ const SignUpPage: React.FC = () => {
   const passwordStrength = getPasswordStrength(formData.password);
 
   const urlRole = searchParams.get("role");
+  const isInfluencerSignup = urlRole === "influencer";
   const referralFromLink =
     searchParams.get("recruit") ||
     searchParams.get("influencer") ||
@@ -876,16 +877,15 @@ const SignUpPage: React.FC = () => {
       </Link>
       <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl p-4 sm:p-6 md:p-8">
         <p className="bz-eyebrow mb-3 text-center">
-          Sellers · Affiliates · Influencers
+          {isInfluencerSignup ? "Beezio influencer signup" : "Sellers · Affiliates · Influencers"}
         </p>
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-2 text-center">
-          Your free website starts here.
+          {isInfluencerSignup ? "Your referral link starts here." : "Your free website starts here."}
         </h1>
         <p className="mb-4 text-center text-sm text-gray-600">
-          Sellers and affiliates get free custom websites they design
-          themselves. One business account includes selling, affiliate
-          promotion, influencer referral tools, and your Business Center. No
-          monthly fees, listing fees, or seller fees.
+          {isInfluencerSignup
+            ? "Create your free account, open Influencer tools in your Business Center, and share your personal referral link with sellers and affiliates. Earn when they make qualifying product sales. No products or store required to start. Your account also includes seller and affiliate tools."
+            : "Sellers and affiliates get free custom websites they design themselves. One business account includes selling, affiliate promotion, influencer referral tools, and your Business Center. No monthly fees, listing fees, or seller fees."}
         </p>
         <p className="mb-6 text-center text-xs text-slate-500">
           Just shopping?{" "}
@@ -1058,24 +1058,25 @@ const SignUpPage: React.FC = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Business or store name
+              {isInfluencerSignup ? "Creator or business name (optional)" : "Business or store name (optional)"}
             </label>
             <input
               type="text"
               name="storeName"
-              aria-label="Business or store name"
+              aria-label={isInfluencerSignup ? "Creator or business name (optional)" : "Business or store name (optional)"}
               autoComplete="organization"
               value={formData.storeName}
               onChange={handleChange}
               className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${storeNameInputClass}`}
-              placeholder="e.g., Jason's Shop"
+              placeholder={isInfluencerSignup ? "e.g., your creator name" : "e.g., Jason's Shop"}
             />
-            {!formData.storeName.trim() && formData.email && (
+            {isInfluencerSignup && <p className="mt-1 text-xs text-gray-500">You can leave this blank and set up a store later.</p>}
+            {!isInfluencerSignup && !formData.storeName.trim() && formData.email && (
               <p className="text-xs text-gray-500 mt-1">
                 Defaulting to your username: {formData.email.split("@")[0]}
               </p>
             )}
-            {storeSlugValue && (
+            {storeSlugValue && (!isInfluencerSignup || formData.storeName.trim()) && (
               <div
                 className={`mt-2 rounded-lg border px-3 py-2 ${availabilityPanelClass}`}
               >

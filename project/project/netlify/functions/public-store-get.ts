@@ -1,3 +1,4 @@
+import { fetchPublicSellerNames } from './_lib/publicSellerNames';
 import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import { getProductShipping } from '../../shared/productShipping';
 import { isPublicStoreProduct, isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
@@ -375,13 +376,8 @@ const handler: Handler = async (event) => {
       .filter((id: string) => Boolean(id) && !sellerAliases.includes(id))));
     const sellerDisplayNames = new Map<string, string>();
     if (otherSellerIds.length) {
-      const { data: sellerProfiles } = await supabaseAdmin.from('profiles')
-        .select('id,full_name').in('id', otherSellerIds.slice(0, 500));
-      (sellerProfiles || []).forEach((row: any) => {
-        const id = String(row?.id || '').trim();
-        const name = String(row?.full_name || '').trim();
-        if (id && name) sellerDisplayNames.set(id, name);
-      });
+      const names = await fetchPublicSellerNames(supabaseAdmin, otherSellerIds as string[]);
+      names.forEach((name, id) => sellerDisplayNames.set(id, name));
     }
 
     const productsById = new Map<string, any>();
@@ -451,13 +447,8 @@ const handler: Handler = async (event) => {
               .filter((id: string) => Boolean(id) && !sellerAliases.includes(id))));
             const sellerNameById = new Map<string, string>();
             if (externalSellerIds.length) {
-              const { data: sellerProfiles } = await supabaseAdmin.from('profiles')
-                .select('id,full_name').in('id', externalSellerIds.slice(0, 500));
-              (sellerProfiles || []).forEach((seller: any) => {
-                const id = String(seller?.id || '').trim();
-                const name = String(seller?.full_name || '').trim();
-                if (id && name) sellerNameById.set(id, name);
-              });
+              const names = await fetchPublicSellerNames(supabaseAdmin, externalSellerIds as string[]);
+              names.forEach((name, id) => sellerNameById.set(id, name));
             }
             const orderById = new Map<string, any>();
             (affiliateRows || []).forEach((row: any) => orderById.set(String(row.product_id), row));

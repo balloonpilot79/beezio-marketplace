@@ -1,3 +1,4 @@
+import { fetchPublicSellerNames } from './_lib/publicSellerNames';
 import { isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
@@ -244,15 +245,8 @@ const handler: Handler = async (event) => {
       );
       const sellerNameById = new Map<string, string>();
       if (sellerIds.length) {
-        const { data: sellers } = await supabaseAdmin
-          .from('profiles')
-          .select('id,full_name')
-          .in('id', sellerIds.slice(0, 500));
-        (sellers || []).forEach((seller: any) => {
-          const id = String(seller?.id || '').trim();
-          const name = String(seller?.full_name || '').trim();
-          if (id && name) sellerNameById.set(id, name);
-        });
+        const names = await fetchPublicSellerNames(supabaseAdmin, sellerIds as string[]);
+        names.forEach((name, id) => sellerNameById.set(id, name));
       }
 
       productsById = new Map(

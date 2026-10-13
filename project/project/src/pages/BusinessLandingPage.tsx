@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, Palette } from "lucide-react";
 import PublicLayout from "../components/layout/PublicLayout";
+import { getReferrerBonusPerItem } from "../../shared/referralBonus";
 import {
   AudienceCards,
   pricingExplanation,
@@ -50,7 +51,7 @@ const content = {
     ],
   },
   influencer: {
-    label: "Founding influencers • Beezio beta",
+    label: "For influencers • Beezio beta",
     title: "Help us launch Beezio. Earn when the sellers and affiliates you introduce make qualifying product sales.",
     description:
       "Beezio is a brand-new marketplace built to help sellers move products through affiliates. We’re inviting early influencers and creators to help bring sellers and affiliates together. Share your personal referral link. If an eligible seller or affiliate joins through your link and later participates in a qualifying product sale, your referral relationship can earn an influencer bonus. You are not paid for the signup itself, and income is never guaranteed.",
@@ -107,7 +108,7 @@ export default function BusinessLandingPage({
           </h1>
           <p className="mt-5 leading-7 text-slate-600">{page.description}</p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link to="/signup" className="bz-button bz-button-gold">
+            <Link to={audience === "influencer" ? "/signup?role=influencer" : "/signup"} className="bz-button bz-button-gold">
               {audience === "influencer" ? "Join free as an influencer" : "Start your free website"}
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -131,6 +132,29 @@ export default function BusinessLandingPage({
           </Link>
         </aside>
       </section>
+      {audience === "influencer" && (
+        <section className="bz-panel mt-8 p-6 sm:p-8" aria-labelledby="influencer-example">
+          <p className="bz-eyebrow">How your earnings add up</p>
+          <h2 id="influencer-example" className="mt-3 text-2xl font-semibold">Refer once. Earn on ongoing qualifying sales.</h2>
+          <p className="mt-4 leading-7 text-slate-600">
+            Earn ${getReferrerBonusPerItem(30).toFixed(2)} per eligible item sold through a seller or affiliate you referred
+            when the seller’s requested product amount is $30 or less, or ${getReferrerBonusPerItem(31).toFixed(2)} when it is above $30.
+            This amount is already built into the selling price.
+          </p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl bg-slate-50 p-5">
+              <h3 className="font-semibold">Example: you refer a seller</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">If they sell 100 eligible items at the ${getReferrerBonusPerItem(30).toFixed(2)} referral rate, you earn ${(100 * getReferrerBonusPerItem(30)).toFixed(2)}. Another 100 eligible items earns another ${(100 * getReferrerBonusPerItem(30)).toFixed(2)}.</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-5">
+              <h3 className="font-semibold">Example: you refer an affiliate</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">If their promotions generate 100 eligible item sales at the ${getReferrerBonusPerItem(31).toFixed(2)} referral rate, you earn ${(100 * getReferrerBonusPerItem(31)).toFixed(2)}.</p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-slate-600">These are arithmetic examples, not sales forecasts. Signups alone do not earn money. Earnings depend on eligible, attributed sales and remain subject to refunds, the 14-day hold from payment, and the $5 payout minimum. Everyone receives the same program terms.</p>
+          <Link to="/signup?role=influencer" className="bz-text-link mt-5">Join free and get your referral link <ArrowRight className="h-4 w-4" /></Link>
+        </section>
+      )}
       <section className="grid gap-5 py-12 md:grid-cols-3">
         {page.features.map(([title, detail], index) => (
           <article key={title} className="bz-panel p-6">

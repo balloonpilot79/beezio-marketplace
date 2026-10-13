@@ -2,11 +2,12 @@ import React from 'react';
 import LegalPageLayout from './LegalPageLayout';
 
 const PayoutPolicy: React.FC = () => (
-  <LegalPageLayout title="Payout Policy" updated="September 30, 2026">
+  <LegalPageLayout title="Payout Policy" updated="October 12, 2026">
     <section>
       <p>
-        Standard seller, affiliate, and influencer earnings are held for 14 days after order completion. Beezio
-        administrative accounts may be released earlier when funds are required to purchase or fulfill the order.
+        Seller, affiliate, and influencer earnings are held for 14 days from the date the order payment is
+        completed. The hold starts at payment, not delivery. Early payout cannot bypass this hold, including
+        for administrative accounts.
       </p>
     </section>
     <section>
@@ -25,7 +26,8 @@ const PayoutPolicy: React.FC = () => (
       <h2 className="text-xl font-semibold text-gray-900">Disputes and Payout Pauses</h2>
       <p>
         Disputes, chargebacks, suspected fraud, missing shipment tracking, or missing return-shipment evidence can
-        pause related payouts until the issue is resolved.
+        pause only the affected order’s related funds until the issue is resolved. Other eligible earnings
+        continue through the normal payout schedule; an issue with one order does not hold your entire balance.
       </p>
     </section>
   </LegalPageLayout>

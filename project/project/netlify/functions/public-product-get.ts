@@ -7,6 +7,7 @@ import { storefrontProductAttribution } from '../../shared/storefrontProductAttr
 import { createClient } from '@supabase/supabase-js';
 import { applyStorefrontProductPricing } from '../../shared/productPricing';
 import { resolveHouseBrandIdentity } from '../../shared/houseBrandIdentity';
+import { getOwnedProductStorefront, getPublicSellerName } from '../../shared/publicSellerIdentity';
 import { sanitizeSupplyLineProduct } from '../../shared/publicSupplyLineProduct';
 
 function json(statusCode: number, body: unknown) {
@@ -308,15 +309,10 @@ const handler: Handler = async (event) => {
     if (storefrontIds.length) {
       const { data: storefrontRows } = await supabaseAdmin
         .from('storefronts')
-        .select('id,name,slug,theme_settings,shipping_policy,return_policy,custom_domain,is_active')
+        .select('id,owner_id,name,slug,theme_settings,shipping_policy,return_policy,custom_domain,is_active')
         .in('id', storefrontIds)
         .eq('is_active', true);
-      productStorefront =
-        (storefrontRows || []).find((row: any) =>
-          Boolean(resolveHouseBrandIdentity(row?.slug, row?.theme_settings?.brand_personality))
-        ) ||
-        (storefrontRows || [])[0] ||
-        null;
+      productStorefront = getOwnedProductStorefront(storefrontRows || [], sellerId);
     }
 
     if (sellerId) {
@@ -329,9 +325,7 @@ const handler: Handler = async (event) => {
           .maybeSingle(),
       ]);
       const name = String((seller as any)?.full_name || '').trim();
-      const storeName = String((settings as any)?.store_name || '').trim();
-      if (name) sellerName = name;
-      else if (storeName) sellerName = storeName;
+      sellerName = getPublicSellerName(name, settings, productStorefront);
       storeSettings = settings || null;
     }
 

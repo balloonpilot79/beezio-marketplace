@@ -1217,7 +1217,7 @@ const ProductDetailPage: React.FC = () => {
           console.warn('[ProductDetailPage] Error fetching store settings (non-fatal):', storeSettingsError);
         }
         const returnedStoreSlug = String((data as any)?.storefront_slug || '').trim().toLowerCase();
-        const houseBrand = resolveHouseBrandIdentity(rawStoreSlug || returnedStoreSlug);
+        const houseBrand = resolveHouseBrandIdentity(returnedStoreSlug);
         setSellerStoreSettings(
           houseBrand
             ? {
