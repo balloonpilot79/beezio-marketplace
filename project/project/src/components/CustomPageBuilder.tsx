@@ -25,6 +25,7 @@ interface CustomPage {
 
 interface CustomPageBuilderProps {
   ownerType: 'seller' | 'affiliate';
+  storeSlug?: string;
 }
 
 type PageEditorMode = 'builder' | 'html';
@@ -101,9 +102,11 @@ const isAllowedPlatformPath = (pathname: string): boolean => {
   return ALLOWED_PLATFORM_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix));
 };
 
-export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps) {
-  const { user, profile } = useAuth();
+export default function CustomPageBuilder({ ownerType, storeSlug }: CustomPageBuilderProps) {
+  const { user } = useAuth();
   const [ownerId, setOwnerId] = useState<string>('');
+  const [savedStoreSlug, setSavedStoreSlug] = useState('');
+  const pageBasePath = `/${ownerType === 'seller' ? 'store' : 'partner'}/${storeSlug || savedStoreSlug || ownerId}`;
   const [pages, setPages] = useState<CustomPage[]>([]);
   const [editingPage, setEditingPage] = useState<CustomPage | null>(null);
   const [isNewPage, setIsNewPage] = useState(false);
@@ -133,6 +136,21 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
 
   useEffect(() => {
     void loadPages();
+  }, [ownerId, ownerType]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSavedStoreSlug('');
+    if (!ownerId) return;
+    void (async () => {
+      const { data, error } = await supabase
+        .from(ownerType === 'seller' ? 'store_settings' : 'affiliate_store_settings')
+        .select('subdomain')
+        .eq(ownerType === 'seller' ? 'seller_id' : 'affiliate_id', ownerId)
+        .maybeSingle();
+      if (!cancelled && !error) setSavedStoreSlug(data?.subdomain || '');
+    })();
+    return () => { cancelled = true; };
   }, [ownerId, ownerType]);
 
   useEffect(() => {
@@ -514,7 +532,7 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
                         <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded">Draft</span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600">/{ownerType}/{profile?.username}/{page.page_slug}</p>
+                    <p className="text-sm text-gray-600">{pageBasePath}/{page.page_slug}</p>
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -622,7 +640,7 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
               <div>
                 <label className="block font-semibold mb-2">URL Slug (lowercase, no spaces)</label>
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-600">/{ownerType}/{profile?.username}/</span>
+                  <span className="text-gray-600">{pageBasePath}/</span>
                   <input
                     type="text"
                     value={editingPage.page_slug}
@@ -880,7 +898,7 @@ export default function CustomPageBuilder({ ownerType }: CustomPageBuilderProps)
             <div className="border rounded-lg p-6 bg-white min-h-[500px]">
               <div className="mb-4 pb-4 border-b">
                 <h1 className="text-3xl font-bold">{editingPage.page_title}</h1>
-                <p className="text-sm text-gray-600">Preview of: /{ownerType}/{profile?.username}/{editingPage.page_slug}</p>
+                <p className="text-sm text-gray-600">Preview of: {pageBasePath}/{editingPage.page_slug}</p>
               </div>
               <div
                 dangerouslySetInnerHTML={{

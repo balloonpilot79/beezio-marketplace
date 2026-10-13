@@ -10,6 +10,8 @@ import {
   Zap,
   FileText,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   LayoutTemplate,
   Wand2,
   PackagePlus,
@@ -539,12 +541,16 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
     handleLayoutChange(field, !isFeatureEnabled(featureId));
   };
 
-  const handleFeatureDragEnd = (result: any) => {
-    if (!result.destination) return;
+  const moveFeature = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= storefrontSections.length) return;
     const nextSections = Array.from(storefrontSections);
-    const [moved] = nextSections.splice(result.source.index, 1);
-    nextSections.splice(result.destination.index, 0, moved);
+    const [moved] = nextSections.splice(from, 1);
+    nextSections.splice(to, 0, moved);
     handleLayoutChange('storefront_sections', nextSections);
+  };
+
+  const handleFeatureDragEnd = (result: any) => {
+    if (result.destination) moveFeature(result.source.index, result.destination.index);
   };
 
   const handleColorSchemeChange = (field: string, value: string) => {
@@ -967,7 +973,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                                   <button type="button" className="mt-0.5 text-stone-400" {...dragProvided.dragHandleProps} aria-label={`Drag ${feature.label}`}>
                                     <GripVertical className="h-5 w-5" />
                                   </button>
-                                  <button type="button" onClick={() => toggleFeature(feature.id)} className="mt-0.5 text-stone-700" aria-pressed={enabled}>
+                                  <button type="button" onClick={() => toggleFeature(feature.id)} className="mt-0.5 text-stone-700" aria-pressed={enabled} aria-label={`Show ${feature.label}`}>
                                     {enabled ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5" />}
                                   </button>
                                   <div className="min-w-0 flex-1">
@@ -978,6 +984,10 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                                       </span>
                                     </div>
                                     <p className="mt-1 text-sm text-stone-600">{feature.description}</p>
+                                    <div className="mt-2 flex gap-2">
+                                      <button type="button" onClick={() => moveFeature(index, index - 1)} disabled={index === 0} aria-label={`Move ${feature.label} up`} className="rounded-lg border border-stone-300 p-2 disabled:opacity-30"><ArrowUp className="h-4 w-4" /></button>
+                                      <button type="button" onClick={() => moveFeature(index, index + 1)} disabled={index === storefrontSections.length - 1} aria-label={`Move ${feature.label} down`} className="rounded-lg border border-stone-300 p-2 disabled:opacity-30"><ArrowDown className="h-4 w-4" /></button>
+                                    </div>
                                   </div>
                                 </div>
                               )}
@@ -1070,7 +1080,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
               </div>
 
               <div className="rounded-[24px] border border-stone-200 bg-white p-4 shadow-sm">
-                <CustomPageBuilder ownerType={role} />
+                <CustomPageBuilder ownerType={role} storeSlug={storeSettings.subdomain} />
               </div>
             </>
 
@@ -1110,7 +1120,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
             </>
         </main>
 
-        <aside className="min-w-0 xl:sticky xl:top-6 xl:self-start">
+        <aside className="min-w-0 xl:sticky xl:top-32 xl:self-start">
           <div className="rounded-[28px] border border-stone-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">

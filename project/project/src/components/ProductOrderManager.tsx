@@ -62,10 +62,8 @@ const ProductOrderManager: React.FC<ProductOrderManagerProps> = ({ sellerId, own
         is_featured,
         products (
           id,
-          name,
           title,
           price,
-          image_url,
           images
         )
       `)
@@ -97,7 +95,7 @@ const ProductOrderManager: React.FC<ProductOrderManagerProps> = ({ sellerId, own
     // Get all products for this seller
     const { data: sellerProducts, error: productsError } = await supabase
       .from('products')
-      .select('id, name, title, price, image_url, images')
+      .select('id, title, price, images')
       .in('seller_id', ownerAliases.length ? ownerAliases : [owner])
       .order('created_at', { ascending: false });
 
@@ -125,7 +123,7 @@ const ProductOrderManager: React.FC<ProductOrderManagerProps> = ({ sellerId, own
     if (missingProductIds.length > 0) {
       const { data: extraProducts, error: extraError } = await supabase
         .from('products')
-        .select('id, name, title, price, image_url, images')
+        .select('id, title, price, images')
         .in('id', missingProductIds);
 
       if (extraError) {
@@ -154,6 +152,7 @@ const ProductOrderManager: React.FC<ProductOrderManagerProps> = ({ sellerId, own
   const loadProducts = async () => {
     try {
       setLoading(true);
+      setMessage(null);
       if (!activeOwnerId) {
         setProducts([]);
         return;
@@ -259,6 +258,7 @@ const ProductOrderManager: React.FC<ProductOrderManagerProps> = ({ sellerId, own
   if (products.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
+        {message?.type === 'error' && <p role="alert" className="mb-3 text-red-700">{message.text}</p>}
         {isAffiliateMode
           ? 'No promoted products found. Add products from the affiliate dashboard or marketplace first, then arrange them here.'
           : 'No products found. Create some products first to manage their order.'}
