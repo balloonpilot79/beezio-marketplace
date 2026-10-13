@@ -12,8 +12,9 @@ describe('one consistent accounting state across roles', () => {
     expect(isConfirmedPaidOrder({status:'processing'})).toBe(false);
   });
   it('counts one influenced sale with both referral slots while excluding canceled earnings', () => {
-    const rows = [{id:'seller-slot',order_id:'one',amount:1,status:'PENDING_HOLD',created_at:'2026-10-01T12:00:00Z'}, {id:'affiliate-slot',order_id:'one',amount:1,status:'PAID',created_at:'2026-10-01T12:00:00Z'}, {id:'reversed',order_id:'two',amount:100,status:'CANCELED',created_at:'2026-10-01T12:00:00Z'}];
-    expect(summarizeEarningActivity(rows,new Date('2026-10-01T15:00:00Z'))).toMatchObject({total_sales:1,today_sales:1,total_earned:2,today_earned:2});
+    const createdAt = new Date(2026, 9, 1, 12).toISOString();
+    const rows = [{id:'seller-slot',order_id:'one',amount:1,status:'PENDING_HOLD',created_at:createdAt}, {id:'affiliate-slot',order_id:'one',amount:1,status:'PAID',created_at:createdAt}, {id:'reversed',order_id:'two',amount:100,status:'CANCELED',created_at:createdAt}];
+    expect(summarizeEarningActivity(rows,new Date(2026, 9, 1, 15))).toMatchObject({total_sales:1,today_sales:1,total_earned:2,today_earned:2});
   });
   it('removes refunded paid earnings from net earnings without rewriting transfer history', () => {
     const rows = annotateReversedEarnings([{order_id:'one',amount:5,status:'PAID'}],[{id:'one',payment_status:'refunded'}]);

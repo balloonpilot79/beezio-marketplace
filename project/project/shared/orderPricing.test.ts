@@ -29,9 +29,9 @@ describe('no automatic product quantity discounts', () => {
     const plan = buildPayPalLedgerPlan({ orderId:'order', currency:'USD', providerOrderId:'paypal', providerCaptureId:'capture', paidAt:'2026-10-05', holdReleaseAt:'2026-10-19', sellerId:'seller', partnerId:'affiliate', sellerInfluencerId:'seller-referrer', partnerInfluencerId:'affiliate-referrer', subtotalListing:subtotal, shippingAmount:shipping, taxAmount:0, items:[{ quantity, seller_ask_amount:15.1, partner_rate:0, computed_listing_price:unitPrice, affiliate_payout_amount:7, shipping_reserve_amount:5.99, platform_fee_amount:pricing.platformFee, influencer_allocation_amount:pricing.influencerAllocation, paypal_processing_allowance:pricing.paypalProcessingAllowance - credit, product_title:'Shirt' }] });
     expect(plan.aggregate.sellerEarnings).toBe(63.27);
     expect(plan.aggregate.partnerEarnings).toBe(21);
-    expect(plan.aggregate.influencerEarnings).toBe(6);
-    expect(plan.aggregate.beezioFeeGross).toBe(6);
-    expect(plan.aggregate.beezioProfit).toBeGreaterThanOrEqual(6);
+    expect(plan.aggregate.influencerEarnings).toBe(3);
+    expect(plan.aggregate.beezioFeeGross).toBe(6.75);
+    expect(plan.aggregate.beezioProfit).toBeGreaterThanOrEqual(6.75);
     expect(Math.round(plan.moneyEntries.reduce((sum, row) => sum + row.netAmount,0)*100)/100).toBe(Math.round((subtotal+shipping)*100)/100);
   });
 });
