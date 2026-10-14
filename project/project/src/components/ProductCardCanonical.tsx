@@ -193,7 +193,7 @@ const CanonicalProductCard: React.FC<Props> = ({
   );
 
   const purchaseButtons = purchaseVisible ? (
-    <div className="flex flex-col gap-2">
+    <div className="flex w-full flex-col gap-2">
       <button type="button" onClick={handleAddToCart} disabled={outOfStock} className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 disabled:opacity-50 text-white rounded-xl py-3 font-medium flex items-center justify-center">
         <ShoppingCart className="w-5 h-5 mr-2" />
         {outOfStock ? 'Out of Stock' : hasVariants ? 'Choose Options' : 'Add to Cart'}
@@ -205,7 +205,7 @@ const CanonicalProductCard: React.FC<Props> = ({
   ) : null;
 
   const storeButtons = showStoreTools ? (
-    <div className="space-y-2" onClick={stop} onMouseDown={stop} onPointerDown={stop}>
+    <div className="space-y-2 [&>button]:w-full [&>button]:justify-center [&>button]:min-h-12 [&>button]:rounded-xl" onClick={stop} onMouseDown={stop} onPointerDown={stop}>
       {canAffiliate ? (
         <AddToAffiliateStoreButton
           productId={product.id}
@@ -242,7 +242,7 @@ const CanonicalProductCard: React.FC<Props> = ({
           <p className="text-2xl font-bold text-gray-900 mt-3">${buyerPrice.toFixed(2)}</p>
           {affiliateEarnings}
         </ProductLink>
-        <div className="mt-3 flex flex-col sm:flex-row gap-2">{purchaseButtons}{storeButtons}</div>
+        <div className="mt-3 flex flex-col gap-2 [&>div]:w-full">{purchaseButtons}{storeButtons}</div>
       </div>
     </div>
   ) : (
@@ -268,8 +268,7 @@ const CanonicalProductCard: React.FC<Props> = ({
         </div>
       </ProductLink>
       <div className={compact ? 'p-3 pt-0' : 'p-5 pt-0'}>
-        {purchaseButtons}
-        {storeButtons}
+        <div className="flex flex-col gap-2 [&>div]:w-full">{purchaseButtons}{storeButtons}</div>
         <Link to={productUrl} state={{ from: `${location.pathname}${location.search}` }} className="mt-2 w-full bg-gray-50 border border-gray-200 text-gray-700 rounded-xl py-3 font-medium flex items-center justify-center">
           <ExternalLink className="w-4 h-4 mr-2" /> View Product
         </Link>
