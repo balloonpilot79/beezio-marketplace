@@ -27,7 +27,7 @@ Footer: About, Contact, Shipping, Returns, Beezio marketplace attribution.
 
 ## Product sourcing
 Source candidates from Everful; only publish items after confirming authorization to resell, current price, inventory, imagery rights, shipping destination, shipping fee and fulfillment process.
-Free Shipping badge ONLY if verified for individual order destination and order value.
+Everful policy (supplier screenshot, October 2026): order total AFTER discount must exceed $100; tagged Free Shipping items ship free by air; untagged items still incur shipping charges. Do not treat a product tag alone as free shipping on individual supplier orders below threshold. Confirm fulfillment and landed cost before promising customer free shipping. Do not automatically apply a $100 minimum to Beezio customers.
 Use real supplier images, not generated mockups, on product cards.
 Use existing Beezio fee, seller, affiliate and influencer logic unchanged.
 
