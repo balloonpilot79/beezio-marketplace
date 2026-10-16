@@ -1121,6 +1121,47 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
         </main>
 
         <aside className="min-w-0 xl:sticky xl:top-32 xl:self-start">
+          <section aria-label="Interactive storefront design playground" className="mb-4 rounded-[28px] border border-amber-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-base font-bold text-stone-950"><Palette className="h-5 w-5 text-amber-600" /> Design playground</div>
+            <p className="mt-1 text-xs leading-5 text-stone-600">Try a look below. The live preview updates immediately; your public store stays unchanged until you save.</p>
+            <div className="mt-4">
+              <label className="block text-xs font-semibold text-stone-700">Brand colors</label>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {[
+                  { name: 'Bronze', color: '#B57B46' },
+                  { name: 'Forest', color: '#396451' },
+                  { name: 'Midnight', color: '#283B60' },
+                  { name: 'Rose', color: '#B66E7E' },
+                  { name: 'Charcoal', color: '#343434' },
+                  { name: 'Ocean', color: '#287F9B' },
+                ].map((preset) => (
+                  <button key={preset.name} type="button" aria-pressed={previewColors.primary.toLowerCase() === preset.color.toLowerCase()}
+                    onClick={() => setStoreSettings(prev => ({ ...prev, color_scheme: { ...prev.color_scheme, primary: preset.color, secondary: preset.color, accent: preset.color } }))}
+                    className={`flex min-h-11 items-center gap-2 rounded-xl border px-2 py-2 text-xs font-semibold ${previewColors.primary.toLowerCase() === preset.color.toLowerCase() ? 'border-stone-900 ring-2 ring-amber-300' : 'border-stone-200'}`}>
+                    <span className="h-5 w-5 shrink-0 rounded-full border border-black/10" style={{ backgroundColor: preset.color }} />{preset.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <label className="text-xs font-semibold text-stone-700">Product spacing
+                <select value={storeSettings.layout_config?.grid_layout || 'standard'}
+                  onChange={event => handleLayoutChange('grid_layout', event.target.value)}
+                  className="mt-1 block min-h-11 w-full rounded-xl border border-stone-300 bg-white px-2 text-sm">
+                  <option value="compact">Compact</option><option value="standard">Standard</option>
+                  <option value="comfortable">Comfortable</option><option value="large">Large</option>
+                </select>
+              </label>
+              <label className="text-xs font-semibold text-stone-700">Store theme
+                <select value={storeSettings.store_theme || 'modern'}
+                  onChange={event => handleInputChange('store_theme', event.target.value)}
+                  className="mt-1 block min-h-11 w-full rounded-xl border border-stone-300 bg-white px-2 text-sm">
+                  {themeOptions.map(theme => <option key={theme} value={theme}>{theme.charAt(0).toUpperCase() + theme.slice(1)}</option>)}
+                </select>
+              </label>
+            </div>
+            <p className="mt-3 text-xs text-stone-500">Use the existing Save button to publish. Existing products, sellers, checkout and referral attribution are unaffected by these design controls.</p>
+          </section>
           <div className="rounded-[28px] border border-stone-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
