@@ -14,3 +14,19 @@ export function productWithSelectedVariant(product: any, variant: any): any {
   const shipping = ['cj', 'supplyline_plus'].includes(source) ? getProductShipping({ ...product, ...variant }) : getProductShipping(product);
   return { ...product, ...variant, shipping_reserve_amount: shipping };
 }
+
+// Keep the seller's item-specific timing; never invent a platform-wide promise.
+export function getProductShippingTiming(product: any) {
+  let options = product?.shipping_options;
+  if (typeof options === 'string') {
+    try { options = JSON.parse(options); } catch { options = []; }
+  }
+  const option = Array.isArray(options) ? options[0] : undefined;
+  const text = (value: unknown) => typeof value === 'string' ? value.trim() : '';
+  return {
+    estimated_days: text(option?.estimated_days ?? option?.days ?? option?.estimatedDays),
+    processing_time: text(option?.processing_time),
+    origin_country: text(option?.origin_country),
+    origin_label: text(option?.origin_label),
+  };
+}

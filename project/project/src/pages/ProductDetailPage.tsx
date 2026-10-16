@@ -2120,11 +2120,12 @@ const ProductDetailPage: React.FC = () => {
                     </div>
                     <div className="border-t border-gray-300 pt-1 mt-2">
                       <div className="flex justify-between font-semibold text-lg">
-                        <span>Total:</span>
+                        <span>Total before tax:</span>
                         <span>{formatMoneyDisplay(finalDisplayPrice * quantity + selectedShipping.cost)}</span>
                       </div>
                     </div>
                   </div>
+                  <p className="mt-2 text-xs text-gray-600">Applicable tax is added at checkout.</p>
                 </div>
               )}
 

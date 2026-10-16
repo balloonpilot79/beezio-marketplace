@@ -146,10 +146,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const buildSingleShippingOption = (
     shippingPrice: number,
     includeInPrice: boolean = true
-  ): Array<{ name: string; cost: number; estimated_days: string; included_in_price?: boolean; seller_shipping_cost?: number; bundle_shipping?: boolean; additional_item_cost?: number | string }> => [{
+  ): Array<{ name: string; cost: number; estimated_days: string; processing_time?: string; origin_country?: string; origin_label?: string; included_in_price?: boolean; seller_shipping_cost?: number; bundle_shipping?: boolean; additional_item_cost?: number | string }> => [{
     name: 'Standard shipping',
     cost: includeInPrice ? 0 : Math.max(0, shippingPrice),
-    estimated_days: '3-5 business days',
+    estimated_days: '',
     ...(includeInPrice ? { included_in_price: true, seller_shipping_cost: Math.max(0, shippingPrice) } : {}),
   }];
 
@@ -184,7 +184,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     raw: any,
     shippingPrice: number,
     includeInPrice: boolean = true
-  ): Array<{ name: string; cost: number; estimated_days: string; included_in_price?: boolean; seller_shipping_cost?: number; bundle_shipping?: boolean; additional_item_cost?: number | string }> => {
+  ): Array<{ name: string; cost: number; estimated_days: string; processing_time?: string; origin_country?: string; origin_label?: string; included_in_price?: boolean; seller_shipping_cost?: number; bundle_shipping?: boolean; additional_item_cost?: number | string }> => {
     let options: any = raw;
 
     if (typeof options === 'string') {
@@ -202,7 +202,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     const normalized = options
       .map((option: any, index: number) => {
         const name = String(option?.name ?? option?.title ?? (index === 0 ? 'Standard Shipping' : 'Shipping'));
-        const estimatedDays = String(option?.estimated_days ?? option?.days ?? option?.estimatedDays ?? '3-5 business days');
+        const estimatedDays = String(option?.estimated_days ?? option?.days ?? option?.estimatedDays ?? '');
         const costRaw = option?.cost ?? option?.price ?? option?.shipping_price ?? option?.shippingPrice;
         const cost = Number.isFinite(Number(costRaw)) ? Number(costRaw) : 0;
         return {
@@ -229,6 +229,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       option.seller_shipping_cost = effectiveCost;
     }
     const savedBundle = options[0];
+    option.estimated_days = normalized[0].estimated_days.trim();
+    for (const field of ['processing_time', 'origin_country', 'origin_label']) {
+      if (typeof savedBundle?.[field] === 'string') option[field] = savedBundle[field].trim();
+    }
     if (savedBundle?.bundle_shipping === true) {
       option.bundle_shipping = true;
       option.additional_item_cost = savedBundle.additional_item_cost;
@@ -1238,10 +1242,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       for (const option of normalizedShippingOptions) {
         if (!String(option?.name || '').trim()) {
           abortSubmit('All shipping options must have a name');
-          return;
-        }
-        if (!String(option?.estimated_days || '').trim()) {
-          abortSubmit('All shipping options must have estimated delivery time');
           return;
         }
         if ((option.cost ?? 0) < 0) {
@@ -2257,6 +2257,29 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   />
                 </div>
               </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="item-processing-time" className="block text-sm font-semibold text-gray-900">Processing / production time (optional)</label>
+                  <input id="item-processing-time" type="text" maxLength={160}
+                    value={(formData.shipping_options as any)?.[0]?.processing_time ?? ''}
+                    onChange={event => setFormData(previous => ({ ...previous,
+                      shipping_options: [{ ...normalizeShippingOptions(previous.shipping_options, Number(previous.shipping_price) || 0)[0], processing_time: event.target.value }],
+                    }))}
+                    placeholder="e.g., 2–4 business days before shipping"
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+                </div>
+                <div>
+                  <label htmlFor="item-shipping-time" className="block text-sm font-semibold text-gray-900">Estimated shipping time (optional)</label>
+                  <input id="item-shipping-time" type="text" maxLength={160}
+                    value={(formData.shipping_options as any)?.[0]?.estimated_days ?? ''}
+                    onChange={event => setFormData(previous => ({ ...previous,
+                      shipping_options: [{ ...normalizeShippingOptions(previous.shipping_options, Number(previous.shipping_price) || 0)[0], estimated_days: event.target.value }],
+                    }))}
+                    placeholder="e.g., 3–7 business days after shipping"
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-gray-600">Set these estimates for this item. Include any made-to-order production time separately. If shipping time is blank, buyers will be asked to contact you for an estimate.</p>
               <details className="mt-4 rounded-lg border border-amber-200 bg-white p-3">
                 <summary className="cursor-pointer font-semibold text-gray-900">Cheaper shipping for additional items</summary>
                 <label className="mt-3 flex items-start gap-2 text-sm text-gray-800">

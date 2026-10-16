@@ -1,5 +1,5 @@
 import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
-import { getProductShipping } from '../../shared/productShipping';
+import { getProductShipping, getProductShippingTiming } from '../../shared/productShipping';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
@@ -369,7 +369,8 @@ const handler: Handler = async (event) => {
           : [{
               name: 'Standard shipping',
               cost: getProductShipping(normalizedProduct),
-              estimated_days: isSupplyLinePlus ? 'Confirmed for your address at checkout' : '3-5 business days',
+              ...getProductShippingTiming(normalizedProduct),
+              ...(isSupplyLinePlus ? { estimated_days: 'Confirmed for your address at checkout' } : {}),
               included_in_price: false,
               ...(getCombinedShippingPolicy(normalizedProduct) ? { bundle_shipping: true, additional_item_cost: getCombinedShippingPolicy(normalizedProduct)!.additionalItemCost } : {}),
             }],
