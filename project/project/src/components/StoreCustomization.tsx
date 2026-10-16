@@ -14,7 +14,6 @@ import {
   ArrowDown,
   LayoutTemplate,
   Wand2,
-  PackagePlus,
   GripVertical,
   Square,
   CheckSquare
@@ -23,7 +22,6 @@ import CustomDomainManager from './CustomDomainManager';
 import ImageUploader from './ImageUploader';
 import CustomPageBuilder from './CustomPageBuilder';
 import ProductOrderManager from './ProductOrderManager';
-import ProductBrowserForSellers from './ProductBrowserForSellers';
 import StoreOrganizationPanel from './StoreOrganizationPanel';
 import StoreTemplateSelector, { type StoreTemplate } from './StoreTemplateSelector';
 import { blocksToHtml, starterPackTemplates } from '../utils/storePageTemplates';
@@ -109,7 +107,7 @@ const workspaceItems = [
   { id: 'overview', name: 'Overview', icon: Wand2, description: 'The simplified dashboard.' },
   { id: 'brand', name: 'Brand', icon: Palette, description: 'Name, logo, colors, and images.' },
   { id: 'layout', name: 'Layout', icon: LayoutTemplate, description: 'Templates, sections, and grid.' },
-  { id: 'content', name: 'Content', icon: FileText, description: 'Products and custom pages.' },
+  { id: 'content', name: 'Content', icon: FileText, description: 'Store display and custom pages.' },
   { id: 'publish', name: 'Publish', icon: Globe, description: 'Domain and final ordering.' }
 ] as const;
 
@@ -610,7 +608,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
             </div>
             <h2 className="text-3xl font-semibold tracking-tight text-stone-950">Design a website that feels like you.</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
-              Choose your look, add your branding, arrange products, and create custom pages. Preview your changes before publishing your free website.
+              Choose your look, add your branding, arrange existing products, and create custom pages. Manage product listings separately in your seller and affiliate dashboards.
             </p>
             <div className="mt-4 flex flex-wrap gap-3 text-sm">
               <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-stone-700">
@@ -666,7 +664,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                 { id: 'builder-overview', step: '1', label: 'Start here', desc: 'See the setup flow' },
                 { id: 'builder-brand', step: '2', label: 'Make it yours', desc: 'Name, logo, colors, story' },
                 { id: 'builder-layout', step: '3', label: 'Pick the look', desc: 'Template and sections' },
-                { id: 'builder-content', step: '4', label: 'Add content', desc: 'Products and pages' },
+                { id: 'builder-content', step: '4', label: 'Arrange content', desc: 'Display and pages' },
                 { id: 'builder-publish', step: '5', label: 'Publish', desc: 'Order and domain' },
               ].map((item) => (
                 <a
@@ -1030,27 +1028,9 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
 
             <>
               <div id="builder-content" className="scroll-mt-24 rounded-[24px] border border-stone-200 bg-white p-6 shadow-sm">
-                <h3 className="text-2xl font-bold text-stone-950">Add products and pages</h3>
-                <p className="mt-2 text-sm leading-6 text-stone-600">Everything customers can browse lives here. Add products, create starter pages, and edit custom pages in one place.</p>
+                <h3 className="text-2xl font-bold text-stone-950">Store display and pages</h3>
+                <p className="mt-2 text-sm leading-6 text-stone-600">Arrange products already managed in your product dashboards, create starter pages, and customize your store pages here. To add or remove products, use your seller or affiliate product dashboard.</p>
               </div>
-
-              {role === 'seller' && (
-                <div className="rounded-[24px] border border-stone-200 bg-white p-6 shadow-sm">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <PackagePlus className="h-5 w-5 text-stone-700" />
-                      <div>
-                        <h4 className="text-lg font-semibold text-stone-950">Products</h4>
-                        <p className="text-sm text-stone-600">Add products from here or pull them from the marketplace.</p>
-                      </div>
-                    </div>
-                    <a href="/marketplace" className="rounded-2xl border border-stone-300 bg-stone-50 px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100">
-                      Open marketplace
-                    </a>
-                  </div>
-                  <ProductBrowserForSellers sellerId={resolvedId || userId} />
-                </div>
-              )}
 
               <StoreOrganizationPanel ownerId={resolvedId || userId} role={role} />
 
