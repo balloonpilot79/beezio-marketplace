@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Megaphone, PackagePlus, Store, Wand2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Megaphone, Store, Wand2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import StoreCustomization from '../components/StoreCustomization';
 
@@ -43,16 +43,12 @@ const StoreBuilderPage: React.FC = () => {
             <Wand2 className="h-6 w-6 text-amber-600" /> Customize My Store
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-700">
-            One website for everything you sell. Choose your design once, add your own products, and include products you promote from the Beezio marketplace.
+            One website for everything you sell. Customize the design here; manage your own and affiliate products from your product dashboards.
           </p>
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            <Link to="/business/products/add"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#ffcb05] px-3 py-3 text-sm font-bold text-[#101820]">
-              <PackagePlus className="h-4 w-4" /> Sell My Own Product
-            </Link>
-            <Link to="/marketplace"
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <Link to="/business"
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-3 text-sm font-bold text-slate-800">
-              <PackagePlus className="h-4 w-4" /> Add Affiliate Products
+              <Store className="h-4 w-4" /> Manage Products in Business Center
             </Link>
             <Link to={previewHref} target="_blank" rel="noopener noreferrer"
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 py-3 text-sm font-bold text-slate-800">
