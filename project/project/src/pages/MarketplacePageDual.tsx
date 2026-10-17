@@ -3,6 +3,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Grid, List, Search, SlidersHorizontal } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
+import MarketplaceShelf from '../components/MarketplaceShelf';
+import '../styles/marketplace.css';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
 import { canUseStoreTools, getNormalizedAccountRoles, normalizeAccountRole } from '../utils/accountRoles';
@@ -439,7 +441,7 @@ const MarketplacePageDual: React.FC = () => {
   const showShelves = selectedCategory === 'All' && !searchTerm.trim();
 
   return (
-    <div className="bz-public min-h-screen bg-[#f7f8f8]">
+    <div className="bz-public marketplace-page min-h-screen bg-[#f7f8f8]">
       <section className="border-b border-slate-200 bg-[#faf9f5] text-[#101820]">
         <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
           <p className="bz-eyebrow">The Beezio marketplace</p>
@@ -671,12 +673,12 @@ const MarketplacePageDual: React.FC = () => {
         )}
 
         {!loading && filteredProducts.length > 0 && showShelves && (
-          <div className="space-y-8">
+          <div className="space-y-5 sm:space-y-8">
             {newItemsProducts.length > 0 && (
-              <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <div className="mb-4 flex items-center justify-between gap-4">
+              <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
+                <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">New Items</h2>
+                    <h2 className="text-lg font-bold text-slate-900 sm:text-2xl">New Items</h2>
                     <p className="text-sm text-slate-500">Latest products added to the marketplace</p>
                   </div>
                   <button
@@ -684,14 +686,13 @@ const MarketplacePageDual: React.FC = () => {
                       setSortBy('newest');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[#ffcb05] hover:bg-amber-50"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-300 px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 transition hover:border-[#ffcb05] hover:bg-amber-50"
                   >
                     View newest
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="-mx-1 overflow-x-auto pb-2">
-                  <div className="flex min-w-max gap-3 px-1">
+                <MarketplaceShelf label="New Items">
                     {newItemsProducts.map((product) => (
                       <ProductCard
                         key={`new-${product.id}`}
@@ -702,16 +703,15 @@ const MarketplacePageDual: React.FC = () => {
                         compact
                       />
                     ))}
-                  </div>
-                </div>
+                </MarketplaceShelf>
               </section>
             )}
 
             {needsPromotingProducts.length > 0 && (
-              <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <div className="mb-4 flex items-center justify-between gap-4">
+              <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
+                <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Products That Need Promoting</h2>
+                    <h2 className="text-lg font-bold text-slate-900 sm:text-2xl">Products That Need Promoting</h2>
                     <p className="text-sm text-slate-500">Promotable products with stronger affiliate upside</p>
                   </div>
                   <button
@@ -719,14 +719,13 @@ const MarketplacePageDual: React.FC = () => {
                       setSortBy('commission-high');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[#ffcb05] hover:bg-amber-50"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-300 px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 transition hover:border-[#ffcb05] hover:bg-amber-50"
                   >
-                    View top commissions
+                    Top commissions
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="-mx-1 overflow-x-auto pb-2">
-                  <div className="flex min-w-max gap-3 px-1">
+                <MarketplaceShelf label="Products That Need Promoting">
                     {needsPromotingProducts.map((product) => (
                       <ProductCard
                         key={`promote-${product.id}`}
@@ -737,16 +736,15 @@ const MarketplacePageDual: React.FC = () => {
                         compact
                       />
                     ))}
-                  </div>
-                </div>
+                </MarketplaceShelf>
               </section>
             )}
 
             {shelfRows.map((row) => (
-              <section key={row.slug} className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <div className="mb-4 flex items-center justify-between gap-4">
+              <section key={row.slug} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
+                <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">{row.category}</h2>
+                    <h2 className="text-lg font-bold text-slate-900 sm:text-2xl">{row.category}</h2>
                     <p className="text-sm text-slate-500">{row.total} live products in this category</p>
                   </div>
                   <button
@@ -754,14 +752,13 @@ const MarketplacePageDual: React.FC = () => {
                       setSelectedCategory(row.slug);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[#ffcb05] hover:bg-amber-50"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-300 px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 transition hover:border-[#ffcb05] hover:bg-amber-50"
                   >
                     View more
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="-mx-1 overflow-x-auto pb-2">
-                  <div className="flex min-w-max gap-3 px-1">
+                <MarketplaceShelf label={row.category}>
                     {row.products.map((product) => (
                       <ProductCard
                         key={product.id}
@@ -772,8 +769,7 @@ const MarketplacePageDual: React.FC = () => {
                         compact
                       />
                     ))}
-                  </div>
-                </div>
+                </MarketplaceShelf>
               </section>
             ))}
           </div>

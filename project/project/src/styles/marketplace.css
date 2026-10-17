@@ -1,0 +1,30 @@
+/* Bound every shelf card; intrinsic image widths must never size the row. */
+.marketplace-shelf { min-width: 0; }
+.marketplace-shelf-scroll {
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+.marketplace-shelf-track { display: flex; align-items: flex-start; gap: 12px; }
+.marketplace-shelf-track > * {
+  flex: 0 0 172px;
+  width: 172px;
+  min-width: 0;
+  scroll-snap-align: start;
+}
+.marketplace-page .marketplace-compact-card { min-width: 0; }
+.marketplace-page .marketplace-compact-card img { height: auto; aspect-ratio: 1; padding: 0; }
+.marketplace-page .marketplace-compact-card h3 { min-height: 40px; line-height: 20px; overflow-wrap: anywhere; }
+.marketplace-page .marketplace-compact-card button,
+.marketplace-page .marketplace-compact-card a { font-size: 12px; }
+.marketplace-page .marketplace-compact-card button { min-height: 44px; padding: 8px; }
+.marketplace-page .marketplace-compact-card button svg { width: 16px; height: 16px; flex-shrink: 0; }
+.marketplace-page .marketplace-compact-card .marketplace-store-buttons > button { min-height: 44px; }
+.marketplace-page .marketplace-compact-card .marketplace-earnings { margin-top: 8px; padding: 6px; gap: 4px; font-size: 11px; }
+.marketplace-page .marketplace-compact-card .marketplace-badge { margin-bottom: 8px; }
+.marketplace-page .marketplace-compact-card .marketplace-badge > div { padding: 4px 6px; font-size: 10px; gap: 4px; }
+@media (min-width: 640px) {
+  .marketplace-shelf-track > * { flex-basis: 208px; width: 208px; }
+}

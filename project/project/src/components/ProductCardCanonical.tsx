@@ -76,6 +76,7 @@ const CanonicalProductCard: React.FC<Props> = ({
   forcePurchaseCtas = false,
   promoterBadge,
 }) => {
+  const compactMarketplace = compact && ctaMode === 'marketplace' && viewMode === 'grid';
   const { addToCart } = useCart();
   const { user, profile, currentRole, hasRole } = useAuth();
   const location = useLocation();
@@ -124,7 +125,7 @@ const CanonicalProductCard: React.FC<Props> = ({
   const canSeller = Boolean(user?.id) && (role === 'seller' || hasRole('seller'));
   const showStoreTools = ctaMode !== 'storefront' && (canAffiliate || canSeller);
   const affiliateEarnings = Boolean(user?.id) && ctaMode !== 'storefront' && product.affiliate_enabled !== false && affiliateAmount > 0 ? (
-    <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">
+    <div className="marketplace-earnings mt-3 inline-flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">
       <Award className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span>Earn ${affiliateAmount.toFixed(2)} per sale</span>
     </div>
@@ -198,14 +199,14 @@ const CanonicalProductCard: React.FC<Props> = ({
         <ShoppingCart className="w-5 h-5 mr-2" />
         {outOfStock ? 'Out of Stock' : hasVariants ? 'Choose Options' : 'Add to Cart'}
       </button>
-      <button type="button" onClick={handleBuyNow} disabled={outOfStock} className="w-full bg-gray-900 disabled:opacity-50 text-white rounded-xl py-3 font-medium">
+      {!(compactMarketplace && requiresProductDetails) && <button type="button" onClick={handleBuyNow} disabled={outOfStock} className="w-full bg-gray-900 disabled:opacity-50 text-white rounded-xl py-3 font-medium">
         {hasVariants ? 'Choose Options' : 'Buy Now'}
-      </button>
+      </button>}
     </div>
   ) : null;
 
   const storeButtons = showStoreTools ? (
-    <div className="space-y-2 [&>button]:w-full [&>button]:justify-center [&>button]:min-h-12 [&>button]:rounded-xl" onClick={stop} onMouseDown={stop} onPointerDown={stop}>
+    <div className="marketplace-store-buttons space-y-2 [&>button]:w-full [&>button]:justify-center [&>button]:min-h-12 [&>button]:rounded-xl" onClick={stop} onMouseDown={stop} onPointerDown={stop}>
       {canAffiliate ? (
         <AddToAffiliateStoreButton
           productId={product.id}
@@ -235,10 +236,10 @@ const CanonicalProductCard: React.FC<Props> = ({
         <img {...commonImageProps} className="w-32 h-32 bg-white object-contain p-2 rounded-xl" />
       </ProductLink>
       <div className="min-w-0 flex-1">
-        {promoterBadge && <div className="mb-3">{promoterBadge}</div>}
+        {promoterBadge && <div className="marketplace-badge mb-3">{promoterBadge}</div>}
         <ProductLink>
           <h3 className="text-lg font-semibold text-gray-900 hover:text-purple-600 line-clamp-2">{product.title}</h3>
-          <p className="text-sm text-gray-500 mt-1">by {product.profiles?.full_name || 'Seller'}</p>
+          <p className="text-sm text-gray-500 mt-1 truncate">by {product.profiles?.full_name || 'Seller'}</p>
           <p className="text-2xl font-bold text-gray-900 mt-3">${buyerPrice.toFixed(2)}</p>
           {affiliateEarnings}
         </ProductLink>
@@ -252,15 +253,15 @@ const CanonicalProductCard: React.FC<Props> = ({
           <img {...commonImageProps} className={`${compact ? 'h-52' : 'h-56'} w-full bg-white object-contain p-2`} />
         </div>
         <div className={compact ? 'p-3' : 'p-5'}>
-          {promoterBadge && <div className="mb-3">{promoterBadge}</div>}
+          {promoterBadge && <div className="marketplace-badge mb-3">{promoterBadge}</div>}
           <h3 className={`${compact ? 'text-sm' : 'text-lg'} font-semibold text-gray-900 hover:text-purple-600 line-clamp-2`}>{product.title}</h3>
-          <p className="text-sm text-gray-500 mt-1">by {product.profiles?.full_name || 'Seller'}</p>
+          <p className="text-sm text-gray-500 mt-1 truncate">by {product.profiles?.full_name || 'Seller'}</p>
           {Number(product.average_rating) > 0 && (
             <div className="flex items-center gap-1 mt-2 text-yellow-400">
               <Star className="w-4 h-4 fill-current" /><span className="text-sm text-gray-500">{Number(product.average_rating).toFixed(1)} ({product.review_count || 0})</span>
             </div>
           )}
-          <div className="flex items-center justify-between mt-3">
+          <div className={`flex items-center justify-between ${compactMarketplace ? 'mt-2' : 'mt-3'}`}>
             <span className="text-2xl font-bold text-gray-900">${buyerPrice.toFixed(2)}</span>
           </div>
           {affiliateEarnings}
@@ -269,16 +270,16 @@ const CanonicalProductCard: React.FC<Props> = ({
       </ProductLink>
       <div className={compact ? 'p-3 pt-0' : 'p-5 pt-0'}>
         <div className="flex flex-col gap-2 [&>div]:w-full">{purchaseButtons}{storeButtons}</div>
-        <Link to={productUrl} state={{ from: `${location.pathname}${location.search}` }} className="mt-2 w-full bg-gray-50 border border-gray-200 text-gray-700 rounded-xl py-3 font-medium flex items-center justify-center">
+        <Link to={productUrl} state={{ from: `${location.pathname}${location.search}` }} className={compactMarketplace ? "mt-1 min-h-11 text-gray-600 font-medium flex items-center justify-center" : "mt-2 w-full bg-gray-50 border border-gray-200 text-gray-700 rounded-xl py-3 font-medium flex items-center justify-center"}>
           <ExternalLink className="w-4 h-4 mr-2" /> View Product
         </Link>
-        <button type="button" onClick={(e) => stop(e)} className="mt-2 text-sm text-gray-500 hover:text-red-500 flex items-center gap-1"><Heart className="w-4 h-4" /> Save</button>
+        {!compactMarketplace && <button type="button" onClick={(e) => stop(e)} className="mt-2 text-sm text-gray-500 hover:text-red-500 flex items-center gap-1"><Heart className="w-4 h-4" /> Save</button>}
       </div>
     </div>
   );
 
   if (!isPublicStoreProduct(product)) return null;
-  return <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 overflow-hidden transition-all duration-300">{content}</div>;
+  return <div className={`${compactMarketplace ? 'marketplace-compact-card ' : ''}bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 overflow-hidden transition-all duration-300`}>{content}</div>;
 };
 
 export default CanonicalProductCard;
