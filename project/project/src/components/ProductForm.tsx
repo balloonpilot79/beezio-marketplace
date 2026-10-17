@@ -844,7 +844,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     setFormData(prev => ({
       ...prev,
       [name]:
-        name === 'stock_quantity' || name === 'digital_downlod_limit'
+        name === 'stock_quantity' || name === 'digital_download_limit'
           ? parseInt(value) || 0
           : ['shipping_price', 'base_weight_oz', 'package_length_in', 'package_width_in', 'package_height_in'].includes(name)
             ? parseFloat(value) || 0
