@@ -28,5 +28,7 @@ export function getProductShippingTiming(product: any) {
     processing_time: text(option?.processing_time),
     origin_country: text(option?.origin_country),
     origin_label: text(option?.origin_label),
+    shipping_policy: text(option?.shipping_policy),
+    return_policy: text(option?.return_policy),
   };
 }

@@ -17,3 +17,12 @@ describe('item-specific shipping timing', () => {
     }
   });
 });
+
+
+describe('public product shipping configuration', () => {
+  it('preserves seller policies when rebuilding the public API shipping option', () => {
+    expect(getProductShippingTiming({ shipping_options: JSON.stringify([{
+      estimated_days: '3–7 days', shipping_policy: ' USA only. ', return_policy: ' Returns within 14 days. ',
+    }]) })).toMatchObject({ shipping_policy: 'USA only.', return_policy: 'Returns within 14 days.' });
+  });
+});
