@@ -1,5 +1,6 @@
--- PROPOSED ONLY: NOT APPLIED. Automatic approval review blocked this 76-policy change.
--- Requires Jason's specific approval before any production execution.
+-- HISTORICAL REVIEW COPY. Jason specifically approved the 76-policy change on 2026-10-20.
+-- Applied and verified as migration 20261020153737_optimize_rls_auth_initplans.sql.
+-- Use the migration history as the source of truth; this guarded rollback-only copy preserves the reviewed proposal.
 -- Preserve all existing roles, commands, permissiveness, ownership and admin checks.
 -- Only cache request-scoped auth calls using SELECT subqueries.
 -- The surrounding transaction rolls back if someone runs this review script as-is.
