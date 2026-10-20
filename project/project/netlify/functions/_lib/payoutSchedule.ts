@@ -50,14 +50,18 @@ const zonedDateTimeToUtc = (
 const parseYmd = (value: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || '').trim());
   if (!match) return null;
-  return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (year < 100 || month < 1 || month > 12 || day < 1 || day > new Date(Date.UTC(year, month, 0)).getUTCDate()) return null;
+  return { year, month, day };
 };
 
 const formatYmd = (year: number, month: number, day: number) => `${year}-${pad2(month)}-${pad2(day)}`;
 
 export const isSupportedPayday = (ymd: string) => {
   const parts = parseYmd(ymd);
-  return Boolean(parts && (parts.day === 1 || parts.day === 15));
+  return Boolean(parts && (parts.day === 15 || parts.day === new Date(Date.UTC(parts.year, parts.month, 0)).getUTCDate()));
 };
 
 export const getTimeZoneDateString = (date: Date, timeZone = DEFAULT_PAYOUT_TIMEZONE) => {
@@ -68,13 +72,8 @@ export const getTimeZoneDateString = (date: Date, timeZone = DEFAULT_PAYOUT_TIME
 export const getNextScheduledPayday = (from: Date, timeZone = DEFAULT_PAYOUT_TIMEZONE) => {
   const today = parseYmd(getTimeZoneDateString(from, timeZone));
   if (!today) throw new Error('Failed to determine payout date');
-  if (today.day < 1) return formatYmd(today.year, today.month, 1);
-  if (today.day < 15) return formatYmd(today.year, today.month, 15);
-  if (today.day === 15) return formatYmd(today.year, today.month, 15);
-
-  const nextMonth = today.month === 12 ? 1 : today.month + 1;
-  const nextYear = today.month === 12 ? today.year + 1 : today.year;
-  return formatYmd(nextYear, nextMonth, 1);
+  const payday = today.day <= 15 ? 15 : new Date(Date.UTC(today.year, today.month, 0)).getUTCDate();
+  return formatYmd(today.year, today.month, payday);
 };
 
 export const getScheduledPaydayOnOrAfter = (eligibleAt: string | null | undefined, timeZone = DEFAULT_PAYOUT_TIMEZONE) => {
@@ -96,7 +95,7 @@ export const resolveRequestedPayoutDate = (
 ) => {
   const payoutDate = String(requestedDate || '').trim() || getNextScheduledPayday(now, timeZone);
   if (!isSupportedPayday(payoutDate)) {
-    throw new Error(`Unsupported payout_date ${payoutDate}. Beezio pays on the 1st and 15th of each month.`);
+    throw new Error(`Unsupported payout_date ${payoutDate}. Beezio pays on the 15th and last calendar day of each month.`);
   }
   return { payoutDate, cutoffIso: getPayoutCutoffIso(payoutDate, timeZone), timeZone };
 };

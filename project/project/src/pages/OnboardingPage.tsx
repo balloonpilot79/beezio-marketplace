@@ -90,18 +90,19 @@ const OnboardingPage: React.FC = () => {
         throw new Error('Please confirm your PayPal payout email.');
       }
 
-      await supabase
+      const { error: saveError } = await supabase
         .from('paypal_accounts')
         .upsert(
           [
-            { user_id: profileId, role: 'SELLER', paypal_email: email, is_verified: true },
-            { user_id: profileId, role: 'PARTNER', paypal_email: email, is_verified: true },
-            { user_id: profileId, role: 'INFLUENCER', paypal_email: email, is_verified: true },
+            { user_id: profileId, role: 'SELLER', paypal_email: email, is_verified: false },
+            { user_id: profileId, role: 'PARTNER', paypal_email: email, is_verified: false },
+            { user_id: profileId, role: 'INFLUENCER', paypal_email: email, is_verified: false },
           ] as any,
           { onConflict: 'user_id,role' }
         );
 
-      setPayoutSaved('PayPal payout email saved.');
+      if (saveError) throw saveError;
+      setPayoutSaved('PayPal payout email saved. Connect with PayPal to verify ownership before payouts.');
       await refreshProfile();
     } catch (err: any) {
       setPayoutError(err?.message || 'Unable to save PayPal payout email.');
