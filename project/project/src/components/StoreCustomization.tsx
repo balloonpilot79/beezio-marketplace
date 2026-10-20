@@ -25,7 +25,7 @@ import ProductOrderManager from './ProductOrderManager';
 import StoreOrganizationPanel from './StoreOrganizationPanel';
 import StoreTemplateSelector, { type StoreTemplate } from './StoreTemplateSelector';
 import { blocksToHtml, starterPackTemplates } from '../utils/storePageTemplates';
-import { normalizeThemeName } from '../utils/themes';
+import { getThemeStyles, normalizeThemeName } from '../utils/themes';
 import { normalizeStoreSlug } from '../utils/normalizeStoreSlug';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
@@ -579,6 +579,19 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
   ];
   const completedCount = completionChecklist.filter((item) => item.done).length;
 
+  // Derive preview-only presentation from the same unsaved settings used by Save.
+  // Keep theme application scoped here; applyThemeToDocument would restyle the editor.
+  const previewTheme = getThemeStyles(normalizeThemeName(storeSettings.store_theme));
+  const previewSpacingOptions = {
+    compact: { gap: 6, padding: 8, imageHeight: 64 },
+    standard: { gap: 12, padding: 12, imageHeight: 80 },
+    comfortable: { gap: 20, padding: 16, imageHeight: 96 },
+    large: { gap: 28, padding: 20, imageHeight: 112 },
+  };
+  const previewSpacing = previewSpacingOptions[storeSettings.layout_config?.grid_layout || 'standard'] || previewSpacingOptions.standard;
+  const previewColumns = previewDevice === 'mobile'
+    ? (storeSettings.layout_config?.grid_layout === 'compact' ? 2 : 1)
+    : (storeSettings.layout_config?.grid_layout === 'large' ? 1 : 2);
   const previewColors = {
     primary: storeSettings.color_scheme?.primary || '#f59e0b',
     secondary: storeSettings.color_scheme?.secondary || '#d6d3d1',
@@ -1101,6 +1114,47 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
         </main>
 
         <aside className="min-w-0 xl:sticky xl:top-32 xl:self-start">
+          <section aria-label="Interactive storefront design playground" className="mb-4 rounded-[28px] border border-amber-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-base font-bold text-stone-950"><Palette className="h-5 w-5 text-amber-600" /> Design playground</div>
+            <p className="mt-1 text-xs leading-5 text-stone-600">Try a look below. The live preview updates immediately; your public store stays unchanged until you save.</p>
+            <div className="mt-4">
+              <label className="block text-xs font-semibold text-stone-700">Brand colors</label>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {[
+                  { name: 'Bronze', color: '#B57B46' },
+                  { name: 'Forest', color: '#396451' },
+                  { name: 'Midnight', color: '#283B60' },
+                  { name: 'Rose', color: '#B66E7E' },
+                  { name: 'Charcoal', color: '#343434' },
+                  { name: 'Ocean', color: '#287F9B' },
+                ].map((preset) => (
+                  <button key={preset.name} type="button" aria-pressed={previewColors.primary.toLowerCase() === preset.color.toLowerCase()}
+                    onClick={() => setStoreSettings(prev => ({ ...prev, color_scheme: { ...prev.color_scheme, primary: preset.color, secondary: preset.color, accent: preset.color } }))}
+                    className={`flex min-h-11 items-center gap-2 rounded-xl border px-2 py-2 text-xs font-semibold ${previewColors.primary.toLowerCase() === preset.color.toLowerCase() ? 'border-stone-900 ring-2 ring-amber-300' : 'border-stone-200'}`}>
+                    <span className="h-5 w-5 shrink-0 rounded-full border border-black/10" style={{ backgroundColor: preset.color }} />{preset.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <label className="text-xs font-semibold text-stone-700">Product spacing
+                <select value={storeSettings.layout_config?.grid_layout || 'standard'}
+                  onChange={event => handleLayoutChange('grid_layout', event.target.value)}
+                  className="mt-1 block min-h-11 w-full rounded-xl border border-stone-300 bg-white px-2 text-sm">
+                  <option value="compact">Compact</option><option value="standard">Standard</option>
+                  <option value="comfortable">Comfortable</option><option value="large">Large</option>
+                </select>
+              </label>
+              <label className="text-xs font-semibold text-stone-700">Store theme
+                <select value={storeSettings.store_theme || 'modern'}
+                  onChange={event => handleInputChange('store_theme', event.target.value)}
+                  className="mt-1 block min-h-11 w-full rounded-xl border border-stone-300 bg-white px-2 text-sm">
+                  {themeOptions.map(theme => <option key={theme} value={theme}>{theme.charAt(0).toUpperCase() + theme.slice(1)}</option>)}
+                </select>
+              </label>
+            </div>
+            <p className="mt-3 text-xs text-stone-500">Use the existing Save button to publish. Existing products, sellers, checkout and referral attribution are unaffected by these design controls.</p>
+          </section>
           <div className="rounded-[28px] border border-stone-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
@@ -1127,8 +1181,11 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
 
             <div className={previewDevice === 'mobile' ? 'mx-auto max-w-[320px]' : ''}>
               <div
-                className="overflow-hidden rounded-[26px] border border-stone-200"
+                aria-label="Storefront live preview"
+                className="overflow-hidden rounded-[26px] border"
                 style={{
+                  borderColor: previewTheme.colors.border,
+                  fontFamily: previewTheme.fonts.body,
                   backgroundColor: previewColors.background,
                   backgroundImage: storeSettings.layout_config?.background_image_url
                     ? `linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.96)), url(${storeSettings.layout_config.background_image_url})`
@@ -1137,7 +1194,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                   backgroundPosition: 'center'
                 }}
               >
-                <div className="border-b border-stone-200 bg-white/90 px-4 py-3 backdrop-blur">
+                <div className="border-b px-4 py-3" style={{ backgroundColor: previewTheme.colors.background, borderColor: previewTheme.colors.border }}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       {storeSettings.store_logo ? (
@@ -1149,7 +1206,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                       )}
                       <div>
                         <div className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: previewColors.accent }}>Live preview</div>
-                        <div className="text-sm font-semibold" style={{ color: previewColors.text }}>{previewStoreName}</div>
+                        <div className="text-sm font-semibold" style={{ color: previewTheme.colors.text, fontFamily: previewTheme.fonts.heading }}>{previewStoreName}</div>
                       </div>
                     </div>
                     <div className="rounded-full px-3 py-1 text-[11px] font-semibold" style={{ backgroundColor: `${previewColors.primary}18`, color: previewColors.primary }}>
@@ -1169,7 +1226,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                       )}
                       <div className="space-y-2 p-4">
                         <div className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: previewColors.accent }}>Featured collection</div>
-                        <div className="text-xl font-black" style={{ color: previewColors.text }}>{previewStoreName}</div>
+                        <div className="text-xl font-black" style={{ color: previewColors.text, fontFamily: previewTheme.fonts.heading }}>{previewStoreName}</div>
                         <p className="text-sm leading-6" style={{ color: previewColors.text }}>{previewStoreDescription}</p>
                         <div className="inline-flex rounded-full px-4 py-2 text-xs font-semibold text-white" style={{ backgroundColor: previewColors.primary }}>
                           Shop now
@@ -1213,10 +1270,14 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
                       return (
                         <div key={featureId} className="rounded-[22px] border bg-white p-3" style={{ borderColor: `${previewColors.secondary}80` }}>
                           <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: previewColors.accent }}>Featured products</div>
-                          <div className={`grid gap-3 ${previewDevice === 'mobile' ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                          <div
+                            aria-label="Preview products"
+                            className="grid"
+                            style={{ gridTemplateColumns: `repeat(${previewColumns}, minmax(0, 1fr))`, gap: previewSpacing.gap }}
+                          >
                             {[1, 2].map((item) => (
-                              <div key={item} className="rounded-2xl border p-3" style={{ borderColor: `${previewColors.secondary}60` }}>
-                                <div className="h-20 rounded-xl" style={{ background: `linear-gradient(135deg, ${previewColors.secondary}33, ${previewColors.primary}26)` }} />
+                              <div key={item} className={`min-w-0 border ${previewTheme.cardStyle}`} style={{ backgroundColor: previewColors.background, borderColor: `${previewColors.secondary}60`, padding: previewSpacing.padding }}>
+                                <div className="rounded-xl" style={{ height: previewSpacing.imageHeight, background: `linear-gradient(135deg, ${previewColors.secondary}33, ${previewColors.primary}26)` }} />
                                 <div className="mt-3 text-sm font-semibold" style={{ color: previewColors.text }}>Featured item {item}</div>
                                 <div className="mt-1 text-xs text-stone-500">Signature product</div>
                                 <div className="mt-3 text-sm font-bold" style={{ color: previewColors.primary }}>$29.00</div>
