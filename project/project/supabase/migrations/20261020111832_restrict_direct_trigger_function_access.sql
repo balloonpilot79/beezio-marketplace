@@ -1,0 +1,1 @@
+SET LOCAL lock_timeout='3s'; REVOKE EXECUTE ON FUNCTION public.audit_order_money_ledger_insert(), public.audit_order_payment_capture(), public.audit_payout_ledger_payment(), public.backfill_order_item_attribution(), public.canonicalize_store_product_owner_id() FROM PUBLIC, anon, authenticated;
