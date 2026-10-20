@@ -1,2 +1,4 @@
 /api/order-details    /.netlify/functions/order-details   200!
+/api/paypal/connect-start    /.netlify/functions/paypal-connect-start    200!
+/api/paypal/connect-complete    /.netlify/functions/paypal-connect-complete    200!
 /*    /index.html   200
