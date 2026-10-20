@@ -1,8 +1,8 @@
+import { getProductTerms } from '../utils/productTerms';
 import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import { productWithSelectedVariant } from '../../shared/productShipping';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { getProductInventoryLimit } from '../../shared/productInventoryLimit';
-import { DEFAULT_PHYSICAL_RETURN_POLICY } from '../utils/returnPolicy';
 import React, { useState, useEffect, useMemo } from 'react';
 import { flushSync } from 'react-dom';
 import { useParams, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -79,6 +79,8 @@ interface Product {
     origin_country?: string;
     origin_label?: string;
     processing_time?: string;
+    shipping_policy?: string;
+    return_policy?: string;
   }>;
   requires_shipping?: boolean;
   is_digital?: boolean;
@@ -1933,6 +1935,19 @@ const ProductDetailPage: React.FC = () => {
             </div>
           </div>
 
+          {!product.is_digital && (
+            <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700" aria-label="Shipping and returns">
+              <h2 className="font-semibold text-gray-900">Shipping &amp; returns for this item</h2>
+              <p className="mt-2"><strong>Shipping:</strong> {formatShippingDisplay(getProductShipping(productWithSelectedVariant(product, selectedVariant)))}</p>
+              {getProductTerms(product.shipping_options).processing_time && (
+                <p className="mt-2"><strong>Processing:</strong> {getProductTerms(product.shipping_options).processing_time}</p>
+              )}
+              <p className="mt-2"><strong>Estimated shipping time:</strong> {getProductTerms(product.shipping_options).estimated_days || 'Contact the seller for an estimate.'}</p>
+              <p className="mt-2 whitespace-pre-wrap break-words"><strong>Shipping terms:</strong> {getProductTerms(product.shipping_options).shipping_policy || sellerStoreSettings?.shipping_policy || 'Contact the seller for shipping terms.'}</p>
+              <p className="mt-2 whitespace-pre-wrap break-words"><strong>Return terms:</strong> {getProductTerms(product.shipping_options).return_policy || sellerStoreSettings?.return_policy || 'Contact the seller for return terms.'}</p>
+            </section>
+          )}
+
           {showBuyerCtas && product.is_digital && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
               <div className="font-semibold text-gray-900">Digital delivery</div>
@@ -2120,11 +2135,12 @@ const ProductDetailPage: React.FC = () => {
                     </div>
                     <div className="border-t border-gray-300 pt-1 mt-2">
                       <div className="flex justify-between font-semibold text-lg">
-                        <span>Total:</span>
+                        <span>Total before tax:</span>
                         <span>{formatMoneyDisplay(finalDisplayPrice * quantity + selectedShipping.cost)}</span>
                       </div>
                     </div>
                   </div>
+                  <p className="mt-2 text-xs text-gray-600">Applicable tax is added at checkout.</p>
                 </div>
               )}
 
@@ -2440,7 +2456,7 @@ const ProductDetailPage: React.FC = () => {
                 </p>
                 {!product.is_digital && (
                   <p className="text-sm text-gray-600 mt-1">
-                    Return policy: {sellerStoreSettings?.return_policy || DEFAULT_PHYSICAL_RETURN_POLICY}
+                    Return policy: {getProductTerms(product.shipping_options).return_policy || sellerStoreSettings?.return_policy || 'Contact the seller for return terms.'}
                   </p>
                 )}
               </div>

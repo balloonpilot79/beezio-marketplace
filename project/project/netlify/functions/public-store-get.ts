@@ -1,6 +1,6 @@
 import { fetchPublicSellerNames } from './_lib/publicSellerNames';
 import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
-import { getProductShipping } from '../../shared/productShipping';
+import { getProductShipping, getProductShippingTiming } from '../../shared/productShipping';
 import { isPublicStoreProduct, isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
@@ -401,7 +401,8 @@ const handler: Handler = async (event) => {
           : [{
               name: 'Standard shipping',
               cost: getProductShipping(product),
-              estimated_days: isSupplyLineProduct(product) ? 'Confirmed for your address at checkout' : '3-5 business days',
+              ...getProductShippingTiming(product),
+              ...(isSupplyLineProduct(product) ? { estimated_days: 'Confirmed for your address at checkout' } : {}),
               included_in_price: false,
               ...(getCombinedShippingPolicy(product) ? { bundle_shipping: true, additional_item_cost: getCombinedShippingPolicy(product)!.additionalItemCost } : {}),
             }],

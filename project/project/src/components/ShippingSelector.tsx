@@ -51,7 +51,7 @@ const normalizeShippingOption = (option: any, index: number): ShippingOption => 
   id: `shipping-${index}`,
   name: String(option?.name ?? option?.title ?? 'Shipping').trim() || 'Shipping',
   cost: toFiniteNumber(option?.cost ?? option?.price ?? option?.shipping_price ?? option?.shippingPrice),
-  estimated_days: String(option?.estimated_days ?? option?.days ?? option?.estimatedDays ?? '3-5 business days').trim() || '3-5 business days',
+  estimated_days: String(option?.estimated_days ?? option?.days ?? option?.estimatedDays ?? 'Contact seller for an estimate').trim() || 'Contact seller for an estimate',
   origin_country: typeof option?.origin_country === 'string' ? option.origin_country : undefined,
   origin_label: typeof option?.origin_label === 'string' ? option.origin_label : undefined,
   processing_time: typeof option?.processing_time === 'string' ? option.processing_time : undefined,
@@ -97,7 +97,7 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
               id: sourceOption?.id || 'default',
               name: storedShipping > 0 ? 'Standard Shipping' : 'Free Shipping',
               cost: Math.max(0, storedShipping),
-              estimated_days: sourceOption?.estimated_days || '3-5 business days',
+              estimated_days: sourceOption?.estimated_days || 'Contact seller for an estimate',
               origin_country: sourceOption?.origin_country,
               origin_label: sourceOption?.origin_label,
               processing_time: sourceOption?.processing_time,
@@ -165,7 +165,7 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
         id: sourceOption?.id || 'default',
         name: storedShipping > 0 ? 'Standard Shipping' : 'Free Shipping',
         cost: Math.max(0, storedShipping),
-        estimated_days: sourceOption?.estimated_days || '3-5 business days',
+        estimated_days: sourceOption?.estimated_days || 'Contact seller for an estimate',
         origin_country: sourceOption?.origin_country,
         origin_label: sourceOption?.origin_label,
         processing_time: sourceOption?.processing_time,
@@ -186,7 +186,7 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
         id: 'fallback',
         name: 'Shipping',
         cost: 0,
-        estimated_days: '3-5 business days'
+        estimated_days: 'Contact seller for an estimate'
       };
       
       setShippingOptions([fallbackOption]);
@@ -228,6 +228,7 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
         Shipping
       </h3>
       
+      <p className="text-sm text-gray-600">Timing varies by item and seller. Allow for processing or production before shipping; contact the seller if no estimate is listed.</p>
       <div className="space-y-2">
         {shippingOptions.map((option) => (
           <div
@@ -307,7 +308,7 @@ const ShippingSelector: React.FC<ShippingSelectorProps> = ({
             <strong>Selected:</strong> {selectedShipping.name} 
             {` (${formatShippingDisplay(selectedShipping.cost)})`}
             <br />
-            <strong>Estimated Delivery:</strong> {selectedShipping.estimated_days}
+            <strong>Estimated shipping time:</strong> {selectedShipping.estimated_days}
             {(selectedShipping.origin_label || selectedShipping.origin_country) && (
               <>
                 <br />
