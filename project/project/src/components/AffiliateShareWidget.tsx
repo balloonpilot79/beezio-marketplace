@@ -1,5 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Copy, Facebook, Mail, MessageSquare, Share2, Twitter } from 'lucide-react';
+import { copyTextToClipboard } from '../utils/clipboard';
+import { buildSmsShareHref } from '../utils/referralSharing';
+import { reserveShareWindow, navigateShareWindow } from '../utils/shareNavigation';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { fillTemplate, getDefaultTemplate, ShareChannel, ShareTargetType } from '../lib/shareTemplates';
 
@@ -37,33 +40,12 @@ function buildSignupUrl(returnTo: string): string {
   return `${base}?role=affiliate&redirect=${redirect}`;
 }
 
-async function copyText(value: string) {
-  const text = String(value || '').trim();
-  if (!text) throw new Error('Nothing to copy');
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.setAttribute('readonly', 'true');
-  textarea.style.position = 'fixed';
-  textarea.style.opacity = '0';
-  textarea.style.pointerEvents = 'none';
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-  const ok = document.execCommand('copy');
-  document.body.removeChild(textarea);
-  if (!ok) throw new Error('Copy failed');
-}
-
 async function postJson<T>(url: string, body: unknown, headers?: Record<string, string>): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(headers || {}) },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(8000),
   });
   const text = await res.text();
   let parsed: any = null;
@@ -84,6 +66,8 @@ export default function AffiliateShareWidget(props: Props) {
   const [copied, setCopied] = useState(false);
   const [busyChannel, setBusyChannel] = useState<ShareChannel | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [preparedLink, setPreparedLink] = useState<{ key: string; url: string } | null>(null);
+  const [retry, setRetry] = useState(0);
 
   const isPromoter = Boolean(
     user && (
@@ -112,26 +96,31 @@ export default function AffiliateShareWidget(props: Props) {
     }
   }, [props.targetId, props.type, props.targetPath]);
 
-  const getTrackedLink = async (channel: ShareChannel): Promise<LinkResponse> => {
-    if (!user) throw new Error('Please sign in to share');
-    if (!isPromoter) throw new Error('A seller or affiliate account is required for tracked links');
-    const token = session?.access_token;
-    if (!token) throw new Error('Missing auth session');
+  const linkKey = JSON.stringify([user?.id, session?.access_token, props.type, props.targetId, props.targetPath, props.sellerId, props.campaign, props.title]);
+  const linkReady = !isPromoter || preparedLink?.key === linkKey;
 
-    return await postJson<LinkResponse>(
-      '/api/affiliate/link',
-      {
-        target_type: props.type,
-        target_id: props.targetId,
-        target_path: props.targetPath ?? null,
-        seller_id: props.sellerId ?? null,
-        campaign: props.campaign ?? null,
-        source: channel,
-        title: props.title ?? null,
-      },
-      { Authorization: `Bearer ${token}` }
-    );
-  };
+  // Prepare attribution before the click so SMS, mail and clipboard actions retain
+  // the browser's user gesture. Never silently replace a failed partner link.
+  useEffect(() => {
+    if (!isPromoter) return;
+    let active = true;
+    setError(null);
+    postJson<LinkResponse>('/api/affiliate/link', {
+      target_type: props.type,
+      target_id: props.targetId,
+      target_path: props.targetPath ?? null,
+      seller_id: props.sellerId ?? null,
+      campaign: props.campaign ?? null,
+      source: 'copy',
+      title: props.title ?? null,
+    }, { Authorization: `Bearer ${session?.access_token || ''}` }).then(response => {
+      if (!response?.trackedUrl) throw new Error('Missing affiliate link');
+      if (active) setPreparedLink({ key: linkKey, url: response.trackedUrl });
+    }).catch(() => {
+      if (active) setError('Could not create your affiliate link. Please try again.');
+    });
+    return () => { active = false; };
+  }, [isPromoter, linkKey, retry]);
 
   const trackShareClick = async (channel: ShareChannel) => {
     try {
@@ -155,37 +144,35 @@ export default function AffiliateShareWidget(props: Props) {
   };
 
   const doShare = async (channel: ShareChannel) => {
+    if (!linkReady) return;
     setError(null);
     setBusyChannel(channel);
     const popupChannels = new Set<ShareChannel>(['facebook', 'x', 'whatsapp']);
     const popup = popupChannels.has(channel)
-      ? window.open('', '_blank', 'noopener,noreferrer,width=720,height=640')
+      ? reserveShareWindow()
       : null;
     try {
       let trackedUrl = canonicalTargetUrl;
       if (isPromoter) {
-        try {
-          const response = await getTrackedLink(channel);
-          trackedUrl = response?.trackedUrl || canonicalTargetUrl;
-        } catch (linkError) {
-          console.warn('[AffiliateShareWidget] Falling back to canonical share URL:', linkError);
-        }
+        if (!linkReady || !preparedLink) throw new Error('Your affiliate link is not ready. Please try again.');
+        const url = new URL(preparedLink.url);
+        url.searchParams.set('utm_source', channel);
+        trackedUrl = url.href;
       }
       const template = getDefaultTemplate(props.type, channel);
       const message = fillTemplate(template.text, trackedUrl);
 
-      await trackShareClick(channel);
+      void trackShareClick(channel);
 
       if (channel === 'copy') {
-        await copyText(trackedUrl);
+        if (!await copyTextToClipboard(trackedUrl)) throw new Error('Could not copy the link. Please try again.');
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1500);
         return;
       }
 
       if (channel === 'sms') {
-        const body = encodeURIComponent(message);
-        window.location.assign(`sms:?&body=${body}`);
+        window.location.assign(buildSmsShareHref(message, ''));
         return;
       }
 
@@ -200,24 +187,21 @@ export default function AffiliateShareWidget(props: Props) {
         const u = encodeURIComponent(trackedUrl);
         const quote = encodeURIComponent(message.replace(trackedUrl, '').trim());
         const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${u}&quote=${quote}`;
-        if (popup) popup.location.href = shareUrl;
-        else window.location.assign(shareUrl);
+        navigateShareWindow(shareUrl, popup);
         return;
       }
 
       if (channel === 'x') {
         const text = encodeURIComponent(message);
         const shareUrl = `https://twitter.com/intent/tweet?text=${text}`;
-        if (popup) popup.location.href = shareUrl;
-        else window.location.assign(shareUrl);
+        navigateShareWindow(shareUrl, popup);
         return;
       }
 
       if (channel === 'whatsapp') {
         const text = encodeURIComponent(message);
         const shareUrl = `https://wa.me/?text=${text}`;
-        if (popup) popup.location.href = shareUrl;
-        else window.location.assign(shareUrl);
+        navigateShareWindow(shareUrl, popup);
         return;
       }
     } catch (e) {
@@ -249,7 +233,7 @@ export default function AffiliateShareWidget(props: Props) {
         <button
           type="button"
           onClick={() => doShare('copy')}
-          disabled={busyChannel !== null}
+          disabled={busyChannel !== null || !linkReady}
           className="px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium flex items-center justify-center gap-2"
         >
           <Copy className="w-4 h-4" />
@@ -258,7 +242,7 @@ export default function AffiliateShareWidget(props: Props) {
         <button
           type="button"
           onClick={() => doShare('facebook')}
-          disabled={busyChannel !== null}
+          disabled={busyChannel !== null || !linkReady}
           className="px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium flex items-center justify-center gap-2"
         >
           <Facebook className="w-4 h-4" />
@@ -267,7 +251,7 @@ export default function AffiliateShareWidget(props: Props) {
         <button
           type="button"
           onClick={() => doShare('sms')}
-          disabled={busyChannel !== null}
+          disabled={busyChannel !== null || !linkReady}
           className="px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium flex items-center justify-center gap-2"
         >
           <MessageSquare className="w-4 h-4" />
@@ -276,7 +260,7 @@ export default function AffiliateShareWidget(props: Props) {
         <button
           type="button"
           onClick={() => doShare('email')}
-          disabled={busyChannel !== null}
+          disabled={busyChannel !== null || !linkReady}
           className="px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium flex items-center justify-center gap-2"
         >
           <Mail className="w-4 h-4" />
@@ -285,7 +269,7 @@ export default function AffiliateShareWidget(props: Props) {
         <button
           type="button"
           onClick={() => doShare('x')}
-          disabled={busyChannel !== null}
+          disabled={busyChannel !== null || !linkReady}
           className="px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium flex items-center justify-center gap-2"
         >
           <Twitter className="w-4 h-4" />
@@ -293,7 +277,9 @@ export default function AffiliateShareWidget(props: Props) {
         </button>
       </div>
 
-      {error && <div className="mt-2 text-xs text-red-700">{error}</div>}
+      {!linkReady && !error && <div role="status" className="mt-2 text-xs text-gray-500">Preparing your affiliate link…</div>}
+      {error && <div role="alert" className="mt-2 text-xs text-red-700">{error}</div>}
+      {!linkReady && error && <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-2 text-sm underline">Retry affiliate link</button>}
       {!user && <div className="mt-2 text-xs text-gray-500">Sign in as a seller or affiliate to share with tracked links.</div>}
     </div>
   );

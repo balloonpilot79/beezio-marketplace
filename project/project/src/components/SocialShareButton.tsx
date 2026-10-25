@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  Share2, Facebook, Twitter, Linkedin, Mail, 
-  MessageCircle, Copy, X, Instagram, Youtube, Sparkles, QrCode 
+import {
+  Share2, Facebook, Twitter, Linkedin, Mail,
+  MessageCircle, Copy, X, Sparkles, QrCode
 } from 'lucide-react';
+import { copyTextToClipboard } from '../utils/clipboard';
+import { reserveShareWindow, navigateShareWindow } from '../utils/shareNavigation';
 import SocialMediaTemplates from './SocialMediaTemplates';
 import QRCodeShare from './QRCodeShare';
 import { useBehaviorTracker } from '../hooks/useBehaviorTracker';
@@ -41,39 +43,21 @@ const sharePlatforms: SharePlatform[] = [
     name: 'Facebook',
     icon: Facebook,
     color: 'bg-blue-600 hover:bg-blue-700',
-    shareUrl: (url, title, description) => 
+    shareUrl: (url, title, description) =>
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(title + ' - ' + description)}`
-  },
-  {
-    name: 'Instagram',
-    icon: Instagram,
-    color: 'bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600',
-    shareUrl: (url, title, description) => 
-      `https://www.instagram.com/?url=${encodeURIComponent(url)}`
-  },
-  {
-    name: 'TikTok',
-    icon: () => (
-      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
-      </svg>
-    ),
-    color: 'bg-black hover:bg-gray-800',
-    shareUrl: (url, title, description) => 
-      `https://www.tiktok.com/upload/?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title + ' - ' + description)}`
   },
   {
     name: 'Twitter',
     icon: Twitter,
     color: 'bg-sky-500 hover:bg-sky-600',
-    shareUrl: (url, title, description) => 
+    shareUrl: (url, title, description) =>
       `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title + ' - ' + description)}&hashtags=shopping,deals`
   },
   {
     name: 'LinkedIn',
     icon: Linkedin,
     color: 'bg-blue-700 hover:bg-blue-800',
-    shareUrl: (url, title, description) => 
+    shareUrl: (url, title, description) =>
       `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&summary=${encodeURIComponent(description)}`
   },
   {
@@ -84,52 +68,24 @@ const sharePlatforms: SharePlatform[] = [
       </svg>
     ),
     color: 'bg-red-600 hover:bg-red-700',
-    shareUrl: (url, title, description) => 
+    shareUrl: (url, title, description) =>
       `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&description=${encodeURIComponent(title + ' - ' + description)}`
   },
   {
     name: 'WhatsApp',
     icon: MessageCircle,
     color: 'bg-green-500 hover:bg-green-600',
-    shareUrl: (url, title, description) => 
+    shareUrl: (url, title, description) =>
       `https://wa.me/?text=${encodeURIComponent(title + ' - ' + description + ' ' + url)}`
-  },
-  {
-    name: 'YouTube',
-    icon: Youtube,
-    color: 'bg-red-600 hover:bg-red-700',
-    shareUrl: (url, title, description) => 
-      `https://www.youtube.com/share?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`
   },
   {
     name: 'Email',
     icon: Mail,
     color: 'bg-gray-600 hover:bg-gray-700',
-    shareUrl: (url, title, description) => 
+    shareUrl: (url, title, description) =>
       `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(description + '\n\nCheck it out: ' + url)}`
   }
 ];
-
-const copyText = async (value: string) => {
-  const text = String(value || '').trim();
-  if (!text) throw new Error('Nothing to copy');
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.setAttribute('readonly', 'true');
-  textarea.style.position = 'fixed';
-  textarea.style.opacity = '0';
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-  const ok = document.execCommand('copy');
-  document.body.removeChild(textarea);
-  if (!ok) throw new Error('Copy failed');
-};
 
 export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
   product,
@@ -141,6 +97,10 @@ export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
+  const track = (channel: string) => {
+    try { void Promise.resolve(trackShare(product.id, channel)).catch(() => {}); } catch { /* Analytics must not block sharing. */ }
+  };
   const [showTemplates, setShowTemplates] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const { trackShare } = useBehaviorTracker();
@@ -158,40 +118,42 @@ export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
     };
   };
 
-  const handleShare = async (platform: SharePlatform) => {
+  const handleShare = (platform: SharePlatform) => {
     const { title, description, url } = getShareText();
     const shareUrl = platform.shareUrl(url, title, description);
 
-    // Track share with platform for analytics
-    await trackShare(product.id, platform.name.toLowerCase());
-    
+    // Open during the click gesture; analytics must not delay the composer.
+
     // Open share window
     if (platform.name === 'Email') {
       window.location.href = shareUrl;
     } else {
-      window.open(shareUrl, '_blank', 'width=600,height=400,scrollbars=yes,resizable=yes');
+      navigateShareWindow(shareUrl, reserveShareWindow());
     }
-    
+
+    track(platform.name.toLowerCase());
     setIsOpen(false);
   };
 
   const handleCopyLink = async () => {
     try {
       const { url } = getShareText();
-      await copyText(url);
+      setCopyError(false);
+      if (!await copyTextToClipboard(url)) throw new Error('Copy failed');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
 
       // Track copy link action for analytics
-      await trackShare(product.id, 'copy_link');
+      track('copy_link');
     } catch (err) {
-      console.error('Failed to copy link:', err);
+      setCopyError(true);
+      setIsOpen(true);
     }
   };
 
   const handleNativeShare = async () => {
     const { title, description, url } = getShareText();
-    
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -201,9 +163,9 @@ export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
         });
 
         // Track native share for analytics
-        await trackShare(product.id, 'native_share');
+        track('native_share');
       } catch (err) {
-        console.error('Error sharing:', err);
+        if (!(err instanceof Error && err.name === 'AbortError')) setIsOpen(true);
       }
     } else {
       setIsOpen(true);
@@ -225,6 +187,7 @@ export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
   if (variant === 'floating') {
     return (
       <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-40">
+        {copyError && <div role="alert" className="bg-white p-3 shadow rounded-lg max-w-xs">Could not copy. Select and copy this link:<input aria-label="Product share link" value={getProductUrl()} readOnly className="w-full border p-2" /></div>}
         <div className="flex flex-col space-y-2">
           <button
             onClick={() => setIsOpen(!isOpen)}
@@ -232,7 +195,7 @@ export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
           >
             <Share2 className="w-5 h-5" />
           </button>
-          
+
           {isOpen && (
             <div className="flex flex-col space-y-2 animate-in slide-in-from-right duration-200">
               {sharePlatforms.map((platform) => {
@@ -262,30 +225,18 @@ export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
     );
   }
 
-  if (variant === 'icon') {
-    return (
-      <div className="relative">
-        <button
-          onClick={handleNativeShare}
-          className={`${className} text-gray-600 hover:text-amber-600 transition-colors p-2 rounded-full hover:bg-gray-100`}
-          title="Share product"
-        >
-          <Share2 className={iconSizes[size]} />
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="relative">
       <button
         onClick={handleNativeShare}
-        className={`${className} ${buttonSizes[size]} bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors flex items-center space-x-2`}
+        title="Share product"
+        className={variant === 'icon' ? `${className} text-gray-600 hover:text-amber-600 p-2 rounded-full` : `${className} ${buttonSizes[size]} bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors flex items-center space-x-2`}
       >
         <Share2 className={iconSizes[size]} />
-        <span>Share</span>
+        {variant !== 'icon' && <span>Share</span>}
       </button>
 
+      {copyError && <p role="alert">Could not copy. Select and copy the link below.</p>}
       {/* Share Modal */}
       {isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -299,7 +250,7 @@ export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="p-6">
               {/* Product Preview */}
               <div className="flex space-x-3 mb-6 p-3 bg-gray-50 rounded-lg">
@@ -361,6 +312,7 @@ export const SocialShareButton: React.FC<SocialShareButtonProps> = ({
                 <div className="flex items-center space-x-2">
                   <input
                     type="text"
+                    aria-label="Product share link"
                     value={getProductUrl()}
                     readOnly
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
