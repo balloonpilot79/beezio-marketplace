@@ -1,7 +1,7 @@
 import { getProductTerms } from '../utils/productTerms';
 import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import { productWithSelectedVariant } from '../../shared/productShipping';
-import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
+import { isPublicAffiliateProduct, isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { getProductInventoryLimit } from '../../shared/productInventoryLimit';
 import React, { useState, useEffect, useMemo } from 'react';
 import { flushSync } from 'react-dom';
@@ -63,6 +63,8 @@ interface Product {
   flat_commission_amount: number;
   affiliate_commission_type?: 'percent' | 'flat';
   affiliate_commission_value?: number;
+  affiliate_enabled?: boolean;
+  affiliate_payout_amount?: number;
   seller_id: string;
   is_active?: boolean;
   is_promotable?: boolean;
@@ -700,15 +702,12 @@ const ProductDetailPage: React.FC = () => {
   }, [product?.sample_enabled, product?.sample_price]);
 
   const affiliateEarnings = useMemo(() => {
-    const exactVariantPayout = Number((selectedVariant as any)?.affiliate_payout_amount);
+    const savedVariantPayout = (selectedVariant as any)?.affiliate_payout_amount;
+    const exactVariantPayout = savedVariantPayout == null ? NaN : Number(savedVariantPayout);
     if (Number.isFinite(exactVariantPayout) && exactVariantPayout >= 0) return exactVariantPayout;
     return getAffiliateAmount(derivedSellerAsk, commissionType, commissionValue);
   }, [commissionType, commissionValue, derivedSellerAsk, selectedVariant]);
-  const earningsAmount = useMemo(() => {
-    if (isSellingRole) return affiliateEarnings;
-    return null;
-  }, [affiliateEarnings, isSellingRole]);
-  const showAffiliatePayoutPreview = isAffiliateRole && !isStorefrontProductView && !isCustomDomainHost;
+  const showAffiliatePayoutPreview = isMainMarketplaceProductView && isPublicAffiliateProduct(product) && affiliateEarnings > 0;
 
   const displayDescription = useMemo(() => {
     return sanitizeDescriptionForDisplay(product?.description, product?.lineage);
@@ -1919,10 +1918,19 @@ const ProductDetailPage: React.FC = () => {
               {!showBuyerCtas && (
                 <div className="space-y-1">
                   <div className="text-xs text-gray-500">Storefront buyer price</div>
-                  {earningsAmount !== null && commissionValue > 0 && (
-                    <div className="text-sm font-semibold text-green-700">
-                      Affiliate earns {formatMoneyDisplay(earningsAmount)} per sale
-                    </div>
+                </div>
+              )}
+
+              {showAffiliatePayoutPreview && (
+                <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
+                  <p className="font-semibold">Earn {formatMoneyDisplay(affiliateEarnings)} per sale</p>
+                  {!user && (
+                    <Link
+                      to={`/affiliate-signup?role=affiliate&redirect=${encodeURIComponent(location.pathname + location.search)}`}
+                      className="mt-1 inline-block underline underline-offset-2 hover:text-green-950"
+                    >
+                      Sign up free to get your tracked link
+                    </Link>
                   )}
                 </div>
               )}
@@ -1963,7 +1971,7 @@ const ProductDetailPage: React.FC = () => {
 
           {/* Add to Cart Section */}
           <div className="space-y-4">
-            {showAffiliatePayoutPreview && commissionValue > 0 && (
+            {showAffiliatePayoutPreview && isAffiliateRole && (
               <div className="flex items-center space-x-2 mb-4">
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                   <Heart className="w-4 h-4 mr-2" />
@@ -1977,11 +1985,6 @@ const ProductDetailPage: React.FC = () => {
 
             {showBuyerCtas && (
               <>
-                {showAffiliatePayoutPreview && (
-                  <div className="mb-2 text-xs text-green-700 font-semibold text-center">
-                    Partner earns: ${affiliateEarnings?.toFixed(2)} per sale
-                  </div>
-                )}
                 {/* Variant Selector */}
                 {variantOptions.length > 0 && (
                   <div className="mb-4 space-y-3">

@@ -1,5 +1,5 @@
 import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
-import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
+import { isPublicAffiliateProduct, isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { shouldOpenProductDetailsBeforePurchase } from '../../shared/productOptionSelection';
 import { getProductInventoryLimit } from '../../shared/productInventoryLimit';
 import React, { useMemo, useState } from 'react';
@@ -124,7 +124,7 @@ const CanonicalProductCard: React.FC<Props> = ({
   const canAffiliate = Boolean(user?.id) && (role === 'affiliate' || role === 'partner' || hasRole('affiliate') || hasRole('partner'));
   const canSeller = Boolean(user?.id) && (role === 'seller' || hasRole('seller'));
   const showStoreTools = ctaMode !== 'storefront' && (canAffiliate || canSeller);
-  const affiliateEarnings = Boolean(user?.id) && ctaMode !== 'storefront' && product.affiliate_enabled !== false && affiliateAmount > 0 ? (
+  const affiliateEarnings = ctaMode !== 'storefront' && isPublicAffiliateProduct(product) && affiliateAmount > 0 ? (
     <div className="marketplace-earnings mt-3 inline-flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">
       <Award className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span>Earn ${affiliateAmount.toFixed(2)} per sale</span>
