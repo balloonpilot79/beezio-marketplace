@@ -194,7 +194,7 @@ const CanonicalProductCard: React.FC<Props> = ({
     </Link>
   );
 
-  const shareActions = <ProductShareActions productUrl={productUrl} title={product.title} price={buyerPrice} commission={affiliateAmount} canPromote={isPublicAffiliateProduct(product)} />;
+  const shareActions = <ProductShareActions productId={String(product.id)} productUrl={productUrl} title={product.title} price={buyerPrice} commission={affiliateAmount} canPromote={isPublicAffiliateProduct(product)} />;
 
   const purchaseButtons = purchaseVisible ? (
     <div className="flex w-full flex-col gap-2">
