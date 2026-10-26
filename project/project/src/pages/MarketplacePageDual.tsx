@@ -10,6 +10,8 @@ import { supabase } from '../lib/supabase';
 import { canUseStoreTools, getNormalizedAccountRoles, normalizeAccountRole } from '../utils/accountRoles';
 import { extractUsStateFromLocation } from '../utils/locationMatching';
 import { normalizeAverageRating, normalizeReviewCount } from '../utils/socialProof';
+import { catalogRotationSlot, rotateCatalog } from '../utils/catalogRotation';
+import { fetchMarketplaceCatalog } from '../utils/marketplaceCatalog';
 import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
 
 interface ProductProfile {
@@ -127,62 +129,26 @@ const normalizeMarketplaceRows = (rows: any[]) =>
       } as MarketplaceProduct;
     });
 
-const parseMarketplaceResponse = async (response: Response) => {
-  const text = await response.text().catch(() => '');
-  if (!response.ok) {
-    throw new Error(text || `Marketplace request failed with ${response.status}`);
-  }
-
-  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
-  if (contentType.includes('text/html') || /<html/i.test(text)) {
-    throw new Error('Marketplace endpoint returned HTML instead of JSON');
-  }
-
-  let payload: any = {};
-  try {
-    payload = text ? JSON.parse(text) : {};
-  } catch {
-    throw new Error('Marketplace endpoint returned invalid JSON');
-  }
-
-  if (!Array.isArray(payload?.products)) {
-    throw new Error('Marketplace endpoint returned an unexpected payload');
-  }
-
-  return payload.products as any[];
-};
-
 const fetchMarketplaceRows = async (signal: AbortSignal) => {
-  const urls = [
-    `/api/public/marketplace/products?limit=${PAGE_SIZE}`,
-    `/.netlify/functions/public-marketplace-products?limit=${PAGE_SIZE}`,
-  ];
-
-  let lastError: unknown = null;
-  for (const url of urls) {
-    try {
-      const response = await fetch(url, { signal });
-      return await parseMarketplaceResponse(response);
-    } catch (error) {
-      lastError = error;
+  try {
+    return await fetchMarketplaceCatalog(signal);
+  } catch (error) {
+    if (signal.aborted) throw error;
+    // Keep the existing public/RLS fallback, but don't truncate it to one page.
+    const rows: any[] = [];
+    for (let offset = 0; ; offset += PAGE_SIZE) {
+      const { data, error: queryError } = await supabase
+        .from('products')
+        .select(MARKETPLACE_SELECT_FIELDS)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1)
+        .abortSignal(signal);
+      if (queryError) throw queryError;
+      rows.push(...(data || []));
+      if (!data || data.length < PAGE_SIZE) return rows;
     }
   }
-
-  const { data, error } = await supabase
-    .from('products')
-    .select(MARKETPLACE_SELECT_FIELDS)
-    .order('created_at', { ascending: false })
-    .limit(PAGE_SIZE);
-
-  if (error) {
-    throw error;
-  }
-
-  if (Array.isArray(data)) {
-    return data;
-  }
-
-  throw lastError instanceof Error ? lastError : new Error('Unable to load marketplace products');
 };
 
 const resolveDerivedCategory = (product: MarketplaceProduct, categoryById: Map<string, CategoryRow>) => {
@@ -216,6 +182,7 @@ const MarketplacePageDual: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [categoryRows, setCategoryRows] = useState<CategoryRow[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [rotationSlot] = useState(() => catalogRotationSlot());
 
   const activeRole = normalizeAccountRole(profile?.primary_role || profile?.role || currentRole || 'buyer');
   const normalizedRoles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role, currentRole);
@@ -366,6 +333,8 @@ const MarketplacePageDual: React.FC = () => {
       filtered = filtered.filter((product) => slugify((product as any).derivedCategory || '') === selectedCategory);
     }
 
+    if (sortBy === 'featured') return rotateCatalog(filtered, rotationSlot);
+
     filtered.sort((a, b) => {
       const aLocal = viewerState && extractUsStateFromLocation(a.profiles?.location || '') === viewerState ? 1 : 0;
       const bLocal = viewerState && extractUsStateFromLocation(b.profiles?.location || '') === viewerState ? 1 : 0;
@@ -391,7 +360,7 @@ const MarketplacePageDual: React.FC = () => {
     });
 
     return filtered;
-  }, [productsWithCategory, searchTerm, selectedCategory, sortBy, viewerState]);
+  }, [productsWithCategory, searchTerm, selectedCategory, sortBy, viewerState, rotationSlot]);
 
   const shelfRows = useMemo(() => {
     const buckets = new Map<string, MarketplaceProduct[]>();
@@ -402,16 +371,19 @@ const MarketplacePageDual: React.FC = () => {
       buckets.get(category)!.push(product);
     });
 
-    return Array.from(buckets.entries())
+    const shelves = Array.from(buckets.entries())
       .map(([category, rows]) => ({
         category,
         slug: slugify(category),
-        products: rows.slice(0, 12),
+        products: rotateCatalog(rows, rotationSlot).slice(0, 12),
         total: rows.length,
       }))
       .filter((row) => row.products.length > 0)
       .sort((a, b) => a.category.localeCompare(b.category));
-  }, [filteredProducts]);
+    return sortBy === 'featured'
+      ? rotateCatalog(shelves.map((row) => ({ ...row, id: row.slug })), rotationSlot)
+      : shelves;
+  }, [filteredProducts, sortBy, rotationSlot]);
 
   const newItemsProducts = useMemo(
     () =>
@@ -422,23 +394,18 @@ const MarketplacePageDual: React.FC = () => {
   );
 
   const needsPromotingProducts = useMemo(
-    () =>
-      [...productsWithCategory]
-        .filter((product) => product.is_promotable !== false)
-        .sort((a, b) => {
-          const commissionDelta = getCommissionScore(b) - getCommissionScore(a);
-          if (commissionDelta !== 0) return commissionDelta;
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-        })
-        .slice(0, 12),
-    [productsWithCategory]
+    () => rotateCatalog(
+      productsWithCategory.filter((product) => product.is_promotable !== false),
+      rotationSlot,
+    ).slice(0, 12),
+    [productsWithCategory, rotationSlot]
   );
 
   const selectedCategoryLabel = selectedCategory === 'All'
     ? 'All Products'
     : categoryLabelBySlug.get(selectedCategory) || selectedCategory;
 
-  const showShelves = selectedCategory === 'All' && !searchTerm.trim();
+  const showShelves = selectedCategory === 'All' && !searchTerm.trim() && sortBy === 'featured';
 
   return (
     <div className="bz-public marketplace-page min-h-screen bg-[#f7f8f8]">
@@ -470,7 +437,7 @@ const MarketplacePageDual: React.FC = () => {
                 onChange={(event) => setSortBy(event.target.value as SortOption)}
                 className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm sm:px-4 sm:py-3"
               >
-                <option value="featured">Featured</option>
+                <option value="featured">Discover</option>
                 <option value="popular">Most Popular</option>
                 <option value="newest">Newest</option>
                 <option value="price-low">Price: Low to High</option>
@@ -628,7 +595,7 @@ const MarketplacePageDual: React.FC = () => {
           </Link>
         </div>
 
-        {viewerState && (
+        {viewerState && sortBy !== 'featured' && (
           <div className="mb-4 rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 sm:mb-6 sm:px-5 sm:py-4">
             Local marketplace mode is active for <strong>{viewerState}</strong>. Sellers in your area are shown first when location data is available, so traffic stays more relevant.
           </div>
@@ -712,7 +679,7 @@ const MarketplacePageDual: React.FC = () => {
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-bold text-slate-900 sm:text-2xl">Products That Need Promoting</h2>
-                    <p className="text-sm text-slate-500">Promotable products with stronger affiliate upside</p>
+                    <p className="text-sm text-slate-500">Explore a rotating selection of products you can promote</p>
                   </div>
                   <button
                     onClick={() => {

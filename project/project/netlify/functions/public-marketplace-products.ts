@@ -113,12 +113,22 @@ const handler: Handler = async (event) => {
       'requires_shipping',
     ].join(',');
 
+    const params = event.queryStringParameters || {};
+    const requestedSize = Number(params.page_size || 500);
+    const pageSize = Number.isSafeInteger(requestedSize) ? Math.max(1, Math.min(500, requestedSize)) : 500;
+    const requestedOffset = Number(params.offset || 0);
+    const offset = Number.isSafeInteger(requestedOffset) && requestedOffset >= 0 ? requestedOffset : 0;
+
     const { data, error } = await supabaseAdmin
       .from('products')
       .select(selectFields)
       .eq('is_active', true)
+      .eq('is_promotable', true)
+      .eq('affiliate_enabled', true)
+      .eq('status', 'active')
       .order('created_at', { ascending: false })
-      .limit(500);
+      .order('id', { ascending: true })
+      .range(offset, offset + pageSize - 1);
 
     if (error) {
       return json(500, { ok: false, error: 'Failed to load marketplace catalog', details: error.message });
@@ -287,6 +297,7 @@ const handler: Handler = async (event) => {
     return json(200, {
       ok: true,
       products,
+      next_offset: data?.length === pageSize ? offset + pageSize : null,
       stores,
       counts: {
         total: products.length,

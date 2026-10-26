@@ -9,6 +9,8 @@ import {
   Store,
 } from "lucide-react";
 import { pricingExplanation } from "../components/brand/BeezioBrand";
+import { catalogRotationSlot, rotateCatalog } from "../utils/catalogRotation";
+import { fetchMarketplaceCatalog } from "../utils/marketplaceCatalog";
 import { prepareHomeProducts, type HomeProduct } from "../utils/homeCatalog";
 import { useAuth } from "../contexts/AuthContextMultiRole";
 import "../styles/beezio-home.css";
@@ -77,6 +79,7 @@ export default function HomePageBZO() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [rotationSlot] = useState(() => catalogRotationSlot());
   const [category, setCategory] = useState("All");
   useEffect(() => {
     const controller = new AbortController();
@@ -86,24 +89,8 @@ export default function HomePageBZO() {
     setError(false);
     (async () => {
       try {
-        let response: Response | null = null;
-        for (const endpoint of [
-          "/api/public/marketplace/products",
-          "/.netlify/functions/public-marketplace-products?limit=50",
-        ]) {
-          const candidate = await fetch(endpoint, {
-            signal: controller.signal,
-          });
-          if (candidate.ok) {
-            response = candidate;
-            break;
-          }
-        }
-        if (!response) throw new Error("Catalog unavailable");
-        const payload = await response.json();
-        if (!Array.isArray(payload.products))
-          throw new Error("Invalid catalog");
-        if (active) setProducts(prepareHomeProducts(payload.products));
+        const rows = await fetchMarketplaceCatalog(controller.signal);
+        if (active) setProducts(prepareHomeProducts(rows));
       } catch {
         if (active) setError(true);
       } finally {
@@ -119,17 +106,17 @@ export default function HomePageBZO() {
   }, [attempt]);
   const categories = useMemo(
     () =>
-      Array.from(new Set(products.map((product) => product.category))).slice(
+      rotateCatalog(Array.from(new Set(products.map((product) => product.category))).map((id) => ({ id })), rotationSlot).map(({ id }) => id).slice(
         0,
         7,
       ),
-    [products],
+    [products, rotationSlot],
   );
   const selected =
     category === "All"
-      ? products
-      : products.filter((product) => product.category === category);
-  const spotlight = products.filter((product) => product.available).slice(0, 2);
+      ? rotateCatalog(products.filter((product) => product.available), rotationSlot)
+      : rotateCatalog(products.filter((product) => product.available && product.category === category), rotationSlot);
+  const spotlight = rotateCatalog(products.filter((product) => product.available), rotationSlot).slice(0, 2);
 
   return (
     <div className="hm-page">
