@@ -1061,6 +1061,7 @@ const ProductDetailPage: React.FC = () => {
           if (!resp.ok) return null;
           const payload: any = await resp.json().catch(() => ({}));
           if (payload?.store_settings) {
+            publicStoreSettings = payload.store_settings;
             setSellerStoreSettings(payload.store_settings);
           }
           return payload?.product || null;
@@ -1103,6 +1104,7 @@ const ProductDetailPage: React.FC = () => {
       const preferLightweight = Boolean(initialPrefill?.lineage === 'CJ' || product?.lineage === 'CJ');
       const preferPublicEndpoint = !user;
       let data: any = null;
+      let publicStoreSettings: any = null;
       let minimalLoaded = false;
 
       if (preferPublicEndpoint) {
@@ -1210,15 +1212,17 @@ const ProductDetailPage: React.FC = () => {
         }
         const returnedStoreSlug = String((data as any)?.storefront_slug || '').trim().toLowerCase();
         const houseBrand = resolveHouseBrandIdentity(returnedStoreSlug);
+        // The public endpoint resolves the product's owned brand storefront.
+        // Preserve it instead of replacing it with the account's default store.
         setSellerStoreSettings(
-          houseBrand
+          publicStoreSettings || (houseBrand
             ? {
                 ...(storeSettingsData || {}),
                 store_name: houseBrand.name,
                 subdomain: houseBrand.slug,
                 shipping_policy: 'Shipping is added separately at checkout.',
               }
-            : storeSettingsData || null
+            : storeSettingsData || null)
         );
       } else {
         setSellerStoreSettings(null);
