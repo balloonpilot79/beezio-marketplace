@@ -272,7 +272,7 @@ const CanonicalProductCard: React.FC<Props> = ({
         </div>
       </ProductLink>
       <div className={compact ? 'p-3 pt-0' : 'p-5 pt-0'}>
-        <div className="flex flex-col gap-2 [&>div]:w-full">{purchaseButtons}{storeButtons}</div>
+        <div className="flex flex-col gap-2 [&>div]:w-full">{purchaseButtons}{storeButtons}{shareActions}</div>
         <Link to={productUrl} state={{ from: `${location.pathname}${location.search}` }} className={compactMarketplace ? "mt-1 min-h-11 text-gray-600 font-medium flex items-center justify-center" : "mt-2 w-full bg-gray-50 border border-gray-200 text-gray-700 rounded-xl py-3 font-medium flex items-center justify-center"}>
           <ExternalLink className="w-4 h-4 mr-2" /> View Product
         </Link>
