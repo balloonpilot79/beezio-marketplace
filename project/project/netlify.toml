@@ -52,6 +52,12 @@
   status = 301
   force = true
 
+[[redirects]]
+  from = "/sitemap.xml"
+  to = "/.netlify/functions/public-sitemap"
+  status = 200
+  force = true
+
 # Core health + public commerce API routes
 [[redirects]]
   from = "/api/health"
