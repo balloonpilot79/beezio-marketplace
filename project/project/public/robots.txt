@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /account
+Disallow: /admin
+Disallow: /cart
+Disallow: /checkout
+Disallow: /dashboard
+Disallow: /login
+Disallow: /signup
+
+Sitemap: https://beezio.co/sitemap.xml
