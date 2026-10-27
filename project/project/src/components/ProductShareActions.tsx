@@ -50,6 +50,9 @@ export default function ProductShareActions({ productId, productUrl, title, pric
   }
 
   async function share(channel: 'copy' | 'facebook') {
+    // Reserve the share window during the user gesture; awaiting a tracked link
+    // first can cause mobile browsers to block the Facebook popup.
+    const shareWindow = channel === 'facebook' ? window.open('about:blank', '_blank') : null;
     setBusy(true);
     setError('');
     setCopied(false);
@@ -61,9 +64,14 @@ export default function ProductShareActions({ productId, productUrl, title, pric
           ? `Love ${title}? Earn by sharing products with your free Beezio store. Product: ${url}`
           : `Want to earn online? Open a free Beezio store, promote products, or refer others: ${url}`;
       if (channel === 'facebook') {
-        // Open synchronously before awaiting link generation to avoid popup blockers.
-        // Facebook builds its own preview from the destination's Open Graph metadata.
-        window.location.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+        // Facebook builds its preview from the shared URL's Open Graph metadata.
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+        if (shareWindow && !shareWindow.closed) {
+          shareWindow.location.replace(facebookUrl);
+        } else {
+          // Popup-blocked browsers can still navigate the current tab.
+          window.location.assign(facebookUrl);
+        }
       } else {
         try {
           await navigator.clipboard.writeText(message);
@@ -73,6 +81,7 @@ export default function ProductShareActions({ productId, productUrl, title, pric
         }
       }
     } catch (e) {
+      shareWindow?.close();
       setError(e instanceof Error ? e.message : 'Unable to share this product.');
     } finally {
       setBusy(false);
