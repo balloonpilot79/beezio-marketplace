@@ -838,11 +838,12 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
               <label className="relative block">
                 <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
                 <input
-                  type="text"
+                  type="search"
+                  aria-label="Search this store"
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search this store"
-                  className="w-full rounded-xl border px-10 py-3 text-sm outline-none transition"
+                  className="w-full rounded-xl border px-10 py-3 text-base outline-none transition"
                   style={{ borderColor: secondaryColor, color: textColor }}
                 />
               </label>
@@ -1284,7 +1285,13 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         {(hasCustomSectionOrder ? customSectionOrder : orderedStorefrontSections).map((sectionId) => <React.Fragment key={sectionId}>{renderStorefrontSection(sectionId)}</React.Fragment>)}
 
         {/* Products Grid */}
-        {filteredProducts.length === 0 && hasEditorialBrand ? (
+        {filteredProducts.length === 0 && products.length > 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+            <h3 className="text-xl font-bold text-slate-900">No products match your search or filters</h3>
+            <p className="mt-2 text-sm text-slate-600">Try another search or browse the full collection.</p>
+            <button type="button" onClick={() => { setSearchQuery(''); setActiveCategory('all'); }} className="mt-4 min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-900">Clear search and filters</button>
+          </div>
+        ) : filteredProducts.length === 0 && hasEditorialBrand ? (
           <section className="border bg-white px-7 py-12 text-center shadow-[0_24px_70px_rgba(0,0,0,0.10)] sm:px-12 lg:py-16" style={{ borderColor: `${editorialAccentColor}66` }}>
             <div className="mx-auto max-w-3xl">
               <div className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: editorialAccentColor }}>Collection coming soon</div>

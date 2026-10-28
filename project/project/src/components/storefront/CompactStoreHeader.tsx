@@ -18,6 +18,7 @@ export default function CompactStoreHeader({ name, logoUrl, homePath, inverse = 
           {logoUrl ? <img src={logoUrl} alt="" style={{ boxShadow: `0 0 0 1px ${accentColor}` }} className="h-10 w-10 shrink-0 rounded-xl bg-white object-contain p-0.5" /> : <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400 font-bold text-slate-900">{name.charAt(0)}</span>}
           <span className="min-w-0">{label && <span className="block truncate text-[8px] font-bold uppercase tracking-[0.18em]" style={{ color: accentColor }}>{label}</span>}<span className={`block truncate leading-tight ${inverse ? 'font-serif text-xl font-semibold' : 'text-base font-bold'}`} style={{ color: inverse ? '#ffffff' : '#101820' }}>{name}</span></span>
         </Link>
+        <a href={productHref} onClick={() => setOpen(false)} className="flex h-11 shrink-0 items-center rounded-lg border border-current/20 px-2 text-xs font-bold" style={{ color: inverse ? '#ffffff' : '#101820' }}>Shop</a>
         <StorefrontShoppingLinks inverse={inverse} compact />
         <button type="button" onClick={() => setOpen(!open)} aria-label={open ? 'Close store menu' : 'Open store menu'} aria-expanded={open} aria-controls="compact-store-menu" style={{ color: inverse ? '#ffffff' : '#101820' }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg">
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

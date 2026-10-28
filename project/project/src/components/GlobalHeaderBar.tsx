@@ -278,7 +278,11 @@ const GlobalHeaderBar: React.FC = () => {
         aria-label="Shop Beezio"
         className="bz-shopping-nav fixed inset-x-0 top-14 z-[68]"
       >
-        <div className="mx-auto flex max-w-7xl items-center gap-7 overflow-x-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex h-full items-center gap-3 px-3 lg:hidden">
+          <MarketplaceSearch className="flex-1" />
+          <Link to="/marketplace#categories" className="shrink-0 py-3 text-xs font-semibold text-white">Categories</Link>
+        </div>
+        <div className="mx-auto hidden max-w-7xl items-center gap-7 overflow-x-auto px-4 sm:px-6 lg:flex lg:px-8">
           {hasBusinessAccess && (
             <Link to="/business/products/add" className="bz-shopping-link text-[#ffdb55]">
               <Plus className="h-5 w-5" aria-hidden="true" />
