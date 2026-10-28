@@ -152,3 +152,8 @@
     animation: none !important;
   }
 }
+
+@media(max-width:1023px) {
+  .bz-shopping-nav .bz-market-search { height:38px; }
+  .bz-market-search input { font-size:16px; }
+}

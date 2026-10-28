@@ -59,6 +59,7 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
   const [productPlacements, setProductPlacements] = useState<any[]>([]);
   const [contactModal, setContactModal] = useState(false);
   const [activeCollection, setActiveCollection] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     console.log('[AffiliateStorePage] useEffect triggered with affiliateId:', affiliateId);
@@ -544,6 +545,8 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
   const heroImage = storeBannerUrl || storefrontBackgroundImageUrl || '';
   const showStoreIntroSection = Boolean(heroImage) || (headerStyle ? headerStyle !== 'minimal' : false);
   const filteredProducts = products.filter((product) => {
+    const query = searchQuery.trim().toLowerCase();
+    if (query && ![product.title, product.description, product.category].filter(Boolean).join(' ').toLowerCase().includes(query)) return false;
     if (activeCollection === 'featured') return Boolean(product?.is_featured);
     if (activeCollection === 'in-stock') return isProductInStock(product);
     if (activeCollection.startsWith('collection:')) {
@@ -815,6 +818,12 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
             </div>
           </div>
 
+          <label className="mb-4 block">
+            <span className="sr-only">Search this store</span>
+            <input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search this store" className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900" />
+          </label>
+          {(searchQuery || activeCollection !== 'all') && <button type="button" onClick={() => { setSearchQuery(''); setActiveCollection('all'); }} className="mb-4 min-h-11 rounded-lg border px-4 text-sm font-semibold">Clear search and filters</button>}
+
           <div className="mb-4 flex flex-wrap gap-2">
             {[
               { id: 'all', label: 'All' },
@@ -876,10 +885,10 @@ const AffiliateStorePage: React.FC<AffiliateStorePageProps> = ({ affiliateId: pr
             <div className="text-center py-12">
               <Package className="w-16 h-16 text-slate-300 mx-auto mb-5" />
               <h3 className="text-2xl font-bold text-slate-900 mb-3">
-                {isOwner ? 'No products yet' : 'No products have been published yet'}
+                {products.length > 0 ? 'No products match your search or filters' : isOwner ? 'No products yet' : 'No products have been published yet'}
               </h3>
               <p className="text-slate-600 mb-8 max-w-md mx-auto">
-                {isOwner
+                {products.length > 0 ? 'Try another search or clear your filters to browse the full collection.' : isOwner
                   ? 'Products added to your store will appear here.'
                   : 'This storefront is active, but it does not have any published products yet.'}
               </p>

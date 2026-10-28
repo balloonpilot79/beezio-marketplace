@@ -419,7 +419,7 @@ const MarketplacePageDual: React.FC = () => {
           <p className="mt-4 text-xs leading-6 text-slate-500">Want to earn from your recommendations? <Link to="/affiliates" className="font-semibold text-slate-700 underline underline-offset-4">Build a free affiliate website</Link> and promote eligible products.</p>
         </div>
       </section>
-      <section id="categories" className="border-b border-slate-200 bg-white shadow-sm md:sticky md:top-[6.375rem] md:z-20">
+      <section id="categories" className="scroll-mt-28 border-b border-slate-200 bg-white shadow-sm md:sticky md:top-[6.375rem] md:z-20">
         <div className="mx-auto max-w-7xl px-3 py-3 sm:px-6 sm:py-5 lg:px-8">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
             <div className="relative flex-1">
@@ -427,8 +427,10 @@ const MarketplacePageDual: React.FC = () => {
               <input
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
+                aria-label="Search marketplace products"
+                type="search"
                 placeholder="Search marketplace products"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#ffcb05] sm:py-3 sm:pl-12 sm:pr-4"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-base focus:outline-none focus:ring-2 focus:ring-[#ffcb05] sm:py-3 sm:pl-12 sm:pr-4"
               />
             </div>
             <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 sm:flex sm:flex-wrap sm:gap-3">
@@ -480,6 +482,14 @@ const MarketplacePageDual: React.FC = () => {
             </span>
             <span>{filteredProducts.length} items</span>
           </div>
+
+          <label className="mt-3 block md:hidden">
+            <span className="sr-only">Shop by category</span>
+            <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-900">
+              <option value="All">All categories</option>
+              {categoryOptions.map((option) => <option key={option.value} value={option.value}>{option.label} ({option.count})</option>)}
+            </select>
+          </label>
 
           {mobileFiltersOpen && (
             <div id="marketplace-mobile-filters" className="mt-3 space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-3 md:hidden">
