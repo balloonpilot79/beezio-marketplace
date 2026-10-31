@@ -108,7 +108,7 @@ export default function BusinessLandingPage({
           </h1>
           <p className="mt-5 leading-7 text-slate-600">{page.description}</p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link to={audience === "influencer" ? "/signup?role=influencer" : "/signup"} className="bz-button bz-button-gold">
+            <Link to={audience === "overview" ? "/signup" : `/signup?role=${audience}`} className="bz-button bz-button-gold">
               {audience === "influencer" ? "Join free as an influencer" : "Start your free website"}
               <ArrowRight className="h-4 w-4" />
             </Link>

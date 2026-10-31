@@ -12,7 +12,6 @@ import { pricingExplanation } from "../components/brand/BeezioBrand";
 import { catalogRotationSlot, rotateCatalog } from "../utils/catalogRotation";
 import { fetchMarketplaceCatalog } from "../utils/marketplaceCatalog";
 import { prepareHomeProducts, type HomeProduct } from "../utils/homeCatalog";
-import { useAuth } from "../contexts/AuthContextMultiRole";
 import "../styles/beezio-home.css";
 
 const money = (amount: number) =>
@@ -47,16 +46,18 @@ const paths = [
   {
     title: "Sell your products.",
     label: "For sellers",
-    text: "Your free website. No seller fees. Affiliates can help drive your sales.",
+    text: "List your own products in your free store. Set your payout and let affiliates help you reach more buyers.",
+    signup: "/signup?role=seller",
     href: "/sellers",
     action: "Start selling",
     icon: Store,
     tone: "seller",
   },
   {
-    title: "Your recommendations drive growth.",
+    title: "Sell products without inventory.",
     label: "For affiliates",
-    text: "Affiliates are at the heart of Beezio. Connect shoppers with great products, help sellers reach new customers, and earn commissions on qualifying sales through your free store and tracked links.",
+    text: "Choose marketplace products for your free store. See your earnings per sale before you start. Sellers fulfill the orders.",
+    signup: "/signup?role=affiliate",
     href: "/affiliates",
     action: "Become an affiliate",
     icon: Globe,
@@ -65,7 +66,8 @@ const paths = [
   {
     title: "Refer once. Earn as they sell.",
     label: "For influencers",
-    text: "Sellers and affiliates sign up with your code or link. You earn commission on every qualifying sale they make—with lifetime referral attribution.",
+    text: "Refer sellers and affiliates with your personal link. Earn on their qualifying product sales with lifetime referral attribution.",
+    signup: "/signup?role=influencer",
     href: "/start-earning",
     action: "Become an influencer",
     icon: Megaphone,
@@ -74,7 +76,6 @@ const paths = [
 ];
 
 export default function HomePageBZO() {
-  const { user } = useAuth();
   const [products, setProducts] = useState<HomeProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -125,25 +126,24 @@ export default function HomePageBZO() {
           <div className="hm-hero-copy">
             <p className="hm-kicker">Shop. Sell. Share. Earn.</p>
             <h1>
-              Good finds.
+              Sell. Share. Refer.
               <br />
-              <span>Great possibilities.</span>
+              <span>Start free.</span>
             </h1>
             <p className="hm-hero-description">
-              A marketplace to shop. A place to build your business. Discover
-              independent brands—or bring your own.
+              Sell your own products, earn by promoting marketplace products,
+              or refer sellers and affiliates. Choose your way to start free.
             </p>
             <div className="hm-actions">
               <a href="#shop" className="bz-button bz-button-gold">
-                Explore products <ArrowRight size={17} />
+                Shop products <ArrowRight size={17} />
               </a>
-              <Link to="/signup" className="hm-hero-secondary">
-                Build your free website <ArrowRight size={17} />
-              </Link>
+              <a href="#start" className="hm-hero-secondary">
+                Find your way to earn <ArrowRight size={17} />
+              </a>
             </div>
             <p className="hm-hero-note">
-              <Check size={14} /> Free websites. No monthly fees. No seller
-              fees.
+              <Check size={14} /> Free to join. Free stores. No monthly subscription.
             </p>
           </div>
           <div className="hm-spotlight">
@@ -166,7 +166,7 @@ export default function HomePageBZO() {
                     </div>
                     <span>{product.title}</span>
                     <strong>{money(product.price)}</strong>
-                    {user?.id && product.affiliateAmount > 0 && (
+                    {product.affiliateAmount > 0 && (
                       <span className="text-sm font-semibold text-green-700">Earn {money(product.affiliateAmount)} per sale</span>
                     )}
                   </Link>
@@ -186,11 +186,12 @@ export default function HomePageBZO() {
           </div>
         </section>
         <section
+          id="start"
           aria-label="Start your business on Beezio"
           className="hm-business-paths"
         >
           {paths.map(
-            ({ label, title, text, href, action, icon: Icon, tone }) => (
+            ({ label, title, text, href, signup, action, icon: Icon, tone }) => (
               <article className={`hm-path hm-path-${tone}`} key={label}>
                 <div className="hm-path-top">
                   <Icon size={20} aria-hidden="true" />
@@ -198,20 +199,28 @@ export default function HomePageBZO() {
                 </div>
                 <h2>{title}</h2>
                 <p>{text}</p>
-                <Link to={href}>
-                  {action}
-                  <ArrowRight size={15} />
-                </Link>
+                <div className="hm-path-actions">
+                  <Link to={signup}>{action}<ArrowRight size={15} /></Link>
+                  <Link to={href} className="hm-path-learn">How it works</Link>
+                </div>
               </article>
             ),
           )}
+        </section>
+        <section className="hm-quick-start" aria-labelledby="quick-start-title">
+          <div>
+            <p className="hm-kicker">Your first store starts here</p>
+            <h2 id="quick-start-title">Create an account. Choose products. Share your store.</h2>
+            <p>Start as an affiliate with products already on Beezio, or list your own as a seller. Add your branding when you’re ready.</p>
+          </div>
+          <Link to="/signup?role=affiliate" className="bz-button bz-button-ink">Start my free store <ArrowRight size={17} /></Link>
         </section>
         <section id="shop" className="hm-shop">
           <div className="hm-section-heading">
             <div>
               <p className="hm-kicker">Find your next favorite</p>
               <h2>Fresh finds. Ready to discover.</h2>
-              <p>Shop right here on Beezio. No business account needed.</p>
+              <p>Shop right here on Beezio. No business account needed. Earn amounts show the affiliate payout on qualifying sales.</p>
             </div>
             <Link to="/marketplace" className="hm-all-link">
               Shop all products <ArrowRight size={17} />
@@ -287,7 +296,7 @@ export default function HomePageBZO() {
                         <ArrowRight size={17} />
                       </span>
                     </div>
-                    {user?.id && product.affiliateAmount > 0 && (
+                    {product.affiliateAmount > 0 && (
                       <p className="mt-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">Earn {money(product.affiliateAmount)} per sale</p>
                     )}
                     <p className="hm-product-detail">
@@ -341,10 +350,10 @@ export default function HomePageBZO() {
           <div className="hm-section-heading">
             <div>
               <p className="hm-kicker">Your free custom store</p>
-              <h2>See a sample store: MareBelle.</h2>
+              <h2>Explore stores. Find your style.</h2>
             </div>
-            <Link to="/signup" className="hm-all-link">
-              Your brand could be next <ArrowRight size={17} />
+            <Link to="/stores" className="hm-all-link">
+              Browse all stores <ArrowRight size={17} />
             </Link>
           </div>
           <div className="hm-store-grid hm-store-sample-grid">
@@ -364,8 +373,7 @@ export default function HomePageBZO() {
             </Link>
           </div>
           <p className="hm-store-caption">
-            MareBelle shows what your own Beezio store can look like. Create
-            your free store and make it your own.
+            MareBelle is a Beezio-operated example store. Explore its real products and see what your own store could look like.
           </p>
         </section>
         <section className="hm-build">

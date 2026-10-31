@@ -149,15 +149,25 @@ const OnboardingPage: React.FC = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Account setup</h1>
           <p className="text-gray-600 mt-2">
-            Complete the steps below to start earning, launching your storefront, and getting your Beezio account fully live.
+            Build your store or start sharing first. You can finish payout setup later, before receiving payouts.
           </p>
         </div>
 
+        <section className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-5 sm:p-6" aria-labelledby="start-now-title">
+          <h2 id="start-now-title" className="text-xl font-semibold text-gray-900">What would you like to do first?</h2>
+          <p className="mt-2 text-sm text-gray-700">One account includes seller, affiliate, and influencer tools. Choose a starting point.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <Link to="/business/products/add" className="rounded-lg border border-amber-200 bg-white p-4 text-gray-900 hover:border-amber-500"><strong className="block">Sell my products</strong><span className="mt-2 block text-sm">Add your first product and set your payout.</span></Link>
+            <Link to="/marketplace" className="rounded-lg border border-amber-200 bg-white p-4 text-gray-900 hover:border-amber-500"><strong className="block">Choose products to promote</strong><span className="mt-2 block text-sm">See earnings and add products to your free store.</span></Link>
+            <Link to="/business?section=influencer" className="rounded-lg border border-amber-200 bg-white p-4 text-gray-900 hover:border-amber-500"><strong className="block">Refer sellers and affiliates</strong><span className="mt-2 block text-sm">Open your influencer tools and get your referral link.</span></Link>
+          </div>
+          <Link to="/business?tab=store-customization" className="mt-4 inline-flex min-h-11 items-center gap-2 font-semibold text-gray-900 underline underline-offset-4">Customize my store <ArrowRight className="h-4 w-4" /></Link>
+        </section>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900">1) Storefront & payouts</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Payout setup — finish when you’re ready</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Get payout setup handled first, then move into the tools that match your role.
+              You can explore products and build your store now. Complete payout verification before receiving your earnings.
             </p>
 
             <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -222,7 +232,7 @@ const OnboardingPage: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">2) Next steps</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Store tools</h2>
             <div className="space-y-3">
               <button
                 onClick={() => navigate('/business?tab=store-customization')}
@@ -239,14 +249,14 @@ const OnboardingPage: React.FC = () => {
               </button>
 
               <button
-                onClick={() => navigate('/business/products/add')}
+                onClick={() => navigate(isAffiliate ? '/marketplace' : '/business/products/add')}
                 className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-3">
                   <Package className="w-5 h-5 text-gray-800" />
                   <div className="text-left">
                     <div className="font-semibold text-gray-900">{isAffiliate ? 'Choose offers to promote' : 'Add products'}</div>
-                    <div className="text-sm text-gray-600">{isAffiliate ? 'Start with products now, then add digital offers and insurance campaigns' : 'List products to sell through your storefront'}</div>
+                    <div className="text-sm text-gray-600">{isAffiliate ? 'Choose marketplace products and add them to your store' : 'List products to sell through your storefront'}</div>
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-gray-500" />
