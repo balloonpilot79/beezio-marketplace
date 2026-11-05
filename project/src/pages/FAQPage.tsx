@@ -5,12 +5,12 @@ const faqs = [
   {
     question: 'What is Beezio?',
     answer:
-      'Beezio is a transparent marketplace connecting sellers, affiliates, and buyers. We make it easy to sell, promote, and buy products with clear commissions and no hidden fees. We also support fundraising through commerce for causes and nonprofits.'
+      'Beezio is a transparent marketplace connecting sellers, affiliates, and buyers. We make it easy to sell, promote, and buy products with clear commissions and no hidden fees.'
   },
   {
     question: 'How do I sign up as a seller, affiliate, or buyer?',
     answer:
-      'Simply click Sign Up in the top right corner and select your account type. You can start selling, promoting, or shopping right away. Organizations can also register as causes to do fundraising through commerce.'
+      'Simply click Sign Up in the top right corner and select your account type. You can start selling, promoting, or shopping right away.'
   },
   {
     question: 'Is Beezio secure?',
@@ -136,7 +136,7 @@ const faqs = [
   {
     question: 'Can I track purchases made through affiliate links?',
     answer:
-      'Yes! If you purchase through an affiliate link, you can see which affiliate you supported in your order history. This helps you support friends, causes, or influencers you follow.'
+      'Yes! If you purchase through an affiliate link, you can see which affiliate you supported in your order history. This helps you support friends or influencers you follow.'
   },
 
   // Payment Questions
@@ -154,38 +154,6 @@ const faqs = [
     question: 'Are there any fees to join?',
     answer:
       'No! There are no signup fees, monthly fees, or hidden costs to join as a seller, affiliate, or buyer. We only take a small percentage when you make sales.'
-  },
-
-  // Fundraising Questions
-  {
-    question: 'How does fundraising through commerce work?',
-    answer:
-      'Organizations register as causes and recruit supporters to become affiliates. When supporters sell products, a percentage of their commissions goes to the cause while they keep the rest. This creates sustainable funding while providing value to supporters.'
-  },
-  {
-    question: 'What types of organizations can do fundraising through commerce?',
-    answer:
-      'Nonprofits, schools, sports teams, community organizations, religious institutions, medical fundraising campaigns, environmental causes, and other mission-driven groups can participate.'
-  },
-  {
-    question: 'How much can causes earn through commerce fundraising?',
-    answer:
-      'Causes typically receive 30-50% of affiliate commissions earned by their supporters. With 100 active supporters making an average of 10 sales per month, causes can generate $10,000-30,000+ monthly.'
-  },
-  {
-    question: 'What products work best for fundraising?',
-    answer:
-      'Products that align with your cause (eco-friendly for environmental causes, health products for medical causes) or everyday essentials that appeal to your supporter base work best. High-commission products in health, beauty, and home categories perform well.'
-  },
-  {
-    question: 'How do we train our supporters to be effective fundraisers?',
-    answer:
-      'We provide complete onboarding materials, training webinars, marketing resources, and ongoing support. Supporters get personalized affiliate links, QR codes, and social sharing tools to make fundraising easy.'
-  },
-  {
-    question: 'Do you need 501(c)(3) status to fundraise?',
-    answer:
-      'While nonprofit status is preferred, we also work with schools, sports teams, community causes, and other mission-driven organizations. Each application is reviewed individually based on your mission and community impact.'
   },
 
   // Technical Questions
@@ -264,8 +232,7 @@ const FAQPage: React.FC = () => {
     { name: 'For Affiliates', start: 10, end: 14 },
     { name: 'For Buyers', start: 15, end: 17 },
     { name: 'Payments', start: 18, end: 20 },
-    { name: 'Fundraising', start: 21, end: 26 },
-    { name: 'Technical', start: 27, end: 30 }
+    { name: 'Technical', start: 21, end: 24 }
   ];
 
   return (
@@ -275,7 +242,7 @@ const FAQPage: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 sm:mb-6">Frequently Asked Questions</h1>
           <p className="text-base sm:text-xl md:text-2xl opacity-90">
-            Everything you need to know about selling, affiliate marketing, and fundraising on Beezio
+            Everything you need to know about selling and affiliate marketing on Beezio
           </p>
         </div>
       </section>
