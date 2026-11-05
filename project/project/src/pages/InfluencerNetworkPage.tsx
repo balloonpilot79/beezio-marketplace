@@ -16,7 +16,7 @@ export default function InfluencerNetworkPage() {
       <main className="mx-auto max-w-6xl px-3 pb-16 pt-8 sm:px-6">
         <section className="rounded-3xl bg-slate-950 px-6 py-12 text-white sm:px-12 sm:py-16">
           <p className="text-sm font-bold uppercase tracking-[.2em] text-amber-300">Beezio Influencer Network</p>
-          <h1 className="mt-5 max-w-3xl text-4xl font-extrabold tracking-tight sm:text-6xl">You bring the people. They make the sales. You earn.</h1>
+          <h1 className="mt-5 max-w-3xl text-4xl font-extrabold tracking-tight text-white sm:text-6xl" style={{ color: "#ffffff" }}>You bring the people. They make the sales. You earn.</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200">Introduce sellers and affiliates to Beezio. Earn from their qualifying sales while the accounts, referrals and program remain eligible.</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-amber-400 px-6 font-bold text-slate-950 hover:bg-amber-300" to={user ? '/business/invites' : '/signup'}>{user ? 'Get your referral link' : 'Join Beezio free'}<ArrowRight className="h-5 w-5" /></Link>
