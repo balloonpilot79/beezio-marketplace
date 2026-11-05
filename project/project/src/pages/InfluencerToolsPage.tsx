@@ -23,6 +23,19 @@ export default function InfluencerToolsPage() {
             <Link to="/business/promote" className="inline-flex min-h-11 items-center gap-1 font-bold text-amber-800"><ShoppingBag className="h-4 w-4" /> Product promotion tools</Link>
           </div>
         </div>
+        <section className="mt-6 rounded-2xl border border-amber-200 bg-white p-5 sm:p-7">
+          <h2 className="text-xl font-bold text-slate-950">Your first 72 hours: sharing kit</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-700">Use your personal tracked influencer link from the dashboard above. Replace [YOUR REFERRAL LINK] before posting. Only share in communities that permit promotions.</p>
+          <div className="mt-4 rounded-xl bg-amber-50 p-4">
+            <h3 className="font-bold text-slate-900">Day 1: Your first post</h3>
+            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-800">{'Looking for a free way to start building an online income opportunity?\\n\\nBeezio lets sellers open online stores and affiliates promote products. As an influencer, I can also introduce sellers and affiliates and potentially earn from their qualifying sales. No inventory purchase is required for influencer participation. Earnings are not guaranteed.\\n\\nI may earn compensation from eligible referrals. Learn more: [YOUR REFERRAL LINK]'}</p>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border p-4"><h3 className="font-bold">Day 2: Personal invitation</h3><p className="mt-2 text-sm leading-6 text-slate-700">Know someone selling products or exploring a side hustle? Invite them personally, explain the difference between seller and affiliate roles, and include your tracked link and compensation disclosure.</p></div>
+            <div className="rounded-xl border p-4"><h3 className="font-bold">Day 3: Follow up</h3><p className="mt-2 text-sm leading-6 text-slate-700">Check your referral activity in the dashboard, answer questions from interested people, and try a second helpful post. Do not promise income or mass-message strangers.</p></div>
+          </div>
+          <Link to="/influencers" className="mt-5 inline-flex min-h-11 items-center font-bold text-amber-800">View the public influencer program page</Link>
+        </section>
         <InfluencerDashboard />
       </div>
     </main>

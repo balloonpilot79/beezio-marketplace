@@ -27,6 +27,7 @@ const ProductForm = lazy(() => import('./components/ProductForm'));
 const AddProductPage = lazy(() => import('./pages/AddProductPage'));
 const BusinessLandingPage = lazy(() => import('./pages/BusinessLandingPage'));
 const JoinPage = lazy(() => import('./pages/JoinPage'));
+const InfluencerNetworkPage = lazy(() => import('./pages/InfluencerNetworkPage'));
 const AffiliateProductsPage = lazy(() => import('./pages/AffiliateProductsPage'));
 const StoreBuilderPage = lazy(() => import('./pages/StoreBuilderPage'));
 const PromoteProductToolsPage = lazy(() => import('./pages/PromoteProductToolsPage'));
@@ -760,6 +761,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/promo/beezio/:code" element={<InfluencerRecruitPromoPage />} />
                     <Route path="/how-it-works" element={<BusinessLandingPage audience="overview" />} />
                     <Route path="/join" element={<JoinPage />} />
+                    <Route path="/influencers" element={<InfluencerNetworkPage />} />
                     <Route path="/auth" element={<Navigate to="/auth/login" replace />} />
                     <Route path="/auth/login" element={<AuthPage mode="login" />} />
                     <Route path="/auth/register" element={<AuthPage mode="register" />} />
