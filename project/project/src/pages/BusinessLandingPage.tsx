@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, Palette } from "lucide-react";
 import PublicLayout from "../components/layout/PublicLayout";
-import { getReferrerBonusPerItem } from "../../shared/referralBonus";
 import {
   AudienceCards,
   pricingExplanation,
@@ -134,24 +133,24 @@ export default function BusinessLandingPage({
       </section>
       {audience === "influencer" && (
         <section className="bz-panel mt-8 p-6 sm:p-8" aria-labelledby="influencer-example">
-          <p className="bz-eyebrow">How your earnings add up</p>
+          <p className="bz-eyebrow">How influencer earnings work</p>
           <h2 id="influencer-example" className="mt-3 text-2xl font-semibold">Refer once. Earn on ongoing qualifying sales.</h2>
           <p className="mt-4 leading-7 text-slate-600">
-            Earn ${getReferrerBonusPerItem(30).toFixed(2)} per eligible item sold through a seller or affiliate you referred
-            when the seller’s requested product amount is $30 or less, or ${getReferrerBonusPerItem(31).toFixed(2)} when it is above $30.
-            This amount is already built into the selling price.
+            Invite sellers and affiliates using your unique referral link. When they join through your link,
+            you can keep earning from their qualifying sales for as long as they continue selling on Beezio.
+            Influencer rewards are already built into product prices.
           </p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl bg-slate-50 p-5">
-              <h3 className="font-semibold">Example: you refer a seller</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">If they sell 100 eligible items at the ${getReferrerBonusPerItem(30).toFixed(2)} referral rate, you earn ${(100 * getReferrerBonusPerItem(30)).toFixed(2)}. Another 100 eligible items earns another ${(100 * getReferrerBonusPerItem(30)).toFixed(2)}.</p>
+              <h3 className="font-semibold">Refer a seller</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">When a seller you referred makes qualifying sales, you can earn referral rewards on those sales over time.</p>
             </div>
             <div className="rounded-xl bg-slate-50 p-5">
-              <h3 className="font-semibold">Example: you refer an affiliate</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">If their promotions generate 100 eligible item sales at the ${getReferrerBonusPerItem(31).toFixed(2)} referral rate, you earn ${(100 * getReferrerBonusPerItem(31)).toFixed(2)}.</p>
+              <h3 className="font-semibold">Refer an affiliate</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">When an affiliate you referred generates qualifying sales, you can continue earning referral rewards.</p>
             </div>
           </div>
-          <p className="mt-4 text-sm leading-6 text-slate-600">These are arithmetic examples, not sales forecasts. Signups alone do not earn money. Earnings depend on eligible, attributed sales and remain subject to refunds, the 14-day hold from payment, and the $5 payout minimum. Everyone receives the same program terms.</p>
+          <p className="mt-4 text-sm leading-6 text-slate-600">Signups alone do not earn money. Earnings depend on eligible, attributed sales and remain subject to refunds and payout terms. Everyone receives the same program terms.</p>
           <Link to="/signup?role=influencer" className="bz-text-link mt-5">Join free and get your referral link <ArrowRight className="h-4 w-4" /></Link>
         </section>
       )}
