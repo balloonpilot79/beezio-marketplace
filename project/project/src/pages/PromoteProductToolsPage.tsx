@@ -26,7 +26,7 @@ export default function PromoteProductToolsPage() {
   },[search]);
   useEffect(()=>{
     let cancelled=false; setProduct(null); setLink(''); setError('');
-    if(!id || !user) return;
+    if(!id || !user) {setLoading(false); return;}
     setLoading(true);
     (async()=>{
       try {
