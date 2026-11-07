@@ -131,8 +131,7 @@ export default function HomePageBZO() {
               <span>Start free.</span>
             </h1>
             <p className="hm-hero-description">
-              Sell your own products, earn by promoting marketplace products,
-              or refer sellers and affiliates. Choose your way to start free.
+              Beezio is a marketplace where you can shop products, open a free store to sell your own items, share products as an affiliate, or refer sellers and affiliates as an influencer.
             </p>
             <div className="hm-actions">
               <a href="#shop" className="bz-button bz-button-gold">
@@ -143,7 +142,7 @@ export default function HomePageBZO() {
               </a>
             </div>
             <p className="hm-hero-note">
-              <Check size={14} /> Free to join. Free stores. No monthly subscription.
+              <Check size={14} /> Free to join. No monthly subscription. Beezio earns from fees built into product prices when sales happen.
             </p>
           </div>
           <div className="hm-spotlight">
@@ -206,6 +205,15 @@ export default function HomePageBZO() {
               </article>
             ),
           )}
+        </section>
+        <section className="hm-quick-start" aria-labelledby="how-sales-work-title">
+          <div>
+            <p className="hm-kicker">How Beezio works</p>
+            <h2 id="how-sales-work-title">One marketplace. Clear ways to earn.</h2>
+            <p>A seller lists a product and sets their payout and affiliate reward. An affiliate shares it using a tracked link or their store. A customer places an order, the seller fulfills it, and eligible earnings are paid after the hold and payout requirements are met.</p>
+            <p>There is no fee to join and no monthly subscription. Platform and processing costs are included in product prices, not charged as a separate monthly fee. Earnings depend on qualifying sales; they are not guaranteed.</p>
+          </div>
+          <Link to="/faq" className="bz-button bz-button-ink">Read fees and payout terms <ArrowRight size={17} /></Link>
         </section>
         <section className="hm-quick-start" aria-labelledby="quick-start-title">
           <div>
