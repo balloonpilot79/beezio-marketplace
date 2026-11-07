@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Share2, Copy, Facebook } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
@@ -99,6 +100,7 @@ export default function ProductShareActions({ productId, productUrl, title, pric
       {mode === 'earn' && <p className="mt-2 text-gray-600">{canPromote && commission > 0 ? `Listed affiliate earning: $${commission.toFixed(2)} per qualifying sale.` : 'An eligible affiliate product and your own tracked link are required to earn.'}</p>}
       {mode === 'invite' && <p className="mt-2 text-gray-600">Influencer referral credit requires an active influencer account and its referral code.</p>}
       {error && <p role="alert" className="mt-2 text-red-700">{error}</p>}
+      {canPromote && <Link to={`/business/promote?product=${encodeURIComponent(productId)}`} className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-lg bg-amber-400 px-3 py-3 font-bold text-slate-900"><Share2 size={16}/>Promote this product</Link>}
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" disabled={busy} onClick={() => share('facebook')} className="flex items-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-white disabled:opacity-50"><Facebook size={16}/> Facebook</button>
         <button type="button" disabled={busy} onClick={() => share('copy')} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-gray-800 disabled:opacity-50"><Copy size={16}/>{copied ? 'Copied' : 'Copy post'}</button>

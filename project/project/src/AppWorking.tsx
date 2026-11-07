@@ -30,6 +30,7 @@ const JoinPage = lazy(() => import('./pages/JoinPage'));
 const InfluencerNetworkPage = lazy(() => import('./pages/InfluencerNetworkPage'));
 const AffiliateProductsPage = lazy(() => import('./pages/AffiliateProductsPage'));
 const StoreBuilderPage = lazy(() => import('./pages/StoreBuilderPage'));
+const SharedProductCollectionPage = lazy(() => import('./pages/SharedProductCollectionPage'));
 const PromoteProductToolsPage = lazy(() => import('./pages/PromoteProductToolsPage'));
 const InfluencerToolsPage = lazy(() => import('./pages/InfluencerToolsPage'));
 const AffiliateDashboardPage = lazy(() => import('./pages/AffiliateDashboardPage'));
@@ -741,6 +742,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/home" element={<HomeOrDashboard />} />
                     <Route path="/revolutionary" element={<Navigate to="/how-it-works" replace />} />
                     <Route path="/marketplace" element={<MarketplacePage />} />
+                    <Route path="/picks" element={<SharedProductCollectionPage />} />
                     <Route path="/digital-products" element={<Navigate to="/marketplace" replace />} />
                     <Route path="/products" element={<MarketplacePage />} />
                     <Route path="/insurance" element={<InsurancePublicRoute><InsuranceMarketplacePage /></InsurancePublicRoute>} />
