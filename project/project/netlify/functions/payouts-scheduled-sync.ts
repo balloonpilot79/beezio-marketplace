@@ -132,8 +132,11 @@ export const handler: Handler = async () => {
             await query
               .eq('id', String(payoutItemRow.order_money_ledger_id))
               .eq('status', 'ready');
-          } else {
-            await query
+          } else if (payoutItemRow.ledger_id) {
+            const { data: payoutLedger } = await supabaseAdmin.from('payout_ledger')
+              .select('order_id').eq('id', payoutItemRow.ledger_id).maybeSingle();
+            if (payoutLedger?.order_id) await query
+              .eq('order_id', payoutLedger.order_id)
               .eq('payout_batch_id', b.id)
               .eq('payee_id', String(payoutItemRow.payee_user_id))
               .eq('payee_type', payeeType)
@@ -164,8 +167,11 @@ export const handler: Handler = async () => {
             await query
               .eq('id', String(payoutItemRow.order_money_ledger_id))
               .in('status', ['ready', 'failed']);
-          } else {
-            await query
+          } else if (payoutItemRow.ledger_id) {
+            const { data: payoutLedger } = await supabaseAdmin.from('payout_ledger')
+              .select('order_id').eq('id', payoutItemRow.ledger_id).maybeSingle();
+            if (payoutLedger?.order_id) await query
+              .eq('order_id', payoutLedger.order_id)
               .eq('payout_batch_id', b.id)
               .eq('payee_id', String(payoutItemRow.payee_user_id))
               .eq('payee_type', payeeType)
