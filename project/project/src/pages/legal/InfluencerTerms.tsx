@@ -6,7 +6,7 @@ const InfluencerTerms: React.FC = () => (
     <section>
       <h2 className="text-xl font-semibold text-gray-900">1. Program Overview</h2>
       <p>
-        Beezio influencers may refer sellers and affiliates to the platform. Participation in the influencer program
+        Beezio influencers may refer shoppers, sellers, and affiliates to the platform. Participation in the influencer program
         is free, and no inventory purchase is required to participate. Influencer compensation is tied to eligible,
         qualifying product sales and is not paid merely because another person signs up.
       </p>
@@ -15,7 +15,7 @@ const InfluencerTerms: React.FC = () => (
     <section>
       <h2 className="text-xl font-semibold text-gray-900">2. Referral Attribution and Eligibility</h2>
       <ul className="list-disc list-inside space-y-2">
-        <li>Beezio may record a seller-referrer relationship and an affiliate-referrer relationship for an eligible transaction.</li>
+        <li>Beezio may record shopper, seller, and affiliate referral relationships for an eligible transaction.</li>
         <li>A signup by itself does not create an influencer payout.</li>
         <li>An eligible referral remains linked beyond the first qualifying sale while the account and referral remain eligible under the program rules.</li>
         <li>Compensation applies only to qualifying sales while the program, the account, and the applicable referral relationship remain eligible under Beezio&apos;s current rules.</li>

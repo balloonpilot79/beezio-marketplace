@@ -51,9 +51,9 @@ const content = {
   },
   influencer: {
     label: "Beezio Ambassadors",
-    title: "Introduce sellers and affiliates. Earn as they sell.",
+    title: "Introduce shoppers, sellers, and affiliates. Earn on qualifying sales.",
     description:
-      "An affiliate recommends products. A Beezio Ambassador introduces sellers and affiliates. Share your referral link and earn when eligible people you referred participate in qualifying sales. Earnings depend on qualifying sales.",
+      "An affiliate recommends products. A Beezio Ambassador introduces shoppers, sellers, and affiliates. Share your referral link and earn when eligible people you referred participate in qualifying sales.",
     features: [
       [
         "Share one tracked referral link",
@@ -139,7 +139,11 @@ export default function BusinessLandingPage({
             Invite sellers and affiliates using your unique referral link. When they join through your link,
             you can keep earning from qualifying sales while their account and referral remain eligible.
           </p>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl bg-slate-50 p-5">
+              <h3 className="font-semibold">Refer a shopper</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Invite a new shopper using your shopper referral link. You can earn on their qualifying purchases over time.</p>
+            </div>
             <div className="rounded-xl bg-slate-50 p-5">
               <h3 className="font-semibold">Refer a seller</h3>
               <p className="mt-2 text-sm leading-6 text-slate-600">When a seller you referred makes qualifying sales, you can earn referral rewards on those sales over time.</p>
