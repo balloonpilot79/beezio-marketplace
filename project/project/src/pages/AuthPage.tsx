@@ -4,11 +4,13 @@ import AuthModal from "../components/AuthModal";
 import PublicLayout from "../components/layout/PublicLayout";
 import { consumePostAuthPath, setPostAuthPath } from "../utils/storefrontScope";
 import { useAuth } from "../contexts/AuthContextMultiRole";
+import { hasBusinessAccountAccess } from "../utils/accountRoles";
 
 export default function AuthPage({ mode }: { mode: "login" | "register" }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, profile, userRoles } = useAuth();
+  const businessAccount = hasBusinessAccountAccess(userRoles, profile?.primary_role, profile?.role);
   const params = new URLSearchParams(location.search);
   const next = String(params.get("next") || "").trim();
   const audience =
@@ -37,11 +39,13 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
       />
       {user && !loading && (
         <div className="mx-auto flex max-w-lg flex-wrap justify-center gap-4 pb-5 text-sm">
-          <Link to="/business" className="bz-text-link">
-            Open Business Center
-          </Link>
+          {businessAccount && (
+            <Link to="/business" className="bz-text-link">
+              Open Business Center
+            </Link>
+          )}
           <Link to="/account" className="bz-text-link">
-            Open Shopper Account
+            My Purchases
           </Link>
         </div>
       )}

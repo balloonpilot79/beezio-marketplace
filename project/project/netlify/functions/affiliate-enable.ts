@@ -72,46 +72,18 @@ export const handler: Handler = async (event) => {
     if (userError || !userData?.user) return json(401, { error: 'Unauthorized', details: userError?.message });
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const { data: roles, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userData.user.id)
+      .eq('is_active', true)
+      .in('role', ['affiliate', 'influencer']);
+    if (roleError) return json(500, { error: 'Could not check business account access' });
+    if (!roles?.some((row) => row.role === 'affiliate')) {
+      return json(403, { error: 'Affiliate tools require a business account.' });
+    }
     const profileId = await resolveOrCreateProfileId(supabaseAdmin, userData.user);
-
-    // Affiliates are also recruiter/influencer eligible. Keep both roles active so
-    // any affiliate can recruit sellers or affiliates and earn the lifetime slot.
-    for (const businessRole of ['affiliate', 'influencer']) {
-      try {
-        const { error } = await supabaseAdmin
-          .from('user_roles')
-          .upsert(
-            {
-              user_id: userData.user.id,
-              role: businessRole,
-              is_active: true,
-            },
-            { onConflict: 'user_id,role' }
-          );
-        if (error) {
-          console.warn(`affiliate-enable: ${businessRole} role upsert failed:`, error);
-        }
-      } catch {
-        // Database trigger also enforces affiliate -> influencer eligibility.
-      }
-    }
-
-    // Some schemas store role on profiles; do not override primary_role if set.
-    try {
-      const { data: existing } = await supabaseAdmin.from('profiles').select('role, primary_role').eq('id', profileId).maybeSingle();
-      const primary = String((existing as any)?.primary_role || '').trim();
-      if (!primary) {
-        await supabaseAdmin.from('profiles').update({ primary_role: 'affiliate' }).eq('id', profileId);
-      }
-      const role = String((existing as any)?.role || '').trim();
-      if (!role) {
-        await supabaseAdmin.from('profiles').update({ role: 'affiliate' }).eq('id', profileId);
-      }
-    } catch {
-      // ignore
-    }
-
-    return json(200, { ok: true, profileId, recruiterEligible: true });
+    return json(200, { ok: true, profileId, recruiterEligible: roles.some((row) => row.role === 'influencer') });
   } catch (e) {
     return json(500, { error: 'Unexpected error', details: e instanceof Error ? e.message : String(e) });
   }

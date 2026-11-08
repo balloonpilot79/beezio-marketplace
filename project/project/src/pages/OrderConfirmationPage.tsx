@@ -89,11 +89,7 @@ export default function OrderConfirmationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { user, session, profile, hasRole, addRole, loading: authLoading } = useAuth();
-  const [enablingAffiliate, setEnablingAffiliate] = useState(false);
-  const [affiliateEnabled, setAffiliateEnabled] = useState(false);
-  const [affiliateEnableError, setAffiliateEnableError] = useState<string | null>(null);
-
+  const { user, session, profile, hasRole, loading: authLoading } = useAuth();
   const isAffiliate = Boolean(user && (hasRole('affiliate') || hasRole('admin') || profile?.primary_role === 'affiliate'));
   const purchasedProductIds = useMemo(() => {
     const ids = order?.items?.map((i) => i.product_id).filter(Boolean) || [];
@@ -192,48 +188,6 @@ export default function OrderConfirmationPage() {
         price: item.price,
       })),
     });
-  };
-
-  const enableAffiliate = async () => {
-    setAffiliateEnableError(null);
-    if (!user) {
-      const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
-      navigate(`/affiliate-signup?role=affiliate&redirect=${returnTo}`);
-      return;
-    }
-    const token = session?.access_token;
-    if (!token) {
-      setAffiliateEnableError('Please sign in again and retry.');
-      return;
-    }
-
-    setEnablingAffiliate(true);
-    try {
-      const res = await fetch('/api/affiliate/enable', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ ts: new Date().toISOString() }),
-      });
-      const text = await res.text();
-      let parsed: any = null;
-      try {
-        parsed = text ? JSON.parse(text) : null;
-      } catch {
-        parsed = null;
-      }
-      if (!res.ok) {
-        throw new Error(parsed?.error || parsed?.details || text || `HTTP ${res.status}`);
-      }
-      await addRole('affiliate');
-      setAffiliateEnabled(true);
-    } catch (e) {
-      setAffiliateEnableError(e instanceof Error ? e.message : 'Failed to enable partner');
-    } finally {
-      setEnablingAffiliate(false);
-    }
   };
 
   if (loading) {
@@ -476,72 +430,44 @@ export default function OrderConfirmationPage() {
 
         </div>
 
-        {/* Buyer → Partner Loop */}
-        {!isAffiliate && (
-          <div className="bg-white rounded-lg shadow p-6 mb-6 print:hidden border border-amber-200">
-            <h3 className="text-xl font-bold text-gray-900">Want to earn by sharing?</h3>
-            <p className="mt-1 text-gray-600">
-              Get your own link and earn commission when people buy.
-            </p>
-            <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={enableAffiliate}
-                disabled={enablingAffiliate}
-                className="px-5 py-3 rounded-lg bg-gray-900 text-white font-semibold hover:bg-gray-800 disabled:opacity-60"
-              >
-                {enablingAffiliate ? 'Enabling…' : 'Become a Partner'}
-              </button>
-              <Link
-                to="/affiliate/share"
-                className="px-5 py-3 rounded-lg border border-gray-300 font-semibold text-gray-800 hover:bg-gray-50 text-center"
-              >
-                View Share Hub
-              </Link>
-            </div>
-            {affiliateEnableError && <div className="mt-3 text-sm text-red-700">{affiliateEnableError}</div>}
-            {affiliateEnabled && (
-              <div className="mt-4 text-sm text-green-700 font-semibold">
-                You’re enabled as a partner. Share your purchase below.
-              </div>
-            )}
-
-            {(affiliateEnabled || isAffiliate) && (
-              <div className="mt-5 space-y-4">
-                {profile?.id && (
-                  <div className="border border-gray-200 rounded-xl p-4">
-                    <div className="font-semibold text-gray-900">Your storefront</div>
-                    <div className="mt-2">
-                      <AffiliateShareWidget
-                        type="store"
-                        targetId={profile.id}
-                        targetPath={`/partner/${profile.id}`}
-                        title="My Beezio storefront"
-                      />
-                    </div>
+        {isAffiliate && (
+          <div className="rounded-lg border border-amber-200 bg-white p-6 mb-6 shadow print:hidden">
+            <h3 className="text-xl font-bold text-gray-900">Share through your business account</h3>
+            <div className="mt-5 space-y-4">
+              {profile?.id && (
+                <div className="border border-gray-200 rounded-xl p-4">
+                  <div className="font-semibold text-gray-900">Your storefront</div>
+                  <div className="mt-2">
+                    <AffiliateShareWidget
+                      type="store"
+                      targetId={profile.id}
+                      targetPath={`/partner/${profile.id}`}
+                      title="My Beezio storefront"
+                    />
                   </div>
-                )}
+                </div>
+              )}
 
-                {purchasedProductIds.length > 0 && (
-                  <div className="border border-gray-200 rounded-xl p-4">
-                    <div className="font-semibold text-gray-900">Share what you bought</div>
-                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {purchasedProductIds.map((pid) => {
-                        const item = order.items.find((i) => i.product_id === pid);
-                        const title = item?.title || 'Product';
-                        return (
-                          <div key={pid} className="border border-gray-200 rounded-xl p-3">
-                            <div className="text-sm font-semibold text-gray-900">{title}</div>
-                            <div className="mt-2">
-                              <AffiliateShareWidget type="product" targetId={pid} targetPath={`/product/${pid}`} title={title} />
-                            </div>
+              {purchasedProductIds.length > 0 && (
+                <div className="border border-gray-200 rounded-xl p-4">
+                  <div className="font-semibold text-gray-900">Share what you bought</div>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {purchasedProductIds.map((pid) => {
+                      const item = order.items.find((i) => i.product_id === pid);
+                      const title = item?.title || 'Product';
+                      return (
+                        <div key={pid} className="border border-gray-200 rounded-xl p-3">
+                          <div className="text-sm font-semibold text-gray-900">{title}</div>
+                          <div className="mt-2">
+                            <AffiliateShareWidget type="product" targetId={pid} targetPath={`/product/${pid}`} title={title} />
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

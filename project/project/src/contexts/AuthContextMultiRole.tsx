@@ -1089,25 +1089,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        // Add initial role to user_roles table
-        const rolesToAdd = [initialRole];
-        
-        // Insert all roles
-        const roleInserts = rolesToAdd.map(role => ({
-          user_id: data.user?.id,
-          role: role,
-          is_active: true
-        }));
-        
-        if (data.session) {
+        // Business grants are provisioned by the registration trigger.
+        if (data.session && ['buyer', 'fundraiser'].includes(initialRole)) {
           const { error: roleError } = await supabase
             .from('user_roles')
-            .insert(roleInserts);
-
-          if (roleError) {
-            console.error('Role creation error:', roleError);
-            // Don't throw here, profile was created successfully
-          }
+            .upsert({ user_id: data.user.id, role: initialRole, is_active: true }, {
+              onConflict: 'user_id,role',
+              ignoreDuplicates: true,
+            });
+          if (roleError) console.error('Role creation error:', roleError);
         }
 
       }
@@ -1264,7 +1254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const switchRole = async (role: string) => {
     const normalizedTarget = String(role || '').toLowerCase();
-    if (!user) {
+    if (!user || !userRoles.includes(normalizedTarget)) {
       return false;
     }
 
@@ -1272,7 +1262,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Optimistically update local state so UI switches immediately.
       setCurrentRole(role);
       setProfile((prev: any) => (prev ? { ...prev, primary_role: role } : prev));
-      setUserRoles((prev) => (prev.includes(normalizedTarget) ? prev : [...prev, normalizedTarget]));
       try {
         localStorage.setItem(ROLE_STORAGE_KEY, normalizedTarget);
       } catch {
