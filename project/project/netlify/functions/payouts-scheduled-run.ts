@@ -1,3 +1,4 @@
+import { groupOrderPayeeCredits, loadPayoutCreditRows } from './_lib/payoutPayeeGrouping';
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { getEnvBool, getEnvNumber } from './_lib/env';
@@ -280,19 +281,15 @@ export const handler: Handler = async () => {
   try {
     const candidateOrderIds = Array.from(legacyLedgerIdByOrderId.keys());
     if (candidateOrderIds.length) {
-      const { data: moneyRows } = await supabaseAdmin
-        .from('order_money_ledger')
-        .select('id, order_id, payee_type, payee_id, net_amount, status, payout_batch_id')
-        .in('order_id', candidateOrderIds)
-        .in('payee_type', ['seller', 'affiliate', 'influencer'])
-        .eq('status', 'ready')
-        .is('payout_batch_id', null);
+      const moneyRows = await loadPayoutCreditRows(supabaseAdmin, candidateOrderIds);
 
-      for (const row of ((moneyRows as any[]) || [])) {
+      for (const row of moneyRows) {
         const orderId = String(row?.order_id || '').trim();
         const payeeId = String(row?.payee_id || '').trim();
         const amount = round2(Number(row?.net_amount || 0));
         if (!orderId || !payeeId || amount <= 0) continue;
+        moneyLedgerOrderIds.add(orderId);
+        if (row.status !== 'ready' || row.payout_batch_id) continue;
         const payeeType = String(row?.payee_type || '').toLowerCase();
         const role: PayeeRole | null =
           payeeType === 'seller' ? 'SELLER' :
@@ -300,7 +297,6 @@ export const handler: Handler = async () => {
           payeeType === 'influencer' ? 'INFLUENCER' :
           null;
         if (!role) continue;
-        moneyLedgerOrderIds.add(orderId);
         moneyLedgerEntries.push({
           ledgerId: legacyLedgerIdByOrderId.get(orderId) || null,
           orderMoneyLedgerId: String(row.id),
@@ -311,11 +307,11 @@ export const handler: Handler = async () => {
         });
       }
     }
-  } catch {
-    // Keep the legacy payout path working if the itemized ledger is not deployed yet.
-  }
+  } catch (error) {
+      return { statusCode: 500, body: JSON.stringify({ error: error instanceof Error ? error.message : 'Could not read itemized payout ledger' }) };
+    }
 
-  const entries: Entry[] = [...moneyLedgerEntries];
+  const entries: Entry[] = groupOrderPayeeCredits(moneyLedgerEntries);
   for (const row of eligibleRows) {
     if (row.order_id && moneyLedgerOrderIds.has(String(row.order_id))) continue;
     if (row.seller_id && row.seller_earnings > 0) entries.push({ ledgerId: row.id, orderId: row.order_id, userId: row.seller_id, role: 'SELLER', amount: round2(row.seller_earnings) });
