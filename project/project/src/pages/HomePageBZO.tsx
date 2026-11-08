@@ -135,8 +135,11 @@ export default function HomePageBZO() {
               <Link to="/marketplace" className="bz-button bz-button-gold">
                 Shop the Marketplace <ArrowRight size={17} />
               </Link>
-              <Link to="/signup?role=seller" className="hm-hero-secondary">
-                Open a Free Store <ArrowRight size={17} />
+              <Link to="/account/signup" className="hm-hero-secondary">
+                Create Buyer Account <ArrowRight size={17} />
+              </Link>
+              <Link to="/signup" className="hm-hero-secondary">
+                Create Business Account <ArrowRight size={17} />
               </Link>
             </div>
             <p className="hm-hero-note">
