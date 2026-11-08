@@ -26,7 +26,7 @@ import AffiliateShareWidget from '../components/AffiliateShareWidget';
 import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
 import { getAffiliateAmount, resolveAffiliateCommission } from '../utils/pricing';
 import { getBuyerFacingProductPrice, getProductShipping } from '../utils/buyerPrice';
-import { normalizeAccountRole } from '../utils/accountRoles';
+import { getBusinessAccountRoles, normalizeAccountRole } from '../utils/accountRoles';
 import { fetchProductById, getVariantOptions, resolveImageUrl, resolveVariant, type ProductVariant } from '../services/productService';
 import { getCJProductInventory } from '../services/cjDropshipping';
 import { deleteProductById } from '../utils/deleteProduct';
@@ -64,6 +64,9 @@ interface Product {
   affiliate_commission_type?: 'percent' | 'flat';
   affiliate_commission_value?: number;
   affiliate_enabled?: boolean;
+  item_condition?: string | null;
+  condition_notes?: string | null;
+  direct_marketplace_listing?: boolean;
   affiliate_payout_amount?: number;
   seller_id: string;
   is_active?: boolean;
@@ -189,6 +192,10 @@ const ProductDetailPage: React.FC = () => {
     'shipping_price',
     'shipping_reserve_amount',
     'shipping_options',
+    'item_condition',
+    'condition_notes',
+    'affiliate_enabled',
+    'direct_marketplace_listing',
     'requires_shipping',
     'is_digital',
     'digital_download_instructions',
@@ -467,15 +474,9 @@ const ProductDetailPage: React.FC = () => {
 
   const derivedRole = normalizeAccountRole(profile?.primary_role || profile?.role || currentRole);
   const effectiveRole = derivedRole;
-  const isSellerRole = effectiveRole === 'seller';
-  const isAffiliateRole = effectiveRole === 'affiliate';
-  const canAddToAffiliateStore =
-    Boolean(user?.id) &&
-    (hasRole('affiliate') ||
-      hasRole('partner') ||
-      isAffiliateRole);
-  const isSellingRole = isSellerRole || isAffiliateRole || canAddToAffiliateStore;
-  const canAddToSellerStore = hasRole('seller') || isSellerRole;
+  const businessRoles = getBusinessAccountRoles(userRoles, profile?.primary_role, profile?.role, currentRole);
+  const canAddToAffiliateStore = businessRoles.includes('affiliate');
+  const canAddToSellerStore = businessRoles.includes('seller');
   const storeScope = String(localStorage.getItem('beezio-store-scope') || '');
   const isStorefrontScope = storeScope.startsWith('store:seller:') || storeScope.startsWith('store:affiliate:');
   const rawStoreSlug = storeSlug?.trim().toLowerCase() || '';
@@ -497,7 +498,9 @@ const ProductDetailPage: React.FC = () => {
   );
   const isMainMarketplaceProductView = !isStorefrontProductView && !isCustomDomainHost;
   const showBuyerCtas = isMainMarketplaceProductView || isStorefrontProductView || isCustomDomainHost || isTrackedPromotion;
-  const showStoreAddCtas = Boolean(user?.id) && isSellingRole && !isStorefrontProductView && !isStorefrontScope && !isCustomDomainHost;
+  const businessView = Boolean(user?.id) && location.state?.businessView === true &&
+    businessRoles.length > 0 && isMainMarketplaceProductView && !isStorefrontScope;
+  const showStoreAddCtas = businessView && (canAddToAffiliateStore || canAddToSellerStore);
 
   const isAdminRole = useMemo(() => {
     const profileRole = String(profile?.primary_role || profile?.role || '').toLowerCase();
@@ -707,7 +710,7 @@ const ProductDetailPage: React.FC = () => {
     if (Number.isFinite(exactVariantPayout) && exactVariantPayout >= 0) return exactVariantPayout;
     return getAffiliateAmount(derivedSellerAsk, commissionType, commissionValue);
   }, [commissionType, commissionValue, derivedSellerAsk, selectedVariant]);
-  const showAffiliatePayoutPreview = isMainMarketplaceProductView && isPublicAffiliateProduct(product) && affiliateEarnings > 0;
+  const showAffiliatePayoutPreview = businessView && isPublicAffiliateProduct(product) && affiliateEarnings > 0;
 
   const displayDescription = useMemo(() => {
     return sanitizeDescriptionForDisplay(product?.description, product?.lineage);
@@ -1509,12 +1512,13 @@ const ProductDetailPage: React.FC = () => {
 
     try {
       setListingUpdating(true);
-      const nextStatus = nextIsActive ? 'active' : 'archived';
+      const nextStatus = !nextIsActive ? 'archived' : product.affiliate_enabled === false && !product.direct_marketplace_listing ? 'store_only' : 'active';
+      const nextPromotable = nextIsActive && product.affiliate_enabled !== false;
       let upd = supabase
         .from('products')
         .update({
           is_active: nextIsActive,
-          is_promotable: nextIsActive,
+          is_promotable: nextPromotable,
           status: nextStatus,
         })
         .eq('id', product.id);
@@ -1524,7 +1528,7 @@ const ProductDetailPage: React.FC = () => {
       const { error } = await upd;
       if (error) throw error;
 
-      setProduct({ ...(product as any), is_active: nextIsActive, is_promotable: nextIsActive, status: nextStatus });
+      setProduct({ ...(product as any), is_active: nextIsActive, is_promotable: nextPromotable, status: nextStatus });
       alert(`${verb}ed.`);
       if (!nextIsActive) {
         navigate(backTarget);
@@ -1892,6 +1896,9 @@ const ProductDetailPage: React.FC = () => {
           {/* Title, Rating, Price */}
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.title}</h1>
+            {product.item_condition && <p className="mb-2 text-sm font-semibold">Condition: {product.item_condition}</p>}
+            {product.condition_notes && <p className="mb-3 whitespace-pre-wrap break-words text-sm text-gray-700">{product.condition_notes}</p>}
+
 
             {Number(product.average_rating) > 0 && Number(product.review_count) > 0 && (
               <div className="flex items-center space-x-2 mb-3">
@@ -1928,14 +1935,6 @@ const ProductDetailPage: React.FC = () => {
               {showAffiliatePayoutPreview && (
                 <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
                   <p className="font-semibold">Earn {formatMoneyDisplay(affiliateEarnings)} per sale</p>
-                  {!user && (
-                    <Link
-                      to={`/affiliate-signup?role=affiliate&redirect=${encodeURIComponent(location.pathname + location.search)}`}
-                      className="mt-1 inline-block underline underline-offset-2 hover:text-green-950"
-                    >
-                      Sign up free to get your tracked link
-                    </Link>
-                  )}
                 </div>
               )}
 
@@ -1975,7 +1974,7 @@ const ProductDetailPage: React.FC = () => {
 
           {/* Add to Cart Section */}
           <div className="space-y-4">
-            {showAffiliatePayoutPreview && isAffiliateRole && (
+            {showAffiliatePayoutPreview && canAddToAffiliateStore && (
               <div className="flex items-center space-x-2 mb-4">
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                   <Heart className="w-4 h-4 mr-2" />
@@ -2172,7 +2171,7 @@ const ProductDetailPage: React.FC = () => {
                   {canAddToSellerStore && (
                     <AddToSellerStoreButton productId={product.id} size="lg" variant="button" addedText="Added" />
                   )}
-                  {canAddToAffiliateStore && (
+                  {canAddToAffiliateStore && isPublicAffiliateProduct(product) && (
                     <AddToAffiliateStoreButton
                       productId={product.id}
                       sellerId={product.seller_id || ''}

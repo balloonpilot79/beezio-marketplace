@@ -67,8 +67,6 @@ const SignUpPage: React.FC = () => {
     profile,
     userRoles,
     currentRole,
-    addRole,
-    refreshProfile,
     loading: authLoading,
   } = useAuth();
   const navigate = useNavigate();
@@ -670,51 +668,6 @@ const SignUpPage: React.FC = () => {
     }
   }, [navigate, urlRole]);
 
-  const upgradeCurrentAccountToBusiness = async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const fullName =
-        String((profile as any)?.full_name || "").trim() ||
-        String(
-          user.user_metadata?.full_name || user.user_metadata?.name || "",
-        ).trim() ||
-        user.email ||
-        "Beezio Business";
-
-      const { error: profileError } = await supabase.from("profiles").upsert(
-        {
-          user_id: user.id,
-          email: user.email,
-          full_name: fullName,
-          role: "seller",
-          primary_role: "seller",
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" },
-      );
-
-      if (profileError) throw profileError;
-
-      await Promise.all([
-        addRole("seller"),
-        addRole("affiliate"),
-        addRole("influencer"),
-      ]);
-      await refreshProfile();
-      navigate("/onboarding", { replace: true });
-    } catch (err: any) {
-      setError(
-        String(
-          err?.message || "Could not upgrade this account. Please try again.",
-        ),
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Influencer recruiting link support (separate from site-wide partner attribution `?ref=`)
   // Important: this is one-time attribution during signup; we never overwrite it later.
   useEffect(() => {
@@ -765,17 +718,15 @@ const SignUpPage: React.FC = () => {
               <>
                 Signed in as <span className="font-semibold">{email}</span>.
                 This Beezio account can use seller, affiliate, and influencer
-                tools together. If you specifically need a separate test
-                account, sign out first.
+                tools together. You can also shop with this login.
               </>
             )}
           </p>
 
           {buyerOnlyAccount && (
             <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              This login is currently customer-only. Use Customer dashboard for
-              purchases, or upgrade this same login to turn on seller,
-              affiliate, and influencer tools.
+              Buyer and business accounts have separate registrations. Sign out
+              to register a business account with a different email address.
             </div>
           )}
 
@@ -794,11 +745,13 @@ const SignUpPage: React.FC = () => {
                 Customer dashboard
               </button>
               <button
-                onClick={upgradeCurrentAccountToBusiness}
-                disabled={loading}
+                onClick={async () => {
+                  await signOut();
+                  navigate("/signup", { replace: true });
+                }}
                 className="inline-flex items-center justify-center px-5 py-3 rounded-lg bg-amber-500 text-black font-semibold hover:bg-amber-600 disabled:opacity-60 transition-colors"
               >
-                {loading ? "Upgrading..." : "Upgrade this login"}
+                Sign out and register a business
               </button>
             </div>
           ) : (

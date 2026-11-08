@@ -1,3 +1,5 @@
+import { getCartPickupLocation } from '../../shared/vendorPickup';
+import { supabase } from '../lib/supabase';
 import { getCombinedShippingSavings } from '../../shared/combinedShipping';
 import { getCartUnitPrice as getOrderCartUnitPrice } from '../../shared/orderPricing';
 import React from 'react';
@@ -15,6 +17,30 @@ const CheckoutPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const [pickupRequested, setPickupRequested] = React.useState(false);
+  const [pickupOptions, setPickupOptions] = React.useState<{
+    key: string; location: ReturnType<typeof getCartPickupLocation>; required: boolean;
+  } | null>(null);
+  const productKey = [...new Set(items.map(item => item.productId))].sort().join(',');
+  React.useEffect(() => {
+    if (import.meta.env.VITE_BEEZIO_LOCAL_PICKUP !== 'true' || !productKey) return;
+    let canceled = false;
+    const ids = productKey.split(',');
+    void supabase.from('products')
+      .select('id,seller_id,pickup_mode,pickup_state,pickup_zip,is_digital,dropship_provider,source_platform')
+      .in('id', ids).then(({ data }) => {
+        if (canceled || !data || data.length !== ids.length) return;
+        setPickupOptions({
+          key: productKey,
+          location: getCartPickupLocation(data),
+          required: data.some(item => item.pickup_mode === 'pickup'),
+        });
+      });
+    return () => { canceled = true; };
+  }, [productKey]);
+  const options = pickupOptions?.key === productKey ? pickupOptions : null;
+  const localPickup = Boolean(options?.location && (pickupRequested || options.required));
+
   React.useEffect(() => {
     if (items.length === 0) {
       navigate('/cart');
@@ -29,7 +55,7 @@ const CheckoutPage: React.FC = () => {
 
   const computeFinalUnitPrice = (item: typeof items[number]) => getOrderCartUnitPrice(item, items);
   const subtotal = items.reduce((sum, item) => sum + computeFinalUnitPrice(item) * item.quantity, 0);
-  const shipping = getShippingTotal();
+  const shipping = localPickup ? 0 : getShippingTotal();
   const tax = Math.round(((subtotal + shipping) * TAX_RATE + Number.EPSILON) * 100) / 100;
   const total = subtotal + shipping + tax;
   const hasDigitalItems = items.some((item) => item.isDigital);
@@ -118,7 +144,18 @@ const CheckoutPage: React.FC = () => {
                   : 'Enter your contact details, shipping address, and payment information below.'}
             </p>
 
-            <CheckoutForm
+            {options?.location && (
+              <label className="mb-3 block rounded-lg border p-3 text-sm">
+                <input type="checkbox" checked={localPickup} disabled={options.required}
+                  onChange={(event) => setPickupRequested(event.target.checked)} className="mr-2" />
+                Local pickup in {options.location.state} {options.location.zip}
+                {localPickup && <span className="mt-1 block">Arrange pickup with the seller after payment.</span>}
+              </label>
+            )}
+            {options?.required && !options.location ? (
+              <p role="alert">Pickup-only items must be checked out with items from the same pickup location.</p>
+            ) : <CheckoutForm
+              localPickup={localPickup}
               amount={total}
               onSuccess={() => {
                 clearCart();
@@ -126,7 +163,7 @@ const CheckoutPage: React.FC = () => {
               onError={(error: string) => {
                 console.error('Payment error:', error);
               }}
-            />
+            />}
           </div>
         </div>
 
@@ -159,7 +196,7 @@ const CheckoutPage: React.FC = () => {
                         {formatMoneyDisplay(computeFinalUnitPrice(item) * item.quantity)}
                       </p>
                       {item.isDigital !== true && (
-                        <p className="text-xs text-gray-600">{formatShippingDisplay(item.shippingCost || 0)}</p>
+                        <p className="text-xs text-gray-600">{localPickup ? 'Local pickup' : formatShippingDisplay(item.shippingCost || 0)}</p>
                       )}
                     </div>
                   </div>
@@ -187,7 +224,7 @@ const CheckoutPage: React.FC = () => {
                   <span>{formatMoneyDisplay(total)}</span>
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
-                  Shipping and tax are shown separately before payment. {getCombinedShippingSavings(items) > 0 && `Seller combined shipping saves $${getCombinedShippingSavings(items).toFixed(2)} on delivery.`}
+                  Shipping and tax are shown separately before payment. {!localPickup && getCombinedShippingSavings(items) > 0 && `Seller combined shipping saves $${getCombinedShippingSavings(items).toFixed(2)} on delivery.`}
                 </div>
               </div>
             </div>

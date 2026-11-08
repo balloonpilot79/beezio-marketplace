@@ -48,7 +48,7 @@ const queueBucket = (item: any): 'needs_ordering' | 'ordered' | 'shipped' => {
   const vendorStatus = String(item?.vendorStatus || '').toLowerCase();
   const fulfillmentStatus = String(item?.fulfillmentStatus || '').toLowerCase();
   const orderStatus = String(item?.orderStatus || '').toLowerCase();
-  if (vendorStatus === 'shipped' || fulfillmentStatus === 'shipped' || orderStatus === 'shipped' || orderStatus === 'delivered') {
+  if (item.pickedUpAt || vendorStatus === 'shipped' || fulfillmentStatus === 'shipped' || orderStatus === 'shipped' || orderStatus === 'delivered') {
     return 'shipped';
   }
   if (vendorStatus === 'ordered' || vendorStatus === 'processing') {
@@ -120,6 +120,8 @@ async function selectOrdersResilient(supabaseAdmin: any, sellerIds: string[], sc
     'billing_email',
     'customer_email',
     'shipping_address',
+    'fulfillment_method',
+    'picked_up_at',
     'tracking_number',
     'carrier',
     'shipped_at',
@@ -391,6 +393,8 @@ async function loadQueue(profileId: string, scope: QueueScope) {
       customerName: toSafeString(order?.billing_name) || toSafeString(order?.shipping_address?.name),
       customerEmail: toSafeString(order?.billing_email) || toSafeString(order?.customer_email),
       customerPhone: toSafeString(order?.shipping_address?.phone),
+      fulfillmentMethod: order?.fulfillment_method || 'shipping',
+      pickedUpAt: toSafeString(order?.picked_up_at),
       shippingAddress: order?.shipping_address && typeof order.shipping_address === 'object' ? order.shipping_address : null,
       trackingNumber: toSafeString(order?.tracking_number),
       carrier: toSafeString(order?.carrier),
@@ -432,7 +436,7 @@ async function loadAuthorizedOrder(profileId: string, scope: QueueScope, orderId
     : baseSellerIds;
   const { data: order, error } = await supabaseAdmin
     .from('orders')
-    .select('id,order_number,seller_id,shipping_address,status,fulfillment_status,order_items(*)')
+    .select('id,order_number,seller_id,shipping_address,status,fulfillment_status,fulfillment_method,order_items(*)')
     .eq('id', orderId)
     .in('seller_id', sellerIds.length ? sellerIds : ['__never__'])
     .maybeSingle();
@@ -556,6 +560,8 @@ async function markShipped(profileId: string, scope: QueueScope, body: QueueRequ
   if (!orderId) throw new Error('Missing orderId');
   if (!trackingNumber) throw new Error('Tracking number is required before an order can be marked shipped.');
   const order = await loadAuthorizedOrder(profileId, scope, orderId);
+  if (order.fulfillment_method === 'pickup') throw new Error('Confirm pickup for this order instead of entering tracking.');
+
   await upsertManualVendorOrder({
     scope,
     order,

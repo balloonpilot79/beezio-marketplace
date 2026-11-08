@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useRef } from 'react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Megaphone, Store, Wand2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -12,6 +13,7 @@ import StoreCustomization from '../components/StoreCustomization';
 const StoreBuilderPage: React.FC = () => {
   const { user, profile, userRoles, loading } = useAuth();
   const location = useLocation();
+  const qrRef = useRef<HTMLCanvasElement>(null);
 
   if (loading && !user) {
     return <div className="min-h-[50vh] flex items-center justify-center text-sm text-slate-600">Loading your website builder...</div>;
@@ -30,6 +32,16 @@ const StoreBuilderPage: React.FC = () => {
 
   const ownerId = String(profile?.id || user.id);
   const previewHref = `/store/id/${encodeURIComponent(ownerId)}`;
+
+  const storeUrl = new URL(previewHref, window.location.origin).href;
+
+  function downloadQr() {
+    if (!qrRef.current) return;
+    const download = document.createElement('a');
+    download.href = qrRef.current.toDataURL('image/png');
+    download.download = 'beezio-store-qr.png';
+    download.click();
+  }
 
   return (
     <div className="min-h-screen bg-[#faf9f5] pb-16">
@@ -55,6 +67,14 @@ const StoreBuilderPage: React.FC = () => {
               <ExternalLink className="h-4 w-4" /> View My Store
             </Link>
           </div>
+          <details className="mt-4 rounded-lg border p-3">
+            <summary className="cursor-pointer font-semibold">Storefront QR code</summary>
+            <QRCodeCanvas ref={qrRef} value={storeUrl} size={320} marginSize={4}
+              title="Scan to open your Beezio store" className="mt-2 h-40 w-40" />
+            <button type="button" onClick={downloadQr} className="min-h-11 rounded-lg bg-amber-400 px-3 font-semibold">
+              Download printable QR image
+            </button>
+          </details>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <p className="max-w-2xl text-xs leading-5 text-slate-600">
               All products appear in the same store. Shoppers can see the original seller of each item; payouts still follow the correct seller and affiliate.

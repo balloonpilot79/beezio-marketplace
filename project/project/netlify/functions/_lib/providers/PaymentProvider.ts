@@ -4,6 +4,7 @@ export type ProviderCreateOrderInput = {
   currency: string;
   subtotal: number;
   shipping: number;
+  localPickup?: boolean;
   tax: number;
   items: Array<{
     name: string;

@@ -13,6 +13,20 @@ describe('PayPalProvider.createOrder', () => {
     vi.restoreAllMocks();
   });
 
+  it('requests no shipping address or shipping charge for local pickup', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true, json: async () => ({ id: 'pickup-order' }),
+    } as Response);
+    await new PayPalProvider().createOrder({
+      currency: 'USD', subtotal: 5, shipping: 0, tax: 0.35, localPickup: true,
+      items: [{ name: 'Vintage item', quantity: 1, unit_amount: 5, category: 'PHYSICAL_GOODS' }],
+    });
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(payload.payment_source.paypal.experience_context.shipping_preference).toBe('NO_SHIPPING');
+    expect(payload.purchase_units[0].amount.breakdown.shipping.value).toBe('0.00');
+    expect(payload.purchase_units[0].amount.value).toBe('5.35');
+  });
+
   it('preserves digital goods categories in the PayPal payload', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch' as any).mockResolvedValue({
       ok: true,

@@ -746,6 +746,11 @@ export async function finalizePayPalOrderPayment(params: {
       provider_order_id: providerOrderId, provider_capture_id: providerCaptureId, snapshots: existingSnapshots };
   }
 
+  if (process.env.BEEZIO_VENDOR_STOCK_RESERVATIONS === 'true') {
+    const { error: stockError } = await supabaseAdmin.rpc('consume_vendor_order_stock', { p_order_id: orderId });
+    if (stockError) throw new Error(`Unable to finalize reserved vendor inventory: ${stockError.message}`);
+  }
+
   const rows = await selectOrderItems(supabaseAdmin, orderId);
   if (!rows.length) throw new Error('Order has no line items');
 

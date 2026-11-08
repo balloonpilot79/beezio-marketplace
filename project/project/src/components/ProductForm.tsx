@@ -1,3 +1,5 @@
+import type { PickupMode } from '../../shared/vendorPickup';
+import { ITEM_CONDITIONS, MERCHANDISE_TYPES } from '../../shared/vendorListing';
 import { validateProductTerms } from '../utils/productTerms';
 import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import React, { useState, useEffect, useRef } from 'react';
@@ -240,6 +242,16 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     }
     return [option];
   };
+  const pickupEnabled = import.meta.env.VITE_BEEZIO_LOCAL_PICKUP === 'true';
+  const [pickupMode, setPickupMode] = useState<PickupMode>('shipping');
+  const [pickupState, setPickupState] = useState('');
+  const [pickupZip, setPickupZip] = useState('');
+  const [managedStock, setManagedStock] = useState(false);
+  const [adjustingStock, setAdjustingStock] = useState(false);
+  const [itemCondition, setItemCondition] = useState('');
+  const [conditionNotes, setConditionNotes] = useState('');
+  const [merchandiseType, setMerchandiseType] = useState('');
+  const [directMarketplace, setDirectMarketplace] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -266,7 +278,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     videos: product?.videos || [],
     tags: [] as string[],
     category_id: product?.category_id || '',
-    stock_quantity: product?.stock_quantity || 1,
+    stock_quantity: product?.stock_quantity ?? 1,
     is_subscription: product?.is_subscription || false,
     subscription_interval: product?.subscription_interval || '',
     affiliate_enabled: true, // DEFAULT TO TRUE - Business preference
@@ -410,6 +422,41 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const createProductIdRef = useRef<string | null>(null);
   const editProductId = editMode && looksLikeUuid(routeProductId) ? routeProductId.trim() : null;
 
+  async function enableManagedStock() {
+    if (!editProductId || adjustingStock) return;
+    setAdjustingStock(true);
+    setError(null);
+    try {
+      const { data, error: stockError } = await supabase.rpc('enable_vendor_stock', { p_product_id: editProductId });
+      if (stockError || data !== true) {
+        throw new Error(stockError?.message || 'Inventory controls are available for physical items you stock yourself without variants.');
+      }
+      setManagedStock(true);
+    } catch (stockError) {
+      setError(stockError instanceof Error ? stockError.message : 'Stock controls could not be enabled.');
+    } finally {
+      setAdjustingStock(false);
+    }
+  }
+
+  async function adjustManagedStock(change: number) {
+    if (!editProductId || adjustingStock) return;
+    setAdjustingStock(true);
+    setError(null);
+    try {
+      const { data, error: stockError } = await supabase.rpc('adjust_vendor_stock', {
+        p_product_id: editProductId,
+        p_change: change,
+      });
+      if (stockError) throw stockError;
+      setFormData((previous) => ({ ...previous, stock_quantity: Number(data) }));
+    } catch (stockError: any) {
+      setError(stockError?.message || 'Stock could not be updated.');
+    } finally {
+      setAdjustingStock(false);
+    }
+  }
+
   // Load product for editing
   React.useEffect(() => {
     if (!editProductId || authLoading) return;
@@ -433,6 +480,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         if (loadError) throw loadError;
         if (!data) throw new Error('This product could not be loaded for editing.');
         if (!cancelled) {
+          setPickupMode(data.pickup_mode || 'shipping');
+          setPickupState(data.pickup_state || '');
+          setPickupZip(data.pickup_zip || '');
+          setManagedStock(data.vendor_managed_stock === true);
+          setItemCondition(data.item_condition || '');
+          setConditionNotes(data.condition_notes || '');
+          setMerchandiseType(data.merchandise_types?.[0] || '');
+          setDirectMarketplace(data.direct_marketplace_listing === true);
           const shippingIncludedInPrice = data.is_digital === true ? false : getShippingIncludedState(data.shipping_options);
           const shippingPrice = getStoredShippingAmount(
             data.shipping_options,
@@ -449,7 +504,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             videos: normalizeProductVideos(data.videos),
             tags: Array.isArray(data.tags) ? data.tags : [],
             category_id: data.category_id || '',
-            stock_quantity: data.stock_quantity || 1,
+            stock_quantity: data.stock_quantity ?? 1,
             is_subscription: data.is_subscription || false,
             subscription_interval: data.subscription_interval || '',
             affiliate_enabled: data.affiliate_enabled !== false,
@@ -1177,6 +1232,24 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
     const affiliateEnabled = formData.affiliate_enabled !== false;
+    const listDirect = !affiliateEnabled && !formData.is_digital && directMarketplace;
+    const effectivePickupMode = formData.is_digital ? 'shipping' : pickupMode;
+    if (pickupEnabled && effectivePickupMode !== 'shipping' &&
+      (!/^[A-Z]{2}$/.test(pickupState) || !/^\d{5}$/.test(pickupZip))) {
+      abortSubmit('Enter the pickup location’s two-letter state and five-digit ZIP code.');
+      return;
+    }
+    const pickupDetails = pickupEnabled ? {
+      pickup_mode: effectivePickupMode,
+      pickup_state: effectivePickupMode === 'shipping' ? null : pickupState,
+      pickup_zip: effectivePickupMode === 'shipping' ? null : pickupZip,
+    } : {};
+    const vendorDetails = {
+      item_condition: formData.is_digital ? null : itemCondition || null,
+      condition_notes: formData.is_digital ? null : conditionNotes.trim() || null,
+      merchandise_types: !formData.is_digital && merchandiseType ? [merchandiseType] : null,
+      direct_marketplace_listing: listDirect,
+    };
     if (affiliateEnabled && pricingBreakdown.affiliateAmount < MIN_AFFILIATE_PAYOUT) {
       abortSubmit(`Affiliate-enabled products must pay at least $${MIN_AFFILIATE_PAYOUT.toFixed(2)} per completed sale.`);
       return;
@@ -1367,8 +1440,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             tags: mergedTags,
             category: normalizedCategoryName,
             category_id: normalizedCategoryId,
-            stock_quantity: formData.stock_quantity,
-            total_inventory: Number.isFinite(formData.stock_quantity) ? formData.stock_quantity : null,
+            ...(!managedStock && {
+              stock_quantity: formData.stock_quantity,
+              total_inventory: Number.isFinite(formData.stock_quantity) ? formData.stock_quantity : null,
+            }),
             is_subscription: formData.is_subscription,
             subscription_interval: formData.is_subscription ? formData.subscription_interval : null,
             seller_amount: pricingBreakdown.sellerAmount,
@@ -1385,6 +1460,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             markup_value: Math.round(pricingBreakdown.sellerMarkup * 100),
             platform_fee: pricingBreakdown.platformFee,
             processing_fee: pricingBreakdown.processingFee,
+            ...vendorDetails,
+            ...pickupDetails,
             shipping_options: normalizedShippingOptions,
             requires_shipping: isDigitalProduct ? false : formData.requires_shipping,
             shipping_price: shippingCharge,
@@ -1406,7 +1483,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             affiliate_commission_type: 'flat',
             affiliate_commission_value: affiliateEnabled ? pricingBreakdown.affiliateAmount : 0,
              calculated_customer_price: pricingBreakdown.listingPrice,
-             status: requiresManualReview ? 'draft' : affiliateEnabled ? 'active' : 'store_only',
+             status: requiresManualReview ? 'draft' : (affiliateEnabled || listDirect) ? 'active' : 'store_only',
              is_promotable: affiliateEnabled && !requiresManualReview,
              is_active: !requiresManualReview,
              has_variants: hasVariants,
@@ -1524,6 +1601,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             platform_fee: pricingBreakdown.platformFee,
             processing_fee: pricingBreakdown.processingFee,
             seller_id: sellerProfileId,
+            ...vendorDetails,
+            ...pickupDetails,
             shipping_options: normalizedShippingOptions,
             requires_shipping: isDigitalProduct ? false : formData.requires_shipping,
             shipping_price: shippingCharge,
@@ -1545,7 +1624,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             affiliate_commission_type: 'flat',
             affiliate_commission_value: affiliateEnabled ? pricingBreakdown.affiliateAmount : 0,
              calculated_customer_price: pricingBreakdown.listingPrice,
-             status: requiresManualReview ? 'draft' : affiliateEnabled ? 'active' : 'store_only',
+             status: requiresManualReview ? 'draft' : (affiliateEnabled || listDirect) ? 'active' : 'store_only',
              is_promotable: affiliateEnabled && !requiresManualReview,
              is_active: !requiresManualReview,
              has_variants: hasVariants,
@@ -1689,7 +1768,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         await forceMarketplaceListing(savedProductId);
       }
 
-      const marketplaceStatus = requiresManualReview || !affiliateEnabled ? 'store_only' : 'marketplace';
+      const marketplaceStatus = requiresManualReview || (!affiliateEnabled && !listDirect) ? 'store_only' : 'marketplace';
       setCreatedMarketplaceStatus(marketplaceStatus);
       setSuccess(
         requiresManualReview
@@ -1703,6 +1782,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       if (addAnother) {
+        setPickupMode('shipping');
+        setPickupState('');
+        setPickupZip('');
+        setItemCondition('');
+        setConditionNotes('');
+        setMerchandiseType('');
+        setDirectMarketplace(false);
         setTimeout(() => {
           resetForm();
         }, 600);
@@ -1742,7 +1828,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
           <h1 className="mt-2 text-2xl font-bold text-gray-900">Business tools are not active on this account</h1>
           <p className="mt-3 text-sm leading-6 text-gray-700">
             This login can still view purchases, receipts, and support in the customer dashboard. To sell products,
-            promote products, or refer sellers and affiliates, upgrade the same login to a Beezio business account.
+            promote products, or refer sellers and affiliates, register for a Beezio business account.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
@@ -2097,6 +2183,55 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             )}
           </div>
 
+          {!formData.is_digital && (
+            <fieldset className="grid gap-3 rounded-xl border p-4">
+              <legend className="px-2 font-bold">Merchandise details</legend>
+              <label className="grid gap-1">
+                Item condition
+                <select className="min-h-11 rounded border p-2" value={itemCondition}
+                  onChange={(event) => setItemCondition(event.target.value)}>
+                  <option value="">Select condition (optional)</option>
+                  {ITEM_CONDITIONS.map((condition) => <option key={condition}>{condition}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-1">
+                Merchandise type
+                <select className="min-h-11 rounded border p-2" value={merchandiseType}
+                  onChange={(event) => setMerchandiseType(event.target.value)}>
+                  <option value="">Select type (optional)</option>
+                  {MERCHANDISE_TYPES.map((type) => <option key={type}>{type}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-1">
+                Condition notes
+                <textarea className="rounded border p-2" maxLength={2000} value={conditionNotes}
+                  onChange={(event) => setConditionNotes(event.target.value)}
+                  placeholder="Describe wear, damage, missing pieces or repairs." />
+              </label>
+            </fieldset>
+          )}
+
+          {pickupEnabled && !formData.is_digital && (
+            <fieldset className="grid gap-3 rounded-xl border p-4">
+              <legend className="px-2 font-bold">Delivery options</legend>
+              <label className="grid gap-1">
+                How buyers receive this item
+                <select value={pickupMode} onChange={(event) => setPickupMode(event.target.value as PickupMode)} className="min-h-11 rounded-lg border p-2">
+                  <option value="shipping">Shipping only</option>
+                  <option value="pickup">Local pickup only</option>
+                  <option value="both">Shipping or local pickup</option>
+                </select>
+              </label>
+              {pickupMode !== 'shipping' && <>
+                <label>Pickup state <input value={pickupState} maxLength={2} className="rounded border p-2"
+                  onChange={(event) => setPickupState(event.target.value.toUpperCase().trim())} /></label>
+                <label>Pickup ZIP <input value={pickupZip} maxLength={5} inputMode="numeric" className="rounded border p-2"
+                  onChange={(event) => setPickupZip(event.target.value.trim())} /></label>
+                <p className="text-sm text-gray-600">Share the exact meeting location with the buyer after payment.</p>
+              </>}
+            </fieldset>
+          )}
+
           {/* Stock Quantity */}
           <div>
             <label className="block text-sm font-bold text-gray-900 mb-2">
@@ -2104,6 +2239,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             </label>
             <input
               type="number"
+              readOnly={managedStock}
               name="stock_quantity"
               value={formData.stock_quantity}
               onChange={handleInputChange}
@@ -2112,6 +2248,31 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
             />
           </div>
+
+          {import.meta.env.VITE_BEEZIO_VENDOR_STOCK_RESERVATIONS === 'true' &&
+            editProductId && !managedStock && !formData.is_digital && (
+              <button type="button" disabled={adjustingStock} onClick={() => void enableManagedStock()}
+                className="min-h-11 rounded-lg border px-3 disabled:opacity-50">
+                Enable in-person stock controls
+              </button>
+            )}
+          {managedStock && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" disabled={adjustingStock || formData.stock_quantity < 1}
+                className="min-h-11 rounded-lg border px-3 disabled:opacity-50"
+                onClick={() => void adjustManagedStock(-1)}>
+                Mark one sold in person
+              </button>
+              <button type="button" disabled={adjustingStock}
+                className="min-h-11 rounded-lg border px-3 disabled:opacity-50"
+                onClick={() => void adjustManagedStock(1)}>
+                Restock one
+              </button>
+              <span role="status" className="text-sm">
+                {formData.stock_quantity === 0 ? 'Sold out' : `${formData.stock_quantity} in stock`}
+              </span>
+            </div>
+          )}
 
           {/* Product Images */}
           <div>
@@ -2687,6 +2848,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 </div>
               )}
 
+              {!formData.is_digital && !formData.affiliate_enabled && (
+                <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+                  <input type="checkbox" checked={directMarketplace}
+                    onChange={(event) => setDirectMarketplace(event.target.checked)} />
+                  Also list this item in the Beezio marketplace for direct purchase
+                </label>
+              )}
               {/* Affiliate Marketing Toggle */}
               <div className="border-t border-gray-200 pt-6">
                 <label className="flex items-start gap-3 cursor-pointer group">

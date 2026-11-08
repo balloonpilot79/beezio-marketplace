@@ -32,7 +32,7 @@ type SellerFulfillmentAlert = {
 };
 
 const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, initialSection, businessOnly = false, basePath = '/dashboard' }) => {
-  const { user, profile, userRoles, addRole, loading: authLoading } = useAuth();
+  const { user, profile, userRoles, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const businessBasePath = businessOnly ? '/business' : basePath;
@@ -184,17 +184,6 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
     }
     setSellerTab(requestedTab as SellerDashboardTab);
   }, [activeSection, initialSellerTab, requestedTab]);
-
-  useEffect(() => {
-    if (authLoading || !user) return;
-    if (activeSection === 'admin') return;
-    if (activeSection !== 'buyer' && !effectiveRoles.includes(activeSection)) {
-      return;
-    }
-    if (activeSection === 'buyer' && !effectiveRoles.includes('buyer')) {
-      void addRole('buyer');
-    }
-  }, [activeSection, addRole, authLoading, effectiveRoles, user]);
 
   useEffect(() => {
     if (authLoading || !user) return;

@@ -1,13 +1,14 @@
-import { isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
+import { matchesMerchandiseFilter, MERCHANDISE_TYPES } from '../../shared/vendorListing';
+import { isPublicMarketplaceProduct } from '../../shared/publicProductVisibility';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Grid, List, Search, SlidersHorizontal } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import MarketplaceShelf from '../components/MarketplaceShelf';
 import '../styles/marketplace.css';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
-import { canUseStoreTools, getNormalizedAccountRoles, normalizeAccountRole } from '../utils/accountRoles';
+import { getBusinessAccountRoles } from '../utils/accountRoles';
 import { extractUsStateFromLocation } from '../utils/locationMatching';
 import { normalizeAverageRating, normalizeReviewCount } from '../utils/socialProof';
 import { catalogRotationSlot, rotateCatalog } from '../utils/catalogRotation';
@@ -42,6 +43,8 @@ interface MarketplaceProduct {
   affiliate_commission_value?: number;
   affiliate_payout_amount?: number;
   seller_id?: string;
+  item_condition?: string | null;
+  merchandise_types?: string[] | null;
   status?: string;
   is_promotable?: boolean | null;
   profiles?: ProductProfile | null;
@@ -62,7 +65,7 @@ type CategoryRow = {
 const PAGE_SIZE = 160;
 const MARKETPLACE_FETCH_TIMEOUT_MS = 12000;
 const MARKETPLACE_SELECT_FIELDS =
-  'id,title,description,price,calculated_customer_price,seller_ask,seller_amount,seller_ask_price,is_digital,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status';
+  'id,title,item_condition,merchandise_types,direct_marketplace_listing,affiliate_enabled,description,price,calculated_customer_price,seller_ask,seller_amount,seller_ask_price,is_digital,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status';
 
 const CATEGORY_KEYWORDS: Array<{ category: string; keywords: string[] }> = [
   { category: 'Electronics', keywords: ['microphone', 'usb', 'keyboard', 'speaker', 'charger', 'camera', 'phone', 'tablet', 'laptop', 'tech', 'wireless', 'led', 'headphone'] },
@@ -77,7 +80,7 @@ const CATEGORY_KEYWORDS: Array<{ category: string; keywords: string[] }> = [
   { category: 'Automotive', keywords: ['car', 'auto', 'vehicle', 'truck', 'tire'] },
 ];
 
-const isMarketplaceVisible = isPublicAffiliateProduct;
+const isMarketplaceVisible = isPublicMarketplaceProduct;
 
 const slugify = (value: string) =>
   String(value || '')
@@ -170,11 +173,13 @@ const resolveDerivedCategory = (product: MarketplaceProduct, categoryById: Map<s
 };
 
 const MarketplacePageDual: React.FC = () => {
-  const { user, profile, currentRole, userRoles, hasRole } = useAuth();
+  const { user, profile, currentRole, userRoles } = useAuth();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
+  const [merchandiseFilter, setMerchandiseFilter] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState<SortOption>('featured');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -184,23 +189,20 @@ const MarketplacePageDual: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [rotationSlot] = useState(() => catalogRotationSlot());
 
-  const activeRole = normalizeAccountRole(profile?.primary_role || profile?.role || currentRole || 'buyer');
-  const normalizedRoles = getNormalizedAccountRoles(userRoles, profile?.primary_role, profile?.role, currentRole);
-  const canAddToStore =
-    Boolean(user?.id) &&
-    (activeRole === 'seller' ||
-      activeRole === 'affiliate' ||
-      hasRole('seller') ||
-      hasRole('affiliate') ||
-      hasRole('partner') ||
-      canUseStoreTools(normalizedRoles));
-  const isAffiliateViewer = Boolean(user?.id) && (
-    activeRole === 'affiliate' ||
-    hasRole('affiliate') ||
-    hasRole('partner')
-  );
-  const affiliateRef = isAffiliateViewer ? ((profile as any)?.id || user?.id || null) : null;
+  const businessRoles = getBusinessAccountRoles(userRoles, profile?.primary_role, profile?.role, currentRole);
+  const canUseBusinessView = Boolean(user?.id) && businessRoles.length > 0;
+  const businessView = canUseBusinessView && searchParams.get('view') === 'business';
+  const isAffiliateViewer = businessView && businessRoles.includes('affiliate');
+  const affiliateRef = isAffiliateViewer ? (profile?.id || user?.id || null) : null;
   const affiliateUid = isAffiliateViewer ? (user?.id || affiliateRef) : null;
+
+  const selectBusinessView = (selected: boolean) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (selected) nextParams.set('view', 'business');
+    else nextParams.delete('view');
+    setSearchParams(nextParams);
+    setSortBy('featured');
+  };
   const viewerState = useMemo(() => extractUsStateFromLocation((profile as any)?.location || ''), [profile]);
 
   useEffect(() => {
@@ -315,7 +317,7 @@ const MarketplacePageDual: React.FC = () => {
   }, [location.pathname, location.search, categoryLabelBySlug]);
 
   const filteredProducts = useMemo(() => {
-    let filtered = [...productsWithCategory];
+    let filtered = productsWithCategory.filter((product) => matchesMerchandiseFilter(product, merchandiseFilter));
 
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -347,9 +349,9 @@ const MarketplacePageDual: React.FC = () => {
         case 'price-high':
           return b.price - a.price;
         case 'commission-high':
-          return getCommissionScore(b) - getCommissionScore(a);
+          return businessView ? getCommissionScore(b) - getCommissionScore(a) : 0;
         case 'commission-low':
-          return getCommissionScore(a) - getCommissionScore(b);
+          return businessView ? getCommissionScore(a) - getCommissionScore(b) : 0;
         case 'newest':
           return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
         case 'popular':
@@ -360,7 +362,7 @@ const MarketplacePageDual: React.FC = () => {
     });
 
     return filtered;
-  }, [productsWithCategory, searchTerm, selectedCategory, sortBy, viewerState, rotationSlot]);
+  }, [productsWithCategory, searchTerm, selectedCategory, sortBy, viewerState, rotationSlot, merchandiseFilter, businessView]);
 
   const shelfRows = useMemo(() => {
     const buckets = new Map<string, MarketplaceProduct[]>();
@@ -405,7 +407,7 @@ const MarketplacePageDual: React.FC = () => {
     ? 'All Products'
     : categoryLabelBySlug.get(selectedCategory) || selectedCategory;
 
-  const showShelves = selectedCategory === 'All' && !searchTerm.trim() && sortBy === 'featured';
+  const showShelves = !merchandiseFilter && selectedCategory === 'All' && !searchTerm.trim() && sortBy === 'featured';
 
   return (
     <div className="bz-public marketplace-page min-h-screen bg-[#f7f8f8]">
@@ -417,6 +419,17 @@ const MarketplacePageDual: React.FC = () => {
             Discover products from independent sellers and buy right here on Beezio. Just shopping? No business account needed.
           </p>
           <p className="mt-4 text-xs leading-6 text-slate-500">Want to earn from your recommendations? <Link to="/affiliates" className="font-semibold text-slate-700 underline underline-offset-4">Build a free affiliate website</Link> and promote eligible products.</p>
+          {canUseBusinessView && (
+            <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Marketplace view">
+              <button type="button" className="rounded-lg border px-3 py-2 aria-pressed:bg-slate-900 aria-pressed:text-white" aria-pressed={!businessView} onClick={() => selectBusinessView(false)}>
+                Shop
+              </button>
+              <button type="button" className="rounded-lg border px-3 py-2 aria-pressed:bg-slate-900 aria-pressed:text-white" aria-pressed={businessView} onClick={() => selectBusinessView(true)}>
+                Business tools
+              </button>
+              {businessView && <Link to="/business/promote" className="font-semibold text-[#0f6cbf] hover:underline">Open promotion kit</Link>}
+            </div>
+          )}
         </div>
       </section>
       <section id="categories" className="scroll-mt-28 border-b border-slate-200 bg-white shadow-sm md:sticky md:top-[6.375rem] md:z-20">
@@ -444,8 +457,8 @@ const MarketplacePageDual: React.FC = () => {
                 <option value="newest">Newest</option>
                 <option value="price-low">Price: Low to High</option>
                 <option value="price-high">Price: High to Low</option>
-                <option value="commission-high">Commission: High to Low</option>
-                <option value="commission-low">Commission: Low to High</option>
+                {businessView && <option value="commission-high">Commission: High to Low</option>}
+                {businessView && <option value="commission-low">Commission: Low to High</option>}
               </select>
               <button
                 type="button"
@@ -491,6 +504,14 @@ const MarketplacePageDual: React.FC = () => {
             </select>
           </label>
 
+          <label className="mt-2 grid gap-1 text-sm font-semibold">
+            Merchandise
+            <select className="min-h-11 rounded-xl border px-3" value={merchandiseFilter}
+              onChange={(event) => setMerchandiseFilter(event.target.value)}>
+              <option value="">All merchandise</option>
+              {['New', 'Used', ...MERCHANDISE_TYPES].map((filter) => <option key={filter}>{filter}</option>)}
+            </select>
+          </label>
           {mobileFiltersOpen && (
             <div id="marketplace-mobile-filters" className="mt-3 space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-3 md:hidden">
               <div>
@@ -531,15 +552,17 @@ const MarketplacePageDual: React.FC = () => {
                 >
                   High Price
                 </button>
-                <button
-                  onClick={() => {
-                    setSortBy('commission-high');
-                    setMobileFiltersOpen(false);
-                  }}
-                  className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-2 text-xs font-semibold transition ${sortBy === 'commission-high' ? 'border-[#131921] bg-[#131921] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-[#ffcb05] hover:text-[#131921]'}`}
-                >
-                  Top Commission
-                </button>
+                {businessView && (
+                  <button
+                    onClick={() => {
+                      setSortBy('commission-high');
+                      setMobileFiltersOpen(false);
+                    }}
+                    className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-2 text-xs font-semibold transition ${sortBy === 'commission-high' ? 'border-[#131921] bg-[#131921] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-[#ffcb05] hover:text-[#131921]'}`}
+                  >
+                    Top Commission
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -584,12 +607,14 @@ const MarketplacePageDual: React.FC = () => {
             >
               High Price
             </button>
-            <button
-              onClick={() => setSortBy('commission-high')}
-              className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm ${sortBy === 'commission-high' ? 'border-[#131921] bg-[#131921] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-[#ffcb05] hover:text-[#131921]'}`}
-            >
-              Top Commission
-            </button>
+            {businessView && (
+              <button
+                onClick={() => setSortBy('commission-high')}
+                className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm ${sortBy === 'commission-high' ? 'border-[#131921] bg-[#131921] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-[#ffcb05] hover:text-[#131921]'}`}
+              >
+                Top Commission
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -600,9 +625,6 @@ const MarketplacePageDual: React.FC = () => {
             Showing <strong>{filteredProducts.length}</strong> products
             {selectedCategory !== 'All' && ` in ${selectedCategoryLabel}`}
           </span>
-          <Link to={canAddToStore ? '/business/promote' : '/signup'} className="text-sm font-semibold text-[#0f6cbf] hover:underline">
-            {canAddToStore ? 'Add products to your storefront from this marketplace' : 'Create a business account to add products'}
-          </Link>
         </div>
 
         {viewerState && sortBy !== 'featured' && (
@@ -639,6 +661,7 @@ const MarketplacePageDual: React.FC = () => {
             <button
               onClick={() => {
                 setSearchTerm('');
+                setMerchandiseFilter('');
                 setSelectedCategory('All');
                 setSortBy('featured');
               }}
@@ -675,6 +698,7 @@ const MarketplacePageDual: React.FC = () => {
                         key={`new-${product.id}`}
                         product={product as any}
                         viewMode="grid"
+                        businessView={businessView}
                         affiliateRef={affiliateRef}
                         affiliateUid={affiliateUid}
                         compact
@@ -684,7 +708,7 @@ const MarketplacePageDual: React.FC = () => {
               </section>
             )}
 
-            {needsPromotingProducts.length > 0 && (
+            {businessView && needsPromotingProducts.length > 0 && (
               <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
@@ -708,6 +732,7 @@ const MarketplacePageDual: React.FC = () => {
                         key={`promote-${product.id}`}
                         product={product as any}
                         viewMode="grid"
+                        businessView={businessView}
                         affiliateRef={affiliateRef}
                         affiliateUid={affiliateUid}
                         compact
@@ -741,6 +766,7 @@ const MarketplacePageDual: React.FC = () => {
                         key={product.id}
                         product={product as any}
                         viewMode="grid"
+                        businessView={businessView}
                         affiliateRef={affiliateRef}
                         affiliateUid={affiliateUid}
                         compact
@@ -759,6 +785,7 @@ const MarketplacePageDual: React.FC = () => {
                 key={product.id}
                 product={product as any}
                 viewMode={viewMode}
+                businessView={businessView}
                 affiliateRef={affiliateRef}
                 affiliateUid={affiliateUid}
                 compact={viewMode === 'grid'}

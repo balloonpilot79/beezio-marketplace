@@ -12,6 +12,7 @@ import { getFallbackProductImage, normalizeProductImages } from '../utils/imageH
 import { resolveAffiliateCommission, getAffiliateAmount } from '../utils/pricing';
 import AddToAffiliateStoreButton from './AddToAffiliateStoreButton';
 import AddToSellerStoreButton from './AddToSellerStoreButton';
+import { getBusinessAccountRoles } from '../utils/accountRoles';
 import ProductShareActions from './ProductShareActions';
 
 export interface CanonicalProductCardProduct {
@@ -57,6 +58,7 @@ interface Props {
   affiliateRef?: string | null;
   affiliateUid?: string | null;
   compact?: boolean;
+  businessView?: boolean;
   ctaMode?: 'marketplace' | 'storefront';
   forcePurchaseCtas?: boolean;
   promoterBadge?: React.ReactNode;
@@ -73,13 +75,14 @@ const CanonicalProductCard: React.FC<Props> = ({
   affiliateRef,
   affiliateUid,
   compact = false,
+  businessView = false,
   ctaMode = 'marketplace',
   forcePurchaseCtas = false,
   promoterBadge,
 }) => {
   const compactMarketplace = compact && ctaMode === 'marketplace' && viewMode === 'grid';
   const { addToCart } = useCart();
-  const { user, profile, currentRole, hasRole } = useAuth();
+  const { user, profile, currentRole, userRoles } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [imageFailed, setImageFailed] = useState(false);
@@ -121,16 +124,21 @@ const CanonicalProductCard: React.FC<Props> = ({
     return getAffiliateAmount(ask, commission.type, commission.value);
   }, [buyerPrice, commission.type, commission.value, product.seller_amount, product.seller_ask]);
 
-  const role = String(profile?.primary_role || profile?.role || currentRole || '').toLowerCase();
-  const canAffiliate = Boolean(user?.id) && (role === 'affiliate' || role === 'partner' || hasRole('affiliate') || hasRole('partner'));
-  const canSeller = Boolean(user?.id) && (role === 'seller' || hasRole('seller'));
-  const showStoreTools = ctaMode !== 'storefront' && (canAffiliate || canSeller);
-  const affiliateEarnings = ctaMode !== 'storefront' && isPublicAffiliateProduct(product) && affiliateAmount > 0 ? (
+  const businessRoles = getBusinessAccountRoles(userRoles, profile?.primary_role, profile?.role, currentRole);
+  const canAffiliate = businessRoles.includes('affiliate') && isPublicAffiliateProduct(product);
+  const canSeller = businessRoles.includes('seller');
+  const showBusinessOptions = Boolean(user?.id) && businessView && ctaMode !== 'storefront' && businessRoles.length > 0;
+  const showStoreTools = showBusinessOptions && (canAffiliate || canSeller);
+  const affiliateEarnings = showBusinessOptions && isPublicAffiliateProduct(product) && affiliateAmount > 0 ? (
     <div className="marketplace-earnings mt-3 inline-flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">
       <Award className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span>Earn ${affiliateAmount.toFixed(2)} per sale</span>
     </div>
   ) : null;
+  const productNavigationState = {
+    from: `${location.pathname}${location.search}`,
+    businessView: showBusinessOptions,
+  };
   const purchaseVisible = forcePurchaseCtas || ctaMode === 'storefront' || product.is_active === true || product.is_promotable === true || String(product.status || '').toLowerCase() === 'active';
   const hasVariants = Boolean(product.has_variants) || (Array.isArray(product.product_variants) && product.product_variants.length > 0) || (Array.isArray(product.variants) && product.variants.length > 0);
   const requiresProductDetails = shouldOpenProductDetailsBeforePurchase(product);
@@ -162,7 +170,7 @@ const CanonicalProductCard: React.FC<Props> = ({
     stop(event);
     if (outOfStock) return;
     if (requiresProductDetails) {
-      navigate(productUrl, { state: { from: `${location.pathname}${location.search}` } });
+      navigate(productUrl, { state: productNavigationState });
       return;
     }
     addToCart(cartItem() as any);
@@ -173,7 +181,7 @@ const CanonicalProductCard: React.FC<Props> = ({
     stop(event);
     if (outOfStock) return;
     if (requiresProductDetails) {
-      navigate(productUrl, { state: { from: `${location.pathname}${location.search}` } });
+      navigate(productUrl, { state: productNavigationState });
       return;
     }
     addToCart(cartItem() as any);
@@ -189,12 +197,12 @@ const CanonicalProductCard: React.FC<Props> = ({
   };
 
   const ProductLink = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-    <Link to={productUrl} state={{ from: `${location.pathname}${location.search}` }} className={`block ${className}`} aria-label={`View ${product.title}`}>
+    <Link to={productUrl} state={productNavigationState} className={`block ${className}`} aria-label={`View ${product.title}`}>
       {children}
     </Link>
   );
 
-  const shareActions = <ProductShareActions productId={String(product.id)} productUrl={productUrl} title={product.title} price={buyerPrice} commission={affiliateAmount} canPromote={isPublicAffiliateProduct(product)} />;
+  const shareActions = <ProductShareActions productId={String(product.id)} productUrl={productUrl} title={product.title} price={buyerPrice} businessView={showBusinessOptions} commission={showBusinessOptions ? affiliateAmount : 0} canPromote={isPublicAffiliateProduct(product)} />;
 
   const purchaseButtons = purchaseVisible ? (
     <div className="flex w-full flex-col gap-2">
@@ -273,7 +281,7 @@ const CanonicalProductCard: React.FC<Props> = ({
       </ProductLink>
       <div className={compact ? 'p-3 pt-0' : 'p-5 pt-0'}>
         <div className="flex flex-col gap-2 [&>div]:w-full">{purchaseButtons}{storeButtons}{shareActions}</div>
-        <Link to={productUrl} state={{ from: `${location.pathname}${location.search}` }} className={compactMarketplace ? "mt-1 min-h-11 text-gray-600 font-medium flex items-center justify-center" : "mt-2 w-full bg-gray-50 border border-gray-200 text-gray-700 rounded-xl py-3 font-medium flex items-center justify-center"}>
+        <Link to={productUrl} state={productNavigationState} className={compactMarketplace ? "mt-1 min-h-11 text-gray-600 font-medium flex items-center justify-center" : "mt-2 w-full bg-gray-50 border border-gray-200 text-gray-700 rounded-xl py-3 font-medium flex items-center justify-center"}>
           <ExternalLink className="w-4 h-4 mr-2" /> View Product
         </Link>
         {!compactMarketplace && <button type="button" onClick={(e) => stop(e)} className="mt-2 text-sm text-gray-500 hover:text-red-500 flex items-center gap-1"><Heart className="w-4 h-4" /> Save</button>}

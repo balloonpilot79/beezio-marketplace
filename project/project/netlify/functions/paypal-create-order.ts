@@ -1,3 +1,4 @@
+import { getCartPickupLocation } from '../../shared/vendorPickup';
 import { allocateCombinedShipping, applyShippingAllocations, getCombinedShippingPolicy, shippingChannelKey } from '../../shared/combinedShipping';
 import { DOLLAR_CHECKOUT_TEST, isDollarCheckoutTest } from '../../shared/dollarCheckoutTest';
 import { resolvePlacedStorefrontAffiliate } from './_lib/storefront-affiliate-attribution';
@@ -87,6 +88,10 @@ const PRODUCT_SELECT_COLUMNS = [
   'lineage',
   'dropship_provider',
   'requires_shipping',
+  'pickup_mode',
+  'vendor_managed_stock',
+  'pickup_state',
+  'pickup_zip',
   'is_digital',
   'track_inventory',
   'inventory_source',
@@ -737,10 +742,10 @@ export const handler: Handler = async (event) => {
         : Number.isFinite(configuredFallbackTaxRate) && configuredFallbackTaxRate >= 0
           ? configuredFallbackTaxRate
           : 0.07;
-    const taxResolution = resolveLocationTaxRate({
-      country: shippingAddress?.country,
-      state: shippingAddress?.state,
-      postalCode: shippingAddress?.zip || shippingAddress?.postal_code,
+    const taxFor = (address: any) => resolveLocationTaxRate({
+      country: address?.country,
+      state: address?.state,
+      postalCode: address?.zip || address?.postal_code,
       configuredRatesJson: process.env.PAYMENT_TAX_RATES_JSON,
       fallbackRate: fallbackTaxRate,
       disabled: taxCollectionDisabled,
@@ -861,6 +866,22 @@ export const handler: Handler = async (event) => {
     if (requestedSellerId && requestedSellerId !== sellerId) {
       return json(400, { error: 'Seller mismatch for cart items.' });
     }
+
+    const localPickup = body?.fulfillment_method === 'pickup';
+    const pickupEnabled = process.env.BEEZIO_LOCAL_PICKUP === 'true';
+    const checkoutProducts = Array.from(productMap.values());
+    if (process.env.BEEZIO_VENDOR_STOCK_RESERVATIONS !== 'true' &&
+      checkoutProducts.some(product => product.vendor_managed_stock === true)) {
+      return json(503, { error: 'Inventory checkout is temporarily unavailable for an item in your cart.' });
+    }
+    const pickupLocation = localPickup && pickupEnabled ? getCartPickupLocation(checkoutProducts) : null;
+    if (localPickup && (!pickupLocation || checkoutProducts.some(product => isCJProduct(product)))) {
+      return json(400, { error: 'Local pickup is unavailable for this cart. All items must offer pickup at the same location.' });
+    }
+    if (!localPickup && checkoutProducts.some(product => product.pickup_mode === 'pickup')) {
+      return json(400, { error: 'An item in your cart is pickup only. Choose local pickup or check out separately.' });
+    }
+    const taxResolution = taxFor(pickupLocation || shippingAddress);
 
     const placementAffiliateId = await resolvePlacedStorefrontAffiliate(supabaseAdmin, resolvedStorefrontId, Array.from(productMap.keys()), sellerId);
     if (placementAffiliateId) rawPartnerId = await resolveAffiliateProfileId(supabaseAdmin, placementAffiliateId);
@@ -1075,7 +1096,7 @@ export const handler: Handler = async (event) => {
             : round2(ask * configuredAffiliateRate)
         : 0;
       const storedVariantShipping = Number(variant?.shipping_reserve_amount);
-      const shippingReserveUnit = prod?.is_digital === true ? 0 : round2(Math.max(
+      const shippingReserveUnit = localPickup || prod?.is_digital === true ? 0 : round2(Math.max(
         0,
         cjItem && Number.isFinite(storedVariantShipping)
           ? storedVariantShipping
@@ -1700,12 +1721,22 @@ export const handler: Handler = async (event) => {
       total_amount: totalCharged,
       customer_name: body?.customer?.name || null,
       customer_email: body?.customer?.email || null,
-      shipping_address: body?.shipping_info || null,
+      shipping_address: localPickup ? null : body?.shipping_info || null,
       created_at: new Date().toISOString(),
     };
 
     const { error: orderError } = await insertWithFallback('orders', orderPayload);
     if (orderError) return json(500, { error: 'Failed to create order', details: orderError.message });
+
+    if (localPickup) {
+      const { error: pickupError } = await supabaseAdmin.from('orders')
+        .update({ fulfillment_method: 'pickup', pickup_location: pickupLocation })
+        .eq('id', beezioOrderId);
+      if (pickupError) {
+        await supabaseAdmin.from('orders').delete().eq('id', beezioOrderId);
+        return json(503, { error: 'Unable to save pickup details. No payment was created.' });
+      }
+    }
 
     if (cjShippingSnapshot) {
       const cjProductCost = round2(computedItems.reduce(
@@ -1803,6 +1834,24 @@ export const handler: Handler = async (event) => {
       return json(500, { error: 'Failed to create order items', details: itemsError.message });
     }
 
+    if (process.env.BEEZIO_VENDOR_STOCK_RESERVATIONS === 'true') {
+      const { data: reserved, error: reservationError } = await supabaseAdmin.rpc(
+        'reserve_vendor_order', { p_order_id: beezioOrderId },
+      );
+      if (reservationError || reserved !== true) {
+        await supabaseAdmin.from('order_items').delete().eq('order_id', beezioOrderId);
+        await supabaseAdmin.from('orders').delete().eq('id', beezioOrderId);
+        if (reservationError) {
+          console.error('[paypal-create-order] Vendor stock reservation failed:', reservationError.message);
+          return json(503, { error: 'Inventory could not be checked. Please try again.' });
+        }
+        return json(409, {
+          error: 'An item no longer has enough stock. Refresh your cart and try again.',
+          code: 'VENDOR_STOCK_UNAVAILABLE',
+        });
+      }
+    }
+
     const provider = getPaymentProvider('paypal');
     let providerOrderId = '';
     try {
@@ -1810,6 +1859,7 @@ export const handler: Handler = async (event) => {
         currency,
         subtotal: subtotalListing,
         shipping: shippingAmount,
+        localPickup,
         tax: taxAmount,
         items: purchaseUnitItems.map((it) => ({
           name: it.name,

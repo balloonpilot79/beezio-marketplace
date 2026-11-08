@@ -14,10 +14,6 @@ function safeRole(value: unknown) {
   return ['buyer', 'seller', 'affiliate', 'influencer', 'fundraiser'].includes(role) ? role : 'buyer';
 }
 
-function uniqueRoles(values: string[]) {
-  return Array.from(new Set(values.map((value) => safeRole(value)).filter(Boolean)));
-}
-
 function isUuid(value: unknown) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim());
 }
@@ -60,18 +56,21 @@ export const handler: Handler = async (event) => {
     if (!recentEnough) return json(403, { error: 'Signup bootstrap window expired' });
 
     const metadata = (authUser.user_metadata || {}) as Record<string, unknown>;
-    const bundleBusinessRoles = Boolean(metadata.bundle_business_roles ?? body.bundleBusinessRoles);
-    const role = safeRole(metadata.role ?? body.role);
-    const isBuyerSignup = role === 'buyer' && !bundleBusinessRoles;
-    const primaryRole = isBuyerSignup ? 'buyer' : role === 'influencer' ? 'seller' : role;
-    // Preserve the role selected during signup. Business accounts may opt into
-    // the full seller/affiliate/influencer bundle, but an affiliate signup must
-    // not be silently converted to a seller.
-    const assignedRoles = isBuyerSignup
-      ? ['buyer']
-      : bundleBusinessRoles || role === 'influencer'
-        ? uniqueRoles(['seller', 'affiliate', 'influencer'])
-        : uniqueRoles([role]);
+    const requestedRole = safeRole(metadata.role);
+    const { data: grants, error: grantsError } = await supabaseAdmin
+      .from('user_roles').select('role').eq('user_id', userId).eq('is_active', true);
+    if (grantsError) return json(500, { error: 'Failed to verify registration roles' });
+
+    const activeRoles = new Set((grants || []).map((grant: { role: string }) => grant.role));
+    const businessRoles = ['seller', 'affiliate', 'influencer'];
+    const businessRole = businessRoles.includes(requestedRole) && activeRoles.has(requestedRole)
+      ? requestedRole
+      : businessRoles.find((role) => activeRoles.has(role));
+    const primaryRole = businessRole === 'influencer' && activeRoles.has('seller')
+      ? 'seller'
+      : businessRole || (activeRoles.has('fundraiser') ? 'fundraiser' : 'buyer');
+    const isBuyerSignup = primaryRole === 'buyer';
+    const assignedRoles = businessRole ? businessRoles.filter((role) => activeRoles.has(role)) : [primaryRole];
     const fullName = String(metadata.full_name || body.fullName || email.split('@')[0] || 'User').trim();
     const storeName = String(metadata.store_name || body.storeName || fullName || email.split('@')[0] || 'My Store').trim();
     const requestedSlug = cleanSlug(metadata.store_slug || body.storeSlug || storeName || email.split('@')[0]);
@@ -140,12 +139,6 @@ export const handler: Handler = async (event) => {
     if (profileError) return json(500, { error: 'Failed to create profile', details: profileError.message });
 
     const profileId = String(profile?.id || userId);
-
-    for (const assignedRole of assignedRoles) {
-      await supabaseAdmin.from('user_roles').insert({ user_id: userId, role: assignedRole, is_active: true }).then(({ error }: any) => {
-        if (error && String(error.code) !== '23505') console.warn('signup-bootstrap user_roles:', error.message);
-      });
-    }
 
     if (assignedRoles.includes('seller')) {
       await supabaseAdmin

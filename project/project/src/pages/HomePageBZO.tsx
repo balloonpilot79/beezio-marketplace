@@ -135,8 +135,11 @@ export default function HomePageBZO() {
               <Link to="/marketplace" className="bz-button bz-button-gold">
                 Shop the Marketplace <ArrowRight size={17} />
               </Link>
-              <Link to="/signup?role=seller" className="hm-hero-secondary">
-                Open a Free Store <ArrowRight size={17} />
+              <Link to="/account/signup" className="hm-hero-secondary">
+                Create Buyer Account <ArrowRight size={17} />
+              </Link>
+              <Link to="/signup" className="hm-hero-secondary">
+                Create Business Account <ArrowRight size={17} />
               </Link>
             </div>
             <p className="hm-hero-note">
@@ -266,9 +269,6 @@ export default function HomePageBZO() {
                         <ArrowRight size={17} />
                       </span>
                     </div>
-                    {product.affiliateAmount > 0 && (
-                      <p className="mt-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">Earn {money(product.affiliateAmount)} per sale</p>
-                    )}
                     <p className="hm-product-detail">
                       See product & delivery details
                     </p>
