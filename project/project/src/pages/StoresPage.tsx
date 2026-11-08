@@ -1,38 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Search, Store } from 'lucide-react';
 import PublicLayout from '../components/layout/PublicLayout';
 
-type PublicStore = { slug: string; name: string; image: string | null; productCount: number };
+import { usePublicStores } from '../hooks/usePublicStores';
 
 const StoresPage: React.FC = () => {
-  const [stores, setStores] = useState<PublicStore[]>([]);
+  const { stores, loading, error, retry } = usePublicStores();
   const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    let active = true;
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 15000);
-    setLoading(true);
-    setError(false);
-    (async () => {
-      try {
-        const response = await fetch('/api/public/marketplace/products?stores_only=1', { signal: controller.signal });
-        if (!response.ok) throw new Error('Stores unavailable');
-        const payload = await response.json();
-        if (!Array.isArray(payload.stores)) throw new Error('Invalid directory');
-        if (active) setStores(payload.stores.filter((store: PublicStore) => store.productCount > 0).sort((a: PublicStore, b: PublicStore) => a.name.localeCompare(b.name)));
-      } catch {
-        if (active) setError(true);
-      } finally {
-        window.clearTimeout(timeout);
-        if (active) setLoading(false);
-      }
-    })();
-    return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
-  }, [attempt]);
   const visibleStores = useMemo(() => stores.filter(store => store.name.toLowerCase().includes(query.trim().toLowerCase())), [stores, query]);
   return (
     <PublicLayout>
@@ -49,7 +24,7 @@ const StoresPage: React.FC = () => {
         <Link to="/signup" className="bz-text-link">Create your free store <ArrowRight className="h-4 w-4" /></Link>
       </div>
       {loading ? <p className="mt-8 text-slate-600" role="status">Loading stores…</p> : error ? (
-        <div className="bz-panel mt-8 p-6" role="alert"><p>We couldn’t load the stores right now.</p><button className="bz-button bz-button-gold mt-4" onClick={() => setAttempt(value => value + 1)}>Try again</button></div>
+        <div className="bz-panel mt-8 p-6" role="alert"><p>We couldn’t load the stores right now.</p><button className="bz-button bz-button-gold mt-4" onClick={retry}>Try again</button></div>
       ) : (
         <>
           <p className="mt-6 text-sm text-slate-500">{visibleStores.length} {visibleStores.length === 1 ? 'store' : 'stores'}</p>

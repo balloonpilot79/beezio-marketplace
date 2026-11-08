@@ -503,11 +503,13 @@
   border-radius: 14px;
   overflow: hidden;
   color: #fff;
+  background: #253a32;
 }
 .hm-store-card > img {
   width: 100%;
   height: 205px;
-  object-fit: cover;
+  object-fit: contain;
+  background: #faf9f5;
   object-position: center;
 }
 .hm-store-card > div {
@@ -529,24 +531,12 @@
   justify-content: space-between;
   font-size: 12px;
 }
-.hm-marebelle {
-  background: #342f29;
-}
-.hm-redtail {
-  background: #422524;
-}
-.hm-nutrition {
-  background: #174938;
-}
-.hm-nutrition > img {
-  object-fit: contain;
-  padding: 20px;
-  background: #d8e4c4;
-}
-.hm-store-caption {
-  font-size: 10px;
-  color: #66736e;
-  margin-top: 12px;
+.hm-store-card > .hm-store-image-placeholder {
+  display: grid;
+  min-height: 155px;
+  place-items: center;
+  background: #faf9f5;
+  color: #253a32;
 }
 .hm-build {
   display: grid;
@@ -910,31 +900,6 @@
 @media (prefers-reduced-motion: reduce) {
   .hm-page * {
     transition: none !important;
-  }
-}
-
-/* Keep the sample storefront readable without cropping its preview. */
-.hm-store-sample-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-.hm-store-sample {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  align-items: center;
-}
-.hm-store-sample > img {
-  height: auto;
-  min-height: 0;
-  object-fit: contain;
-}
-.hm-store-sample span,
-.hm-store-sample p,
-.hm-stores-section .hm-store-caption {
-  font-size: 14px;
-}
-@media (max-width: 700px) {
-  .hm-store-sample {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 

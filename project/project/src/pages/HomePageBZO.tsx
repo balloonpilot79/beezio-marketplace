@@ -12,6 +12,7 @@ import { pricingExplanation } from "../components/brand/BeezioBrand";
 import { catalogRotationSlot, rotateCatalog } from "../utils/catalogRotation";
 import { fetchMarketplaceCatalog } from "../utils/marketplaceCatalog";
 import { prepareHomeProducts, type HomeProduct } from "../utils/homeCatalog";
+import { usePublicStores } from "../hooks/usePublicStores";
 import "../styles/beezio-home.css";
 
 const money = (amount: number) =>
@@ -76,6 +77,7 @@ const paths = [
 ];
 
 export default function HomePageBZO() {
+  const { stores, loading: storesLoading } = usePublicStores();
   const [products, setProducts] = useState<HomeProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -145,7 +147,8 @@ export default function HomePageBZO() {
             <p className="hm-hero-note">
               <Check size={14} /> PayPal checkout. See delivery and return details before you buy.
             </p>
-            <nav aria-label="Shopping help" className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold">
+            <nav aria-label="Shopping links" className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold">
+              <Link to="/stores" className="underline">Discover stores</Link>
               <Link to="/support" className="underline">Contact support</Link>
               <Link to="/returns" className="underline">Returns</Link>
               <Link to="/how-it-works" className="underline">How Beezio works</Link>
@@ -298,6 +301,31 @@ export default function HomePageBZO() {
             </Link>
           )}
         </section>
+        <section id="stores" className="hm-stores-section" aria-labelledby="home-stores-title">
+          <div className="hm-section-heading">
+            <div>
+              <p className="hm-kicker">Discover stores</p>
+              <h2 id="home-stores-title">Shop Beezio storefronts</h2>
+            </div>
+            <Link to="/stores" className="hm-all-link">
+              Browse all stores <ArrowRight size={17} />
+            </Link>
+          </div>
+          {storesLoading && <p role="status">Loading stores…</p>}
+          <div className="hm-store-grid">
+            {stores.slice(0, 3).map(store => (
+              <Link key={store.slug} to={`/store/${encodeURIComponent(store.slug)}`} className="hm-store-card">
+                {store.image
+                  ? <img src={store.image} alt="" loading="lazy" />
+                  : <div className="hm-store-image-placeholder"><Store size={36} aria-hidden="true" /></div>}
+                <div>
+                  <h3>{store.name}</h3>
+                  <p>Visit store <ArrowRight size={16} aria-hidden="true" /></p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
         <section
           id="start"
           aria-label="Start your business on Beezio"
@@ -354,36 +382,6 @@ export default function HomePageBZO() {
           <Link to="/affiliates" className="bz-button bz-button-gold">
             Explore affiliate earning <ArrowRight size={17} />
           </Link>
-        </section>
-        <section id="stores" className="hm-stores-section">
-          <div className="hm-section-heading">
-            <div>
-              <p className="hm-kicker">Your free custom store</p>
-              <h2>Explore stores. Find your style.</h2>
-            </div>
-            <Link to="/stores" className="hm-all-link">
-              Browse all stores <ArrowRight size={17} />
-            </Link>
-          </div>
-          <div className="hm-store-grid hm-store-sample-grid">
-            <Link to="/store/marebelle" className="hm-store-card hm-marebelle hm-store-sample">
-              <img
-                src="/marebelle-storefront-example.png"
-                alt="Sample MareBelle custom storefront on Beezio"
-                loading="lazy"
-              />
-              <div>
-                <span>Sample storefront</span>
-                <h3>MareBelle</h3>
-                <p>
-                  Visit MareBelle <ArrowRight size={16} />
-                </p>
-              </div>
-            </Link>
-          </div>
-          <p className="hm-store-caption">
-            MareBelle is a Beezio-operated example store. Explore its real products and see what your own store could look like.
-          </p>
         </section>
         <section className="hm-build">
           <div className="hm-build-preview">
