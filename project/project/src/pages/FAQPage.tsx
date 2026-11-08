@@ -9,12 +9,12 @@ const faqSections = [
       {
         question: 'What is Beezio?',
         answer:
-          'Beezio is a marketplace where sellers list products and buyers shop. Approved partners can share listings using Beezio tools.'
+          'Beezio is a marketplace where sellers list products and buyers shop. Business accounts can promote eligible listings as affiliates and refer people as Beezio Ambassadors.'
       },
       {
         question: 'How do I create an account?',
         answer:
-          'Create a shopper account for purchases, or a free business account for selling, affiliate promotion, and influencer referrals. One business account includes all three tools and one shared store.'
+          'Create a shopper account for purchases, or a free business account for selling, affiliate promotion, and influencer referrals. A business account also lets you shop with the same login and includes one shared store.'
       },
       {
         question: 'Is Beezio secure?',
@@ -44,17 +44,17 @@ const faqSections = [
       {
         question: 'How does pricing work?',
         answer:
-          'You set the amount you want to receive per sale. The customer price includes processing and platform fees.'
+          'You set what you want to receive per sale. You also choose whether affiliates can promote each product and what they earn on a qualifying sale.'
       },
       {
         question: 'What fees do I pay?',
         answer:
-          'Platform and processing fees are built into the customer price so your seller payout stays protected.'
+          'Beezio charges sellers no listing fees, monthly fees, or seller fees.'
       },
       {
         question: 'Does tax or shipping come out of my payout?',
         answer:
-          'No. You set your seller amount, affiliate payout, and shipping cost. Shipping and applicable tax are shown separately at checkout. Your specified seller amount and shipping money remain covered on eligible completed sales.'
+          'Your seller amount is paid on eligible completed sales. Any shipping charge you set is added to your payout. The shopper sees any shipping charge and applicable tax before payment.'
       }
     ]
   },
@@ -64,7 +64,7 @@ const faqSections = [
       {
         question: `What is the ${getPartnerProgramLabel()}?`,
         answer:
-          `The ${getPartnerProgramLabel()} lets approved ${getPartnerLabel().toLowerCase()} share curated storefronts and product links using Beezio tools.`
+          `The ${getPartnerProgramLabel()} lets ${getPartnerLabel().toLowerCase()} use a business account to share eligible products through their storefront or tracked links.`
       },
       {
         question: 'How do I share products?',
@@ -74,7 +74,7 @@ const faqSections = [
       {
         question: `Is the ${getPartnerProgramLabel()} active?`,
         answer:
-          'Yes. Access is approved based on account status and program availability.'
+          'Yes. A business account includes affiliate tools. Sellers choose which products affiliates can promote, and commissions apply to qualifying sales.'
       }
     ]
   },
@@ -89,7 +89,7 @@ const faqSections = [
       {
         question: 'Do I need an account to shop?',
         answer:
-          'You can browse products and build a cart without an account. Sign in or create a free shopper account before checkout so your orders, receipts, tracking, and support stay linked to you.'
+          'You can browse products and build a cart without an account. Sign in with your shopper or business account before checkout. If you’re new and only want to shop, create a free shopper account.'
       }
     ]
   },
@@ -109,7 +109,7 @@ const faqSections = [
       {
         question: 'Do sellers or affiliates pay monthly fees?',
         answer:
-          'No. Joining is free. Beezio earns from fees included in the product price when a sale happens.'
+          'Beezio is free to join and has no monthly fees for sellers, affiliates, or Ambassadors.'
       },
       {
         question: 'Are there any signup fees?',

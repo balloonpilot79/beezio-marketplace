@@ -20,7 +20,7 @@ const AboutPage: React.FC = () => {
           </p>
           <h1 className="text-4xl font-bold text-[#101820]">A modern marketplace for physical goods</h1>
           <p className="text-lg text-gray-600">
-            Beezio brings sellers, customers, and approved marketing partners together in a single, retail-first shopping experience.
+            Beezio brings sellers, customers, and affiliates and Ambassadors together in a single, retail-first shopping experience.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
@@ -69,7 +69,7 @@ const AboutPage: React.FC = () => {
               <div id="partners">
                 <h3 className="text-lg font-semibold text-[#101820]">{getPartnerLabel()}</h3>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Approved members can join the {getPartnerProgramLabel()}.</li>
+                  <li>Business accounts can use the {getPartnerProgramLabel()} to promote eligible products.</li>
                   <li>Share curated product links and storefronts using Beezio tools.</li>
                 </ul>
               </div>

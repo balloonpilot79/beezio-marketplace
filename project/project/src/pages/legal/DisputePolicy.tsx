@@ -39,27 +39,6 @@ const DisputePolicy: React.FC = () => (
         resolved against the seller may result in payout reversals.
       </p>
     </section>
-    <section>
-      <h2 className="text-xl font-semibold text-gray-900">6. Insurance Lead Disputes</h2>
-      <p>
-        Insurance lead payouts and wallet charges may be held or reviewed if a lead is disputed for fraud, duplication,
-        missing verification, out-of-state mismatch, or non-compliant promotion. Insurance is intended for vetted warm
-        inbound requests, not cold lead traffic. Insurance submissions are intended for one-agent contact after
-        qualification and verification, not mass distribution.
-      </p>
-      <p className="mt-3">
-        Approved insurance lead disputes are resolved as account credit restored to the agent wallet. Beezio does not
-        issue cash refunds for used or unused insurance lead balance except where required by law.
-      </p>
-    </section>
-    <section>
-      <h2 className="text-xl font-semibold text-gray-900">7. Insurance Promotion Compliance</h2>
-      <p>
-        If Beezio determines an insurance storefront or partner promotion used prohibited language such as guaranteed
-        approval, guaranteed coverage, cold-lead claims, or multi-agent blast promises, related payouts may be held,
-        reversed, or denied while moderation review is completed.
-      </p>
-    </section>
   </LegalPageLayout>
 );
 

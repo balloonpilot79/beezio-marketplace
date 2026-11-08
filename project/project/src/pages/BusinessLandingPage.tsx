@@ -50,10 +50,10 @@ const content = {
     ],
   },
   influencer: {
-    label: "For influencers • Beezio beta",
-    title: "Help us launch Beezio. Earn when the sellers and affiliates you introduce make qualifying product sales.",
+    label: "Beezio Ambassadors",
+    title: "Introduce sellers and affiliates. Earn as they sell.",
     description:
-      "Beezio is a brand-new marketplace built to help sellers move products through affiliates. We’re inviting early influencers and creators to help bring sellers and affiliates together. Share your personal referral link. If an eligible seller or affiliate joins through your link and later participates in a qualifying product sale, your referral relationship can earn an influencer bonus. You are not paid for the signup itself, and income is never guaranteed.",
+      "An affiliate recommends products. A Beezio Ambassador introduces sellers and affiliates. Share your referral link and earn when eligible people you referred participate in qualifying sales. Earnings depend on qualifying sales.",
     features: [
       [
         "Share one tracked referral link",
@@ -108,7 +108,7 @@ export default function BusinessLandingPage({
           <p className="mt-5 leading-7 text-slate-600">{page.description}</p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link to={audience === "overview" ? "/signup" : `/signup?role=${audience}`} className="bz-button bz-button-gold">
-              {audience === "influencer" ? "Join free as an influencer" : "Start your free website"}
+              {audience === "influencer" ? "Join free as an Ambassador" : "Start your free website"}
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link to="/marketplace" className="bz-button bz-button-outline">
@@ -137,8 +137,7 @@ export default function BusinessLandingPage({
           <h2 id="influencer-example" className="mt-3 text-2xl font-semibold">Refer once. Earn on ongoing qualifying sales.</h2>
           <p className="mt-4 leading-7 text-slate-600">
             Invite sellers and affiliates using your unique referral link. When they join through your link,
-            you can keep earning from their qualifying sales for as long as they continue selling on Beezio.
-            Influencer rewards are already built into product prices.
+            you can keep earning from qualifying sales while their account and referral remain eligible.
           </p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl bg-slate-50 p-5">
@@ -208,7 +207,7 @@ export default function BusinessLandingPage({
       </section>
       <section className="py-12">
         <h2 className="mb-6 text-2xl font-semibold tracking-tight">
-          One login. The right space for what you do.
+          Choose the account that fits what you do.
         </h2>
         <div className="mb-8 grid gap-4 sm:grid-cols-2">
           <div className="flex items-start gap-3 text-sm leading-6 text-slate-600">
@@ -217,16 +216,16 @@ export default function BusinessLandingPage({
               <strong className="font-semibold text-slate-900">
                 Shopper Account:
               </strong>{" "}
-              your purchases, receipts, and order support.
+              a shopping account for purchases, receipts, and order support.
             </p>
           </div>
           <div className="flex items-start gap-3 text-sm leading-6 text-slate-600">
             <Check className="mt-1 h-4 w-4 shrink-0" />
             <p>
               <strong className="font-semibold text-slate-900">
-                Business Center:
+                Business Account:
               </strong>{" "}
-              your website, products, promotions, referrals, and earnings.
+              shop using the same login you use for your store, promotions, referrals, and earnings.
             </p>
           </div>
         </div>

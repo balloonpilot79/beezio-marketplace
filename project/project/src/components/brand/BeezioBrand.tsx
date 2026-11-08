@@ -16,7 +16,7 @@ export const websiteBenefits = [
 ];
 
 export const pricingExplanation =
-  "You set the amount you receive for your product. Beezio’s platform charges and affiliate commissions are built into the selling price, not deducted from that amount. Product, fulfillment, shipping, and tax costs still apply as relevant.";
+  "Beezio is free to join. Sellers set what they receive and choose which products affiliates can promote. Shoppers see the product price, any shipping charge, and applicable tax before payment.";
 
 export const audiences = [
   {
@@ -45,7 +45,7 @@ export const audiences = [
     label: "For influencers",
     title: "Refer once. Earn as they sell.",
     description:
-      "When a seller or affiliate signs up with your referral code or link, earn commission on every qualifying sale they make on Beezio—with lifetime referral attribution. Turn your connections into ongoing earning potential.",
+      "When a seller or affiliate signs up with your referral code or link, you can keep earning from their qualifying sales while their account and referral remain eligible.",
     action: "Explore influencer earnings",
     href: "/start-earning",
   },

@@ -276,7 +276,7 @@ const CanonicalProductCard: React.FC<Props> = ({
             <span className="text-2xl font-bold text-gray-900">${buyerPrice.toFixed(2)}</span>
           </div>
           {affiliateEarnings}
-          <div className="text-xs text-gray-500 mt-1">Shipping & tax at checkout</div>
+          <div className="text-xs text-gray-500 mt-1">Shipping details on product page</div>
         </div>
       </ProductLink>
       <div className={compact ? 'p-3 pt-0' : 'p-5 pt-0'}>

@@ -468,7 +468,7 @@ const SellersPage: React.FC = () => {
               
               <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-indigo-500">
                 <h4 className="font-semibold text-gray-900 mb-2">Affiliate Network Access</h4>
-                <p className="text-gray-600 text-sm">Connect with approved partners and track performance metrics.</p>
+                <p className="text-gray-600 text-sm">Choose which products affiliates can promote and track performance.</p>
               </div>
             </div>
           </div>

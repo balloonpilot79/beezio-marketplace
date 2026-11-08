@@ -243,7 +243,7 @@ const CartPage: React.FC = () => {
 
             <div className="mt-4 text-sm text-emerald-700">
               <p className="font-medium">
-                Shipping is added separately based on each item and quantity. {getCombinedShippingSavings(items) > 0 && `Seller combined shipping saves $${getCombinedShippingSavings(items).toFixed(2)} on delivery.`}
+                {shipping > 0 ? 'Shipping is calculated by item and quantity.' : 'There is no shipping charge for this cart.'} {getCombinedShippingSavings(items) > 0 && `Seller combined shipping saves $${getCombinedShippingSavings(items).toFixed(2)} on delivery.`}
               </p>
             </div>
 
@@ -251,7 +251,7 @@ const CartPage: React.FC = () => {
               onClick={handleCheckout}
               className="w-full bg-amber-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-amber-700 transition-colors mt-6"
             >
-              Checkout with PayPal
+              {user ? 'Checkout with PayPal' : 'Continue to checkout'}
             </button>
 
             {/* Trust Badges */}
