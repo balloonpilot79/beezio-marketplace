@@ -1,12 +1,12 @@
 import { getPublicSellerName } from './publicSellerIdentity';
-import { isPublicAffiliateProduct } from './publicProductVisibility';
+import { isPublicAffiliateProduct, isPublicMarketplaceProduct } from './publicProductVisibility';
 
 export type PublicStoreDirectoryEntry = { slug: string; name: string; image: string | null; productCount: number };
 
 export function buildPublicStoreDirectory(products: any[], settingsBySeller: Map<string, any>, storefrontsByProduct: Map<string, any[]>, affiliateStores: any[] = []): PublicStoreDirectoryEntry[] {
   const directory = new Map<string, { slug: string; name: string; image: string | null; productIds: Set<string> }>();
-  const visibleProducts = products.filter(isPublicAffiliateProduct);
-  const productsById = new Map(visibleProducts.map(product => [String(product.id), product]));
+  const visibleProducts = products.filter(isPublicMarketplaceProduct);
+  const productsById = new Map(visibleProducts.filter(isPublicAffiliateProduct).map(product => [String(product.id), product]));
   const addStore = (slugValue: unknown, name: string, product: any) => {
     const slug = String(slugValue || '').trim();
     if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) return;
@@ -22,6 +22,7 @@ export function buildPublicStoreDirectory(products: any[], settingsBySeller: Map
     }
     (storefrontsByProduct.get(String(product.id)) || []).forEach(store => {
       if (store.is_active === false) return;
+      if (!isPublicAffiliateProduct(product) && String(store.owner_id) !== String(product.seller_id)) return;
       addStore(store.slug, getPublicSellerName(null, null, store), product);
     });
   });

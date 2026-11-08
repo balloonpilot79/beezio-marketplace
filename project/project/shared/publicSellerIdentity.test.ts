@@ -32,6 +32,15 @@ describe('public store discovery', () => {
     const products = [ { ...product, id: '721f1a14-645b-4aee-97b2-ec9ae780eeca' }, { ...product, id: 'withdrawn', is_active: false }, { ...product, id: 'sold-out', in_stock: false } ];
     expect(buildPublicStoreDirectory(products, new Map([['seller', { subdomain: 'own-shop' }]]), new Map(), [{ subdomain: 'empty-shop', productIds: ['missing'] }])).toEqual([]);
   });
+  it('includes direct-sale products only in the owning store', () => {
+    const direct = { ...product, direct_marketplace_listing: true, affiliate_enabled: false };
+    const settings = new Map([['seller', { subdomain: 'own-shop' }]]);
+    const placements = new Map([[direct.id, [{ slug: 'stale-promotion', owner_id: 'affiliate' }]]]);
+    const stores = buildPublicStoreDirectory([direct], settings, placements, [
+      { subdomain: 'affiliate-shop', productIds: [direct.id] },
+    ]);
+    expect(stores.map(store => store.slug)).toEqual(['own-shop']);
+  });
   it('counts each live brand product once and ignores unsafe store paths', () => {
     const store = { slug: 'marebelle', name: 'MareBelle', owner_id: 'seller', is_active: true };
     const stores = buildPublicStoreDirectory([product, product], new Map([['seller', { subdomain: 'marebelle' }]]), new Map([['shirt', [store, store, { slug: '../admin' }]]]));

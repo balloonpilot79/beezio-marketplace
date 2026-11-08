@@ -8,12 +8,16 @@ import { applyCanonicalProductPricing } from '../../shared/productPricing';
 import { isSupplyLineProduct, sanitizeSupplyLineProduct } from '../../shared/publicSupplyLineProduct';
 import { getOwnedProductStorefront, getPublicSellerName } from '../../shared/publicSellerIdentity';
 
-function json(statusCode: number, body: unknown) {
+function json(statusCode: number, body: unknown, cacheDirectory = false) {
   return {
     statusCode,
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store',
+      'Netlify-Vary': 'query=stores_only|include_stores|page_size|offset',
+      ...(cacheDirectory ? {
+        'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=60, stale-while-revalidate=60',
+      } : {}),
     },
     body: JSON.stringify(body),
   };
@@ -117,6 +121,7 @@ const handler: Handler = async (event) => {
     ].join(',');
 
     const params = event.queryStringParameters || {};
+    const storesOnly = params.stores_only === '1';
     const requestedSize = Number(params.page_size || 500);
     const pageSize = Number.isSafeInteger(requestedSize) ? Math.max(1, Math.min(500, requestedSize)) : 500;
     const requestedOffset = Number(params.offset || 0);
@@ -124,7 +129,9 @@ const handler: Handler = async (event) => {
 
     const { data, error } = await supabaseAdmin
       .from('products')
-      .select(selectFields)
+      .select(storesOnly
+        ? 'id,seller_id,images,is_active,is_promotable,affiliate_enabled,direct_marketplace_listing,status,is_digital,in_stock,track_inventory,stock_quantity,total_inventory'
+        : selectFields)
       .eq('is_active', true)
       .or('and(is_promotable.eq.true,affiliate_enabled.eq.true),and(direct_marketplace_listing.eq.true,affiliate_enabled.eq.false)')
       .eq('status', 'active')
@@ -147,7 +154,6 @@ const handler: Handler = async (event) => {
       candidates.map((product: any) => text(product?.seller_id)).filter(Boolean)
     ));
     const productIds = candidates.map((product: any) => text(product?.id)).filter(Boolean);
-    const storesOnly = params.stores_only === '1';
     const includeStores = storesOnly || params.include_stores === '1';
 
     const [categories, sellers, sellerSettings, placements, selections] = await Promise.all([
@@ -186,6 +192,7 @@ const handler: Handler = async (event) => {
       });
     });
     const sellerSettingsById = new Map((sellerSettings.data || []).map((row: any) => [text(row.seller_id), row]));
+    let directoryComplete = ![sellers, sellerSettings, placements, selections].some(result => 'error' in result && result.error);
     const { data: placementRows } = placements;
     const storefrontsByProductId = new Map<string, any[]>();
     if (placementRows?.length) {
@@ -194,11 +201,12 @@ const handler: Handler = async (event) => {
       ));
       const storefrontById = new Map<string, any>();
       if (storefrontIds.length) {
-        const { data: storefrontRows } = await supabaseAdmin
+        const { data: storefrontRows, error: storefrontError } = await supabaseAdmin
           .from('storefronts')
           .select('id,owner_id,name,slug,theme_settings,is_active')
           .in('id', storefrontIds.slice(0, 500))
           .eq('is_active', true);
+        directoryComplete &&= !storefrontError;
         (storefrontRows || []).forEach((row: any) => {
           const id = text(row?.id);
           if (id) storefrontById.set(id, row);
@@ -215,6 +223,7 @@ const handler: Handler = async (event) => {
     }
 
     const products = candidates.map((raw: any) => {
+      if (storesOnly) return { ...raw, profiles: sellerMetaById.get(text(raw.seller_id)) };
       const preview = isLovingNutritionPreview(raw);
       const storedBuyerPrice = Number(raw?.calculated_customer_price ?? 0);
       const priced = preview || (Number.isFinite(storedBuyerPrice) && storedBuyerPrice > 0)
@@ -284,6 +293,7 @@ const handler: Handler = async (event) => {
         supabaseAdmin.from('store_settings').select('seller_id,store_name,subdomain').in('seller_id', affiliateIds.slice(0, 500)),
         supabaseAdmin.from('affiliate_store_settings').select('affiliate_id,store_name,subdomain').in('affiliate_id', affiliateIds.slice(0, 500)),
       ]);
+      directoryComplete &&= !memberSettings.error && !affiliateSettings.error;
       affiliateIds.forEach(id => {
         const settings = (memberSettings.data || []).find((row: any) => text(row.seller_id) === id)
           || (affiliateSettings.data || []).find((row: any) => text(row.affiliate_id) === id);
@@ -292,7 +302,7 @@ const handler: Handler = async (event) => {
     }
     const stores = buildPublicStoreDirectory(products, sellerSettingsById, storefrontsByProductId, affiliateStores);
 
-    if (storesOnly) return json(200, { ok: true, stores });
+    if (storesOnly) return json(200, { ok: true, stores }, directoryComplete && !params.page_size && !params.offset);
 
     return json(200, {
       ok: true,
