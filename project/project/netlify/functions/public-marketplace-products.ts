@@ -143,54 +143,52 @@ const handler: Handler = async (event) => {
     const categoryIds = Array.from(new Set(
       candidates.map((product: any) => text(product?.beezio_category_id)).filter(Boolean)
     ));
-    const categoryMetaById = new Map<string, { name?: string; slug?: string; parent_id?: string | null }>();
-    if (categoryIds.length) {
-      const { data: categoryRows } = await supabaseAdmin
-        .from('categories')
-        .select('id,name,slug,parent_id')
-        .in('id', categoryIds.slice(0, 500));
-      (categoryRows || []).forEach((row: any) => {
-        const id = text(row?.id);
-        if (!id) return;
-        categoryMetaById.set(id, {
-          name: text(row?.name) || undefined,
-          slug: text(row?.slug) || undefined,
-          parent_id: row?.parent_id ? text(row.parent_id) : null,
-        });
-      });
-    }
-
     const sellerIds = Array.from(new Set(
       candidates.map((product: any) => text(product?.seller_id)).filter(Boolean)
     ));
-    const sellerMetaById = new Map<string, { full_name?: string; location?: string }>();
-    if (sellerIds.length) {
-      const { data: sellerRows } = await supabaseAdmin
-        .from('profiles')
-        .select('id,full_name,location')
-        .in('id', sellerIds.slice(0, 500));
-      (sellerRows || []).forEach((row: any) => {
-        const id = text(row?.id);
-        if (!id) return;
-        sellerMetaById.set(id, {
-          full_name: text(row?.full_name) || undefined,
-          location: text(row?.location) || undefined,
-        });
-      });
-    }
-
-    const { data: sellerSettingsRows } = sellerIds.length
-      ? await supabaseAdmin.from('store_settings').select('seller_id,store_name,subdomain').in('seller_id', sellerIds.slice(0, 500))
-      : { data: [] };
-    const sellerSettingsById = new Map((sellerSettingsRows || []).map((row: any) => [text(row.seller_id), row]));
-
     const productIds = candidates.map((product: any) => text(product?.id)).filter(Boolean);
+    const storesOnly = params.stores_only === '1';
+    const includeStores = storesOnly || params.include_stores === '1';
+
+    const [categories, sellers, sellerSettings, placements, selections] = await Promise.all([
+      !storesOnly && categoryIds.length
+        ? supabaseAdmin.from('categories').select('id,name,slug,parent_id').in('id', categoryIds.slice(0, 500))
+        : { data: [] },
+      sellerIds.length
+        ? supabaseAdmin.from('profiles').select('id,full_name,location').in('id', sellerIds.slice(0, 500))
+        : { data: [] },
+      sellerIds.length
+        ? supabaseAdmin.from('store_settings').select('seller_id,store_name,subdomain').in('seller_id', sellerIds.slice(0, 500))
+        : { data: [] },
+      productIds.length
+        ? supabaseAdmin.from('storefront_products').select('product_id,storefront_id').in('product_id', productIds.slice(0, 500))
+        : { data: [] },
+      productIds.length && includeStores
+        ? supabaseAdmin.from('affiliate_products').select('affiliate_id,product_id').in('product_id', productIds.slice(0, 500)).eq('is_active', true).limit(1000)
+        : { data: [] },
+    ]);
+
+    const categoryMetaById = new Map<string, { name?: string; slug?: string; parent_id?: string | null }>();
+    (categories.data || []).forEach((row: any) => {
+      const id = text(row?.id);
+      if (id) categoryMetaById.set(id, {
+        name: text(row?.name) || undefined,
+        slug: text(row?.slug) || undefined,
+        parent_id: row?.parent_id ? text(row.parent_id) : null,
+      });
+    });
+    const sellerMetaById = new Map<string, { full_name?: string; location?: string }>();
+    (sellers.data || []).forEach((row: any) => {
+      const id = text(row?.id);
+      if (id) sellerMetaById.set(id, {
+        full_name: text(row?.full_name) || undefined,
+        location: text(row?.location) || undefined,
+      });
+    });
+    const sellerSettingsById = new Map((sellerSettings.data || []).map((row: any) => [text(row.seller_id), row]));
+    const { data: placementRows } = placements;
     const storefrontsByProductId = new Map<string, any[]>();
-    if (productIds.length) {
-      const { data: placementRows } = await supabaseAdmin
-        .from('storefront_products')
-        .select('product_id,storefront_id')
-        .in('product_id', productIds.slice(0, 500));
+    if (placementRows?.length) {
       const storefrontIds = Array.from(new Set(
         (placementRows || []).map((row: any) => text(row?.storefront_id)).filter(Boolean)
       ));
@@ -278,9 +276,7 @@ const handler: Handler = async (event) => {
       };
     });
 
-    const { data: affiliateSelections } = productIds.length && event?.queryStringParameters?.include_stores === '1'
-      ? await supabaseAdmin.from('affiliate_products').select('affiliate_id,product_id').in('product_id', productIds.slice(0, 500)).eq('is_active', true).limit(1000)
-      : { data: [] };
+    const { data: affiliateSelections } = selections;
     const affiliateIds = Array.from(new Set((affiliateSelections || []).map((row: any) => text(row.affiliate_id)).filter(Boolean)));
     const affiliateStores: any[] = [];
     if (affiliateIds.length) {
@@ -295,6 +291,8 @@ const handler: Handler = async (event) => {
       });
     }
     const stores = buildPublicStoreDirectory(products, sellerSettingsById, storefrontsByProductId, affiliateStores);
+
+    if (storesOnly) return json(200, { ok: true, stores });
 
     return json(200, {
       ok: true,
