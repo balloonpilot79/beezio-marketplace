@@ -51,7 +51,7 @@ describe("Beezio public message and account boundaries", () => {
     expect(html).toContain(
       "Free websites for sellers AND affiliates. Designed by you.",
     );
-    expect(html).toContain("No monthly or listing fees. Fees apply when you make a sale.");
+    expect(html).toContain("No seller fees. No listing fees or monthly subscriptions.");
     expect(html.indexOf('id="shop"')).toBeLessThan(html.indexOf('id="start"'));
     expect(html).toContain('href="/signup"');
     expect(html).toContain('href="/marketplace"');
