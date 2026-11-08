@@ -352,10 +352,10 @@ export default function HomePageBZO() {
           <div>
             <p className="hm-kicker">How Beezio works</p>
             <h2 id="how-sales-work-title">One marketplace. Clear ways to earn.</h2>
-            <p>A seller lists a product and sets their payout and affiliate reward. An affiliate shares it using a tracked link or their store. A customer places an order, the seller fulfills it, and eligible earnings are paid after the hold and payout requirements are met.</p>
-            <p>Sellers set the amount they want to receive. Beezio includes its costs in the product price shown to shoppers. Earnings depend on qualifying sales; they are not guaranteed.</p>
+            <p>A seller lists a product, sets what they receive, and chooses whether to offer an affiliate reward. An affiliate shares it using a tracked link or their store. A customer places an order, the seller fulfills it, and eligible earnings are paid after the hold and payout requirements are met.</p>
+            <p>It’s free to join. Sellers set what they receive. Affiliates and Ambassadors earn on qualifying sales.</p>
           </div>
-          <Link to="/faq" className="bz-button bz-button-ink">Read fees and payout terms <ArrowRight size={17} /></Link>
+          <Link to="/faq" className="bz-button bz-button-ink">Read about payouts <ArrowRight size={17} /></Link>
         </section>
         <section className="hm-quick-start" aria-labelledby="quick-start-title">
           <div>
@@ -445,9 +445,8 @@ export default function HomePageBZO() {
             </h2>
             <p>
               When a seller or affiliate signs up with your referral code or
-              link, you earn commission on every qualifying sale they make on
-              Beezio. Lifetime referral attribution means your opportunity
-              continues beyond their first sale.
+              link, you can keep earning from their qualifying sales on Beezio
+              while their account and referral remain eligible.
             </p>
             <p>
               Build a network of active sellers and affiliates, and grow your
@@ -461,7 +460,7 @@ export default function HomePageBZO() {
           </Link>
         </section>
         <details className="hm-pricing">
-          <summary>How does Beezio make money?</summary>
+          <summary>What does it cost to join Beezio?</summary>
           <p>{pricingExplanation}</p>
           <p>
             Affiliate and influencer earnings come from eligible sales. Earnings

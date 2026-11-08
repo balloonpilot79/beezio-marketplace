@@ -14,8 +14,8 @@ export default function JoinPage() {
           What brings you here?
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-center leading-7 text-slate-600">
-          Shop for yourself or build something of your own. One login can do
-          both, with separate spaces for shopping and business.
+          Choose a shopper account to shop and manage orders. A business account
+          lets you shop, sell, promote products as an affiliate, and refer people as a Beezio Ambassador.
         </p>
         <div className="mt-10 grid gap-5 md:grid-cols-2">
           <section className="bz-panel flex flex-col p-7">

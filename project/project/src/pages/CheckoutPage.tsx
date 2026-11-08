@@ -69,10 +69,10 @@ const CheckoutPage: React.FC = () => {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="rounded-3xl border border-amber-200 bg-white p-8 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-700">Customer Login Required</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-700">Beezio checkout</p>
           <h1 className="mt-3 text-3xl font-bold text-slate-900">Sign in before checkout</h1>
           <p className="mt-4 text-base leading-7 text-slate-600">
-            Purchases must be tied to a customer account so orders, receipts, downloads, and partner attribution stay linked correctly.
+            Sign in with your shopper or business account to keep your orders, receipts, and support in one place.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
@@ -80,14 +80,14 @@ const CheckoutPage: React.FC = () => {
               onClick={() => setPostAuthPath(nextPath)}
               className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
             >
-              Customer Login
+              Sign in to Beezio
             </Link>
             <Link
               to={`/account/signup?next=${encodeURIComponent(nextPath)}`}
               onClick={() => setPostAuthPath(nextPath)}
               className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
-              Create Account
+              Create a shopper account
             </Link>
             <Link
               to="/cart"
@@ -236,12 +236,12 @@ const CheckoutPage: React.FC = () => {
               {[
                 'SSL encrypted checkout',
                 'Clear, transparent pricing',
-                hasDigitalItems ? 'Paid digital delivery stays locked to the buyer account' : 'Fast & reliable shipping',
+                hasDigitalItems ? 'Paid digital delivery stays locked to the buyer account' : 'Delivery timing varies by item and seller',
                 hasDigitalItems
                   ? 'Digital downloads are non-refundable after download unless the file is wrong or broken'
                   : items.some((i) => i.isSample)
                     ? 'Samples are final sale (no returns)'
-                    : '30-day return policy',
+                    : 'See each product’s return eligibility. For eligible items, request a return within 14 days of delivery.',
               ].map((text) => (
                 <div key={text} className="flex items-center space-x-2">
                   <span className="inline-block h-2 w-2 rounded-full bg-green-500" />

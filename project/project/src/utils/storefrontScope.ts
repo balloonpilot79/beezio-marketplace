@@ -6,6 +6,8 @@ export type StorefrontScope =
 export interface StorefrontBranding {
   kind: 'seller' | 'affiliate' | 'generic';
   storeId?: string;
+  productIds?: ReadonlySet<string>;
+  affiliateIds?: ReadonlySet<string>;
   name: string;
   tagline?: string;
   logoUrl?: string | null;
@@ -91,6 +93,7 @@ export async function loadStorefrontBranding(scope: StorefrontScope | null): Pro
       const identity = resolveHouseBrandIdentity(slug);
       return {
         kind: 'seller',
+        productIds: new Set<string>((Array.isArray(payload?.products) ? payload.products : []).map((product: { id: string }) => product.id)),
         accentColor: identity?.accentColor || seller?.primary_color || '#c7a34a',
         backgroundColor: seller?.background_color || (identity?.slug === 'marebelle' ? '#e5d8bb' : '#faf9f5'),
         inverseHeader: Boolean(identity),
@@ -110,6 +113,7 @@ export async function loadStorefrontBranding(scope: StorefrontScope | null): Pro
     const slug = String(settings?.subdomain || affiliate?.subdomain || payload?.canonical_affiliate_id || scope.storeId).trim();
       return {
         kind: 'affiliate',
+        affiliateIds: new Set<string>([payload?.canonical_affiliate_id, affiliate?.id, affiliate?.user_id].filter(Boolean)),
         accentColor: settings?.primary_color || '#c7a34a',
         backgroundColor: settings?.background_color || '#faf9f5',
         storeId: scope.storeId,

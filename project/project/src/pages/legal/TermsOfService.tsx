@@ -12,7 +12,7 @@ const TermsOfService: React.FC = () => (
         support.
       </p>
       <p className="mt-3">
-        Beezio charges a platform fee for facilitating transactions, payment processing, and marketplace services.
+        Buyers can review the product price, any shipping charge, and applicable tax before placing an order.
       </p>
     </section>
     <section>

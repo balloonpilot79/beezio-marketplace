@@ -19,7 +19,7 @@ const AffiliateGuide: React.FC = () => {
   ];
   const launchRules = [
     'Sellers, affiliates, and influencers can join free. No inventory purchase is required for affiliate promotion.',
-    'Affiliate commissions are set by the seller and already included in the selling price.',
+    'Sellers set the affiliate commission on products they make available for promotion.',
     'Influencer earnings come from eligible, attributed product sales. Signups alone do not earn money; income is not guaranteed.',
     'Earnings have a 14-day hold from completed payment. Eligible balances of at least $5 are paid through PayPal on the 15th and last calendar day of each month.',
     'Refunds, disputes, verification, and payout policies apply. An order issue pauses only that order’s related funds.',

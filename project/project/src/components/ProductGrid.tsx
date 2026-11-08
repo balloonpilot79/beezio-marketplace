@@ -578,7 +578,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                     {storefrontBrand?.name ? 'Store pick' : 'Featured item'}
                   </div>
                   <span className="text-[11px] font-semibold" style={{ color: primaryColor }}>
-                    Shipping at checkout
+                    {(normalizedProduct as any).is_digital === true ? 'Digital download' : shippingCost === 0 ? 'Free shipping' : 'Shipping at checkout'}
                   </span>
                 </div>
               )}
@@ -619,7 +619,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                     </span>
                   )}
                   {!storefrontCard && (
-                    <span className="text-primary-500 text-xs font-semibold">Shipping at checkout</span>
+                    <span className="text-primary-500 text-xs font-semibold">{(normalizedProduct as any).is_digital === true ? 'Digital download' : shippingCost === 0 ? 'Free shipping' : 'Shipping at checkout'}</span>
                   )}
                 </div>
               </div>

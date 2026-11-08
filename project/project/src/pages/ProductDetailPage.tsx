@@ -1918,7 +1918,7 @@ const ProductDetailPage: React.FC = () => {
                 </span>
                 {showBuyerCtas && product.requires_shipping && (
                   <span className="text-sm text-gray-600">
-                    Shipping at checkout
+                    {getProductShipping(productWithSelectedVariant(product, selectedVariant)) === 0 ? 'Free shipping' : 'Shipping at checkout'}
                   </span>
                 )}
                 {showBuyerCtas && product.is_digital && (

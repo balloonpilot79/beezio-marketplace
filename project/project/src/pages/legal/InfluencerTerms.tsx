@@ -17,7 +17,7 @@ const InfluencerTerms: React.FC = () => (
       <ul className="list-disc list-inside space-y-2">
         <li>Beezio may record a seller-referrer relationship and an affiliate-referrer relationship for an eligible transaction.</li>
         <li>A signup by itself does not create an influencer payout.</li>
-        <li>Referral attribution may remain associated with an eligible account rather than ending after the first sale.</li>
+        <li>An eligible referral remains linked beyond the first qualifying sale while the account and referral remain eligible under the program rules.</li>
         <li>Compensation applies only to qualifying sales while the program, the account, and the applicable referral relationship remain eligible under Beezio&apos;s current rules.</li>
         <li>Returns, refunds, chargebacks, fraud, duplicate or self-referrals, or other ineligible activity may reduce, delay, or void related bonuses.</li>
       </ul>
