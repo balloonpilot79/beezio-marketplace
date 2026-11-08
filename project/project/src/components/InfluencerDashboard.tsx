@@ -132,6 +132,10 @@ const InfluencerDashboard: React.FC = () => {
     return `${origin}/i/${encoded}`;
   }, [codeForLink]);
 
+  const buyerSignupLink = codeForLink
+    ? `${window.location.origin}/account/signup?recruit=${encodeURIComponent(codeForLink)}`
+    : '';
+
   const handleCopy = async () => {
     const copiedOk = await copyTextToClipboard(signupLink);
     if (copiedOk) {
@@ -204,6 +208,15 @@ const InfluencerDashboard: React.FC = () => {
           Text invite opens your SMS app. Messenger copies the complete tracked invite before opening Messenger.
         </p>
       </div>
+
+      {buyerSignupLink && (
+        <section className="mt-4 rounded-xl border border-gray-200 bg-white p-4">
+          <h3 className="text-lg font-bold text-gray-900">Shopper referral link</h3>
+          <p className="mt-2 text-sm text-gray-600">Invite new shoppers. Qualifying purchases can earn you referral rewards while the account and referral remain eligible.</p>
+          <input aria-label="Shopper referral link" readOnly value={buyerSignupLink} className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+          <ReferralShareActions referralUrl={buyerSignupLink} message="Shop independent stores on Beezio through my invite." className="mt-4" />
+        </section>
+      )}
 
       <div className="mt-4 grid gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:grid-cols-[180px_1fr] sm:p-6">
         <div className="flex flex-col items-center justify-center gap-2 rounded-xl bg-white p-4">

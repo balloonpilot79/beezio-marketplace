@@ -662,7 +662,7 @@ export type Database = {
         Row: {
           id: string;
           recruited_profile_id: string;
-          recruited_role: 'seller' | 'affiliate';
+          recruited_role: 'seller' | 'affiliate' | 'buyer';
           influencer_profile_id: string;
           created_at: string;
           updated_at: string;

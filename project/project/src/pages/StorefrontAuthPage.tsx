@@ -47,6 +47,7 @@ export default function StorefrontAuthPage({
         isOpen
         mode={mode}
         audience="buyer"
+        buyerReferralCode={params.get("recruit") || undefined}
         returnTo={next}
         presentation="page"
         onClose={() => navigate(branding.homePath)}

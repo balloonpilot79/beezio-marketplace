@@ -27,10 +27,11 @@ interface AuthModalProps {
   audience?: 'buyer' | 'business';
   allowAudienceSwitch?: boolean;
   returnTo?: string;
+  buyerReferralCode?: string;
   presentation?: 'modal' | 'page';
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMode, audience: initialAudience = 'business', allowAudienceSwitch = false, presentation = 'modal', returnTo }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMode, audience: initialAudience = 'business', allowAudienceSwitch = false, presentation = 'modal', returnTo, buyerReferralCode }) => {
   if (process.env.NODE_ENV !== 'production') {
     console.debug('AuthModal: Component rendering, isOpen prop:', isOpen, 'mode:', initialMode);
   }
@@ -363,9 +364,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           }
         }
 
+        let buyerReferrerProfileId = '';
+        if (isBuyerAudience && buyerReferralCode) {
+          const response = await fetch(`/api/public/recruit/resolve?code=${encodeURIComponent(buyerReferralCode)}`);
+          if (!response.ok) throw new Error('Could not check your referral link. Please try again.');
+          const referral = await response.json();
+          if (referral.valid) buyerReferrerProfileId = String(referral.referrerProfileId || '');
+        }
         const result = await signUp(formData.email, formData.password, {
           ...formData,
           role: signupRole,
+          buyerReferrerProfileId,
           bundleBusinessRoles: isBusinessAudience,
           storeName: isNonBuyer ? resolvedStoreName : '',
           storeSlug: isNonBuyer ? storeSlug : '',

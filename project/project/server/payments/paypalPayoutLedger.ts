@@ -40,6 +40,7 @@ export type BuildPayPalLedgerPlanInput = {
   partnerId: string | null;
   sellerInfluencerId?: string | null;
   partnerInfluencerId?: string | null;
+  buyerReferrerId?: string | null;
   subtotalListing?: number;
   shippingAmount?: number;
   taxAmount?: number;
@@ -154,6 +155,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
   let platformFeeGrossTotal = 0;
   let influencerBonusPoolPerSlot = 0;
   let paypalAllowanceTotal = 0;
+  const buyerReferrerId = input.buyerReferrerId || null;
+  const buyerRewardPerItem = 0.25;
 
   const deliveredSubtotal = round2(items.reduce((total, item) => total + Number(item.computed_listing_price || 0) * Math.max(1, Math.floor(Number(item.quantity || 1))), 0));
   const separateShipping = Number(input.shippingAmount || 0) > 0 &&
@@ -224,6 +227,9 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       seller_line_total: sellerLine,
       partner_line_total: partnerLine,
       beezio_fee_gross_line_total: beezioFeeGrossLine,
+      buyer_referral_line_total: buyerReferrerId && !isTestItem && beezioFeeGrossLine >= buyerRewardPerItem * quantity
+        ? round2(buyerRewardPerItem * quantity)
+        : 0,
       paypal_processing_allowance_line_total: paypalAllowanceLine,
       influencer_bonus_per_slot_line_total: influencerPerSlotLine,
       influencer_bonus_line_total: round2(influencerPerSlotLine * 2),
@@ -240,9 +246,11 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
   const partnerInfluencerEligible = Boolean(input.partnerId) && Boolean(partnerInfluencerId);
   const sellerInfluencerTotal = sellerInfluencerEligible ? influencerBonusPoolPerSlot : 0;
   const partnerInfluencerTotal = partnerInfluencerEligible ? influencerBonusPoolPerSlot : 0;
-  const influencerTotal = round2(sellerInfluencerTotal + partnerInfluencerTotal);
+  const buyerReferralTotal = round2(lineSnapshots.reduce((total, line) => total + line.buyer_referral_line_total, 0));
+  const businessReferralTotal = round2(sellerInfluencerTotal + partnerInfluencerTotal);
+  const influencerTotal = round2(businessReferralTotal + buyerReferralTotal);
   const influencerReserveTotal = round2(influencerBonusPoolPerSlot * 2);
-  const unusedInfluencerReserveTotal = round2(Math.max(influencerReserveTotal - influencerTotal, 0));
+  const unusedInfluencerReserveTotal = round2(Math.max(influencerReserveTotal - businessReferralTotal, 0));
   const hasBothInfluencerSources = sellerInfluencerEligible && partnerInfluencerEligible;
   const selectedInfluencerSource = hasBothInfluencerSources
     ? 'both'
@@ -267,7 +275,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
     ? round2(actualPayPalFee)
     : round2(totalCharged * paypalPercent + paypalFixed);
   const beezioFeeGrossTotal = round2(platformFeeGrossTotal);
-  const beezioFeeNetTotal = beezioFeeGrossTotal;
+  const beezioFeeNetTotal = round2(beezioFeeGrossTotal - buyerReferralTotal);
   const sellerSelfSale = sameProfileId(input.sellerId, input.partnerId);
   const affiliatePayoutPaidTotal = input.partnerId ? partnerTotal : 0;
   const affiliatePayoutRetainedTotal = input.partnerId ? 0 : partnerTotal;
@@ -284,7 +292,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       paypalAllowanceTotal
   );
   const beezioProfitTotal = round2(
-    beezioFeeGrossTotal +
+    beezioFeeNetTotal +
       affiliatePayoutRetainedTotal +
       unusedInfluencerReserveTotal +
       processorAllowanceRemainder +
@@ -345,7 +353,9 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         paypal_fee_estimate: paypalFeeEstimate,
         payee_breakdown: payeeBreakdown,
         influencer_bonus_pool_total: round2(influencerBonusPoolPerSlot * 2),
-        influencer_bonus_paid_total: influencerTotal,
+        influencer_bonus_paid_total: businessReferralTotal,
+        buyer_referral_total: buyerReferralTotal,
+        buyer_referrer_id: buyerReferralTotal > 0 ? buyerReferrerId : null,
         influencer_bonus_retained_total: unusedInfluencerReserveTotal,
         affiliate_payout_paid_total: affiliatePayoutPaidTotal,
         affiliate_payout_retained_total: affiliatePayoutRetainedTotal,
@@ -374,6 +384,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
 
   addInfluencerAmount(sellerInfluencerId, sellerInfluencerTotal);
   addInfluencerAmount(partnerInfluencerId, partnerInfluencerTotal);
+  addInfluencerAmount(buyerReferrerId, buyerReferralTotal);
 
   for (const [payeeUserId, amount] of influencerAmounts.entries()) {
     pushPayee(payeeUserId, 'INFLUENCER', amount);
@@ -472,6 +483,19 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         },
       });
     }
+    if (buyerReferrerId && line.buyer_referral_line_total > 0) {
+      pushMoneyEntry({
+        sourceKey: `${input.orderId}:${itemKey}:buyer_referral:${buyerReferrerId}`,
+        orderItemId: line.order_item_id,
+        payeeType: 'influencer',
+        payeeId: buyerReferrerId,
+        grossAmount: line.buyer_referral_line_total,
+        netAmount: line.buyer_referral_line_total,
+        status: 'held',
+        holdUntil: input.holdReleaseAt,
+        metadata: { source: 'buyer_referral', quantity: line.quantity },
+      });
+    }
   }
 
   pushMoneyEntry({
@@ -494,7 +518,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
       affiliate_source: input.affiliateSource || (sellerSelfSale ? 'seller_self' : input.partnerId ? 'external' : 'beezio'),
       platform_fee_gross: platformFeeGrossTotal,
       influencer_bonus_pool_total: influencerReserveTotal,
-      influencer_bonus_paid_total: influencerTotal,
+      influencer_bonus_paid_total: businessReferralTotal,
+      buyer_referral_total: buyerReferralTotal,
       influencer_bonus_retained_total: unusedInfluencerReserveTotal,
       pricing_rounding_remainder: pricingRoundingRemainder,
       paypal_fee_estimate: paypalFeeEstimate,
@@ -569,7 +594,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         `seller_influencer_id=${sellerInfluencerId || 'none'}`,
         `partner_influencer_id=${partnerInfluencerId || 'none'}`,
         `influencer_bonus_pool_total=${round2(influencerBonusPoolPerSlot * 2).toFixed(2)}`,
-        `influencer_bonus_paid_total=${influencerTotal.toFixed(2)}`,
+        `influencer_bonus_paid_total=${businessReferralTotal.toFixed(2)}`,
+        `buyer_referral_total=${buyerReferralTotal.toFixed(2)}`,
         `influencer_bonus_retained_total=${unusedInfluencerReserveTotal.toFixed(2)}`,
         `affiliate_payout_paid_total=${affiliatePayoutPaidTotal.toFixed(2)}`,
         `affiliate_payout_retained_total=${affiliatePayoutRetainedTotal.toFixed(2)}`,

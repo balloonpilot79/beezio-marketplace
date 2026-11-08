@@ -877,6 +877,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             paypal_email: payoutConfirmed ? payoutEmail : '',
             paypal_confirmed: payoutConfirmed,
             referrer_profile_id: referrerProfileId,
+            buyer_referrer_profile_id: initialRole === 'buyer' ? userData?.buyerReferrerProfileId : undefined,
             bundle_business_roles: bundleBusinessRoles,
             independent_contractor_acknowledged: independentContractorAcknowledged,
             tax_delivery_acknowledged: taxDeliveryAcknowledged,

@@ -720,6 +720,7 @@ export async function finalizePayPalOrderPayment(params: {
       'total_charged',
       'customer_email',
       'buyer_id',
+      'created_at',
       'paid_at',
       'affiliate_commission',
       'affiliate_fee_amount',
@@ -761,6 +762,20 @@ export async function finalizePayPalOrderPayment(params: {
   const sellerSelfSale = sameProfileId(rawPartnerId, sellerId) ||
     (sameProfileId(sellerId, buyerId) && orderSource === 'seller_self_sale');
   const partnerId = sellerSelfSale ? sellerId : (sameProfileId(rawPartnerId, buyerId) ? null : rawPartnerId);
+  let buyerReferrerId: string | null = null;
+  if (buyerId && orderRow.created_at && String(orderRow.currency || 'USD').toUpperCase() === 'USD') {
+    const { data: referral, error } = await supabaseAdmin.from('influencer_referrals')
+      .select('influencer_profile_id')
+      .eq('recruited_profile_id', buyerId)
+      .eq('recruited_role', 'buyer')
+      .lte('created_at', orderRow.created_at)
+      .maybeSingle();
+    if (error) throw new Error(`Unable to verify buyer referral: ${error.message}`);
+    const referrer = referral?.influencer_profile_id || null;
+    if (!sameProfileId(referrer, buyerId) && await isInfluencerProfile(supabaseAdmin, referrer)) {
+      buyerReferrerId = referrer;
+    }
+  }
   const sellerRecruiterInfluencerIdRaw = await resolveRecruiterInfluencerId(supabaseAdmin, sellerId, 'seller');
   const partnerRecruiterInfluencerIdRaw = await resolveRecruiterInfluencerId(supabaseAdmin, partnerId, 'affiliate');
   const sellerRecruiterInfluencerId = sameProfileId(sellerRecruiterInfluencerIdRaw, buyerId) ? null : sellerRecruiterInfluencerIdRaw;
@@ -808,6 +823,7 @@ export async function finalizePayPalOrderPayment(params: {
       affiliateSource: sellerSelfSale ? 'seller_self' : partnerId ? 'external' : 'beezio',
       sellerInfluencerId,
       partnerInfluencerId,
+      buyerReferrerId,
       subtotalListing: Number((orderRow as any)?.subtotal_listing || 0),
       shippingAmount: Number((orderRow as any)?.shipping_amount || 0),
       taxAmount: Number((orderRow as any)?.tax_amount || 0),

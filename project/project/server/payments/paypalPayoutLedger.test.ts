@@ -9,6 +9,32 @@ const makeInput = (overrides: Record<string, unknown> = {}) => {
 
 describe('buildPayPalLedgerPlan fixed-tier accounting', () => {
   it('preserves every seller-controlled payout bucket',()=>{const plan=buildPayPalLedgerPlan(makeInput());expect(plan.aggregate.sellerEarnings).toBe(40);expect(plan.aggregate.partnerEarnings).toBe(5);expect(plan.aggregate.influencerEarnings).toBe(2);expect(plan.aggregate.beezioFeeGross).toBe(2.25);expect(plan.aggregate.beezioFeeNet).toBe(2.25);expect(plan.payees.map(row=>`${row.payeeRole}:${row.amount}`)).toEqual(['SELLER:40','PARTNER:5','INFLUENCER:1','INFLUENCER:1']);});
+  it('funds the buyer referral from Beezio for each unit and combines payouts to the same Ambassador', () => {
+    const input = makeInput();
+    input.items[0].quantity = 3;
+    const baseline = buildPayPalLedgerPlan(input);
+    const plan = buildPayPalLedgerPlan({ ...input, buyerReferrerId: 'influencer-1' });
+
+    expect(plan.aggregate.sellerEarnings).toBe(baseline.aggregate.sellerEarnings);
+    expect(plan.aggregate.partnerEarnings).toBe(baseline.aggregate.partnerEarnings);
+    expect(plan.aggregate.beezioFeeGross).toBe(baseline.aggregate.beezioFeeGross);
+    expect(plan.aggregate.beezioFeeNet).toBe(baseline.aggregate.beezioFeeNet - 0.75);
+    expect(plan.aggregate.beezioProfit).toBe(baseline.aggregate.beezioProfit - 0.75);
+    expect(plan.payees.filter(row => row.payeeUserId === 'influencer-1').map(row => row.amount)).toEqual([3.75]);
+    expect(plan.moneyEntries.filter(row => row.metadata.source === 'buyer_referral')).toMatchObject([
+      { sourceKey: 'order-1:item-1:buyer_referral:influencer-1', netAmount: 0.75, status: 'held' },
+    ]);
+    expect(plan.payees[0].snapshot.total_charged).toBe(baseline.payees[0].snapshot.total_charged);
+  });
+
+  it('skips buyer rewards on lines with no eligible platform fee', () => {
+    const input = makeInput();
+    input.items[0].platform_fee_amount = 0;
+    const plan = buildPayPalLedgerPlan({ ...input, buyerReferrerId: 'buyer-recruiter' });
+    expect(plan.payees.some(row => row.payeeUserId === 'buyer-recruiter')).toBe(false);
+    expect(plan.moneyEntries.some(row => row.metadata.source === 'buyer_referral')).toBe(false);
+  });
+
   it('keeps each unfilled influencer slot with Beezio',()=>{const plan=buildPayPalLedgerPlan(makeInput({sellerInfluencerId:null,partnerInfluencerId:null}));expect(plan.aggregate.influencerEarnings).toBe(0);expect(plan.aggregate.notes).toContain('influencer_bonus_retained_total=2.00');expect(plan.aggregate.beezioProfit).toBe(4.26);});
   it('retains the fixed affiliate allocation for a direct marketplace purchase',()=>{const plan=buildPayPalLedgerPlan(makeInput({partnerId:null,affiliateSource:'beezio',sellerInfluencerId:null,partnerInfluencerId:null}));expect(plan.aggregate.partnerEarnings).toBe(0);expect(plan.aggregate.beezioProfit).toBe(9.26);expect(plan.aggregate.notes).toContain('affiliate_payout_retained_total=5.00');expect(plan.aggregate.notes).toContain('affiliate_source=beezio');expect(plan.moneyEntries.find(row=>row.payeeType==='affiliate')).toBeUndefined();expect(plan.moneyEntries.find(row=>row.payeeType==='beezio')?.metadata.affiliate_payout_retained_total).toBe(5);});
   it('rolls the affiliate allocation into the seller payout for a seller self-sale',()=>{const plan=buildPayPalLedgerPlan(makeInput({partnerId:'seller-1',affiliateSource:'seller_self',sellerInfluencerId:null,partnerInfluencerId:null}));expect(plan.aggregate.sellerEarnings).toBe(45);expect(plan.aggregate.partnerEarnings).toBe(0);expect(plan.payees.map(row=>`${row.payeeRole}:${row.amount}`)).toEqual(['SELLER:45']);expect(plan.aggregate.notes).toContain('affiliate_payout_paid_to_seller_total=5.00');expect(plan.moneyEntries.find(row=>row.payeeType==='affiliate' && row.payeeId==='seller-1')?.grossAmount).toBe(5);});
