@@ -46,7 +46,7 @@ const paths = [
   {
     title: "Sell your products.",
     label: "For sellers",
-    text: "List your own products in your free store. Set your payout and let affiliates help you reach more buyers.",
+    text: "Open a free store, list your items, and fulfill your orders. Choose which products affiliates can promote.",
     signup: "/signup?role=seller",
     href: "/sellers",
     action: "Start selling",
@@ -54,9 +54,9 @@ const paths = [
     tone: "seller",
   },
   {
-    title: "Sell products without inventory.",
+    title: "Promote products as an affiliate.",
     label: "For affiliates",
-    text: "Choose marketplace products for your free store. See your earnings per sale before you start. Sellers fulfill the orders.",
+    text: "Choose products to recommend. Earn a commission when your promotion leads to a qualifying sale. The seller fulfills the order.",
     signup: "/signup?role=affiliate",
     href: "/affiliates",
     action: "Become an affiliate",
@@ -64,12 +64,12 @@ const paths = [
     tone: "affiliate",
   },
   {
-    title: "Refer once. Earn as they sell.",
-    label: "For influencers",
-    text: "Refer sellers and affiliates with your personal link. Earn on their qualifying product sales with lifetime referral attribution.",
+    title: "Refer people as a Beezio Ambassador.",
+    label: "For ambassadors",
+    text: "Invite sellers and affiliates with your referral link and earn from their qualifying sales.",
     signup: "/signup?role=influencer",
     href: "/start-earning",
-    action: "Become an influencer",
+    action: "Become an ambassador",
     icon: Megaphone,
     tone: "influencer",
   },
@@ -117,37 +117,40 @@ export default function HomePageBZO() {
     category === "All"
       ? rotateCatalog(products.filter((product) => product.available), rotationSlot)
       : rotateCatalog(products.filter((product) => product.available && product.category === category), rotationSlot);
-  const spotlight = rotateCatalog(products.filter((product) => product.available), rotationSlot).slice(0, 2);
+  const spotlight = rotateCatalog(products.filter((product) => product.available), rotationSlot).slice(0, 4);
 
   return (
     <div className="hm-page">
       <div className="hm-wrap">
         <section className="hm-hero">
           <div className="hm-hero-copy">
-            <p className="hm-kicker">Shop. Sell. Share. Earn.</p>
+            <p className="hm-kicker">Shop independent sellers</p>
             <h1>
-              Sell. Share. Refer.
-              <br />
-              <span>Start free.</span>
+              Find something worth <span>bringing home.</span>
             </h1>
             <p className="hm-hero-description">
-              Beezio is a marketplace where you can shop products, open a free store to sell your own items, share products as an affiliate, or refer sellers and affiliates as an influencer.
+              Shop clothing, gifts, and everyday favorites from independent sellers.
             </p>
             <div className="hm-actions">
-              <a href="#shop" className="bz-button bz-button-gold">
-                Shop products <ArrowRight size={17} />
-              </a>
-              <a href="#start" className="hm-hero-secondary">
-                Find your way to earn <ArrowRight size={17} />
-              </a>
+              <Link to="/marketplace" className="bz-button bz-button-gold">
+                Shop the Marketplace <ArrowRight size={17} />
+              </Link>
+              <Link to="/signup?role=seller" className="hm-hero-secondary">
+                Open a Free Store <ArrowRight size={17} />
+              </Link>
             </div>
             <p className="hm-hero-note">
-              <Check size={14} /> Free to join. No monthly subscription. Beezio earns from fees built into product prices when sales happen.
+              <Check size={14} /> PayPal checkout. See delivery and return details before you buy.
             </p>
+            <nav aria-label="Shopping help" className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold">
+              <Link to="/support" className="underline">Contact support</Link>
+              <Link to="/returns" className="underline">Returns</Link>
+              <Link to="/how-it-works" className="underline">How Beezio works</Link>
+            </nav>
           </div>
           <div className="hm-spotlight">
             <div className="hm-spotlight-heading">
-              <span>In the spotlight</span>
+              <span>Featured finds</span>
               <a href="#shop">
                 Shop the finds <ArrowRight size={15} />
               </a>
@@ -165,9 +168,7 @@ export default function HomePageBZO() {
                     </div>
                     <span>{product.title}</span>
                     <strong>{money(product.price)}</strong>
-                    {product.affiliateAmount > 0 && (
-                      <span className="text-sm font-semibold text-green-700">Earn {money(product.affiliateAmount)} per sale</span>
-                    )}
+                    <span>Sold by {product.seller}</span>
                   </Link>
                 ))}
               </div>
@@ -184,51 +185,12 @@ export default function HomePageBZO() {
             )}
           </div>
         </section>
-        <section
-          id="start"
-          aria-label="Start your business on Beezio"
-          className="hm-business-paths"
-        >
-          {paths.map(
-            ({ label, title, text, href, signup, action, icon: Icon, tone }) => (
-              <article className={`hm-path hm-path-${tone}`} key={label}>
-                <div className="hm-path-top">
-                  <Icon size={20} aria-hidden="true" />
-                  <p className="hm-kicker">{label}</p>
-                </div>
-                <h2>{title}</h2>
-                <p>{text}</p>
-                <div className="hm-path-actions">
-                  <Link to={signup}>{action}<ArrowRight size={15} /></Link>
-                  <Link to={href} className="hm-path-learn">How it works</Link>
-                </div>
-              </article>
-            ),
-          )}
-        </section>
-        <section className="hm-quick-start" aria-labelledby="how-sales-work-title">
-          <div>
-            <p className="hm-kicker">How Beezio works</p>
-            <h2 id="how-sales-work-title">One marketplace. Clear ways to earn.</h2>
-            <p>A seller lists a product and sets their payout and affiliate reward. An affiliate shares it using a tracked link or their store. A customer places an order, the seller fulfills it, and eligible earnings are paid after the hold and payout requirements are met.</p>
-            <p>There is no fee to join and no monthly subscription. Platform and processing costs are included in product prices, not charged as a separate monthly fee. Earnings depend on qualifying sales; they are not guaranteed.</p>
-          </div>
-          <Link to="/faq" className="bz-button bz-button-ink">Read fees and payout terms <ArrowRight size={17} /></Link>
-        </section>
-        <section className="hm-quick-start" aria-labelledby="quick-start-title">
-          <div>
-            <p className="hm-kicker">Your first store starts here</p>
-            <h2 id="quick-start-title">Create an account. Choose products. Share your store.</h2>
-            <p>Start as an affiliate with products already on Beezio, or list your own as a seller. Add your branding when you’re ready.</p>
-          </div>
-          <Link to="/signup?role=affiliate" className="bz-button bz-button-ink">Start my free store <ArrowRight size={17} /></Link>
-        </section>
         <section id="shop" className="hm-shop">
           <div className="hm-section-heading">
             <div>
               <p className="hm-kicker">Find your next favorite</p>
-              <h2>Fresh finds. Ready to discover.</h2>
-              <p>Shop right here on Beezio. No business account needed. Earn amounts show the affiliate payout on qualifying sales.</p>
+              <h2>Shop Beezio sellers</h2>
+              <p>See who’s selling each item, what it costs, and how it’s delivered. No business account needed.</p>
             </div>
             <Link to="/marketplace" className="hm-all-link">
               Shop all products <ArrowRight size={17} />
@@ -336,6 +298,45 @@ export default function HomePageBZO() {
             </Link>
           )}
         </section>
+        <section
+          id="start"
+          aria-label="Start your business on Beezio"
+          className="hm-business-paths"
+        >
+          {paths.map(
+            ({ label, title, text, href, signup, action, icon: Icon, tone }) => (
+              <article className={`hm-path hm-path-${tone}`} key={label}>
+                <div className="hm-path-top">
+                  <Icon size={20} aria-hidden="true" />
+                  <p className="hm-kicker">{label}</p>
+                </div>
+                <h2>{title}</h2>
+                <p>{text}</p>
+                <div className="hm-path-actions">
+                  <Link to={signup}>{action}<ArrowRight size={15} /></Link>
+                  <Link to={href} className="hm-path-learn">How it works</Link>
+                </div>
+              </article>
+            ),
+          )}
+        </section>
+        <section className="hm-quick-start" aria-labelledby="how-sales-work-title">
+          <div>
+            <p className="hm-kicker">How Beezio works</p>
+            <h2 id="how-sales-work-title">One marketplace. Clear ways to earn.</h2>
+            <p>A seller lists a product and sets their payout and affiliate reward. An affiliate shares it using a tracked link or their store. A customer places an order, the seller fulfills it, and eligible earnings are paid after the hold and payout requirements are met.</p>
+            <p>There is no fee to join and no monthly subscription. Platform and processing costs are included in product prices, not charged as a separate monthly fee. Earnings depend on qualifying sales; they are not guaranteed.</p>
+          </div>
+          <Link to="/faq" className="bz-button bz-button-ink">Read fees and payout terms <ArrowRight size={17} /></Link>
+        </section>
+        <section className="hm-quick-start" aria-labelledby="quick-start-title">
+          <div>
+            <p className="hm-kicker">Your first store starts here</p>
+            <h2 id="quick-start-title">Create an account. Choose products. Share your store.</h2>
+            <p>Start as an affiliate with products already on Beezio, or list your own as a seller. Add your branding when you’re ready.</p>
+          </div>
+          <Link to="/signup?role=affiliate" className="bz-button bz-button-ink">Start my free store <ArrowRight size={17} /></Link>
+        </section>
         <section className="hm-earn-banner">
           <div className="hm-earn-icon">
             <Globe size={32} aria-hidden="true" />
@@ -409,20 +410,15 @@ export default function HomePageBZO() {
           <div className="hm-build-copy">
             <p className="hm-kicker">For sellers & affiliates</p>
             <h2>
-              Your own website.
-              <br />
-              Your own look.
-              <br />
-              <em>Yours for free.</em>
+              Sell what you have. <em>Grow at your own pace.</em>
             </h2>
             <p>
-              Choose a template. Add your logo, colors, collections, and custom
-              pages. Sell your own products or build a store around products you
-              recommend.
+              Open a free store for one item or a whole collection. Add your branding,
+              sell directly to shoppers, and choose which products affiliates can promote.
             </p>
             <ul>
               <li>
-                <Check size={16} /> No monthly or listing fees
+                <Check size={16} /> No monthly or listing fees. Fees apply when you make a sale.
               </li>
               <li>
                 <Check size={16} /> Affiliates can sell your products through
@@ -467,7 +463,7 @@ export default function HomePageBZO() {
           </Link>
         </section>
         <details className="hm-pricing">
-          <summary>No seller fees. How does that work?</summary>
+          <summary>How do selling fees work?</summary>
           <p>{pricingExplanation}</p>
           <p>
             Affiliate and influencer earnings come from eligible sales. Earnings
