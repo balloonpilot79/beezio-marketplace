@@ -266,9 +266,6 @@ export default function HomePageBZO() {
                         <ArrowRight size={17} />
                       </span>
                     </div>
-                    {product.affiliateAmount > 0 && (
-                      <p className="mt-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">Earn {money(product.affiliateAmount)} per sale</p>
-                    )}
                     <p className="hm-product-detail">
                       See product & delivery details
                     </p>

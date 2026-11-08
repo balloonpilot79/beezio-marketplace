@@ -11,9 +11,10 @@ interface ProductCardProps {
   affiliateRef?: string | null;
   affiliateUid?: string | null;
   compact?: boolean;
+  businessView?: boolean;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode, affiliateRef, affiliateUid, compact = false }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode, affiliateRef, affiliateUid, compact = false, businessView = false }) => {
   const location = useLocation();
   const uid = affiliateUid ?? new URLSearchParams(location.search).get('uid');
 
@@ -27,6 +28,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode, affiliateR
         affiliateRef={affiliateRef}
         affiliateUid={uid}
         compact={compact}
+        businessView={businessView}
         promoterBadge={<ProductPromoterCountBadge productId={String(product?.id || '')} />}
       />
     </div>

@@ -26,7 +26,7 @@ import AffiliateShareWidget from '../components/AffiliateShareWidget';
 import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
 import { getAffiliateAmount, resolveAffiliateCommission } from '../utils/pricing';
 import { getBuyerFacingProductPrice, getProductShipping } from '../utils/buyerPrice';
-import { normalizeAccountRole } from '../utils/accountRoles';
+import { getBusinessAccountRoles, normalizeAccountRole } from '../utils/accountRoles';
 import { fetchProductById, getVariantOptions, resolveImageUrl, resolveVariant, type ProductVariant } from '../services/productService';
 import { getCJProductInventory } from '../services/cjDropshipping';
 import { deleteProductById } from '../utils/deleteProduct';
@@ -474,15 +474,9 @@ const ProductDetailPage: React.FC = () => {
 
   const derivedRole = normalizeAccountRole(profile?.primary_role || profile?.role || currentRole);
   const effectiveRole = derivedRole;
-  const isSellerRole = effectiveRole === 'seller';
-  const isAffiliateRole = effectiveRole === 'affiliate';
-  const canAddToAffiliateStore =
-    Boolean(user?.id) &&
-    (hasRole('affiliate') ||
-      hasRole('partner') ||
-      isAffiliateRole);
-  const isSellingRole = isSellerRole || isAffiliateRole || canAddToAffiliateStore;
-  const canAddToSellerStore = hasRole('seller') || isSellerRole;
+  const businessRoles = getBusinessAccountRoles(userRoles, profile?.primary_role, profile?.role, currentRole);
+  const canAddToAffiliateStore = businessRoles.includes('affiliate');
+  const canAddToSellerStore = businessRoles.includes('seller');
   const storeScope = String(localStorage.getItem('beezio-store-scope') || '');
   const isStorefrontScope = storeScope.startsWith('store:seller:') || storeScope.startsWith('store:affiliate:');
   const rawStoreSlug = storeSlug?.trim().toLowerCase() || '';
@@ -504,7 +498,9 @@ const ProductDetailPage: React.FC = () => {
   );
   const isMainMarketplaceProductView = !isStorefrontProductView && !isCustomDomainHost;
   const showBuyerCtas = isMainMarketplaceProductView || isStorefrontProductView || isCustomDomainHost || isTrackedPromotion;
-  const showStoreAddCtas = Boolean(user?.id) && isSellingRole && !isStorefrontProductView && !isStorefrontScope && !isCustomDomainHost;
+  const businessView = Boolean(user?.id) && location.state?.businessView === true &&
+    businessRoles.length > 0 && isMainMarketplaceProductView && !isStorefrontScope;
+  const showStoreAddCtas = businessView && (canAddToAffiliateStore || canAddToSellerStore);
 
   const isAdminRole = useMemo(() => {
     const profileRole = String(profile?.primary_role || profile?.role || '').toLowerCase();
@@ -714,7 +710,7 @@ const ProductDetailPage: React.FC = () => {
     if (Number.isFinite(exactVariantPayout) && exactVariantPayout >= 0) return exactVariantPayout;
     return getAffiliateAmount(derivedSellerAsk, commissionType, commissionValue);
   }, [commissionType, commissionValue, derivedSellerAsk, selectedVariant]);
-  const showAffiliatePayoutPreview = isMainMarketplaceProductView && isPublicAffiliateProduct(product) && affiliateEarnings > 0;
+  const showAffiliatePayoutPreview = businessView && isPublicAffiliateProduct(product) && affiliateEarnings > 0;
 
   const displayDescription = useMemo(() => {
     return sanitizeDescriptionForDisplay(product?.description, product?.lineage);
@@ -1939,14 +1935,6 @@ const ProductDetailPage: React.FC = () => {
               {showAffiliatePayoutPreview && (
                 <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
                   <p className="font-semibold">Earn {formatMoneyDisplay(affiliateEarnings)} per sale</p>
-                  {!user && (
-                    <Link
-                      to={`/affiliate-signup?role=affiliate&redirect=${encodeURIComponent(location.pathname + location.search)}`}
-                      className="mt-1 inline-block underline underline-offset-2 hover:text-green-950"
-                    >
-                      Sign up free to get your tracked link
-                    </Link>
-                  )}
                 </div>
               )}
 
@@ -1986,7 +1974,7 @@ const ProductDetailPage: React.FC = () => {
 
           {/* Add to Cart Section */}
           <div className="space-y-4">
-            {showAffiliatePayoutPreview && isAffiliateRole && (
+            {showAffiliatePayoutPreview && canAddToAffiliateStore && (
               <div className="flex items-center space-x-2 mb-4">
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                   <Heart className="w-4 h-4 mr-2" />
@@ -2183,7 +2171,7 @@ const ProductDetailPage: React.FC = () => {
                   {canAddToSellerStore && (
                     <AddToSellerStoreButton productId={product.id} size="lg" variant="button" addedText="Added" />
                   )}
-                  {canAddToAffiliateStore && (
+                  {canAddToAffiliateStore && isPublicAffiliateProduct(product) && (
                     <AddToAffiliateStoreButton
                       productId={product.id}
                       sellerId={product.seller_id || ''}
