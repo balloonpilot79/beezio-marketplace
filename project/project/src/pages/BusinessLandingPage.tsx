@@ -220,7 +220,7 @@ export default function BusinessLandingPage({
               <strong className="font-semibold text-slate-900">
                 Shopper Account:
               </strong>{" "}
-              a shopping account for purchases, receipts, and order support.
+              shop, track orders, view receipts, and get order support.
             </p>
           </div>
           <div className="flex items-start gap-3 text-sm leading-6 text-slate-600">
@@ -229,7 +229,7 @@ export default function BusinessLandingPage({
               <strong className="font-semibold text-slate-900">
                 Business Account:
               </strong>{" "}
-              shop using the same login you use for your store, promotions, referrals, and earnings.
+              one account lets you sell your own products, promote eligible products as an affiliate, and earn referral rewards as a Beezio Ambassador. You can also shop with the same account.
             </p>
           </div>
         </div>
