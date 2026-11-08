@@ -19,7 +19,7 @@ const StoresPage: React.FC = () => {
     setError(false);
     (async () => {
       try {
-        const response = await fetch('/api/public/marketplace/products?include_stores=1', { signal: controller.signal });
+        const response = await fetch('/api/public/marketplace/products?stores_only=1', { signal: controller.signal });
         if (!response.ok) throw new Error('Stores unavailable');
         const payload = await response.json();
         if (!Array.isArray(payload.stores)) throw new Error('Invalid directory');
