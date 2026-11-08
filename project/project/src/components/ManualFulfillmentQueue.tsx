@@ -19,6 +19,8 @@ type QueueItem = {
   customerName: string | null;
   customerEmail: string | null;
   customerPhone: string | null;
+  fulfillmentMethod?: string;
+  pickedUpAt?: string | null;
   shippingAddress: Record<string, unknown> | null;
   trackingNumber: string | null;
   carrier: string | null;
@@ -243,7 +245,7 @@ const queueBucket = (item: QueueItem): QueueBucket => {
   const vendorStatus = String(item.vendorStatus || '').toLowerCase();
   const fulfillmentStatus = String(item.fulfillmentStatus || '').toLowerCase();
   const orderStatus = String(item.orderStatus || '').toLowerCase();
-  if (vendorStatus === 'shipped' || fulfillmentStatus === 'shipped' || orderStatus === 'shipped' || orderStatus === 'delivered') {
+  if (item.pickedUpAt || vendorStatus === 'shipped' || fulfillmentStatus === 'shipped' || orderStatus === 'shipped' || orderStatus === 'delivered') {
     return 'shipped';
   }
   if (vendorStatus === 'ordered' || vendorStatus === 'processing') {
@@ -292,6 +294,20 @@ export default function ManualFulfillmentQueue({
   const [carriers, setCarriers] = useState<Record<string, string>>({});
   const [submittingOrderId, setSubmittingOrderId] = useState<string | null>(null);
   const [copiedDocKey, setCopiedDocKey] = useState<string | null>(null);
+
+  async function confirmPickup(item: QueueItem) {
+    setSubmittingOrderId(item.orderId);
+    setError(null);
+    try {
+      const { data, error: pickupError } = await supabase.rpc('confirm_vendor_pickup', { p_order_id: item.orderId });
+      if (pickupError || data !== true) throw new Error(pickupError?.message || 'Pickup can only be confirmed by the seller on a paid order.');
+      await loadQueue('refresh');
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Could not confirm pickup.');
+    } finally {
+      setSubmittingOrderId(null);
+    }
+  }
 
   const normalizeBucketForScope = (bucket: QueueBucket): QueueBucket => {
     if (scope === 'seller') {
@@ -761,7 +777,13 @@ export default function ManualFulfillmentQueue({
                               Mark Ordered
                             </button>
                           ) : null}
-                          {bucket !== 'shipped' ? (
+                          {item.fulfillmentMethod === 'pickup' && scope === 'seller' && !item.pickedUpAt && (
+                            <button type="button" disabled={submittingOrderId === item.orderId}
+                              className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white"
+                              onClick={() => void confirmPickup(item)}>Confirm pickup</button>
+                          )}
+                          {item.pickedUpAt && <p className="text-sm font-semibold">Pickup confirmed</p>}
+                          {item.fulfillmentMethod !== 'pickup' && bucket !== 'shipped' ? (
                             <button
                               type="button"
                               onClick={() => void submitAction('mark_shipped', item)}
@@ -784,7 +806,7 @@ export default function ManualFulfillmentQueue({
                           <div><span className="font-semibold text-gray-900">Email:</span> {item.customerEmail || 'N/A'}</div>
                           <div><span className="font-semibold text-gray-900">Phone:</span> {item.customerPhone || 'N/A'}</div>
                         </div>
-                        <div className="mt-3 text-sm text-gray-700">{formatAddress(item.shippingAddress)}</div>
+                        <div className="mt-3 text-sm text-gray-700">{item.fulfillmentMethod === 'pickup' ? 'Local pickup. Contact the buyer to arrange handoff.' : formatAddress(item.shippingAddress)}</div>
                       </div>
 
                       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">

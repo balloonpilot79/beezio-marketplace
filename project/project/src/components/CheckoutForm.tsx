@@ -13,6 +13,7 @@ import { roundUpToTwoDecimals } from '../utils/pricing';
 
 interface CheckoutFormProps {
   amount: number;
+  localPickup?: boolean;
   onSuccess: (orderId: string) => void;
   onError: (error: string) => void;
 }
@@ -36,7 +37,9 @@ const requireSignedInBuyer = (userId: string | null | undefined) => {
   throw new Error('You must sign in before checkout so your order, receipt, and buyer dashboard stay linked.');
 };
 
-const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
+const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError, localPickup = false }) => {
+  const localPickupRef = useRef(localPickup);
+  useEffect(() => { localPickupRef.current = localPickup; }, [localPickup]);
   const paymentsEnabled = String((import.meta as any)?.env?.VITE_PAYMENTS_ENABLED || 'true').toLowerCase() === 'true';
   const paypalClientId = String((import.meta as any)?.env?.VITE_PAYPAL_CLIENT_ID || '').trim();
   const paymentProvider = String((import.meta as any)?.env?.VITE_PAYMENT_PROVIDER || 'paypal').trim().toLowerCase();
@@ -877,7 +880,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
       throw new Error('Your cart contains items from multiple sellers. Please checkout one seller at a time.');
     }
 
-    if (currentRequiresQuotedShipping && !currentShippingOption) {
+    const orderUsesPickup = localPickupRef.current;
+    if (!orderUsesPickup && currentRequiresQuotedShipping && !currentShippingOption) {
       throw new Error('Please select a shipping option before completing checkout.');
     }
 
@@ -886,7 +890,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
     const selectedShippingDetails = currentUseDifferentShippingAddress ? currentShippingDetails : currentBillingDetails;
     const selectedShippingAddress = selectedShippingDetails.address;
     const selectedShippingName = String(selectedShippingDetails.name || currentBillingDetails.name || '').trim();
-    if (currentUseDifferentShippingAddress) {
+    if (!orderUsesPickup && currentUseDifferentShippingAddress) {
       const shippingRequiredFields: Array<{ value: string; message: string }> = [
         { value: selectedShippingName, message: 'Enter the ship-to full name before using PayPal.' },
         { value: selectedShippingAddress.line1, message: 'Enter the ship-to street address before using PayPal.' },
@@ -905,7 +909,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
     }
 
     const itemsSubtotal = currentPayPalListingSubtotal;
-    const quotedShippingCost = getCombinedShippingTotal(normalizedItems);
+    const quotedShippingCost = orderUsesPickup ? 0 : getCombinedShippingTotal(normalizedItems);
     const shippingTotal = Math.round((quotedShippingCost + Number.EPSILON) * 100) / 100;
     const taxAmount = Math.round(((itemsSubtotal + shippingTotal) * TAX_RATE + Number.EPSILON) * 100) / 100;
 
@@ -984,8 +988,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
         email: currentBillingDetails.email || currentUser?.email || '',
         name: currentBillingDetails.name || '',
       },
-      shipping_info,
-      shipping_option,
+      fulfillment_method: orderUsesPickup ? 'pickup' : 'shipping',
+      shipping_info: orderUsesPickup ? null : shipping_info,
+      shipping_option: orderUsesPickup ? null : shipping_option,
       success_url,
       cancel_url,
     };
@@ -1537,14 +1542,15 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
         <label className="flex items-center gap-3 text-sm font-medium text-gray-900">
           <input
             type="checkbox"
-            checked={useDifferentShippingAddress}
+            disabled={localPickup}
+            checked={!localPickup && useDifferentShippingAddress}
             onChange={(e) => setUseDifferentShippingAddress(e.target.checked)}
             className="h-4 w-4"
           />
-          Ship to a different address
+          {localPickup ? 'Billing address only · local pickup selected' : 'Ship to a different address'}
         </label>
 
-        {useDifferentShippingAddress && (
+        {!localPickup && useDifferentShippingAddress && (
           <div className="mt-3 space-y-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Ship To Name</label>
@@ -1640,13 +1646,13 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
         <div>
           <div className="text-sm font-medium text-gray-900">Shipping at checkout</div>
           <div className="mt-0.5 text-xs text-gray-600">
-            Shipping is charged separately per item and shown in your order summary.
+            {localPickup ? 'No shipping charge for local pickup.' : 'Shipping is charged separately per item and shown in your order summary.'}
           </div>
         </div>
         {shippingLoading && <div className="text-sm text-gray-600">Loading seller shipping...</div>}
         {shippingError && <div className="text-sm text-amber-700">{shippingError}</div>}
 
-        {availableShippingOptions.length > 0 && (
+        {!localPickup && availableShippingOptions.length > 0 && (
           <div className="space-y-2">
             {availableShippingOptions.map((opt) => {
               const selected = opt.id === shippingOption?.id;
@@ -1673,12 +1679,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
             })}
           </div>
         )}
-        {!shippingLoading && availableShippingOptions.length === 0 && hasFreeOnlyShipping && (
+        {!localPickup && !shippingLoading && availableShippingOptions.length === 0 && hasFreeOnlyShipping && (
           <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
             Shipping is shown in the order summary before payment.
           </div>
         )}
-        {!shippingLoading && availableShippingOptions.length === 0 && !shippingError && !hasFreeOnlyShipping && (
+        {!localPickup && !shippingLoading && availableShippingOptions.length === 0 && !shippingError && !hasFreeOnlyShipping && (
           <div className="text-sm text-gray-600">
             Shipping is shown in the order summary before payment.
           </div>

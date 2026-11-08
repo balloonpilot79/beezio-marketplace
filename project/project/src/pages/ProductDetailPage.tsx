@@ -64,6 +64,9 @@ interface Product {
   affiliate_commission_type?: 'percent' | 'flat';
   affiliate_commission_value?: number;
   affiliate_enabled?: boolean;
+  item_condition?: string | null;
+  condition_notes?: string | null;
+  direct_marketplace_listing?: boolean;
   affiliate_payout_amount?: number;
   seller_id: string;
   is_active?: boolean;
@@ -189,6 +192,10 @@ const ProductDetailPage: React.FC = () => {
     'shipping_price',
     'shipping_reserve_amount',
     'shipping_options',
+    'item_condition',
+    'condition_notes',
+    'affiliate_enabled',
+    'direct_marketplace_listing',
     'requires_shipping',
     'is_digital',
     'digital_download_instructions',
@@ -1509,12 +1516,13 @@ const ProductDetailPage: React.FC = () => {
 
     try {
       setListingUpdating(true);
-      const nextStatus = nextIsActive ? 'active' : 'archived';
+      const nextStatus = !nextIsActive ? 'archived' : product.affiliate_enabled === false && !product.direct_marketplace_listing ? 'store_only' : 'active';
+      const nextPromotable = nextIsActive && product.affiliate_enabled !== false;
       let upd = supabase
         .from('products')
         .update({
           is_active: nextIsActive,
-          is_promotable: nextIsActive,
+          is_promotable: nextPromotable,
           status: nextStatus,
         })
         .eq('id', product.id);
@@ -1524,7 +1532,7 @@ const ProductDetailPage: React.FC = () => {
       const { error } = await upd;
       if (error) throw error;
 
-      setProduct({ ...(product as any), is_active: nextIsActive, is_promotable: nextIsActive, status: nextStatus });
+      setProduct({ ...(product as any), is_active: nextIsActive, is_promotable: nextPromotable, status: nextStatus });
       alert(`${verb}ed.`);
       if (!nextIsActive) {
         navigate(backTarget);
@@ -1892,6 +1900,9 @@ const ProductDetailPage: React.FC = () => {
           {/* Title, Rating, Price */}
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.title}</h1>
+            {product.item_condition && <p className="mb-2 text-sm font-semibold">Condition: {product.item_condition}</p>}
+            {product.condition_notes && <p className="mb-3 whitespace-pre-wrap break-words text-sm text-gray-700">{product.condition_notes}</p>}
+
 
             {Number(product.average_rating) > 0 && Number(product.review_count) > 0 && (
               <div className="flex items-center space-x-2 mb-3">

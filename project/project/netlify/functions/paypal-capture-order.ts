@@ -396,12 +396,36 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    const vendorReservations = process.env.BEEZIO_VENDOR_STOCK_RESERVATIONS === 'true';
+    if (vendorReservations) {
+      const { data: ready, error: reservationError } = await supabaseAdmin.rpc(
+        'begin_vendor_order_capture', { p_order_id: orderId },
+      );
+      if (reservationError) {
+        console.error('[paypal-capture-order] Vendor stock check failed:', reservationError.message);
+        return json(503, { error: 'Inventory could not be checked. Please try again.' });
+      }
+      if (ready !== true) {
+        return json(409, {
+          error: 'Your inventory reservation expired. Please restart checkout.',
+          code: 'VENDOR_RESERVATION_EXPIRED',
+        });
+      }
+    }
+
     const provider = getPaymentProvider('paypal');
     let capture;
     try {
       capture = await provider.captureOrder(providerOrderId, `bzo_${createHash('sha256').update(`capture:${orderId}`).digest('hex').slice(0, 32)}`);
     } catch (error) {
       if (error instanceof PayPalProviderError) {
+        if (vendorReservations && error.code === 'PAYPAL_ORDER_VOIDED') {
+          const { error: releaseError } = await supabaseAdmin.rpc('release_vendor_order_stock', {
+            p_order_id: orderId,
+            p_confirmed_unpaid: true,
+          });
+          if (releaseError) console.error('[paypal-capture-order] Voided order stock release failed:', releaseError.message);
+        }
         return json(error.statusCode, {
           error: error.message,
           code: error.code,

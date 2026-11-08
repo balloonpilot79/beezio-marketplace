@@ -82,7 +82,7 @@ export class PayPalProvider implements PaymentProvider {
               payment_method_preference: 'IMMEDIATE_PAYMENT_REQUIRED',
               // Let PayPal collect/confirm address in-wallet to avoid 422 when no
               // pre-supplied shipping object is attached at order creation time.
-              shipping_preference: 'GET_FROM_FILE',
+              shipping_preference: input.localPickup ? 'NO_SHIPPING' : 'GET_FROM_FILE',
             },
           },
         },
@@ -138,6 +138,13 @@ export class PayPalProvider implements PaymentProvider {
     if (!existingRes.ok) throw new PayPalProviderError({
       message: 'Could not check the existing PayPal order.', statusCode: 502, code: 'PAYPAL_STATUS_CHECK_FAILED',
     });
+    if (String(existing?.status || '').toUpperCase() === 'VOIDED') {
+      throw new PayPalProviderError({
+        message: 'This PayPal order was voided. Please restart checkout.',
+        statusCode: 409,
+        code: 'PAYPAL_ORDER_VOIDED',
+      });
+    }
     const existingCapture = this.extractCaptureId(existing);
     if (existingCapture && String(existing?.status || '').toUpperCase() === 'COMPLETED') {
       return { providerOrderId, providerCaptureId: existingCapture, paypalFeeAmount: this.extractPayPalFeeAmount(existing), raw: existing };

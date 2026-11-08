@@ -1,6 +1,6 @@
 import { buildPublicStoreDirectory } from '../../shared/publicStoreDirectory';
 import { getProductShipping } from '../../shared/productShipping';
-import { isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
+import { isPublicMarketplaceProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
@@ -33,8 +33,8 @@ function isLovingNutritionPreview(product: any): boolean {
 function isLiveMarketplaceProduct(product: any): boolean {
   return (
     product?.is_active === true &&
-    product?.is_promotable === true &&
-    product?.affiliate_enabled === true &&
+    ((product?.is_promotable === true && product?.affiliate_enabled === true) ||
+      (product?.direct_marketplace_listing === true && product?.affiliate_enabled === false)) &&
     product?.is_digital !== true &&
     text(product?.status).toLowerCase() === 'active'
   );
@@ -73,6 +73,9 @@ const handler: Handler = async (event) => {
     const selectFields = [
       'id',
       'title',
+      'item_condition',
+      'merchandise_types',
+      'direct_marketplace_listing',
       'description',
       'price',
       'calculated_customer_price',
@@ -123,8 +126,7 @@ const handler: Handler = async (event) => {
       .from('products')
       .select(selectFields)
       .eq('is_active', true)
-      .eq('is_promotable', true)
-      .eq('affiliate_enabled', true)
+      .or('and(is_promotable.eq.true,affiliate_enabled.eq.true),and(direct_marketplace_listing.eq.true,affiliate_enabled.eq.false)')
       .eq('status', 'active')
       .order('created_at', { ascending: false })
       .order('id', { ascending: true })
@@ -135,7 +137,7 @@ const handler: Handler = async (event) => {
     }
 
     const candidates = (Array.isArray(data) ? data : []).filter(
-      (product: any) => isPublicAffiliateProduct(product) && isLiveMarketplaceProduct(product)
+      (product: any) => isPublicMarketplaceProduct(product) && isLiveMarketplaceProduct(product)
     );
 
     const categoryIds = Array.from(new Set(

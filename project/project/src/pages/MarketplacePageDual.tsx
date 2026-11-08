@@ -1,4 +1,5 @@
-import { isPublicAffiliateProduct } from '../../shared/publicProductVisibility';
+import { matchesMerchandiseFilter, MERCHANDISE_TYPES } from '../../shared/vendorListing';
+import { isPublicMarketplaceProduct } from '../../shared/publicProductVisibility';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Grid, List, Search, SlidersHorizontal } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
@@ -42,6 +43,8 @@ interface MarketplaceProduct {
   affiliate_commission_value?: number;
   affiliate_payout_amount?: number;
   seller_id?: string;
+  item_condition?: string | null;
+  merchandise_types?: string[] | null;
   status?: string;
   is_promotable?: boolean | null;
   profiles?: ProductProfile | null;
@@ -62,7 +65,7 @@ type CategoryRow = {
 const PAGE_SIZE = 160;
 const MARKETPLACE_FETCH_TIMEOUT_MS = 12000;
 const MARKETPLACE_SELECT_FIELDS =
-  'id,title,description,price,calculated_customer_price,seller_ask,seller_amount,seller_ask_price,is_digital,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status';
+  'id,title,item_condition,merchandise_types,direct_marketplace_listing,affiliate_enabled,description,price,calculated_customer_price,seller_ask,seller_amount,seller_ask_price,is_digital,category,category_id,images,commission_rate,affiliate_commission_rate,commission_type,flat_commission_amount,affiliate_commission_type,affiliate_commission_value,affiliate_payout_amount,seller_id,average_rating,review_count,created_at,is_active,is_promotable,status';
 
 const CATEGORY_KEYWORDS: Array<{ category: string; keywords: string[] }> = [
   { category: 'Electronics', keywords: ['microphone', 'usb', 'keyboard', 'speaker', 'charger', 'camera', 'phone', 'tablet', 'laptop', 'tech', 'wireless', 'led', 'headphone'] },
@@ -77,7 +80,7 @@ const CATEGORY_KEYWORDS: Array<{ category: string; keywords: string[] }> = [
   { category: 'Automotive', keywords: ['car', 'auto', 'vehicle', 'truck', 'tire'] },
 ];
 
-const isMarketplaceVisible = isPublicAffiliateProduct;
+const isMarketplaceVisible = isPublicMarketplaceProduct;
 
 const slugify = (value: string) =>
   String(value || '')
@@ -175,6 +178,7 @@ const MarketplacePageDual: React.FC = () => {
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
+  const [merchandiseFilter, setMerchandiseFilter] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState<SortOption>('featured');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -315,7 +319,7 @@ const MarketplacePageDual: React.FC = () => {
   }, [location.pathname, location.search, categoryLabelBySlug]);
 
   const filteredProducts = useMemo(() => {
-    let filtered = [...productsWithCategory];
+    let filtered = productsWithCategory.filter((product) => matchesMerchandiseFilter(product, merchandiseFilter));
 
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -360,7 +364,7 @@ const MarketplacePageDual: React.FC = () => {
     });
 
     return filtered;
-  }, [productsWithCategory, searchTerm, selectedCategory, sortBy, viewerState, rotationSlot]);
+  }, [productsWithCategory, searchTerm, selectedCategory, sortBy, viewerState, rotationSlot, merchandiseFilter]);
 
   const shelfRows = useMemo(() => {
     const buckets = new Map<string, MarketplaceProduct[]>();
@@ -405,7 +409,7 @@ const MarketplacePageDual: React.FC = () => {
     ? 'All Products'
     : categoryLabelBySlug.get(selectedCategory) || selectedCategory;
 
-  const showShelves = selectedCategory === 'All' && !searchTerm.trim() && sortBy === 'featured';
+  const showShelves = !merchandiseFilter && selectedCategory === 'All' && !searchTerm.trim() && sortBy === 'featured';
 
   return (
     <div className="bz-public marketplace-page min-h-screen bg-[#f7f8f8]">
@@ -491,6 +495,14 @@ const MarketplacePageDual: React.FC = () => {
             </select>
           </label>
 
+          <label className="mt-2 grid gap-1 text-sm font-semibold">
+            Merchandise
+            <select className="min-h-11 rounded-xl border px-3" value={merchandiseFilter}
+              onChange={(event) => setMerchandiseFilter(event.target.value)}>
+              <option value="">All merchandise</option>
+              {['New', 'Used', ...MERCHANDISE_TYPES].map((filter) => <option key={filter}>{filter}</option>)}
+            </select>
+          </label>
           {mobileFiltersOpen && (
             <div id="marketplace-mobile-filters" className="mt-3 space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-3 md:hidden">
               <div>
@@ -639,6 +651,7 @@ const MarketplacePageDual: React.FC = () => {
             <button
               onClick={() => {
                 setSearchTerm('');
+                setMerchandiseFilter('');
                 setSelectedCategory('All');
                 setSortBy('featured');
               }}

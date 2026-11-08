@@ -39,3 +39,14 @@ export function productAvailabilityNotice(product: any, affiliate = true): strin
   if (affiliate && !isPublicAffiliateProduct(product)) return 'Promotion disabled — hidden from affiliate stores';
   return null;
 }
+
+export function isPublicMarketplaceProduct(product: any): boolean {
+  return isPublicAffiliateProduct(product) || (
+    product?.direct_marketplace_listing === true &&
+    product?.affiliate_enabled === false &&
+    product?.status === 'active' &&
+    product?.is_active === true &&
+    product?.is_digital !== true &&
+    isPublicStoreProduct(product)
+  );
+}

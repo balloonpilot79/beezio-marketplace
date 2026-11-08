@@ -41,6 +41,9 @@ interface Order {
   created_at: string;
   billing_email: string;
   billing_name: string;
+  fulfillment_method?: string;
+  pickup_location?: { state?: string; zip?: string };
+  picked_up_at?: string | null;
   shipping_address?: {
     name?: string;
     firstName?: string;
@@ -380,14 +383,19 @@ export default function OrderConfirmationPage() {
           </div>
 
           <div className="border-t border-gray-200 mt-6 pt-6">
-            <h3 className="font-bold text-gray-900 mb-3">Shipping Address</h3>
+            <h3 className="font-bold text-gray-900 mb-3">{order?.fulfillment_method === 'pickup' ? 'Local pickup' : 'Shipping Address'}</h3>
+            {order?.fulfillment_method === 'pickup' ? (
+              <p className="text-gray-600">
+                {order.picked_up_at ? 'Pickup confirmed.' : `Arrange pickup with the seller in ${order.pickup_location?.state || ''} ${order.pickup_location?.zip || ''}.`}
+              </p>
+            ) :
             <div className="text-gray-600">
               <p className="font-medium">{buyerName}</p>
               <p>{shippingAddress?.address || 'Address unavailable'}</p>
               {shippingAddress?.address2 && <p>{shippingAddress.address2}</p>}
               {shippingCityStateZip && <p>{shippingCityStateZip}</p>}
               {shippingAddress?.country && <p>{shippingAddress.country}</p>}
-            </div>
+            </div>}
           </div>
 
           {/* Order Status */}
