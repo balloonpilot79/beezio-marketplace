@@ -30,8 +30,8 @@ describe('no automatic product quantity discounts', () => {
     expect(plan.aggregate.sellerEarnings).toBe(63.27);
     expect(plan.aggregate.partnerEarnings).toBe(21);
     expect(plan.aggregate.influencerEarnings).toBe(3);
-    expect(plan.aggregate.beezioFeeGross).toBe(2.28);
-    expect(plan.aggregate.beezioProfit).toBeGreaterThanOrEqual(2.28);
+    expect(plan.aggregate.beezioFeeGross).toBe(3.03);
+    expect(plan.aggregate.beezioProfit).toBeGreaterThanOrEqual(3.03);
     expect(Math.round(plan.moneyEntries.reduce((sum, row) => sum + row.netAmount,0)*100)/100).toBe(Math.round((subtotal+shipping)*100)/100);
   });
 });
