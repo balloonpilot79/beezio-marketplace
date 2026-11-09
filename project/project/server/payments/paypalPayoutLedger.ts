@@ -1,6 +1,6 @@
 import { getReferrerBonusTotal, getSmallOrderPlatformReallocation } from '../../shared/referralBonus';
 import {
-  computeFixedBeezioPlatformFee,
+  computeLegacyBeezioPlatformFee,
 } from '../../shared/beezioFee';
 import {
   isTestItemTitle,
@@ -189,7 +189,7 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         ? TEST_ITEM_BEEZIO_FEE * quantity
         : (Number.isFinite(explicitPlatformFee)
             ? Math.max(0, explicitPlatformFee) * quantity
-            : (computeFixedBeezioPlatformFee(ask) + getSmallOrderPlatformReallocation(ask)) * quantity)
+            : (computeLegacyBeezioPlatformFee(ask) + getSmallOrderPlatformReallocation(ask)) * quantity)
     );
     const influencerPerSlotLine = round2(
       isTestItem
