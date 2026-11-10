@@ -27,9 +27,9 @@ export default function AmbassadorPage() {
           <h1 className="mt-6 max-w-3xl text-4xl md:text-6xl font-extrabold leading-tight !text-white">Help grow Beezio.<br/><span className="text-[#ffcb05]">Earn from qualifying sales.</span></h1>
           <p className="mt-6 max-w-2xl text-lg !text-gray-200">Beezio brings shoppers, independent sellers, and affiliates together in one online marketplace. Ambassadors help introduce people to the platform and can earn commissions tied to eligible product sales.</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/auth/signup?source=ambassadors" className="inline-flex items-center gap-2 rounded-xl bg-[#ffcb05] px-6 py-4 font-bold text-[#101820] hover:bg-yellow-300">Join Beezio <ArrowRight size={19}/></Link>
-            <a href="#how-it-works" className="rounded-xl border border-white px-6 py-4 font-semibold hover:bg-white/10">How it works</a>
-            <button type="button" onClick={share} className="rounded-xl border border-white px-6 py-4 font-semibold hover:bg-white/10">Share this page</button>
+            <Link to="/join" className="inline-flex items-center gap-2 rounded-xl bg-[#ffcb05] px-6 py-4 font-bold text-[#101820] hover:bg-yellow-300">Join Beezio <ArrowRight size={19}/></Link>
+            <a href="#how-it-works" className="rounded-xl border border-white px-6 py-4 font-semibold !text-white hover:bg-white/10" style={{ color: "#ffffff", WebkitTextFillColor: "#ffffff" }}>How it works</a>
+            <button type="button" onClick={share} className="rounded-xl border border-white px-6 py-4 font-semibold !text-white hover:bg-white/10" style={{ color: "#ffffff", WebkitTextFillColor: "#ffffff" }}>Share this page</button>
           </div>
         </div>
       </section>
@@ -56,7 +56,7 @@ export default function AmbassadorPage() {
         <p className="mt-7 rounded-xl bg-amber-50 p-5 text-sm text-gray-700">Important: Beezio is an independent, commission-based opportunity, not a salaried position. Signing people up alone does not guarantee payment. Earnings depend on qualifying product sales and program terms; no income is guaranteed. Review the applicable terms before participating.</p>
       </section>
       <section className="bg-[#ffcb05] px-5 py-14 text-center">
-        <div className="mx-auto max-w-3xl"><h2 className="text-3xl font-extrabold">Ready to help grow Beezio?</h2><p className="mt-3 text-lg">We're looking for our first group of active BZO Ambassadors. There is no artificial 25-person cap.</p><Link to="/auth/signup?source=ambassadors" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#101820] px-7 py-4 font-bold !text-white hover:bg-gray-800">Create your Beezio account <ArrowRight size={20}/></Link><p className="mt-3 text-sm">Use the existing Beezio signup flow. Ambassador enrollment and referral eligibility are subject to the program's account setup and terms.</p></div>
+        <div className="mx-auto max-w-3xl"><h2 className="text-3xl font-extrabold">Ready to help grow Beezio?</h2><p className="mt-3 text-lg">We're looking for our first group of active BZO Ambassadors. There is no artificial 25-person cap.</p><Link to="/join" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#101820] px-7 py-4 font-bold !text-white hover:bg-gray-800">Create your Beezio account <ArrowRight size={20}/></Link><p className="mt-3 text-sm">Use the existing Beezio signup flow. Ambassador enrollment and referral eligibility are subject to the program's account setup and terms.</p></div>
       </section>
     </div>
   );
