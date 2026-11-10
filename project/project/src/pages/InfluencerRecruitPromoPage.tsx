@@ -29,12 +29,9 @@ export default function InfluencerRecruitPromoPage() {
   }, [recruitCode]);
 
   const links = useMemo(() => {
-    const params = new URLSearchParams();
-    if (recruitCode) params.set('recruit', recruitCode);
-    const base = params.toString();
     return {
       influencer: recruitCode ? `/i/${encodeURIComponent(recruitCode)}` : '',
-      business: `/signup${base ? `?${base}` : ''}`,
+      business: recruitCode ? `/i/${encodeURIComponent(recruitCode)}` : '/join',
     };
   }, [recruitCode]);
 
