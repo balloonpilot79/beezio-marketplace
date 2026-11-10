@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Users, Link2, Megaphone, ShoppingBag, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
@@ -10,15 +10,47 @@ const steps = [
 ];
 
 export default function AmbassadorPage() {
-  const pageUrl = typeof window !== 'undefined' ? window.location.href : 'https://beezio.co/ambassadors';
+  const pageUrl = 'https://beezio.co/ambassadors';
+  const shareText = 'Discover the free BZO Ambassador Program. Introduce people to Beezio and earn commissions from qualifying sales. No guaranteed income.';
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    document.title = 'BZO Ambassador Program | Beezio';
+    const description = 'Become a BZO Ambassador. Help shoppers, sellers and affiliates discover Beezio and earn commissions on qualifying sales. Free to join; no income guaranteed.';
+    let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    const oldDescription = meta?.content;
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'description';
+      document.head.appendChild(meta);
+    }
+    meta.content = description;
+    return () => { document.title = 'Beezio | Free Websites. More Ways to Sell & Earn.'; if (meta && oldDescription !== undefined) meta.content = oldDescription; };
+  }, []);
   const share = async () => {
     if (navigator.share) {
-      try { await navigator.share({ title: 'BZO Ambassador Program', text: 'Discover the Beezio Ambassador Program', url: pageUrl }); } catch { /* share dismissed */ }
-    } else if (navigator.clipboard) {
+      try { await navigator.share({ title: 'BZO Ambassador Program | Beezio', text: shareText, url: pageUrl }); return; }
+      catch (error) { if ((error as Error)?.name === 'AbortError') return; }
+    }
+    await copyLink();
+  };
+  const copyLink = async () => {
+    try {
       await navigator.clipboard.writeText(pageUrl);
-      window.alert('Ambassador page link copied!');
+      setCopied(true);
+    } catch {
+      window.prompt('Copy the BZO Ambassador page link:', pageUrl);
     }
   };
+  const encodedUrl = encodeURIComponent(pageUrl);
+  const encodedText = encodeURIComponent(shareText + ' ' + pageUrl);
+  const channels = [
+    { name: 'Facebook', url: 'https://www.facebook.com/sharer/sharer.php?u=' + encodedUrl },
+    { name: 'WhatsApp', url: 'https://api.whatsapp.com/send?text=' + encodedText },
+    { name: 'X', url: 'https://twitter.com/intent/tweet?text=' + encodedText },
+    { name: 'LinkedIn', url: 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodedUrl },
+    { name: 'Email', url: 'mailto:?subject=' + encodeURIComponent('BZO Ambassador Program') + '&body=' + encodedText },
+    { name: 'Text message', url: 'sms:?body=' + encodedText },
+  ];
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <section className="bg-[#101820] !text-white px-5 py-16 md:py-24">
@@ -29,9 +61,21 @@ export default function AmbassadorPage() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/join" className="inline-flex items-center gap-2 rounded-xl bg-[#ffcb05] px-6 py-4 font-bold text-[#101820] hover:bg-yellow-300">Join Beezio <ArrowRight size={19}/></Link>
             <a href="#how-it-works" className="rounded-xl border border-white px-6 py-4 font-semibold !text-white hover:bg-white/10" style={{ color: "#ffffff", WebkitTextFillColor: "#ffffff" }}>How it works</a>
-            <button type="button" onClick={share} className="rounded-xl border border-white px-6 py-4 font-semibold !text-white hover:bg-white/10" style={{ color: "#ffffff", WebkitTextFillColor: "#ffffff" }}>Share this page</button>
+            <button type="button" onClick={share} className="rounded-xl border border-white px-6 py-4 font-semibold !text-white hover:bg-white/10" style={{ color: "#ffffff", WebkitTextFillColor: "#ffffff" }}>Share to any app</button>
           </div>
         </div>
+      </section>
+      <section className="mx-auto max-w-5xl px-5 py-10" aria-label="Share the BZO Ambassador Program">
+        <h2 className="text-2xl font-extrabold !text-[#101820]">Know someone who could be a BZO Ambassador?</h2>
+        <p className="mt-2 text-gray-700">Share this page in a tap. No signup required to view it.</p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button type="button" onClick={share} className="rounded-xl bg-[#101820] px-5 py-3 font-bold !text-white" style={{color:'#ffffff', WebkitTextFillColor:'#ffffff'}}>Share to any app</button>
+          <button type="button" onClick={copyLink} className="rounded-xl border-2 border-[#101820] bg-[#ffcb05] px-5 py-3 font-bold !text-[#101820]" style={{color:'#101820', WebkitTextFillColor:'#101820'}}>{copied ? 'Link copied!' : 'Copy link'}</button>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {channels.map(channel => <a key={channel.name} href={channel.url} target={channel.name === 'Email' || channel.name === 'Text message' ? undefined : '_blank'} rel="noopener noreferrer" className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-center font-semibold !text-[#101820]" style={{color:'#101820', WebkitTextFillColor:'#101820'}}>{channel.name}</a>)}
+        </div>
+        <p className="mt-4 break-all text-sm text-gray-600">{pageUrl}</p>
       </section>
       <section className="mx-auto max-w-5xl px-5 py-14">
         <h2 className="text-3xl font-extrabold">What is a BZO Ambassador?</h2>
