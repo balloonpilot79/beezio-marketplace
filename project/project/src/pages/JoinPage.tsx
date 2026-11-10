@@ -1,11 +1,14 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, ShoppingBag, Store } from "lucide-react";
 import PublicLayout from "../components/layout/PublicLayout";
 import { WebsiteBenefits } from "../components/brand/BeezioBrand";
 import { useAuth } from "../contexts/AuthContextMultiRole";
+import { withRecruitCode } from "../utils/referralSharing";
 
 export default function JoinPage() {
   const { user } = useAuth();
+  const [params] = useSearchParams();
+  const recruit = params.get("recruit");
   return (
     <PublicLayout>
       <div className="mx-auto max-w-4xl py-4 sm:py-10">
@@ -28,7 +31,7 @@ export default function JoinPage() {
               payout details.
             </p>
             <Link
-              to={user ? "/account" : "/account/signup"}
+              to={user ? "/account" : withRecruitCode("/account/signup", recruit)}
               className="bz-button bz-button-ink mt-7"
             >
               {user ? "Open Shopper Account" : "Create free shopper account"}
@@ -56,8 +59,8 @@ export default function JoinPage() {
             <div className="mt-5 flex-1">
               <WebsiteBenefits />
             </div>
-            <Link to="/signup" className="bz-button bz-button-gold mt-7">
-              Start your free website
+            <Link to={withRecruitCode("/signup", recruit)} className="bz-button bz-button-gold mt-7">
+              Create free business account
               <ArrowRight className="h-4 w-4" />
             </Link>
           </section>

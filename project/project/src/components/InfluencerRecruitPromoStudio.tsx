@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Copy, ExternalLink, Link as LinkIcon, Mail, MessageSquare, Megaphone, Store } from 'lucide-react';
+import { Copy, ExternalLink, Link as LinkIcon, Mail, Megaphone } from 'lucide-react';
 import { copyTextToClipboard } from '../utils/clipboard';
 
 type Props = {
@@ -7,14 +7,6 @@ type Props = {
   influencerName?: string | null;
 };
 
-type LinkKey =
-  | 'general'
-  | 'seller'
-  | 'affiliate'
-  | 'influencer'
-  | 'directSignup'
-  | 'sellerSignup'
-  | 'affiliateSignup';
 
 type ShareChannel = 'facebook' | 'x' | 'everywhere';
 
@@ -52,7 +44,7 @@ const captionTemplates: Array<{
   label: string;
   channel: ShareChannel;
   target: 'seller' | 'affiliate';
-  linkKey: LinkKey;
+
   style: StyleFamily;
   text: string;
 }> = [
@@ -61,7 +53,7 @@ const captionTemplates: Array<{
     label: 'Facebook seller post',
     channel: 'facebook',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'standard',
     text: 'Have products to sell? Start a Beezio store with checkout, product pages, and a cleaner way to sell online.',
   },
@@ -70,7 +62,7 @@ const captionTemplates: Array<{
     label: 'Facebook affiliate post',
     channel: 'facebook',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'standard',
     text: 'No products to manage? Join Beezio, share products people already want, and earn per sale.',
   },
@@ -79,7 +71,7 @@ const captionTemplates: Array<{
     label: 'X seller post',
     channel: 'x',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'standard',
     text: 'Turn your products into a real store with Beezio. Clean storefront. Built-in checkout. Faster launch.',
   },
@@ -88,7 +80,7 @@ const captionTemplates: Array<{
     label: 'X affiliate post',
     channel: 'x',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'standard',
     text: 'No inventory. No shipping. No product creation. Join Beezio and earn by sharing products.',
   },
@@ -97,7 +89,7 @@ const captionTemplates: Array<{
     label: 'Seller anywhere post',
     channel: 'everywhere',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'standard',
     text: 'Need a better way to sell online? Beezio gives you a polished store, built-in checkout, and a fast path to launch.',
   },
@@ -106,7 +98,7 @@ const captionTemplates: Array<{
     label: 'Affiliate anywhere post',
     channel: 'everywhere',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'standard',
     text: 'Want to earn online without managing products? Start with Beezio and earn per sale from a simple setup.',
   },
@@ -115,7 +107,7 @@ const captionTemplates: Array<{
     label: 'Seller high-energy post',
     channel: 'everywhere',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'aggressive',
     text: 'Stop waiting to launch. Put your products in a real Beezio store and start selling with checkout already built in.',
   },
@@ -124,7 +116,7 @@ const captionTemplates: Array<{
     label: 'Affiliate high-energy post',
     channel: 'everywhere',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'aggressive',
     text: 'Want extra income fast? Join Beezio, share winning products, and get paid on the sales you help drive.',
   },
@@ -133,7 +125,7 @@ const captionTemplates: Array<{
     label: 'Seller professional post',
     channel: 'everywhere',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'professional',
     text: 'Beezio gives sellers a professional storefront, built-in checkout, and a simpler way to launch online.',
   },
@@ -142,7 +134,7 @@ const captionTemplates: Array<{
     label: 'Affiliate professional post',
     channel: 'everywhere',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'professional',
     text: 'Beezio gives affiliates a straightforward way to share products and earn commission without managing inventory.',
   },
@@ -151,7 +143,7 @@ const captionTemplates: Array<{
     label: 'Seller casual post',
     channel: 'facebook',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'casual',
     text: 'If you already have products, this is a pretty easy way to get them online without building everything yourself.',
   },
@@ -160,7 +152,7 @@ const captionTemplates: Array<{
     label: 'Affiliate casual post',
     channel: 'facebook',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'casual',
     text: 'If you want a side-income option without dealing with inventory, Beezio is worth a look.',
   },
@@ -171,7 +163,7 @@ const adPreviewTemplates: Array<{
   label: string;
   channel: ShareChannel;
   target: 'seller' | 'affiliate';
-  linkKey: LinkKey;
+
   style: StyleFamily;
   tone: 'dark' | 'light';
   eyebrow: string;
@@ -187,7 +179,7 @@ const adPreviewTemplates: Array<{
     label: 'Facebook seller card',
     channel: 'facebook',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'standard',
     tone: 'dark',
     eyebrow: 'Facebook groups',
@@ -203,7 +195,7 @@ const adPreviewTemplates: Array<{
     label: 'Facebook affiliate card',
     channel: 'facebook',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'standard',
     tone: 'light',
     eyebrow: 'Facebook groups',
@@ -219,7 +211,7 @@ const adPreviewTemplates: Array<{
     label: 'X seller card',
     channel: 'x',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'standard',
     tone: 'dark',
     eyebrow: 'Post on X',
@@ -235,7 +227,7 @@ const adPreviewTemplates: Array<{
     label: 'X affiliate card',
     channel: 'x',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'standard',
     tone: 'dark',
     eyebrow: 'Post on X',
@@ -251,7 +243,7 @@ const adPreviewTemplates: Array<{
     label: 'Seller universal card',
     channel: 'everywhere',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'standard',
     tone: 'dark',
     eyebrow: 'Share anywhere',
@@ -267,7 +259,7 @@ const adPreviewTemplates: Array<{
     label: 'Affiliate universal card',
     channel: 'everywhere',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'standard',
     tone: 'light',
     eyebrow: 'Share anywhere',
@@ -283,7 +275,7 @@ const adPreviewTemplates: Array<{
     label: 'Community seller card',
     channel: 'facebook',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'standard',
     tone: 'light',
     eyebrow: 'Community post',
@@ -299,7 +291,7 @@ const adPreviewTemplates: Array<{
     label: 'Bright affiliate card',
     channel: 'everywhere',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'standard',
     tone: 'light',
     eyebrow: 'Easy to share',
@@ -315,7 +307,7 @@ const adPreviewTemplates: Array<{
     label: 'Aggressive seller card',
     channel: 'x',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'aggressive',
     tone: 'light',
     eyebrow: 'High energy',
@@ -331,7 +323,7 @@ const adPreviewTemplates: Array<{
     label: 'Aggressive affiliate card',
     channel: 'x',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'aggressive',
     tone: 'light',
     eyebrow: 'High energy',
@@ -347,7 +339,7 @@ const adPreviewTemplates: Array<{
     label: 'Professional seller card',
     channel: 'everywhere',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'professional',
     tone: 'light',
     eyebrow: 'Professional',
@@ -363,7 +355,7 @@ const adPreviewTemplates: Array<{
     label: 'Professional affiliate card',
     channel: 'everywhere',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'professional',
     tone: 'light',
     eyebrow: 'Professional',
@@ -379,7 +371,7 @@ const adPreviewTemplates: Array<{
     label: 'Casual seller card',
     channel: 'facebook',
     target: 'seller',
-    linkKey: 'sellerSignup',
+
     style: 'casual',
     tone: 'light',
     eyebrow: 'Casual share',
@@ -395,7 +387,7 @@ const adPreviewTemplates: Array<{
     label: 'Casual affiliate card',
     channel: 'facebook',
     target: 'affiliate',
-    linkKey: 'affiliateSignup',
+
     style: 'casual',
     tone: 'light',
     eyebrow: 'Casual share',
@@ -418,18 +410,7 @@ export default function InfluencerRecruitPromoStudio({ code, influencerName }: P
     [code]
   );
 
-  const links = useMemo(() => {
-    const encoded = encodeURIComponent(String(code || '').trim());
-    return {
-      general: `${origin}/promo/join/${encoded}?audience=both`,
-      seller: `${origin}/promo/join/${encoded}?audience=seller`,
-      affiliate: `${origin}/promo/join/${encoded}?audience=affiliate`,
-      influencer: `${origin}/promo/join/${encoded}?audience=influencer`,
-      directSignup: `${origin}/i/${encoded}`,
-      sellerSignup: `${origin}/signup?role=seller&recruit=${encoded}`,
-      affiliateSignup: `${origin}/signup?role=affiliate&recruit=${encoded}`,
-    };
-  }, [code, origin]);
+  const inviteLink = `${origin}/i/${encodeURIComponent(String(code || '').trim())}`;
 
   const copy = async (key: string, value: string) => {
     if (!value) return;
@@ -548,7 +529,7 @@ export default function InfluencerRecruitPromoStudio({ code, influencerName }: P
           </p>
         </div>
         <a
-          href={links.general}
+          href={inviteLink}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-900 hover:border-gray-500"
@@ -564,17 +545,17 @@ export default function InfluencerRecruitPromoStudio({ code, influencerName }: P
           Primary influencer invite link
         </div>
         <p className="mt-1 text-sm text-emerald-900">
-          This is the main public invite link. It keeps your influencer attribution attached.
+          This link lets people choose a Shopper or Business Account and keeps your referral attached.
         </p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
             readOnly
-            value={links.directSignup}
+            value={inviteLink}
             className="w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900"
           />
           <button
             type="button"
-            onClick={() => copy('direct-signup', links.directSignup)}
+            onClick={() => copy('direct-signup', inviteLink)}
             className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300 bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-200"
           >
             <Copy className="w-4 h-4" />
@@ -675,7 +656,7 @@ export default function InfluencerRecruitPromoStudio({ code, influencerName }: P
                             </div>
                             <button
                               type="button"
-                              onClick={() => copy(`ad-${preview.key}`, `${preview.headline}\n\n${links[preview.linkKey]}`)}
+                              onClick={() => copy(`ad-${preview.key}`, `${preview.headline}\n\n${inviteLink}`)}
                               className="inline-flex items-center gap-1 rounded-lg border border-black/10 bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-slate-900 hover:bg-white"
                             >
                               <Copy className="h-3.5 w-3.5" />
@@ -697,77 +678,6 @@ export default function InfluencerRecruitPromoStudio({ code, influencerName }: P
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
-        <div className="text-sm font-semibold text-amber-950">Audience-focused business signup links</div>
-        <p className="mt-1 text-sm text-amber-900">
-          Both links create the same unified seller, affiliate, and influencer account. The wording only matches the audience you are inviting, and your lifetime recruiter code stays attached.
-        </p>
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-          {[
-            { key: 'seller-signup', label: 'Seller-focused signup', value: links.sellerSignup },
-            { key: 'affiliate-signup', label: 'Affiliate-focused signup', value: links.affiliateSignup },
-          ].map((item) => (
-            <div key={item.key} className="rounded-lg border border-amber-100 bg-white p-3">
-              <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">{item.label}</div>
-              <input
-                readOnly
-                value={item.value}
-                className="mt-2 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-xs text-gray-900"
-              />
-              <button
-                type="button"
-                onClick={() => copy(item.key, item.value)}
-                className="mt-3 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-900 hover:bg-gray-200"
-              >
-                <Copy className="w-4 h-4" />
-                {copiedKey === item.key ? 'Copied' : 'Copy signup link'}
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-5 grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {[
-          { key: 'general', label: 'General invite page', icon: Megaphone, value: links.general },
-          { key: 'seller', label: 'Seller invite page', icon: Store, value: links.seller },
-          { key: 'affiliate', label: 'Affiliate invite page', icon: MessageSquare, value: links.affiliate },
-          { key: 'influencer', label: 'Influencer invite page', icon: Megaphone, value: links.influencer },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <div key={item.key} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                <Icon className="w-4 h-4 text-gray-600" />
-                {item.label}
-              </div>
-              <input
-                readOnly
-                value={item.value}
-                className="mt-3 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900"
-              />
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => copy(item.key, item.value)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-900 hover:bg-gray-200"
-                >
-                  <Copy className="w-4 h-4" />
-                  {copiedKey === item.key ? 'Copied' : 'Copy'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openShare(item.value, `Join Beezio through ${name}`, 'facebook')}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-900 hover:border-gray-500"
-                >
-                  Share
-                </button>
-              </div>
-            </div>
-          );
-        })}
       </div>
 
       <div className="mt-5 rounded-lg border border-gray-200 p-4">
@@ -802,12 +712,12 @@ export default function InfluencerRecruitPromoStudio({ code, influencerName }: P
                       <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">{template.target}</span>
                     </div>
                     <div className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                      Attached link: {template.linkKey === 'sellerSignup' ? 'Seller-focused business signup' : template.linkKey === 'affiliateSignup' ? 'Affiliate-focused business signup' : 'Unified business invite'}
+                      Attached link: One Beezio invite for shoppers and businesses
                     </div>
                     <div className="mt-3 flex gap-2">
                       <button
                         type="button"
-                        onClick={() => copy(`caption-${template.id}`, `${template.text}\n\n${links[template.linkKey]}`)}
+                        onClick={() => copy(`caption-${template.id}`, `${template.text}\n\n${inviteLink}`)}
                         className="inline-flex items-center gap-2 text-xs font-semibold text-gray-900 hover:text-black"
                       >
                         <Copy className="w-3.5 h-3.5" />
@@ -817,10 +727,10 @@ export default function InfluencerRecruitPromoStudio({ code, influencerName }: P
                         type="button"
                         onClick={() => {
                           if (template.channel === 'everywhere') {
-                            copy(`share-${template.id}`, `${template.text}\n\n${links[template.linkKey]}`);
+                            copy(`share-${template.id}`, `${template.text}\n\n${inviteLink}`);
                             return;
                           }
-                          openShare(links[template.linkKey], template.text, template.channel);
+                          openShare(inviteLink, template.text, template.channel);
                         }}
                         className="inline-flex items-center gap-2 text-xs font-semibold text-gray-900 hover:text-black"
                       >

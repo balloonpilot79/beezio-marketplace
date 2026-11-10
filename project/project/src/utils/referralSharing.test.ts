@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildReferralInviteMessage, buildSmsShareHref, MESSENGER_COMPOSE_URL } from './referralSharing';
+import { buildReferralInviteMessage, buildSmsShareHref, MESSENGER_COMPOSE_URL, withRecruitCode } from './referralSharing';
 
 describe('referral sharing', () => {
   const message = 'Join Beezio through my invite.';
@@ -21,5 +21,21 @@ describe('referral sharing', () => {
 
   it('uses Messenger compose for direct messages', () => {
     expect(MESSENGER_COMPOSE_URL).toBe('https://www.messenger.com/new');
+  });
+});
+
+describe('unified referral signup', () => {
+  it.each(['/account/signup', '/signup'] as const)('passes the invite code from the chooser to %s', (path) => {
+    const origin = 'https://beezio.co';
+    const chooser = new URL(withRecruitCode('/join', '  example+code&other=yes  '), origin);
+    const signup = new URL(withRecruitCode(path, chooser.searchParams.get('recruit')), origin);
+    expect(chooser.pathname).toBe('/join');
+    expect(signup.pathname).toBe(path);
+    expect([...signup.searchParams.entries()]).toEqual([['recruit', 'example+code&other=yes']]);
+  });
+
+  it('keeps normal signup free of a referral parameter', () => {
+    expect(withRecruitCode('/account/signup', null)).toBe('/account/signup');
+    expect(withRecruitCode('/signup', '   ')).toBe('/signup');
   });
 });

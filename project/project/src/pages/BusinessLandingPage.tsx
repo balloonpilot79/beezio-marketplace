@@ -142,7 +142,7 @@ export default function BusinessLandingPage({
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl bg-slate-50 p-5">
               <h3 className="font-semibold">Refer a shopper</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">Invite a new shopper using your shopper referral link. You can earn on their qualifying purchases over time.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Invite a new shopper using your Beezio referral link. You can earn on their qualifying purchases over time.</p>
             </div>
             <div className="rounded-xl bg-slate-50 p-5">
               <h3 className="font-semibold">Refer a seller</h3>

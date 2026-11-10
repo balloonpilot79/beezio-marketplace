@@ -16,3 +16,8 @@ export function buildSmsShareHref(
   const separator = /iPad|iPhone|iPod/i.test(userAgent) ? '&' : '?';
   return `sms:${separator}body=${body}`;
 }
+
+export function withRecruitCode(path: '/join' | '/account/signup' | '/signup', code: string | null | undefined): string {
+  const cleanCode = code?.trim();
+  return cleanCode ? `${path}?${new URLSearchParams({ recruit: cleanCode })}` : path;
+}

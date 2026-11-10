@@ -18,7 +18,7 @@ type InfluencerStatsRow = {
 type RecruitedAccount = {
   id: string;
   recruited_profile_id: string;
-  recruited_role: 'seller' | 'affiliate';
+  recruited_role: 'seller' | 'affiliate' | 'buyer';
   created_at: string;
 };
 
@@ -132,10 +132,6 @@ const InfluencerDashboard: React.FC = () => {
     return `${origin}/i/${encoded}`;
   }, [codeForLink]);
 
-  const buyerSignupLink = codeForLink
-    ? `${window.location.origin}/account/signup?recruit=${encodeURIComponent(codeForLink)}`
-    : '';
-
   const handleCopy = async () => {
     const copiedOk = await copyTextToClipboard(signupLink);
     if (copiedOk) {
@@ -175,10 +171,10 @@ const InfluencerDashboard: React.FC = () => {
       <div id="invite-link" className="rounded-xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-3">
           <LinkIcon className="w-5 h-5 text-gray-600" />
-          <h3 className="text-lg font-bold text-gray-900">Direct recruiting signup link</h3>
+          <h3 className="text-lg font-bold text-gray-900">Your Beezio invite link</h3>
         </div>
         <p className="text-sm text-gray-600 mb-4">
-          Use this direct signup link when you want the recruit to land straight on signup with your influencer attribution attached. Seller and affiliate signup pages both carry the same recruiter code, and only the sale role that generated the sale should earn the influencer fee.
+          Share this link or its QR code. People choose a Shopper Account or a Business Account, and your referral follows their choice.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-2">
@@ -201,22 +197,13 @@ const InfluencerDashboard: React.FC = () => {
         </div>
         <ReferralShareActions
           referralUrl={signupLink}
-          message="Join Beezio through my invite to start selling products or earning as an affiliate."
+          message="Join Beezio through my invite to shop, sell, or promote products."
           className="mt-4"
         />
         <p className="mt-2 text-xs text-gray-500">
           Text invite opens your SMS app. Messenger copies the complete tracked invite before opening Messenger.
         </p>
       </div>
-
-      {buyerSignupLink && (
-        <section className="mt-4 rounded-xl border border-gray-200 bg-white p-4">
-          <h3 className="text-lg font-bold text-gray-900">Shopper referral link</h3>
-          <p className="mt-2 text-sm text-gray-600">Invite new shoppers. Qualifying purchases can earn you referral rewards while the account and referral remain eligible.</p>
-          <input aria-label="Shopper referral link" readOnly value={buyerSignupLink} className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-          <ReferralShareActions referralUrl={buyerSignupLink} message="Shop independent stores on Beezio through my invite." className="mt-4" />
-        </section>
-      )}
 
       <div className="mt-4 grid gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:grid-cols-[180px_1fr] sm:p-6">
         <div className="flex flex-col items-center justify-center gap-2 rounded-xl bg-white p-4">
@@ -228,18 +215,18 @@ const InfluencerDashboard: React.FC = () => {
         <div className="space-y-3">
           <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900"><Megaphone className="h-5 w-5 text-amber-700" /> Ready-to-share invitation</h3>
           <p className="text-sm leading-6 text-slate-700">
-            Start your free Beezio store, list your own products, or earn commission promoting marketplace items. I use Beezio to help people earn from real product sales. Join through my link:
+            Shop independent stores, open a free storefront, or earn commissions by promoting products. Join Beezio through my link:
           </p>
           <p className="break-all rounded-lg bg-white px-3 py-2 text-xs font-medium text-slate-800">{signupLink}</p>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => void copyTextToClipboard(`Start selling or promoting real products on Beezio. Build your own free store and earn from qualifying product sales. Join through my link: ${signupLink}`)}
+            <button type="button" onClick={() => void copyTextToClipboard(`Shop independent stores, open a free storefront, or earn commissions by promoting products. Join Beezio through my link: ${signupLink}`)}
               className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white"><Copy className="h-4 w-4" /> Copy invitation</button>
             <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(signupLink)}`} target="_blank" rel="noopener noreferrer"
               className="inline-flex min-h-11 items-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-slate-800">Share on Facebook</a>
-            <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(signupLink)}&text=${encodeURIComponent('Sell your own products or earn promoting marketplace products on Beezio.')}`} target="_blank" rel="noopener noreferrer"
+            <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(signupLink)}&text=${encodeURIComponent('Shop, sell, or promote products on Beezio.')}`} target="_blank" rel="noopener noreferrer"
               className="inline-flex min-h-11 items-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-slate-800">Share on X</a>
           </div>
-          <p className="text-xs text-slate-600">Joining connects a qualifying new business account to your influencer referral. Earnings are recorded only when qualifying product sales occur, subject to Beezio payout rules.</p>
+          <p className="text-xs text-slate-600">Qualifying new shopper and business accounts are linked to your referral. Rewards are earned on eligible purchases or sales.</p>
         </div>
       </div>
       <div id="influencer-promo" className="mt-6 scroll-mt-32">
@@ -249,11 +236,11 @@ const InfluencerDashboard: React.FC = () => {
         />
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl border border-purple-200 bg-purple-50 p-5">
           <div className="text-sm font-semibold text-purple-900">Recruited business accounts</div>
           <div className="mt-2 text-3xl font-bold text-gray-900">
-            {new Set(recruitedAccounts.map((row) => row.recruited_profile_id)).size}
+            {new Set(recruitedAccounts.filter((row) => row.recruited_role !== 'buyer').map((row) => row.recruited_profile_id)).size}
           </div>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
@@ -268,6 +255,10 @@ const InfluencerDashboard: React.FC = () => {
             {recruitedAccounts.filter((row) => row.recruited_role === 'affiliate').length}
           </div>
         </div>
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+          <div className="text-sm font-semibold text-blue-900">Shopper accounts</div>
+          <div className="mt-2 text-3xl font-bold text-gray-900">{recruitedAccounts.filter((row) => row.recruited_role === 'buyer').length}</div>
+        </div>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -280,8 +271,8 @@ const InfluencerDashboard: React.FC = () => {
             {recruitedAccounts.slice(0, 20).map((row) => (
               <div key={row.id} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
                 <div>
-                  <div className="font-medium capitalize text-gray-900">{row.recruited_role} activity</div>
-                  <div className="text-xs text-gray-500">Business …{row.recruited_profile_id.slice(-8)}</div>
+                  <div className="font-medium capitalize text-gray-900">{row.recruited_role === 'buyer' ? 'Shopper' : row.recruited_role} activity</div>
+                  <div className="text-xs text-gray-500">{row.recruited_role === 'buyer' ? 'Shopper' : 'Business'} …{row.recruited_profile_id.slice(-8)}</div>
                 </div>
                 <div className="text-right text-xs text-gray-500">
                   Attached {new Date(row.created_at).toLocaleDateString()}
@@ -290,7 +281,7 @@ const InfluencerDashboard: React.FC = () => {
             ))}
           </div>
         ) : (
-          <div className="px-5 py-8 text-center text-sm text-gray-500">No recruited business accounts yet. Share your invite link to begin.</div>
+          <div className="px-5 py-8 text-center text-sm text-gray-500">No referred accounts yet. Share your invite link to begin.</div>
         )}
       </div>
 
@@ -298,10 +289,10 @@ const InfluencerDashboard: React.FC = () => {
         <h3 className="text-lg font-semibold text-gray-900">How influencer earnings work</h3>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-lg border border-white/80 bg-white p-4 text-sm text-gray-700">
-            When a tracked recruit sells, Beezio logs the sale and the linked influencer earning.
+            When a referred shopper buys or a referred business generates a qualifying sale, Beezio records any eligible reward.
           </div>
           <div className="rounded-lg border border-white/80 bg-white p-4 text-sm text-gray-700">
-            Your earnings are paid from Beezio platform fees, not from seller payouts or affiliate commissions.
+            Your rewards can come from qualifying sales or purchases by the people you refer.
           </div>
           <div className="rounded-lg border border-white/80 bg-white p-4 text-sm text-gray-700">
             The payout history below shows what is still held, what is ready, and what has already been paid.
