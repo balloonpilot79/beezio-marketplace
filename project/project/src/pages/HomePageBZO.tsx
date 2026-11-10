@@ -69,7 +69,7 @@ const paths = [
     label: "For ambassadors",
     text: "Invite sellers and affiliates with your referral link and earn from their qualifying sales.",
     signup: "/signup?role=influencer",
-    href: "/start-earning",
+    href: "/ambassadors",
     action: "Become an ambassador",
     icon: Megaphone,
     tone: "influencer",
@@ -152,6 +152,7 @@ export default function HomePageBZO() {
               <Link to="/support" className="underline">Contact support</Link>
               <Link to="/returns" className="underline">Returns</Link>
               <Link to="/how-it-works" className="underline">How Beezio works</Link>
+              <Link to="/ambassadors" className="underline">BZO Ambassador Program</Link>
             </nav>
           </div>
           <div className="hm-spotlight">
@@ -455,7 +456,7 @@ export default function HomePageBZO() {
               signups; income is not guaranteed.
             </p>
           </div>
-          <Link to="/start-earning" className="bz-button bz-button-ink">
+          <Link to="/ambassadors" className="bz-button bz-button-ink">
             See how influencer earnings work <ArrowRight size={17} />
           </Link>
         </section>
