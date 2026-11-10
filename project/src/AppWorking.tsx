@@ -64,6 +64,7 @@ import AdminAIHubPage from './pages/AdminAIHubPage';
 import MessagesPage from './pages/MessagesPage';
 import StoresPage from './pages/StoresPage';
 import AboutPage from './pages/AboutPage';
+import AmbassadorPage from './pages/AmbassadorPage';
 import AuthPage from './pages/AuthPage';
 import DashboardRoleSelector from './pages/DashboardRoleSelector';
 import CJProductImportPage from './pages/CJProductImportPage';
@@ -177,6 +178,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/marketplace" element={<MarketplacePage />} />
                     <Route path="/stores" element={<StoresPage />} />
                     <Route path="/about" element={<AboutPage />} />
+                    <Route path="/ambassadors" element={<AmbassadorPage />} />
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/fundraisers" element={<FundraisersPage />} />
                     <Route path="/fundraiser/:fundraiserId" element={<FundraiserDetailPage />} />
