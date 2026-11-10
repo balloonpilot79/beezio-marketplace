@@ -81,6 +81,7 @@ const ProfileCompletion = lazy(() => import('./components/ProfileCompletion'));
 const AffiliateGuide = lazy(() => import('./pages/AffiliateGuide'));
 const StoresPage = lazy(() => import('./pages/StoresPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
+const AmbassadorPage = lazy(() => import('./pages/AmbassadorPage'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
 const AuthConfirmPage = lazy(() => import('./pages/AuthConfirmPage'));
 const StorefrontAuthPage = lazy(() => import('./pages/StorefrontAuthPage'));
@@ -750,6 +751,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/insurance/:slug" element={<InsurancePublicRoute><InsuranceListingPage /></InsurancePublicRoute>} />
                     <Route path="/stores" element={<StoresPage />} />
                     <Route path="/about" element={<AboutPage />} />
+                    <Route path="/ambassadors" element={<AmbassadorPage />} />
                     <Route path="/search" element={<LegacySearchRedirect />} />
                     <Route path="/product/:productId" element={<ProductDetailPage />} />
                     <Route path="/:storeSlug/product/:productId" element={<ProductDetailPage />} />
