@@ -1,3 +1,4 @@
+import { shoppingCategory } from "./shoppingCategory";
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
 import { isPublicTestProduct } from '../../shared/publicProductVisibility';
 import { getBuyerFacingProductPrice } from "./buyerPrice";
@@ -76,7 +77,7 @@ export function prepareHomeProducts(rows: any[]): HomeProduct[] {
               : row.images || row.primary_image_url || row.image_url,
           )[0] || null,
         seller: String(row.profiles?.full_name || "Independent seller"),
-        category: String(row.category_name || row.category || "Discover more"),
+        category: shoppingCategory(String(row.title), String(row.category_name || row.category || "")) || "More Finds",
         available,
       };
     })

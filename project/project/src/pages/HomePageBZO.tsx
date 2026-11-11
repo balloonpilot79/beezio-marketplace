@@ -294,7 +294,7 @@ export default function HomePageBZO() {
               to={
                 category === "All"
                   ? "/marketplace"
-                  : `/marketplace?q=${encodeURIComponent(category)}`
+                  : `/marketplace?category=${encodeURIComponent(category.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""))}`
               }
               className="bz-button bz-button-ink hm-more"
             >
@@ -305,8 +305,8 @@ export default function HomePageBZO() {
         <section id="stores" className="hm-stores-section" aria-labelledby="home-stores-title">
           <div className="hm-section-heading">
             <div>
-              <p className="hm-kicker">Discover stores</p>
-              <h2 id="home-stores-title">Shop Beezio storefronts</h2>
+              <p className="hm-kicker">Store examples</p>
+              <h2 id="home-stores-title">Featured stores</h2>
             </div>
             <Link to="/stores" className="hm-all-link">
               Browse all stores <ArrowRight size={17} />
@@ -314,7 +314,7 @@ export default function HomePageBZO() {
           </div>
           {storesLoading && <p role="status">Loading stores…</p>}
           <div className="hm-store-grid">
-            {stores.slice(0, 3).map(store => (
+            {stores.filter(store => ["loving-jewelry", "marebelle"].includes(store.slug)).slice(0, 2).map(store => (
               <Link key={store.slug} to={`/store/${encodeURIComponent(store.slug)}`} className="hm-store-card">
                 {store.image
                   ? <img src={store.image} alt="" loading="lazy" />
@@ -327,6 +327,8 @@ export default function HomePageBZO() {
             ))}
           </div>
         </section>
+        <p className="hm-build-note">Free websites for sellers AND affiliates. Designed by you.</p>
+        <p className="hm-build-note">No seller fees. No listing fees or monthly subscriptions.</p>
         <section
           id="start"
           aria-label="Start your business on Beezio"
@@ -348,117 +350,6 @@ export default function HomePageBZO() {
               </article>
             ),
           )}
-        </section>
-        <section className="hm-quick-start" aria-labelledby="how-sales-work-title">
-          <div>
-            <p className="hm-kicker">How Beezio works</p>
-            <h2 id="how-sales-work-title">One marketplace. Clear ways to earn.</h2>
-            <p>A seller lists a product, sets what they receive, and chooses whether to offer an affiliate reward. An affiliate shares it using a tracked link or their store. A customer places an order, the seller fulfills it, and eligible earnings are paid after the hold and payout requirements are met.</p>
-            <p>It’s free to join. Sellers set what they receive. Affiliates and Ambassadors earn on qualifying sales.</p>
-          </div>
-          <Link to="/faq" className="bz-button bz-button-ink">Read about payouts <ArrowRight size={17} /></Link>
-        </section>
-        <section className="hm-quick-start" aria-labelledby="quick-start-title">
-          <div>
-            <p className="hm-kicker">Your first store starts here</p>
-            <h2 id="quick-start-title">Create an account. Choose products. Share your store.</h2>
-            <p>Start as an affiliate with products already on Beezio, or list your own as a seller. Add your branding when you’re ready.</p>
-          </div>
-          <Link to="/signup?role=affiliate" className="bz-button bz-button-ink">Start my free store <ArrowRight size={17} /></Link>
-        </section>
-        <section className="hm-earn-banner">
-          <div className="hm-earn-icon">
-            <Globe size={32} aria-hidden="true" />
-          </div>
-          <div>
-            <p className="hm-kicker">Turn recommendations into commissions</p>
-            <h2>Affiliates are at the heart of Beezio.</h2>
-            <p>
-              Your recommendations connect shoppers with great products and
-              help sellers reach new customers. Build your free affiliate
-              website, share products you believe in, and earn commissions on
-              qualifying sales. No inventory to buy or orders to ship.
-            </p>
-          </div>
-          <Link to="/affiliates" className="bz-button bz-button-gold">
-            Explore affiliate earning <ArrowRight size={17} />
-          </Link>
-        </section>
-        <section className="hm-build">
-          <div className="hm-build-preview">
-            <div className="hm-browser-bar">
-              <i />
-              <i />
-              <i />
-              <span>Your brand. Your website.</span>
-            </div>
-            <img
-              src="/marebelle-storefront-example.png"
-              alt="Example of a custom website built with Beezio"
-              loading="lazy"
-            />
-            <div className="hm-build-stamp">
-              <Globe size={20} />
-              <span>
-                Designed by you.
-                <br />
-                <strong>Powered by Beezio.</strong>
-              </span>
-            </div>
-          </div>
-          <div className="hm-build-copy">
-            <p className="hm-kicker">For sellers & affiliates</p>
-            <h2>
-              Sell what you have. <em>Grow at your own pace.</em>
-            </h2>
-            <p>
-              Open a free store for one item or a whole collection. Add your branding,
-              sell directly to shoppers, and choose which products affiliates can promote.
-            </p>
-            <ul>
-              <li>
-                <Check size={16} /> No seller fees. No listing fees or monthly subscriptions.
-              </li>
-              <li>
-                <Check size={16} /> Affiliates can sell your products through
-                their stores
-              </li>
-              <li>
-                <Check size={16} /> Manage products, orders, and earnings in
-                your Business Center
-              </li>
-            </ul>
-            <Link to="/signup" className="bz-button bz-button-gold">
-              Start your free website <ArrowRight size={17} />
-            </Link>
-            <p className="hm-build-note">
-              Free websites for sellers AND affiliates. Designed by you.
-            </p>
-          </div>
-        </section>
-        <section className="hm-influencer">
-          <div>
-            <p className="hm-kicker">For influencers & community builders</p>
-            <h2>
-              Your connections.
-              <br />
-              Ongoing earning potential.
-            </h2>
-            <p>
-              When a seller or affiliate signs up with your referral code or
-              link, you can keep earning from their qualifying sales on Beezio
-              while their account and referral remain eligible.
-            </p>
-            <p>
-              Build a network of active sellers and affiliates, and grow your
-              earning potential as their sales grow. No inventory to buy or
-              orders to ship. Commissions come from qualifying sales, not
-              signups; income is not guaranteed.
-            </p>
-          </div>
-          <Link to="/ambassadors" className="bz-button bz-button-ink">
-            See how influencer earnings work <ArrowRight size={17} />
-          </Link>
         </section>
         <details className="hm-pricing">
           <summary>What does it cost to join Beezio?</summary>

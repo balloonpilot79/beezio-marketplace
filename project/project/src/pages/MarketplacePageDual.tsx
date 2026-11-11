@@ -1,3 +1,4 @@
+import { shoppingCategory } from "../utils/shoppingCategory";
 import { matchesMerchandiseFilter, MERCHANDISE_TYPES } from '../../shared/vendorListing';
 import { isPublicMarketplaceProduct } from '../../shared/publicProductVisibility';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -159,8 +160,8 @@ const resolveDerivedCategory = (product: MarketplaceProduct, categoryById: Map<s
   const linkedCategory = product.category_id ? categoryById.get(product.category_id) : null;
   const parentCategory = linkedCategory?.parent_id ? categoryById.get(linkedCategory.parent_id) : null;
   const explicit = String(parentCategory?.name || linkedCategory?.name || product.category || '').trim();
-  if (/^(clothing|apparel|fashion|clothing & fashion)$/i.test(explicit)) return 'Clothing';
-  if (explicit) return explicit;
+  const shopping = shoppingCategory(product.title || '', explicit);
+  if (shopping) return shopping;
 
   const haystack = `${product.title || ''} ${product.description || ''}`.toLowerCase();
   for (const entry of CATEGORY_KEYWORDS) {
