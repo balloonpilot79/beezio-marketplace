@@ -61,11 +61,11 @@ const content = {
       ],
       [
         "Your earnings come from real product sales",
-        "A signup by itself does not create an influencer payment. When an eligible seller or affiliate you referred participates in a qualifying product sale, the applicable influencer bonus can be recorded for you. There is no one-sale or two-sale cutoff simply because the referral has already produced a sale.",
+        "A signup by itself does not create an ambassador payment. When an eligible seller or affiliate you referred participates in a qualifying product sale, the applicable ambassador bonus can be recorded for you. There is no one-sale or two-sale cutoff simply because the referral has already produced a sale.",
       ],
       [
         "Help put more products in front of more people",
-        "Sellers bring products. Affiliates help move those products. Influencers help grow the network connecting them. There is no inventory to buy or orders to ship just to participate as an influencer, and no specific level of earnings is promised.",
+        "Sellers bring products. Affiliates help move those products. Ambassadors help grow the network connecting them. There is no inventory to buy or orders to ship just to participate as an ambassador, and no specific level of earnings is promised.",
       ],
     ],
   },
@@ -73,7 +73,7 @@ const content = {
     label: "How Beezio works",
     title: "A place to shop. A place to sell. A way to earn.",
     description:
-      "Shoppers buy products. Sellers bring the products. Affiliates recommend them. Influencers introduce businesses. Beezio brings the storefronts, checkout, and tracking together.",
+      "Shoppers buy products. Sellers bring the products. Affiliates recommend them. Ambassadors introduce businesses. Beezio brings the storefronts, checkout, and tracking together.",
     features: [
       [
         "Shop directly",
@@ -85,7 +85,7 @@ const content = {
       ],
       [
         "Grow through recommendations",
-        "Affiliates earn commissions by promoting products. Influencers can earn on qualifying product sales involving eligible sellers and affiliates who joined through their referral link. Influencer compensation comes from qualifying sales, not from a signup by itself.",
+        "Affiliates earn commissions by promoting products. Ambassadors can earn on qualifying product sales involving eligible sellers and affiliates who joined through their referral link. Ambassador compensation comes from qualifying sales, not from a signup by itself.",
       ],
     ],
   },
@@ -133,7 +133,7 @@ export default function BusinessLandingPage({
       </section>
       {audience === "influencer" && (
         <section className="bz-panel mt-8 p-6 sm:p-8" aria-labelledby="influencer-example">
-          <p className="bz-eyebrow">How influencer earnings work</p>
+          <p className="bz-eyebrow">How ambassador earnings work</p>
           <h2 id="influencer-example" className="mt-3 text-2xl font-semibold">Refer once. Earn on ongoing qualifying sales.</h2>
           <p className="mt-4 leading-7 text-slate-600">
             Invite sellers and affiliates using your unique referral link. When they join through your link,
@@ -177,13 +177,13 @@ export default function BusinessLandingPage({
             </p>
             <p className="mt-3 text-sm leading-7 text-slate-600">
               A shopper does not need an affiliate or business account to buy.
-              Sellers, affiliates, and influencers can get started free and
+              Sellers, affiliates, and ambassadors can get started free and
               manage their business from one account.
             </p>
           </div>
           <div>
             <p className="text-sm leading-7 text-slate-600">
-              Affiliate and influencer earnings depend on eligible, attributed
+              Affiliate and ambassador earnings depend on eligible, attributed
               sales. Income is not guaranteed. Returns, verification, and payout
               policies apply.
             </p>
@@ -203,7 +203,7 @@ export default function BusinessLandingPage({
                 Affiliate terms
               </Link>
               <Link to="/legal/influencer-terms" className="bz-text-link">
-                Influencer terms
+                Ambassador terms
               </Link>
             </div>
           </div>

@@ -171,7 +171,7 @@ const SignUpPage: React.FC = () => {
           if (payload?.ok && payload?.valid && payload?.referrerProfileId) {
             setReferralValid(true);
             setReferrerProfileId(String(payload.referrerProfileId));
-            setReferrerName(String(payload.referrerName || "this influencer"));
+            setReferrerName(String(payload.referrerName || "this ambassador"));
             return;
           }
           if (payload?.ok && payload?.valid === false) {
@@ -203,7 +203,7 @@ const SignUpPage: React.FC = () => {
       if (!profileError && data?.id) {
         setReferralValid(true);
         setReferrerProfileId(String(data.id));
-        setReferrerName(data.full_name || data.username || "this influencer");
+        setReferrerName(data.full_name || data.username || "this ambassador");
         return;
       }
 
@@ -220,7 +220,7 @@ const SignUpPage: React.FC = () => {
           String(
             (storeRow as any).store_name ||
               (storeRow as any).store_slug ||
-              "this influencer",
+              "this ambassador",
           ),
         );
         return;
@@ -717,7 +717,7 @@ const SignUpPage: React.FC = () => {
             ) : (
               <>
                 Signed in as <span className="font-semibold">{email}</span>.
-                This Beezio account can use seller, affiliate, and influencer
+                This Beezio account can use seller, affiliate, and ambassador
                 tools together. You can also shop with this login.
               </>
             )}
@@ -831,17 +831,17 @@ const SignUpPage: React.FC = () => {
       </Link>
       <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl p-4 sm:p-6 md:p-8">
         <p className="bz-eyebrow mb-3 text-center">
-          {isInfluencerSignup ? "Beezio influencer signup" : isAffiliateSignup ? "Beezio affiliate signup" : "Sellers · Affiliates · Influencers"}
+          {isInfluencerSignup ? "Beezio ambassador signup" : isAffiliateSignup ? "Beezio affiliate signup" : "Sellers · Affiliates · Ambassadors"}
         </p>
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-2 text-center">
           {isInfluencerSignup ? "Your referral link starts here." : isAffiliateSignup ? "Your free affiliate store starts here." : "Your free website starts here."}
         </h1>
         <p className="mb-4 text-center text-sm text-gray-600">
           {isInfluencerSignup
-            ? "Create your free account, open Influencer tools in your Business Center, and share your personal referral link with sellers and affiliates. Earn when they make qualifying product sales. No products or store required to start. Your account also includes seller and affiliate tools."
+            ? "Create your free account, open Ambassador tools in your Business Center, and share your personal referral link with sellers and affiliates. Earn when they make qualifying product sales. No products or store required to start. Your account also includes seller and affiliate tools."
             : isAffiliateSignup
-              ? "Choose products already on Beezio, add them to your free store, and earn on qualifying sales. Sellers fulfill the orders. Your account also includes seller and influencer tools."
-              : "Sellers and affiliates get free custom websites they design themselves. One business account includes selling, affiliate promotion, influencer referral tools, and your Business Center. No monthly fees, listing fees, or seller fees."}
+              ? "Choose products already on Beezio, add them to your free store, and earn on qualifying sales. Sellers fulfill the orders. Your account also includes seller and ambassador tools."
+              : "Sellers and affiliates get free custom websites they design themselves. One business account includes selling, affiliate promotion, ambassador referral tools, and your Business Center. No monthly fees, listing fees, or seller fees."}
         </p>
         <p className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-center text-sm text-amber-950">
           Free to join. No credit card needed. Contact details and payout setup can wait.
@@ -1327,7 +1327,7 @@ const SignUpPage: React.FC = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Influencer terms
+              Ambassador terms
             </Link>
             .
           </p>

@@ -42,12 +42,12 @@ export const audiences = [
   {
     id: "influencer",
     icon: Users,
-    label: "For influencers",
+    label: "For ambassadors",
     title: "Refer once. Earn as they sell.",
     description:
       "When a seller or affiliate signs up with your referral code or link, you can keep earning from their qualifying sales while their account and referral remain eligible.",
-    action: "Explore influencer earnings",
-    href: "/start-earning",
+    action: "Explore ambassador earnings",
+    href: "/ambassadors",
   },
   {
     id: "shopper",

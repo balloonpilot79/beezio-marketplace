@@ -542,7 +542,7 @@ export default function InfluencerRecruitPromoStudio({ code, influencerName }: P
       <div className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-emerald-950">
           <LinkIcon className="w-4 h-4 text-emerald-800" />
-          Primary influencer invite link
+          Primary ambassador invite link
         </div>
         <p className="mt-1 text-sm text-emerald-900">
           This link lets people choose a Shopper or Business Account and keeps your referral attached.

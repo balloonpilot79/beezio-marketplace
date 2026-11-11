@@ -18,7 +18,7 @@ const groups = [
     links: [
       ["Free seller websites", "/sellers"],
       ["Free affiliate websites", "/affiliates"],
-      ["Influencers", "/start-earning"],
+      ["Beezio Ambassadors", "/ambassadors"],
       ["How it works", "/how-it-works"],
       ["Business Center", "/business"],
     ],
@@ -38,7 +38,7 @@ const terms = [
   ["Privacy", "/legal/privacy"],
   ["Seller terms", "/legal/seller-terms"],
   ["Affiliate terms", "/legal/partner-terms"],
-  ["Influencer terms", "/legal/influencer-terms"],
+  ["Ambassador terms", "/legal/influencer-terms"],
   ["Payout policy", "/legal/payout-policy"],
   ["Refund policy", "/legal/refund-policy"],
   ["Dispute policy", "/legal/dispute-policy"],
@@ -53,7 +53,7 @@ const Footer: React.FC = () => (
             <BeezioMark inverse />
           </Link>
           <p className="mt-5 max-w-xs text-sm leading-6">
-            Free custom websites. Sellers, affiliates, and influencers growing
+            Free custom websites. Sellers, affiliates, and ambassadors growing
             together. A marketplace everyone can shop.
           </p>
           <a

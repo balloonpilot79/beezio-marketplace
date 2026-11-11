@@ -371,13 +371,13 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
     if (sellerTab === 'influencer-promo') {
       return {
         title: 'Recruit Sellers and Affiliates',
-        description: 'Use your direct seller and affiliate signup links to recruit under your influencer code. Financial totals are kept in the Financials tab.',
+        description: 'Use your direct seller and affiliate signup links to recruit under your ambassador code. Financial totals are kept in the Financials tab.',
       };
     }
     if (sellerTab === 'financials') {
       return {
         title: 'Financials',
-        description: 'Track seller sales, affiliate sales, influencer payments, held funds, available payout amounts, and the next Beezio payday.',
+        description: 'Track seller sales, affiliate sales, ambassador payments, held funds, available payout amounts, and the next Beezio payday.',
       };
     }
     if (businessSectionForShell === 'affiliate') {
@@ -388,7 +388,7 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
     }
     if (businessSectionForShell === 'influencer') {
       return {
-        title: 'Influencer Tools',
+        title: 'Ambassador Tools',
         description: 'Track recruited sales activity, progress over time, and the links driving your network.',
       };
     }
@@ -485,7 +485,7 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
                       onClick={() => navigate(businessBasePath + '?section=' + role)}
                       className={businessSectionForShell === role ? 'rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white' : 'rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50'}
                     >
-                      {role === 'seller' ? 'Seller' : role === 'affiliate' ? 'Affiliate' : 'Influencer'}
+                      {role === 'seller' ? 'Seller' : role === 'affiliate' ? 'Affiliate' : 'Ambassador'}
                     </button>
                   ))}
                   <Link to="/account" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
@@ -514,7 +514,7 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
               </Link>
               <Link to="/business/invites"
                 className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900">
-                <span><span className="block text-xs font-medium text-slate-500">Influencer sharing toolkit</span>My Referral Links & Invites</span>
+                <span><span className="block text-xs font-medium text-slate-500">Ambassador sharing toolkit</span>My Referral Links & Invites</span>
                 <span aria-hidden="true">→</span>
               </Link>
             </div>

@@ -26,7 +26,7 @@ import MarketplaceSearch from "./MarketplaceSearch";
 const publicLinks = [
   { label: "Sellers", href: "/sellers" },
   { label: "Affiliates", href: "/affiliates" },
-  { label: "Influencers", href: "/start-earning" },
+  { label: "Beezio Ambassadors", href: "/ambassadors" },
   { label: "Shop marketplace", href: "/marketplace" },
 ];
 
@@ -191,7 +191,7 @@ const GlobalHeaderBar: React.FC = () => {
                           Product Links & QR Codes
                         </Link>
                         <Link to="/business/invites" className="block rounded-lg px-3 py-3 font-semibold text-slate-800 hover:bg-slate-50">
-                          Influencer Invite Tools
+                          Ambassador Invite Tools
                         </Link>
                       </>
                     )}
@@ -342,7 +342,7 @@ const GlobalHeaderBar: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
                 <Link to="/store-builder" className="bz-button bz-button-gold col-span-2"><Store className="h-4 w-4" /> Customize My Store</Link>
                 <Link to="/business/promote" className="bz-button bz-button-outline col-span-2">Product Links & QR Codes</Link>
-                <Link to="/business/invites" className="bz-button bz-button-outline col-span-2">Influencer Invite Tools</Link>
+                <Link to="/business/invites" className="bz-button bz-button-outline col-span-2">Ambassador Invite Tools</Link>
                 <Link to="/business/products/add" className="bz-button bz-button-gold"><Plus className="h-4 w-4" /> Add product</Link>
                 <Link to="/business?section=seller&tab=products" className="bz-button bz-button-outline">My products</Link>
                 <Link to="/business?tab=orders" className="bz-button bz-button-outline">Orders</Link>

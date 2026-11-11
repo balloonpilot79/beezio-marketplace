@@ -77,7 +77,7 @@ const InfluencerDashboard: React.FC = () => {
         setRecruitedAccounts((referralRows as RecruitedAccount[]) || []);
       } catch (e: any) {
         if (!alive) return;
-        setError(e?.message || 'Failed to load influencer recruiting tools');
+        setError(e?.message || 'Failed to load ambassador recruiting tools');
       } finally {
         if (alive) setLoading(false);
       }
@@ -157,7 +157,7 @@ const InfluencerDashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="text-gray-700">Loading influencer recruiting tools...</div>
+        <div className="text-gray-700">Loading ambassador recruiting tools...</div>
       </div>
     );
   }
@@ -207,7 +207,7 @@ const InfluencerDashboard: React.FC = () => {
 
       <div className="mt-4 grid gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:grid-cols-[180px_1fr] sm:p-6">
         <div className="flex flex-col items-center justify-center gap-2 rounded-xl bg-white p-4">
-          {codeForLink ? <QRCodeSVG id="beezio-influencer-signup-qr" value={signupLink} size={144} includeMargin aria-label="Influencer signup QR code" /> : <QrCode className="h-16 w-16 text-slate-300" />}
+          {codeForLink ? <QRCodeSVG id="beezio-influencer-signup-qr" value={signupLink} size={144} includeMargin aria-label="Ambassador signup QR code" /> : <QrCode className="h-16 w-16 text-slate-300" />}
           <span className="text-center text-xs font-bold text-slate-700">Scan to join through you</span>
           <button type="button" disabled={!codeForLink} onClick={downloadInviteQr}
             className="mt-1 min-h-10 rounded-lg border border-amber-300 bg-amber-50 px-3 text-xs font-bold text-amber-900 disabled:opacity-50">Download QR for flyers</button>
@@ -264,7 +264,7 @@ const InfluencerDashboard: React.FC = () => {
       <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
         <div className="border-b border-gray-200 px-5 py-4">
           <h3 className="font-semibold text-gray-900">Lifetime referral assignments</h3>
-          <p className="mt-1 text-sm text-gray-600">Each business can have a seller assignment and an affiliate assignment under the influencer who recruited it.</p>
+          <p className="mt-1 text-sm text-gray-600">Each business can have a seller assignment and an affiliate assignment under the ambassador who recruited it.</p>
         </div>
         {recruitedAccounts.length ? (
           <div className="divide-y divide-gray-100">
@@ -286,7 +286,7 @@ const InfluencerDashboard: React.FC = () => {
       </div>
 
       <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-6">
-        <h3 className="text-lg font-semibold text-gray-900">How influencer earnings work</h3>
+        <h3 className="text-lg font-semibold text-gray-900">How ambassador earnings work</h3>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-lg border border-white/80 bg-white p-4 text-sm text-gray-700">
             When a referred shopper buys or a referred business generates a qualifying sale, Beezio records any eligible reward.
@@ -303,8 +303,8 @@ const InfluencerDashboard: React.FC = () => {
       <div className="mt-6">
         <PayoutHistoryCard
           role="INFLUENCER"
-          title="Influencer Earnings History"
-          description="See each recorded influencer sale, hold status, and paid payout history."
+          title="Ambassador Earnings History"
+          description="See each recorded ambassador sale, hold status, and paid payout history."
         />
       </div>
     </div>
