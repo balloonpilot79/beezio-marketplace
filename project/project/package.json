@@ -15,7 +15,7 @@
     "deploy:messaging": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy-messaging.ps1",
     "deploy:messaging:unix": "bash ./scripts/deploy-messaging.sh",
     "dev": "vite --force",
-    "build": "vite build",
+    "build": "vite build && node ./scripts/build-recruitment-pages.mjs",
     "check:paypal": "node ./scripts/check-paypal-config.cjs",
     "check:paypal:checkout": "node ./scripts/paypal-checkout-smoke.cjs",
     "check:paypal:order": "node ./scripts/verify-order-ledger.cjs",

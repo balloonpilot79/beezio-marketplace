@@ -14,6 +14,27 @@ export default function AmbassadorPage({ sideIncome = false }: { sideIncome?: bo
   const pageUrl = sideIncome ? 'https://beezio.co/earn-by-referring' : 'https://beezio.co/ambassadors';
   const shareText = sideIncome ? 'Looking to earn extra side income? Refer sellers and affiliates to Beezio. When they make qualifying sales, you can earn too. Free to join; earnings are not guaranteed.' : 'Discover the free Beezio Ambassador Program. Introduce people to Beezio and earn commissions from qualifying sales. No guaranteed income.';
   const [copied, setCopied] = useState(false);
+  const [imageSharing, setImageSharing] = useState(false);
+  const [imageMessage, setImageMessage] = useState('');
+  const imageUrl = '/share/beezio-ambassador-v1.jpg';
+  const shareImage = async () => {
+    setImageSharing(true);
+    setImageMessage('');
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error('Image unavailable');
+      const file = new File([await response.blob()], 'beezio-ambassador.jpg', { type: 'image/jpeg' });
+      if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+        await navigator.share({ files: [file], title: pageTitle, text: shareText + ' ' + pageUrl });
+      } else {
+        setImageMessage('Use Download JPEG below to save the image, then attach it to your post.');
+      }
+    } catch (error) {
+      if ((error as Error)?.name !== 'AbortError') setImageMessage('Use Download JPEG below to save and share the image.');
+    } finally {
+      setImageSharing(false);
+    }
+  };
   useEffect(() => {
     document.title = pageTitle;
     const description = sideIncome ? 'Earn referral commissions from qualifying sales by the sellers and affiliates you introduce to Beezio. Free to join. No inventory required; earnings are not guaranteed.' : 'Become a Beezio Ambassador. Help shoppers, sellers and affiliates discover Beezio and earn commissions on qualifying sales. Free to join; no income guaranteed.';
@@ -101,6 +122,19 @@ export default function AmbassadorPage({ sideIncome = false }: { sideIncome?: bo
           {channels.map(channel => <a key={channel.name} href={channel.url} target={channel.name === 'Email' || channel.name === 'Text message' ? undefined : '_blank'} rel="noopener noreferrer" className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-center font-semibold !text-[#101820]" style={{color:'#101820', WebkitTextFillColor:'#101820'}}>{channel.name}</a>)}
         </div>
         <p className="mt-4 break-all text-sm text-gray-600">{pageUrl}</p>
+        <div className="mt-8 rounded-2xl border border-gray-200 p-5">
+          <h3 className="text-xl font-extrabold !text-[#101820]">Share a picture, too</h3>
+          <p className="mt-2 text-gray-700">Save this JPEG for your posts, or share the image directly from a supported phone app. Include the page link in your caption so people can join.</p>
+          <a href={imageUrl} target="_blank" rel="noopener noreferrer" aria-label="Open the full Beezio Ambassador JPEG">
+            <img src={imageUrl} alt="Beezio: When they sell, you can earn too. Refer sellers and affiliates. Earn on qualifying sales. Free to join, no inventory required. Earnings are not guaranteed." width="1734" height="907" loading="lazy" className="mt-4 h-auto w-full rounded-xl" />
+          </a>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <a href={imageUrl} download="beezio-ambassador.jpg" className="rounded-xl bg-[#ffcb05] px-5 py-3 font-bold !text-[#101820]">Download JPEG</a>
+            <button type="button" onClick={shareImage} disabled={imageSharing} className="rounded-xl bg-[#101820] px-5 py-3 font-bold !text-white disabled:opacity-60">{imageSharing ? 'Preparing image…' : 'Share JPEG'}</button>
+          </div>
+          <p className="mt-3 text-sm text-gray-600">On iPhone, if the image opens instead of downloading, touch and hold it to save it to Photos. Link previews use this picture on platforms that support them.</p>
+          <p role="status" className="mt-2 text-sm text-gray-700">{imageMessage}</p>
+        </div>
       </section>
     </div>
   );
