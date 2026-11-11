@@ -752,6 +752,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/stores" element={<StoresPage />} />
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="/ambassadors" element={<AmbassadorPage />} />
+                    <Route path="/earn-by-referring" element={<AmbassadorPage sideIncome />} />
                     <Route path="/search" element={<LegacySearchRedirect />} />
                     <Route path="/product/:productId" element={<ProductDetailPage />} />
                     <Route path="/:storeSlug/product/:productId" element={<ProductDetailPage />} />
