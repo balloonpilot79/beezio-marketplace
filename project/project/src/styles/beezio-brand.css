@@ -8,9 +8,9 @@
 @media(min-width:1024px) { .bz-header-search { display:flex; flex:1; max-width:440px; } }
 .bz-shopping-nav {
   height: 46px;
-  background: #101820;
-  color: #fff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #fff;
+  color: #101820;
+  border-bottom: 1px solid #e2e8f0;
 }
 .bz-shopping-nav > div {
   min-height: 46px;
@@ -23,15 +23,15 @@
   gap: 8px;
   flex-shrink: 0;
   padding: 12px 0;
-  color: #e7eced;
+  color: #101820;
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
   text-decoration: none;
 }
 .bz-shopping-link:hover,
-.bz-shopping-link[aria-current="page"] { color: #ffdb55; }
-.bz-shopping-link-accent { margin-left: auto; color: #ffdb55; }
+.bz-shopping-link[aria-current="page"] { color: #725700; }
+.bz-shopping-link-accent { margin-left: auto; color: #725700; }
 @media(max-width: 640px) {
   .bz-shopping-nav > div { gap: 24px; }
   .bz-shopping-link { font-size: 13px; }

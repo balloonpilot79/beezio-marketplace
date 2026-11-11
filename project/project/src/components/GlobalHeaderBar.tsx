@@ -88,11 +88,10 @@ const GlobalHeaderBar: React.FC = () => {
 
   return (
     <>
-      <header className="bz-header fixed inset-x-0 top-0 z-[70] border-b border-[#35404a] bg-[#101820] text-white">
+      <header className="bz-header fixed inset-x-0 top-0 z-[70] border-b border-slate-200 bg-white text-[#101820]">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <Link to="/" aria-label="Beezio home">
             <BeezioMark
-              inverse
               subtitle={isBusiness ? "Business Center" : "Sell. Share. Earn."}
             />
           </Link>
@@ -108,7 +107,7 @@ const GlobalHeaderBar: React.FC = () => {
                 aria-current={
                   location.pathname === link.href ? "page" : undefined
                 }
-                className={`text-sm hover:text-[#ffcb05] ${location.pathname === link.href ? "font-semibold text-[#ffcb05]" : "text-white"}`}
+                className={`text-sm hover:text-[#725700] ${location.pathname === link.href ? "font-semibold text-[#725700]" : "text-[#101820]"}`}
               >
                 {link.label}
               </Link>
@@ -118,7 +117,7 @@ const GlobalHeaderBar: React.FC = () => {
             {hasBusinessAccess ? (
               <Link
                 to="/business/products/add"
-                className="hidden items-center gap-1 rounded-lg bg-[#101820] px-3 py-2 text-xs font-semibold text-[#ffcb05] sm:inline-flex"
+                className="hidden items-center gap-1 rounded-lg bg-[#ffcb05] px-3 py-2 text-xs font-semibold text-[#101820] sm:inline-flex"
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 Add product
@@ -134,7 +133,7 @@ const GlobalHeaderBar: React.FC = () => {
             <Link
               to="/cart"
               aria-label={`Cart${count ? `, ${count} items` : ""}`}
-              className="relative inline-flex items-center gap-1 rounded-lg p-2 text-white hover:bg-white/10"
+              className="relative inline-flex items-center gap-1 rounded-lg p-2 text-[#101820] hover:bg-slate-100"
             >
               <ShoppingCart className="h-5 w-5" aria-hidden="true" />
               {count > 0 && (
@@ -151,7 +150,7 @@ const GlobalHeaderBar: React.FC = () => {
                   aria-label="Account menu"
                   aria-expanded={accountOpen}
                   aria-controls="beezio-account-menu"
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-600 p-2 text-white"
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-300 p-2 text-[#101820]"
                 >
                   <User className="h-4 w-4" />
                   <ChevronDown className="h-3 w-3" />
@@ -246,13 +245,13 @@ const GlobalHeaderBar: React.FC = () => {
               <div className="hidden items-center gap-3 sm:flex">
                 <Link
                   to="/auth/login"
-                  className="text-xs font-semibold text-white hover:text-[#ffcb05]"
+                  className="text-xs font-semibold text-[#101820] hover:text-[#725700]"
                 >
                   Sign in
                 </Link>
                 <Link
                   to="/join"
-                  className="text-xs font-semibold text-white hover:text-[#ffcb05]"
+                  className="text-xs font-semibold text-[#101820] hover:text-[#725700]"
                 >
                   Sign up
                 </Link>
@@ -264,7 +263,7 @@ const GlobalHeaderBar: React.FC = () => {
               aria-expanded={mobileOpen}
               aria-controls="beezio-mobile-menu"
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="rounded-lg p-2 text-white 2xl:hidden"
+              className="rounded-lg p-2 text-[#101820] 2xl:hidden"
             >
               {mobileOpen ? (
                 <X className="h-5 w-5" />
@@ -281,18 +280,18 @@ const GlobalHeaderBar: React.FC = () => {
       >
         <div className="flex h-full items-center gap-3 px-3 lg:hidden">
           <MarketplaceSearch className="flex-1" />
-          <Link to="/marketplace#categories" className="shrink-0 py-3 text-xs font-semibold text-white">Categories</Link>
+          <Link to="/marketplace#categories" className="shrink-0 py-3 text-xs font-semibold text-[#101820]">Categories</Link>
         </div>
         <div className="mx-auto hidden max-w-7xl items-center gap-7 overflow-x-auto px-4 sm:px-6 lg:flex lg:px-8">
           {hasBusinessAccess && (
-            <Link to="/business/products/add" className="bz-shopping-link text-[#ffdb55]">
+            <Link to="/business/products/add" className="bz-shopping-link text-[#725700]">
               <Plus className="h-5 w-5" aria-hidden="true" />
               Add product
             </Link>
           )}
           {hasBusinessAccess && isBusiness ? (
             <>
-              <Link to="/store-builder" className="bz-shopping-link text-[#ffdb55]">Customize My Store</Link>
+              <Link to="/store-builder" className="bz-shopping-link text-[#725700]">Customize My Store</Link>
               <Link to="/business?section=seller&tab=products" className="bz-shopping-link">My products</Link>
               <Link to="/business?tab=orders" className="bz-shopping-link">Orders</Link>
               <Link to="/business?tab=financials" className="bz-shopping-link">Earnings</Link>
@@ -392,7 +391,7 @@ const GlobalHeaderBar: React.FC = () => {
       )}
       <nav
         aria-label="Quick navigation"
-        className={`fixed inset-x-0 bottom-0 z-[65] grid ${hasBusinessAccess ? 'grid-cols-5' : 'grid-cols-4'} border-t border-[#35404a] bg-[#101820] px-2 pt-2 pb-[max(.5rem,env(safe-area-inset-bottom))] xl:hidden`}
+        className={`fixed inset-x-0 bottom-0 z-[65] grid ${hasBusinessAccess ? 'grid-cols-5' : 'grid-cols-4'} border-t border-slate-200 bg-white px-2 pt-2 pb-[max(.5rem,env(safe-area-inset-bottom))] xl:hidden`}
       >
         {mobileLinks.map(({ label, href, icon: Icon }) => (
           <Link
@@ -401,7 +400,7 @@ const GlobalHeaderBar: React.FC = () => {
             aria-current={
               (href === "/business" ? location.pathname === href : location.pathname.startsWith(href)) ? "page" : undefined
             }
-            className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg px-1 py-1 text-[10px] font-semibold ${href === "/business/products/add" ? "bg-[#ffcb05] text-[#101820]" : (href === "/business" ? location.pathname === href : location.pathname.startsWith(href)) ? "bg-[#fff4bb] text-[#101820]" : "text-white"}`}
+            className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg px-1 py-1 text-[10px] font-semibold ${href === "/business/products/add" ? "bg-[#ffcb05] text-[#101820]" : (href === "/business" ? location.pathname === href : location.pathname.startsWith(href)) ? "bg-[#fff4bb] text-[#101820]" : "text-[#101820]"}`}
           >
             <Icon className="h-4 w-4" aria-hidden="true" />
             {label}
