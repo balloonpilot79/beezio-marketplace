@@ -263,7 +263,7 @@ const GlobalHeaderBar: React.FC = () => {
               aria-expanded={mobileOpen}
               aria-controls="beezio-mobile-menu"
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="rounded-lg p-2 text-slate-700 2xl:hidden"
+              className="rounded-lg p-2 text-slate-700"
             >
               {mobileOpen ? (
                 <X className="h-5 w-5" />
@@ -330,12 +330,12 @@ const GlobalHeaderBar: React.FC = () => {
             aria-label="Close navigation backdrop"
             type="button"
             onClick={() => setMobileOpen(false)}
-            className="fixed inset-0 top-[6.375rem] z-[66] bg-black/20 2xl:hidden"
+            className="fixed inset-0 top-[6.375rem] z-[66] bg-black/20"
           />
           <nav
             id="beezio-mobile-menu"
             aria-label="Mobile navigation"
-            className="fixed inset-x-0 top-[6.375rem] z-[69] grid max-h-[calc(100dvh-10.375rem)] gap-1 overflow-y-auto border-b border-slate-200 bg-[#f3f0e8] p-4 2xl:hidden"
+            className="fixed inset-x-0 top-[6.375rem] z-[69] grid max-h-[calc(100dvh-10.375rem)] gap-1 overflow-y-auto border-b border-slate-200 bg-[#f3f0e8] p-4 shadow-lg sm:left-auto sm:right-4 sm:w-96 sm:rounded-b-xl"
           >
             <MarketplaceSearch />
             {hasBusinessAccess && (
@@ -358,6 +358,15 @@ const GlobalHeaderBar: React.FC = () => {
                 {link.label}
               </Link>
             ))}
+            <Link to="/stores" className="rounded-lg px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              Discover stores
+            </Link>
+            <Link to="/support" className="rounded-lg px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              Contact support
+            </Link>
+            <Link to="/returns" className="rounded-lg px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              Returns
+            </Link>
             <Link
               to="/how-it-works"
               className="rounded-lg px-4 py-3 text-sm font-semibold text-slate-700"

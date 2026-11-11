@@ -147,13 +147,6 @@ export default function HomePageBZO() {
             <p className="hm-hero-note">
               <Check size={14} /> PayPal checkout. See delivery and return details before you buy.
             </p>
-            <nav aria-label="Shopping links" className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold">
-              <Link to="/stores" className="underline">Discover stores</Link>
-              <Link to="/support" className="underline">Contact support</Link>
-              <Link to="/returns" className="underline">Returns</Link>
-              <Link to="/how-it-works" className="underline">How Beezio works</Link>
-              <Link to="/ambassadors" className="underline">Beezio Ambassador Program</Link>
-            </nav>
           </div>
           <div className="hm-spotlight">
             <div className="hm-spotlight-heading">
