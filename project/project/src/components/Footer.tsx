@@ -45,7 +45,7 @@ const terms = [
 ];
 
 const Footer: React.FC = () => (
-  <footer className="border-t border-[#2e464e] bg-[#142a34] pb-20 text-slate-300 xl:pb-0">
+  <footer className="border-t border-[#35404a] bg-[#101820] pb-20 text-slate-300 xl:pb-0">
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.35fr_1fr_1fr_1fr]">
         <div>
@@ -58,7 +58,7 @@ const Footer: React.FC = () => (
           </p>
           <a
             href="mailto:support@beezio.co"
-            className="mt-4 inline-flex text-xs text-[#ffdb66] hover:text-white"
+            className="mt-4 inline-flex text-xs text-[#ffcb05] hover:text-white"
           >
             support@beezio.co
           </a>
@@ -73,7 +73,7 @@ const Footer: React.FC = () => (
                 <li key={href}>
                   <Link
                     to={href}
-                    className="text-slate-300 hover:text-[#ffdb66]"
+                    className="text-slate-300 hover:text-[#ffcb05]"
                   >
                     {label}
                   </Link>
@@ -83,14 +83,14 @@ const Footer: React.FC = () => (
           </nav>
         ))}
       </div>
-      <div className="mt-10 flex flex-col justify-between gap-4 border-t border-[#3a5059] pt-6 text-[11px] lg:flex-row">
+      <div className="mt-10 flex flex-col justify-between gap-4 border-t border-[#35404a] pt-6 text-[11px] lg:flex-row">
         <p>© {new Date().getFullYear()} Beezio. All rights reserved.</p>
         <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-3">
           {terms.map(([label, href]) => (
             <Link
               key={href}
               to={href}
-              className="text-slate-300 hover:text-[#ffdb66]"
+              className="text-slate-300 hover:text-[#ffcb05]"
             >
               {label}
             </Link>

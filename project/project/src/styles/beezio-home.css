@@ -1,6 +1,6 @@
 .hm-page {
-  background: #f0eee8;
-  color: #13232c;
+  background: #0b1117;
+  color: #fff;
   padding-bottom: 36px;
   font-family: Inter, sans-serif;
 }
@@ -66,7 +66,7 @@
 .hm-hero {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  background: #142a34;
+  background: #101820;
   color: #fff;
   border-radius: 18px;
   overflow: hidden;
@@ -76,17 +76,17 @@
   padding: 36px 38px;
 }
 .hm-hero .hm-kicker {
-  color: #f1d577;
+  color: #ffcb05;
 }
 .hm-hero h1 {
-  font-size: clamp(36px, 4vw, 55px);
+  font-size: clamp(40px, 4.5vw, 64px);
   line-height: 1.04;
-  font-weight: 750;
+  font-weight: 800;
   letter-spacing: -0.05em;
   margin: 13px 0 17px;
 }
 .hm-hero h1 span {
-  color: #ffcf27;
+  color: #ffcb05;
 }
 .hm-hero-description {
   font-size: 14px;
@@ -139,8 +139,8 @@
 }
 .hm-spotlight {
   padding: 26px;
-  background: #e9caae;
-  color: #19292d;
+  background: #ffcb05;
+  color: #101820;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -171,7 +171,7 @@
   display: flex;
   flex-direction: column;
   color: #142a34;
-  background: #f9f4ec;
+  background: #fff;
   border-radius: 12px;
   padding: 10px 10px 14px;
   min-width: 0;
@@ -235,13 +235,17 @@
   flex-direction: column;
 }
 .hm-path-seller {
-  background: #f5d866;
+  background: #ffcb05;
+  color: #101820;
 }
 .hm-path-affiliate {
-  background: #d6e2d6;
+  background: #fff;
+  color: #101820;
 }
 .hm-path-influencer {
-  background: #e4dcf0;
+  background: #101820;
+  color: #fff;
+  border: 1px solid #665623;
 }
 .hm-path-top {
   display: flex;
@@ -940,3 +944,57 @@
   .hm-hero-secondary { font-size: 14px; }
   .hm-categories button { min-height: 44px; }
 }
+
+/* Match the ambassador artwork: rich black, crisp white, and Beezio yellow. */
+.hm-page .hm-hero { border: 1px solid #35404a; }
+.hm-page .hm-hero-description,
+.hm-page .hm-hero-note { color: #d6dce2; }
+.hm-page .hm-hero-secondary:hover,
+.hm-page .hm-hero-copy nav[aria-label="Shopping links"] a:hover { color: #ffcb05; }
+.hm-page .hm-kicker { color: #ffcb05; }
+.hm-page .hm-spotlight-heading,
+.hm-page .hm-spotlight-heading > a { color: #101820; }
+.hm-page .hm-path-seller .hm-kicker,
+.hm-page .hm-path-affiliate .hm-kicker { color: #101820; }
+.hm-page .hm-path-influencer > p { color: #d6dce2; }
+.hm-page .hm-path-influencer .hm-path-actions a { color: #ffcb05; }
+.hm-page .hm-section-heading p:not(.hm-kicker) { color: #c3cbd3; }
+.hm-page .hm-all-link { color: #ffcb05; }
+.hm-page .hm-categories button { background: #101820; color: #fff; border-color: #59616a; }
+.hm-page .hm-categories button[aria-pressed="true"] { background: #ffcb05; color: #101820; border-color: #ffcb05; }
+.hm-page .hm-product-card { background: #fff; color: #101820; border-color: #fff; }
+.hm-page .hm-product-card:hover { border-color: #ffcb05; box-shadow: 0 0 0 2px #ffcb05; }
+.hm-page .hm-product-bottom span { background: #ffcb05; color: #101820; }
+.hm-page .hm-product-seller,
+.hm-page .hm-product-detail { color: #525c66; }
+.hm-page .hm-product-detail { font-size: 11px; line-height: 1.5; }
+.hm-page .hm-store-card { background: #101820; border: 1px solid #59616a; color: #fff; }
+.hm-page .hm-store-card p { color: #ffcb05; }
+.hm-page .hm-quick-start { background: #fff; border-color: #fff; color: #101820; }
+.hm-page .hm-quick-start .hm-kicker { color: #695200; }
+.hm-page .hm-quick-start p:not(.hm-kicker) { color: #404b56; }
+.hm-page .hm-earn-banner { background: #101820; border: 1px solid #665623; }
+.hm-page .hm-earn-icon { background: #ffcb05; color: #101820; }
+.hm-page .hm-earn-banner p:not(.hm-kicker) { color: #d6dce2; }
+.hm-page .hm-build { background: #fff; color: #101820; }
+.hm-page .hm-build .hm-kicker { color: #695200; }
+.hm-page .hm-build-copy em { color: #695200; }
+.hm-page .hm-build-copy > p:not(.hm-kicker),
+.hm-page .hm-build-copy ul { color: #404b56; }
+.hm-page .hm-build-stamp { background: #ffcb05; color: #101820; }
+.hm-page .hm-browser-bar { background: #eef0f2; }
+.hm-page .hm-influencer { background: #ffcb05; color: #101820; }
+.hm-page .hm-influencer .hm-kicker { color: #101820; }
+.hm-page .hm-influencer p:not(.hm-kicker) { color: #27313b; }
+.hm-page .hm-pricing { color: #c3cbd3; border-color: #59616a; }
+.hm-page .hm-pricing summary,
+.hm-page .hm-pricing a { color: #ffcb05; }
+.hm-page .hm-catalog-message { background: #fff; color: #101820; }
+.hm-page a:focus-visible,
+.hm-page button:focus-visible,
+.hm-page summary:focus-visible { outline-color: #ffcb05; }
+.hm-page .hm-spotlight a:focus-visible,
+.hm-page .hm-path-seller a:focus-visible,
+.hm-page .hm-influencer a:focus-visible { outline-color: #101820; }
+.hm-page .bz-button { font-weight: 750; }
+.hm-page .bz-button-ink { border-color: #59616a; }
