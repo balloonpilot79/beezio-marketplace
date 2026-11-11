@@ -945,7 +945,7 @@
   .hm-categories button { min-height: 44px; }
 }
 
-/* White-led Beezio palette with yellow accents and dark, readable type. */
+/* Beezio yellow headers, white reading surfaces, and selective black panels. */
 .hm-page .hm-hero { background: #f6f7f8; color: #101820; border: 1px solid #e0e4e7; }
 .hm-page .hm-hero h1 span { color: #101820; text-decoration: underline; text-decoration-color: #ffcb05; text-decoration-thickness: 5px; text-underline-offset: 6px; }
 .hm-page .hm-hero-description,
@@ -958,11 +958,21 @@
 .hm-page .hm-spotlight-heading,
 .hm-page .hm-spotlight-heading > a { color: #101820; }
 .hm-page .hm-path { border: 1px solid #e0e4e7; }
-.hm-page .hm-path-seller { background: #fff7d6; }
+.hm-page .hm-path-seller { background: #ffcb05; }
+.hm-page .hm-path-seller > p,
+.hm-page .hm-path-seller .hm-kicker { color: #27313b; }
 .hm-page .hm-path-influencer { background: #f6f7f8; color: #101820; }
 .hm-page .hm-path-influencer > p { color: #46515c; }
 .hm-page .hm-path-influencer .hm-path-actions a { color: #101820; }
-.hm-page .hm-section-heading p:not(.hm-kicker) { color: #525c66; }
+.hm-page .hm-section-heading {
+  background: #ffcb05;
+  color: #101820;
+  padding: 22px 24px;
+  border-radius: 12px;
+  border-bottom: 4px solid #101820;
+}
+.hm-page .hm-section-heading .hm-kicker,
+.hm-page .hm-section-heading p:not(.hm-kicker) { color: #27313b; }
 .hm-page .hm-all-link { color: #101820; }
 .hm-page .hm-categories button { background: #fff; color: #101820; border-color: #c6cdd2; }
 .hm-page .hm-categories button[aria-pressed="true"] { background: #ffcb05; color: #101820; border-color: #ffcb05; }
@@ -972,20 +982,22 @@
 .hm-page .hm-product-seller,
 .hm-page .hm-product-detail { color: #525c66; }
 .hm-page .hm-product-detail { font-size: 11px; line-height: 1.5; }
-.hm-page .hm-store-card { background: #f6f7f8; border: 1px solid #dce1e5; color: #101820; }
-.hm-page .hm-store-card p { color: #725700; }
-.hm-page .hm-quick-start { background: #f6f7f8; border-color: #e0e4e7; color: #101820; }
+.hm-page .hm-store-card { background: #101820; border: 1px solid #101820; color: #fff; }
+.hm-page .hm-store-card p { color: #ffcb05; }
+.hm-page .hm-quick-start { background: #fff; border-color: #dce1e5; border-top: 6px solid #ffcb05; color: #101820; }
 .hm-page .hm-quick-start p:not(.hm-kicker) { color: #404b56; }
-.hm-page .hm-earn-banner { background: #fff7d6; color: #101820; border: 1px solid #ebd993; }
+.hm-page .hm-earn-banner { background: #101820; color: #fff; border: 1px solid #101820; }
+.hm-page .hm-earn-banner .hm-kicker { color: #ffcb05; }
 .hm-page .hm-earn-icon { background: #ffcb05; color: #101820; }
-.hm-page .hm-earn-banner p:not(.hm-kicker) { color: #46515c; }
-.hm-page .hm-build { background: #f6f7f8; color: #101820; }
+.hm-page .hm-earn-banner p:not(.hm-kicker) { color: #e1e6eb; font-size: 14px; }
+.hm-page .hm-build { background: #fff; color: #101820; border: 1px solid #dce1e5; border-top: 6px solid #ffcb05; }
 .hm-page .hm-build-copy em { color: #695200; }
 .hm-page .hm-build-copy > p:not(.hm-kicker),
 .hm-page .hm-build-copy ul { color: #404b56; }
 .hm-page .hm-build-stamp { background: #ffcb05; color: #101820; }
 .hm-page .hm-browser-bar { background: #eef0f2; }
-.hm-page .hm-influencer { background: #fff7d6; color: #101820; border: 1px solid #ebd993; }
+.hm-page .hm-influencer { background: #ffcb05; color: #101820; border: 1px solid #ffcb05; }
+.hm-page .hm-influencer .hm-kicker { color: #27313b; }
 .hm-page .hm-influencer p:not(.hm-kicker) { color: #27313b; }
 .hm-page .hm-pricing { color: #525c66; border-color: #dce1e5; }
 .hm-page .hm-pricing summary,
@@ -995,3 +1007,11 @@
 .hm-page button:focus-visible,
 .hm-page summary:focus-visible { outline-color: #8a6800; }
 .hm-page .bz-button { font-weight: 750; }
+
+@media (max-width: 700px) {
+  .hm-page .hm-section-heading { padding: 20px; gap: 12px; }
+  .hm-page .hm-section-heading p:not(.hm-kicker) { font-size: 14px; line-height: 1.65; }
+  .hm-page .hm-build-copy > p:not(.hm-kicker),
+  .hm-page .hm-build-copy ul,
+  .hm-page .hm-influencer p:not(.hm-kicker) { font-size: 14px; line-height: 1.75; }
+}

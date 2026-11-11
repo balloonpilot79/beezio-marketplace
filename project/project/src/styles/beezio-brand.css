@@ -8,9 +8,9 @@
 @media(min-width:1024px) { .bz-header-search { display:flex; flex:1; max-width:440px; } }
 .bz-shopping-nav {
   height: 46px;
-  background: #fff;
+  background: #ffcb05;
   color: #101820;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #d7ab00;
 }
 .bz-shopping-nav > div {
   min-height: 46px;
@@ -30,8 +30,8 @@
   text-decoration: none;
 }
 .bz-shopping-link:hover,
-.bz-shopping-link[aria-current="page"] { color: #725700; }
-.bz-shopping-link-accent { margin-left: auto; color: #725700; }
+.bz-shopping-link[aria-current="page"] { color: #101820; text-decoration: underline; text-underline-offset: 4px; }
+.bz-shopping-link-accent { margin-left: auto; color: #101820; }
 @media(max-width: 640px) {
   .bz-shopping-nav > div { gap: 24px; }
   .bz-shopping-link { font-size: 13px; }
