@@ -78,7 +78,7 @@ export function BeezioMark({
       </span>
       <span className="leading-tight">
         <span className={`block text-lg font-bold tracking-tight ${inverse ? 'text-white' : 'text-[#101820]'}`}>
-          Beezio
+          beezio
         </span>
         <span className={`block text-[10px] font-medium tracking-wide ${inverse ? 'text-slate-300' : 'text-slate-600'}`}>
           {subtitle}

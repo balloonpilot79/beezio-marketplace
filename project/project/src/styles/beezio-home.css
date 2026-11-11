@@ -1,6 +1,6 @@
 .hm-page {
-  background: #fff;
-  color: #101820;
+  background: #f0eee8;
+  color: #13232c;
   padding-bottom: 36px;
   font-family: Inter, sans-serif;
 }
@@ -66,7 +66,7 @@
 .hm-hero {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  background: #101820;
+  background: #142a34;
   color: #fff;
   border-radius: 18px;
   overflow: hidden;
@@ -76,17 +76,17 @@
   padding: 36px 38px;
 }
 .hm-hero .hm-kicker {
-  color: #ffcb05;
+  color: #f1d577;
 }
 .hm-hero h1 {
-  font-size: clamp(40px, 4.5vw, 64px);
+  font-size: clamp(36px, 4vw, 55px);
   line-height: 1.04;
-  font-weight: 800;
+  font-weight: 750;
   letter-spacing: -0.05em;
   margin: 13px 0 17px;
 }
 .hm-hero h1 span {
-  color: #ffcb05;
+  color: #ffcf27;
 }
 .hm-hero-description {
   font-size: 14px;
@@ -139,8 +139,8 @@
 }
 .hm-spotlight {
   padding: 26px;
-  background: #ffcb05;
-  color: #101820;
+  background: #e9caae;
+  color: #19292d;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -171,7 +171,7 @@
   display: flex;
   flex-direction: column;
   color: #142a34;
-  background: #fff;
+  background: #f9f4ec;
   border-radius: 12px;
   padding: 10px 10px 14px;
   min-width: 0;
@@ -235,17 +235,13 @@
   flex-direction: column;
 }
 .hm-path-seller {
-  background: #ffcb05;
-  color: #101820;
+  background: #f5d866;
 }
 .hm-path-affiliate {
-  background: #fff;
-  color: #101820;
+  background: #d6e2d6;
 }
 .hm-path-influencer {
-  background: #101820;
-  color: #fff;
-  border: 1px solid #665623;
+  background: #e4dcf0;
 }
 .hm-path-top {
   display: flex;
@@ -943,75 +939,4 @@
   .hm-hero-note { font-size: 12px; }
   .hm-hero-secondary { font-size: 14px; }
   .hm-categories button { min-height: 44px; }
-}
-
-/* Beezio yellow headers, white reading surfaces, and selective black panels. */
-.hm-page .hm-hero { background: #f6f7f8; color: #101820; border: 1px solid #e0e4e7; }
-.hm-page .hm-hero h1 span { color: #101820; text-decoration: underline; text-decoration-color: #ffcb05; text-decoration-thickness: 5px; text-underline-offset: 6px; }
-.hm-page .hm-hero-description,
-.hm-page .hm-hero-note { color: #46515c; }
-.hm-page .hm-hero-secondary,
-.hm-page .hm-hero-copy nav[aria-label="Shopping links"] a { color: #101820; }
-.hm-page .hm-hero-secondary:hover,
-.hm-page .hm-hero-copy nav[aria-label="Shopping links"] a:hover { color: #725700; }
-.hm-page .hm-kicker { color: #695200; }
-.hm-page .hm-spotlight-heading,
-.hm-page .hm-spotlight-heading > a { color: #101820; }
-.hm-page .hm-path { border: 1px solid #e0e4e7; }
-.hm-page .hm-path-seller { background: #ffcb05; }
-.hm-page .hm-path-seller > p,
-.hm-page .hm-path-seller .hm-kicker { color: #27313b; }
-.hm-page .hm-path-influencer { background: #f6f7f8; color: #101820; }
-.hm-page .hm-path-influencer > p { color: #46515c; }
-.hm-page .hm-path-influencer .hm-path-actions a { color: #101820; }
-.hm-page .hm-section-heading {
-  background: #ffcb05;
-  color: #101820;
-  padding: 22px 24px;
-  border-radius: 12px;
-  border-bottom: 4px solid #101820;
-}
-.hm-page .hm-section-heading .hm-kicker,
-.hm-page .hm-section-heading p:not(.hm-kicker) { color: #27313b; }
-.hm-page .hm-all-link { color: #101820; }
-.hm-page .hm-categories button { background: #fff; color: #101820; border-color: #c6cdd2; }
-.hm-page .hm-categories button[aria-pressed="true"] { background: #ffcb05; color: #101820; border-color: #ffcb05; }
-.hm-page .hm-product-card { background: #fff; color: #101820; border-color: #dce1e5; }
-.hm-page .hm-product-card:hover { border-color: #bd9400; box-shadow: 0 5px 18px #10182014; }
-.hm-page .hm-product-bottom span { background: #ffcb05; color: #101820; }
-.hm-page .hm-product-seller,
-.hm-page .hm-product-detail { color: #525c66; }
-.hm-page .hm-product-detail { font-size: 11px; line-height: 1.5; }
-.hm-page .hm-store-card { background: #101820; border: 1px solid #101820; color: #fff; }
-.hm-page .hm-store-card p { color: #ffcb05; }
-.hm-page .hm-quick-start { background: #fff; border-color: #dce1e5; border-top: 6px solid #ffcb05; color: #101820; }
-.hm-page .hm-quick-start p:not(.hm-kicker) { color: #404b56; }
-.hm-page .hm-earn-banner { background: #101820; color: #fff; border: 1px solid #101820; }
-.hm-page .hm-earn-banner .hm-kicker { color: #ffcb05; }
-.hm-page .hm-earn-icon { background: #ffcb05; color: #101820; }
-.hm-page .hm-earn-banner p:not(.hm-kicker) { color: #e1e6eb; font-size: 14px; }
-.hm-page .hm-build { background: #fff; color: #101820; border: 1px solid #dce1e5; border-top: 6px solid #ffcb05; }
-.hm-page .hm-build-copy em { color: #695200; }
-.hm-page .hm-build-copy > p:not(.hm-kicker),
-.hm-page .hm-build-copy ul { color: #404b56; }
-.hm-page .hm-build-stamp { background: #ffcb05; color: #101820; }
-.hm-page .hm-browser-bar { background: #eef0f2; }
-.hm-page .hm-influencer { background: #ffcb05; color: #101820; border: 1px solid #ffcb05; }
-.hm-page .hm-influencer .hm-kicker { color: #27313b; }
-.hm-page .hm-influencer p:not(.hm-kicker) { color: #27313b; }
-.hm-page .hm-pricing { color: #525c66; border-color: #dce1e5; }
-.hm-page .hm-pricing summary,
-.hm-page .hm-pricing a { color: #101820; }
-.hm-page .hm-catalog-message { background: #f6f7f8; color: #101820; }
-.hm-page a:focus-visible,
-.hm-page button:focus-visible,
-.hm-page summary:focus-visible { outline-color: #8a6800; }
-.hm-page .bz-button { font-weight: 750; }
-
-@media (max-width: 700px) {
-  .hm-page .hm-section-heading { padding: 20px; gap: 12px; }
-  .hm-page .hm-section-heading p:not(.hm-kicker) { font-size: 14px; line-height: 1.65; }
-  .hm-page .hm-build-copy > p:not(.hm-kicker),
-  .hm-page .hm-build-copy ul,
-  .hm-page .hm-influencer p:not(.hm-kicker) { font-size: 14px; line-height: 1.75; }
 }
