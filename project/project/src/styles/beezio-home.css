@@ -121,6 +121,22 @@
   margin-top: 21px;
   line-height: 1.6;
 }
+/* Keep shopping links readable against the hero's dark background. */
+.hm-hero-copy nav[aria-label="Shopping links"] a {
+  color: #fff;
+  text-decoration-line: underline;
+  text-decoration-color: currentColor;
+  text-underline-offset: 3px;
+}
+.hm-hero-copy nav[aria-label="Shopping links"] a:hover,
+.hm-hero-copy nav[aria-label="Shopping links"] a:focus-visible {
+  color: #ffcf27;
+}
+.hm-hero-copy nav[aria-label="Shopping links"] a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
 .hm-spotlight {
   padding: 26px;
   background: #e9caae;
