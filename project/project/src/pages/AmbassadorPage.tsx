@@ -61,21 +61,8 @@ export default function AmbassadorPage() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/join" className="inline-flex items-center gap-2 rounded-xl bg-[#ffcb05] px-6 py-4 font-bold text-[#101820] hover:bg-yellow-300">Join Beezio <ArrowRight size={19}/></Link>
             <a href="#how-it-works" className="rounded-xl border border-white px-6 py-4 font-semibold !text-white hover:bg-white/10" style={{ color: "#ffffff", WebkitTextFillColor: "#ffffff" }}>How it works</a>
-            <button type="button" onClick={share} className="rounded-xl border border-white px-6 py-4 font-semibold !text-white hover:bg-white/10" style={{ color: "#ffffff", WebkitTextFillColor: "#ffffff" }}>Share to any app</button>
           </div>
         </div>
-      </section>
-      <section className="mx-auto max-w-5xl px-5 py-10" aria-label="Share the BZO Ambassador Program">
-        <h2 className="text-2xl font-extrabold !text-[#101820]">Know someone who could be a BZO Ambassador?</h2>
-        <p className="mt-2 text-gray-700">Share this page in a tap. No signup required to view it.</p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button type="button" onClick={share} className="rounded-xl bg-[#101820] px-5 py-3 font-bold !text-white" style={{color:'#ffffff', WebkitTextFillColor:'#ffffff'}}>Share to any app</button>
-          <button type="button" onClick={copyLink} className="rounded-xl border-2 border-[#101820] bg-[#ffcb05] px-5 py-3 font-bold !text-[#101820]" style={{color:'#101820', WebkitTextFillColor:'#101820'}}>{copied ? 'Link copied!' : 'Copy link'}</button>
-        </div>
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {channels.map(channel => <a key={channel.name} href={channel.url} target={channel.name === 'Email' || channel.name === 'Text message' ? undefined : '_blank'} rel="noopener noreferrer" className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-center font-semibold !text-[#101820]" style={{color:'#101820', WebkitTextFillColor:'#101820'}}>{channel.name}</a>)}
-        </div>
-        <p className="mt-4 break-all text-sm text-gray-600">{pageUrl}</p>
       </section>
       <section className="mx-auto max-w-5xl px-5 py-14">
         <h2 className="text-3xl font-extrabold">What is a BZO Ambassador?</h2>
@@ -101,6 +88,18 @@ export default function AmbassadorPage() {
       </section>
       <section className="bg-[#ffcb05] px-5 py-14 text-center">
         <div className="mx-auto max-w-3xl"><h2 className="text-3xl font-extrabold">Ready to help grow Beezio?</h2><p className="mt-3 text-lg">We're looking for our first group of active BZO Ambassadors. There is no artificial 25-person cap.</p><Link to="/join" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#101820] px-7 py-4 font-bold !text-white hover:bg-gray-800">Create your Beezio account <ArrowRight size={20}/></Link><p className="mt-3 text-sm">Use the existing Beezio signup flow. Ambassador enrollment and referral eligibility are subject to the program's account setup and terms.</p></div>
+      </section>
+      <section className="mx-auto max-w-5xl px-5 py-10" aria-label="Share the BZO Ambassador Program">
+        <h2 className="text-2xl font-extrabold !text-[#101820]">Know someone who could be a BZO Ambassador?</h2>
+        <p className="mt-2 text-gray-700">Share this page in a tap. No signup required to view it.</p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button type="button" onClick={share} className="rounded-xl bg-[#101820] px-5 py-3 font-bold !text-white" style={{color:'#ffffff', WebkitTextFillColor:'#ffffff'}}>Share to any app</button>
+          <button type="button" onClick={copyLink} className="rounded-xl border-2 border-[#101820] bg-[#ffcb05] px-5 py-3 font-bold !text-[#101820]" style={{color:'#101820', WebkitTextFillColor:'#101820'}}>{copied ? 'Link copied!' : 'Copy link'}</button>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {channels.map(channel => <a key={channel.name} href={channel.url} target={channel.name === 'Email' || channel.name === 'Text message' ? undefined : '_blank'} rel="noopener noreferrer" className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-center font-semibold !text-[#101820]" style={{color:'#101820', WebkitTextFillColor:'#101820'}}>{channel.name}</a>)}
+        </div>
+        <p className="mt-4 break-all text-sm text-gray-600">{pageUrl}</p>
       </section>
     </div>
   );
