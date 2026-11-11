@@ -13,7 +13,7 @@ export default function AmbassadorPage() {
   const pageUrl = typeof window !== 'undefined' ? window.location.href : 'https://beezio.co/ambassadors';
   const share = async () => {
     if (navigator.share) {
-      try { await navigator.share({ title: 'BZO Ambassador Program', text: 'Discover the Beezio Ambassador Program', url: pageUrl }); } catch { /* share dismissed */ }
+      try { await navigator.share({ title: 'Beezio Ambassador Program', text: 'Discover the Beezio Ambassador Program', url: pageUrl }); } catch { /* share dismissed */ }
     } else if (navigator.clipboard) {
       await navigator.clipboard.writeText(pageUrl);
       window.alert('Ambassador page link copied!');
@@ -23,7 +23,7 @@ export default function AmbassadorPage() {
     <div className="min-h-screen bg-white text-[#101820]">
       <section className="bg-[#101820] text-white px-5 py-16 md:py-24">
         <div className="max-w-5xl mx-auto">
-          <span className="inline-block rounded-full bg-[#ffcb05] px-4 py-2 text-sm font-extrabold text-[#101820]">BZO AMBASSADOR PROGRAM</span>
+          <span className="inline-block rounded-full bg-[#ffcb05] px-4 py-2 text-sm font-extrabold text-[#101820]">BEEZIO AMBASSADOR PROGRAM</span>
           <h1 className="mt-6 max-w-3xl text-4xl md:text-6xl font-extrabold leading-tight">Help grow Beezio.<br/><span className="text-[#ffcb05]">Earn from qualifying sales.</span></h1>
           <p className="mt-6 max-w-2xl text-lg text-gray-200">Beezio brings shoppers, independent sellers, and affiliates together in one online marketplace. Ambassadors help introduce people to the platform and can earn commissions tied to eligible product sales.</p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -34,7 +34,7 @@ export default function AmbassadorPage() {
         </div>
       </section>
       <section className="mx-auto max-w-5xl px-5 py-14">
-        <h2 className="text-3xl font-extrabold">What is a BZO Ambassador?</h2>
+        <h2 className="text-3xl font-extrabold">What is a Beezio Ambassador?</h2>
         <p className="mt-4 max-w-3xl text-lg text-gray-700">An ambassador helps people discover Beezio: shoppers looking for products, sellers looking for a free storefront, and affiliates who want to promote participating merchandise. Ambassadors grow the marketplace; affiliates focus on promoting individual products.</p>
         <div className="mt-8 grid gap-5 md:grid-cols-3">
           {[
@@ -56,7 +56,7 @@ export default function AmbassadorPage() {
         <p className="mt-7 rounded-xl bg-amber-50 p-5 text-sm text-gray-700">Important: Beezio is an independent, commission-based opportunity, not a salaried position. Signing people up alone does not guarantee payment. Earnings depend on qualifying product sales and program terms; no income is guaranteed. Review the applicable terms before participating.</p>
       </section>
       <section className="bg-[#ffcb05] px-5 py-14 text-center">
-        <div className="mx-auto max-w-3xl"><h2 className="text-3xl font-extrabold">Ready to help grow Beezio?</h2><p className="mt-3 text-lg">We're looking for our first group of active BZO Ambassadors. There is no artificial 25-person cap.</p><Link to="/auth/signup?source=ambassadors" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#101820] px-7 py-4 font-bold text-white hover:bg-gray-800">Create your Beezio account <ArrowRight size={20}/></Link><p className="mt-3 text-sm">Use the existing Beezio signup flow. Ambassador enrollment and referral eligibility are subject to the program's account setup and terms.</p></div>
+        <div className="mx-auto max-w-3xl"><h2 className="text-3xl font-extrabold">Ready to help grow Beezio?</h2><p className="mt-3 text-lg">We're looking for our first group of active Beezio Ambassadors. There is no artificial 25-person cap.</p><Link to="/auth/signup?source=ambassadors" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#101820] px-7 py-4 font-bold text-white hover:bg-gray-800">Create your Beezio account <ArrowRight size={20}/></Link><p className="mt-3 text-sm">Use the existing Beezio signup flow. Ambassador enrollment and referral eligibility are subject to the program's account setup and terms.</p></div>
       </section>
     </div>
   );

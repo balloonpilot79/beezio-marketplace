@@ -10,13 +10,13 @@ const steps = [
 ];
 
 export default function AmbassadorPage({ sideIncome = false }: { sideIncome?: boolean }) {
-  const pageTitle = sideIncome ? 'Earn Extra Income by Referring | Beezio' : 'BZO Ambassador Program | Beezio';
+  const pageTitle = sideIncome ? 'Earn Extra Income by Referring | Beezio' : 'Beezio Ambassador Program | Beezio';
   const pageUrl = sideIncome ? 'https://beezio.co/earn-by-referring' : 'https://beezio.co/ambassadors';
-  const shareText = sideIncome ? 'Looking to earn extra side income? Refer sellers and affiliates to Beezio. When they make qualifying sales, you can earn too. Free to join; earnings are not guaranteed.' : 'Discover the free BZO Ambassador Program. Introduce people to Beezio and earn commissions from qualifying sales. No guaranteed income.';
+  const shareText = sideIncome ? 'Looking to earn extra side income? Refer sellers and affiliates to Beezio. When they make qualifying sales, you can earn too. Free to join; earnings are not guaranteed.' : 'Discover the free Beezio Ambassador Program. Introduce people to Beezio and earn commissions from qualifying sales. No guaranteed income.';
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     document.title = pageTitle;
-    const description = sideIncome ? 'Earn referral commissions from qualifying sales by the sellers and affiliates you introduce to Beezio. Free to join. No inventory required; earnings are not guaranteed.' : 'Become a BZO Ambassador. Help shoppers, sellers and affiliates discover Beezio and earn commissions on qualifying sales. Free to join; no income guaranteed.';
+    const description = sideIncome ? 'Earn referral commissions from qualifying sales by the sellers and affiliates you introduce to Beezio. Free to join. No inventory required; earnings are not guaranteed.' : 'Become a Beezio Ambassador. Help shoppers, sellers and affiliates discover Beezio and earn commissions on qualifying sales. Free to join; no income guaranteed.';
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     const oldDescription = meta?.content;
     if (!meta) {
@@ -39,7 +39,7 @@ export default function AmbassadorPage({ sideIncome = false }: { sideIncome?: bo
       await navigator.clipboard.writeText(pageUrl);
       setCopied(true);
     } catch {
-      window.prompt('Copy the BZO Ambassador page link:', pageUrl);
+      window.prompt('Copy the Beezio Ambassador page link:', pageUrl);
     }
   };
   const encodedUrl = encodeURIComponent(pageUrl);
@@ -49,14 +49,14 @@ export default function AmbassadorPage({ sideIncome = false }: { sideIncome?: bo
     { name: 'WhatsApp', url: 'https://api.whatsapp.com/send?text=' + encodedText },
     { name: 'X', url: 'https://twitter.com/intent/tweet?text=' + encodedText },
     { name: 'LinkedIn', url: 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodedUrl },
-    { name: 'Email', url: 'mailto:?subject=' + encodeURIComponent('BZO Ambassador Program') + '&body=' + encodedText },
+    { name: 'Email', url: 'mailto:?subject=' + encodeURIComponent('Beezio Ambassador Program') + '&body=' + encodedText },
     { name: 'Text message', url: 'sms:?body=' + encodedText },
   ];
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <section className="bg-[#101820] !text-white px-5 py-16 md:py-24">
         <div className="max-w-5xl mx-auto">
-          <span className="inline-block rounded-full bg-[#ffcb05] px-4 py-2 text-sm font-extrabold text-[#101820]">{sideIncome ? 'EXTRA INCOME. REAL SALES.' : 'BZO AMBASSADOR PROGRAM'}</span>
+          <span className="inline-block rounded-full bg-[#ffcb05] px-4 py-2 text-sm font-extrabold text-[#101820]">{sideIncome ? 'EXTRA INCOME. REAL SALES.' : 'BEEZIO AMBASSADOR PROGRAM'}</span>
           <h1 className="mt-6 max-w-3xl text-4xl md:text-6xl font-extrabold leading-tight !text-white">{sideIncome ? 'Looking to earn extra side income?' : 'Help grow Beezio.'}<br/><span className="text-[#ffcb05]">{sideIncome ? 'When they sell, you can earn too.' : 'Earn from qualifying sales.'}</span></h1>
           <p className="mt-6 max-w-2xl text-lg !text-gray-200">{sideIncome ? 'Introduce sellers and affiliates to Beezio using your referral link. When they sign up through your link and make qualifying sales, you can earn referral commissions. Help them get started, cheer on their success, and earn as their sales grow.' : 'Beezio brings shoppers, independent sellers, and affiliates together in one online marketplace. Ambassadors help introduce people to the platform and can earn commissions tied to eligible product sales.'}</p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -66,7 +66,7 @@ export default function AmbassadorPage({ sideIncome = false }: { sideIncome?: bo
         </div>
       </section>
       <section className="mx-auto max-w-5xl px-5 py-14">
-        <h2 className="text-3xl font-extrabold">{sideIncome ? 'You make the introduction. They make the sales.' : 'What is a BZO Ambassador?'}</h2>
+        <h2 className="text-3xl font-extrabold">{sideIncome ? 'You make the introduction. They make the sales.' : 'What is a Beezio Ambassador?'}</h2>
         <p className="mt-4 max-w-3xl text-lg text-gray-700">{sideIncome ? 'Know someone with products to sell? Or someone who enjoys recommending great finds? Introduce them to Beezio. Sellers open a free store and list their products. Affiliates promote participating products. As their qualifying sales happen, your eligible referral relationship can keep earning commissions under the program terms.' : 'An ambassador helps people discover Beezio: shoppers looking for products, sellers looking for a free storefront, and affiliates who want to promote participating merchandise. Ambassadors grow the marketplace; affiliates focus on promoting individual products.'}</p>
         <div className="mt-8 grid gap-5 md:grid-cols-3">
           {[
@@ -88,10 +88,10 @@ export default function AmbassadorPage({ sideIncome = false }: { sideIncome?: bo
         <p className="mt-7 rounded-xl bg-amber-50 p-5 text-sm text-gray-700">Important: Beezio is an independent, commission-based opportunity, not a salaried position. Signing people up alone does not guarantee payment. Earnings depend on qualifying product sales and program terms; no income is guaranteed. Review the applicable terms before participating.</p>
       </section>
       <section className="bg-[#ffcb05] px-5 py-14 text-center">
-        <div className="mx-auto max-w-3xl"><h2 className="text-3xl font-extrabold">{sideIncome ? 'Their next sale could be your next commission.' : 'Ready to help grow Beezio?'}</h2><p className="mt-3 text-lg">{sideIncome ? 'Join free, get your referral link, and start introducing sellers and affiliates to Beezio today.' : "We're looking for our first group of active BZO Ambassadors. There is no artificial 25-person cap."}</p><Link to="/join" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#101820] px-7 py-4 font-bold !text-white hover:bg-gray-800">Create your Beezio account <ArrowRight size={20}/></Link><p className="mt-3 text-sm">Use the existing Beezio signup flow. Ambassador enrollment and referral eligibility are subject to the program's account setup and terms.</p></div>
+        <div className="mx-auto max-w-3xl"><h2 className="text-3xl font-extrabold">{sideIncome ? 'Their next sale could be your next commission.' : 'Ready to help grow Beezio?'}</h2><p className="mt-3 text-lg">{sideIncome ? 'Join free, get your referral link, and start introducing sellers and affiliates to Beezio today.' : "We're looking for our first group of active Beezio Ambassadors. There is no artificial 25-person cap."}</p><Link to="/join" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#101820] px-7 py-4 font-bold !text-white hover:bg-gray-800">Create your Beezio account <ArrowRight size={20}/></Link><p className="mt-3 text-sm">Use the existing Beezio signup flow. Ambassador enrollment and referral eligibility are subject to the program's account setup and terms.</p></div>
       </section>
-      <section className="mx-auto max-w-5xl px-5 py-10" aria-label="Share the BZO Ambassador Program">
-        <h2 className="text-2xl font-extrabold !text-[#101820]">{sideIncome ? 'Know someone looking for a side income opportunity?' : 'Know someone who could be a BZO Ambassador?'}</h2>
+      <section className="mx-auto max-w-5xl px-5 py-10" aria-label="Share the Beezio Ambassador Program">
+        <h2 className="text-2xl font-extrabold !text-[#101820]">{sideIncome ? 'Know someone looking for a side income opportunity?' : 'Know someone who could be a Beezio Ambassador?'}</h2>
         <p className="mt-2 text-gray-700">Share this page in a tap. No signup required to view it.</p>
         <div className="mt-5 flex flex-wrap gap-3">
           <button type="button" onClick={share} className="rounded-xl bg-[#101820] px-5 py-3 font-bold !text-white" style={{color:'#ffffff', WebkitTextFillColor:'#ffffff'}}>Share to any app</button>

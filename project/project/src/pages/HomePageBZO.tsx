@@ -152,7 +152,7 @@ export default function HomePageBZO() {
               <Link to="/support" className="underline">Contact support</Link>
               <Link to="/returns" className="underline">Returns</Link>
               <Link to="/how-it-works" className="underline">How Beezio works</Link>
-              <Link to="/ambassadors" className="underline">BZO Ambassador Program</Link>
+              <Link to="/ambassadors" className="underline">Beezio Ambassador Program</Link>
             </nav>
           </div>
           <div className="hm-spotlight">
