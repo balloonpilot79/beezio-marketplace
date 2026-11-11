@@ -125,7 +125,7 @@ const GlobalHeaderBar: React.FC = () => {
             ) : (
               <Link
                 to="/signup"
-                className="hidden rounded-lg bg-[#142a34] px-3 py-2 text-xs font-semibold text-white hover:bg-[#284550] sm:inline-flex"
+                className="hidden rounded-lg bg-black px-3 py-2 text-xs font-semibold text-white hover:bg-neutral-800 sm:inline-flex"
               >
                 Start your free website
               </Link>

@@ -4,11 +4,11 @@
 .bz-market-search:focus-within { outline:2px solid #354f48; outline-offset:2px; }
 .bz-market-search button { display:flex; align-items:center; justify-content:center; align-self:stretch; width:44px; flex-shrink:0; color:#142a34; background:#f3ead0; border:0; }
 .bz-header-search { display:none; }
-.bz-header a[aria-label="Beezio home"]>span>span:first-child { background:#142a34; color:#ffcb05; }
+.bz-header a[aria-label="Beezio home"]>span>span:first-child { background:#000; color:#ffcb05; }
 @media(min-width:1024px) { .bz-header-search { display:flex; flex:1; max-width:440px; } }
 .bz-shopping-nav {
   height: 46px;
-  background: #152933;
+  background: #000;
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
