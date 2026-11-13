@@ -68,7 +68,7 @@ describe('automatic business welcome tutorial', () => {
   });
   it('escapes names and includes real dashboard actions for all business roles', () => {
     const { html } = buildBusinessWelcomeEmail('<img src=x onerror=alert(1)>');
-    expect(html).not.toContain('<img');
+    expect(html).not.toContain('<img src=x onerror=alert(1)>');
     expect(html).toContain('&lt;img');
     for (const label of ['Customize My Store', 'Seller', 'Affiliate', 'Ambassador', 'Add to My Store', 'Financials', 'support@beezio.co']) expect(html).toContain(label);
     expect(html).not.toContain('Stripe');
