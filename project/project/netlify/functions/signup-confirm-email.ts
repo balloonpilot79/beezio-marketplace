@@ -2,6 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { assertPost, json, parseJson } from './_lib/http';
 import { findSupabaseAdminForUser } from './_lib/supabase';
 import { verifySignupVerifyToken } from './_lib/signup-verify-token';
+import { sendBusinessWelcome } from './_lib/business-welcome';
 
 type Body = {
   token?: string;
@@ -36,8 +37,11 @@ export const handler: Handler = async (event) => {
       confirmedUser = updateData.user || authUser;
     }
 
+    const welcomeEmail = await sendBusinessWelcome(supabaseAdmin, confirmedUser);
+
     return json(200, {
       ok: true,
+      welcomeEmail,
       confirmed: true,
       user: {
         id: confirmedUser.id,

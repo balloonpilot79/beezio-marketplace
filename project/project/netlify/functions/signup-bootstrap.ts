@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { findSupabaseAdminForUser } from './_lib/supabase';
+import { sendBusinessWelcome } from './_lib/business-welcome';
 
 function json(statusCode: number, body: unknown) {
   return {
@@ -225,8 +226,12 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    // Do not couple email delivery to whether the auth trigger already created a profile.
+    const welcomeEmail = await sendBusinessWelcome(supabaseAdmin, authUser);
+
     return json(200, {
       ok: true,
+      welcomeEmail,
       profileId,
       role: primaryRole,
       roles: assignedRoles,

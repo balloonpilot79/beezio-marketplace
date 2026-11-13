@@ -176,7 +176,7 @@ const AuthConfirmPage: React.FC = () => {
       }
 
       const bootstrapData = await bootstrapResponse.json().catch(() => ({}));
-      if (bootstrapData?.createdProfile) {
+      if (bootstrapData?.createdProfile && !isBusinessSignupPayload(payload)) {
         try {
           await sendWelcomeEmail(
             confirmedUser.id,

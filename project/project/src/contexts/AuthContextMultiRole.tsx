@@ -1103,6 +1103,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       }
 
+      if (data.session?.access_token) {
+        // Covers confirmed signups that return a session without a confirmation callback.
+        try {
+          const welcomeResponse = await fetch('/.netlify/functions/signup-welcome', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${data.session.access_token}` },
+          });
+          if (!welcomeResponse.ok) console.warn('[AuthContext] Welcome tutorial delivery pending');
+        } catch (welcomeError) {
+          console.warn('[AuthContext] Welcome tutorial delivery pending', welcomeError);
+        }
+      }
       return data;
     } catch (error) {
       console.error('SignUp error:', error);

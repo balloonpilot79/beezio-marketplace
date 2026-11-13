@@ -3,6 +3,9 @@ type EmailPayload = {
   subject: string;
   html: string;
   replyTo?: string;
+  from?: string;
+  idempotencyKey?: string;
+  timeoutMs?: number;
 };
 
 type OrderItemLine = {
@@ -36,12 +39,14 @@ export async function sendTransactionalEmail(payload: EmailPayload): Promise<{ s
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
+      ...(payload.timeoutMs ? { signal: AbortSignal.timeout(payload.timeoutMs) } : {}),
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        ...(payload.idempotencyKey ? { 'Idempotency-Key': payload.idempotencyKey } : {}),
       },
       body: JSON.stringify({
-        from: fromAddress,
+        from: payload.from || fromAddress,
         to: [to],
         subject: payload.subject,
         html: payload.html,
