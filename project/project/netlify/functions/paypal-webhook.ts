@@ -1,3 +1,4 @@
+import { queueOwnerAlert,dispatchOwnerAlerts } from './_lib/owner-alerts';
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { json } from './_lib/http';
@@ -16,15 +17,19 @@ export const handler: Handler = async (event) => {
     : event.body || '';
   const supabaseAdmin = createSupabaseAdmin();
 
+  let verifiedEvent=false;
   try {
     const verified = await verifyPayPalWebhookSignature({ headers: event.headers as any, rawBody });
     if (!verified) return json(401, { error: 'Invalid webhook signature' });
 
+    verifiedEvent=true;
     const payload = JSON.parse(rawBody);
     const eventId = String(payload?.id || '').trim();
     const eventType = String(payload?.event_type || '').trim();
     const resourceType = String(payload?.resource_type || '').trim();
     if (!eventId) return json(400, { error: 'Missing event id' });
+
+    if(eventType.startsWith('CUSTOMER.DISPUTE.')||eventType.startsWith('RISK.DISPUTE.'))await queueOwnerAlert(supabaseAdmin,'paypal-dispute:'+eventId,{title:'PayPal dispute notification',event_id:eventId,event_type:eventType,provider_dispute_id:payload?.resource?.dispute_id||payload?.resource?.id||null,description:'Review this dispute in PayPal and Beezio. Refund decisions are manual.'});
 
     const { error: insertError } = await supabaseAdmin
       .from('paypal_webhook_events')
@@ -40,7 +45,7 @@ export const handler: Handler = async (event) => {
       // Receipt is not proof of successful processing. A failed completion must
       // remain replayable when PayPal redelivers the same signed event.
       if (insertError.code === '23505' || msg.includes('duplicate') || msg.includes('unique')) {
-        if (eventType !== 'PAYMENT.CAPTURE.COMPLETED') return json(200, { ok: true, skipped: true });
+        if(eventType!=='PAYMENT.CAPTURE.COMPLETED'&&eventType!=='PAYMENT.CAPTURE.REFUNDED'&&!eventType.includes('DISPUTE.'))return json(200,{ok:true,skipped:true});
       } else {
         return json(500, { error: insertError.message });
       }
@@ -215,6 +220,8 @@ export const handler: Handler = async (event) => {
     return json(200, { ok: true });
   } catch (e) {
     return json(500, { error: e instanceof Error ? e.message : 'Unexpected error' });
+  } finally {
+    if(verifiedEvent)try{await dispatchOwnerAlerts(supabaseAdmin);}catch(e){console.error('Owner PayPal dispute alert retained for retry',String(e));}
   }
 };
 

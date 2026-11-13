@@ -3,7 +3,7 @@ import { createSupabaseAdmin } from './_lib/supabase';
 import { json, assertPost, parseJson } from './_lib/http';
 import { requireAdmin } from './_lib/auth';
 import { getPayPalAccessToken, getPayPalBaseUrl } from './_lib/paypal';
-import { fetchPayPalPayoutBatchDetails, normalizePayoutItemStatus } from './_lib/paypalPayoutReconciliation';
+import { fetchPayPalPayoutBatchDetails, normalizePayoutItemStatus, normalizePayoutBatchStatus } from './_lib/paypalPayoutReconciliation';
 
 type Body = {
   batch_id?: string;
@@ -176,8 +176,7 @@ export const handler: Handler = async (event) => {
 
       // Decide batch status
       const batchStatus = String((apiData as any)?.batch_header?.batch_status || '').toUpperCase();
-      const normalized =
-        batchStatus === 'SUCCESS' ? 'PAID' : batchStatus === 'PROCESSING' ? 'SUBMITTED' : batchStatus === 'DENIED' ? 'FAILED' : 'PARTIAL';
+      const normalized = normalizePayoutBatchStatus(batchStatus, items);
 
       await supabaseAdmin
         .from('payout_batches')
@@ -260,34 +259,7 @@ export const handler: Handler = async (event) => {
             .eq('status', 'READY_TO_PAY');
         }
 
-        const { data: insuranceLedgers } = await supabaseAdmin
-          .from('payout_ledger')
-          .select('insurance_lead_id, paid_at')
-          .in('id', ledgerIdsTouched)
-          .eq('status', 'PAID')
-          .not('insurance_lead_id', 'is', null);
-
-        const paidInsuranceLeadIds = ((insuranceLedgers as any[]) || [])
-          .map((row) => ({
-            leadId: String(row?.insurance_lead_id || '').trim(),
-            paidAt: row?.paid_at ? String(row.paid_at) : new Date().toISOString(),
-          }))
-          .filter((row) => row.leadId);
-
-        if (paidInsuranceLeadIds.length) {
-          const leadIds = paidInsuranceLeadIds.map((row) => row.leadId);
-          const paidAt = paidInsuranceLeadIds[0]?.paidAt || new Date().toISOString();
-          await Promise.all([
-            supabaseAdmin
-              .from('insurance_affiliate_earnings')
-              .update({ status: 'paid', paid_at: paidAt, updated_at: new Date().toISOString() } as any)
-              .in('lead_id', leadIds),
-            supabaseAdmin
-              .from('insurance_influencer_earnings')
-              .update({ status: 'paid', paid_at: paidAt, updated_at: new Date().toISOString() } as any)
-              .in('lead_id', leadIds),
-          ]);
-        }
+  
       }
 
       results.push({ id: b.id, provider_batch_id: providerBatchId, ok: true, batch_status: normalized, items: items.length });

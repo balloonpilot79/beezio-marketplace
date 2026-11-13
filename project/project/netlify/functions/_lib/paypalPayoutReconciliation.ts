@@ -79,3 +79,12 @@ export async function fetchPayPalPayoutBatchDetails(params: {
     },
   };
 }
+
+export function normalizePayoutBatchStatus(batchStatus:string,items:any[]) {
+ const statuses=items.map(i=>normalizePayoutItemStatus(String(i?.transaction_status||'')).status);
+ if(statuses.length&&statuses.every(s=>s==='SENT'))return 'PAID';
+ if(statuses.some(s=>s==='CREATED'))return 'SUBMITTED';
+ if(statuses.some(s=>s==='SENT'))return 'PARTIAL';
+ if(statuses.length&&statuses.every(s=>s==='FAILED'))return 'FAILED';
+ return ['DENIED','CANCELED'].includes(batchStatus.toUpperCase())?'FAILED':'SUBMITTED';
+}

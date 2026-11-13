@@ -1,3 +1,4 @@
+import { dispatchOwnerAlerts,ownerAlertEmail } from './owner-alerts';
 import { sendTransactionalEmail } from './email';
 
 type AlertEvent = 'opened' | 'message' | 'resolved';
@@ -19,6 +20,7 @@ interface DisputeAlertOptions {
 }
 
 export async function notifyDisputeParties(db: any, options: DisputeAlertOptions) {
+  await dispatchOwnerAlerts(db);
   const { data: dispute, error: disputeError } = await db.from('disputes')
     .select('id, order_id, filed_by, filed_against, status')
     .eq('id', options.disputeId).maybeSingle();
@@ -45,7 +47,7 @@ export async function notifyDisputeParties(db: any, options: DisputeAlertOptions
 
   const ids = Array.from(new Set(recipientIds.map((item) => item.id)));
   const profileRows = ids.length
-    ? await db.from('profiles').select('id,user_id,email').in('user_id', ids)
+    ? await db.from('profiles').select('id,user_id,email').or(`id.in.(${ids.join(',')}),user_id.in.(${ids.join(',')})`)
     : { data: [] };
   const { data: admins } = await db.from('profiles').select('id,user_id,email')
     .or('role.eq.admin,primary_role.eq.admin');
@@ -59,7 +61,7 @@ export async function notifyDisputeParties(db: any, options: DisputeAlertOptions
   const recipients = new Map<string, { email: string; role: RecipientRole }>();
   const put = (email: unknown, role: RecipientRole) => {
     const value = normalize(email).toLowerCase();
-    if (value.includes('@') && !recipients.has(value)) recipients.set(value, { email: value, role });
+    if (value !== ownerAlertEmail() && value.includes('@') && !recipients.has(value)) recipients.set(value, { email: value, role });
   };
   for (const item of recipientIds) put(profileEmails.get(item.id), item.role);
   if (order?.customer_email) put(order.customer_email, 'buyer');

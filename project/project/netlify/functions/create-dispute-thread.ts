@@ -1,3 +1,4 @@
+import { dispatchOwnerAlerts } from './_lib/owner-alerts';
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { extractAuthHeader, getAuthedUser, requireAdmin, resolveAuthUserIdFromProfileId } from './_lib/auth';
@@ -68,6 +69,7 @@ const freezeOrderPayoutsForDispute = async (supabaseAdmin: any, orderId: string)
 };
 
 export const handler: Handler = async (event) => {
+  let alertDb:any;
   try {
     assertPost(event.httpMethod);
 
@@ -89,6 +91,7 @@ export const handler: Handler = async (event) => {
     if (orderId && !uuidRegex.test(orderId)) return json(400, { error: 'Invalid orderId' });
 
     const supabaseAdmin = createSupabaseAdmin();
+    alertDb=supabaseAdmin;
     const filerUserId = String(user.id);
 
     let isAdmin = false;
@@ -205,6 +208,8 @@ export const handler: Handler = async (event) => {
     return json(200, { dispute, alerts });
   } catch (e) {
     return json(500, { error: 'Unexpected error', details: e instanceof Error ? e.message : String(e) });
+  } finally {
+    if(alertDb)try{await dispatchOwnerAlerts(alertDb);}catch(e){console.error('Owner dispute alert retained for retry',String(e));}
   }
 };
 
