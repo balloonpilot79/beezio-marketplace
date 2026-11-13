@@ -41,7 +41,7 @@ export async function loadPayoutCreditRows(db: any, orderIds: string[]) {
         .in('payee_type', ['seller', 'affiliate', 'influencer'])
         .order('id')
         .range(offset, offset + pageSize - 1);
-      
+
       if (error) throw new Error(error.message);
       const page = data || [];
       rows.push(...page);

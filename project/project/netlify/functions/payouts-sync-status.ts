@@ -1,3 +1,5 @@
+import { failClosedPayoutDatabase } from './_lib/payoutDatabase';
+import { queueOwnerAlert } from './_lib/owner-alerts';
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { json, assertPost, parseJson } from './_lib/http';
@@ -17,7 +19,7 @@ export const handler: Handler = async (event) => {
     const body = parseJson<Body>(event.body);
     const batchId = String(body?.batch_id || '').trim();
 
-    const supabaseAdmin = createSupabaseAdmin();
+    const supabaseAdmin = failClosedPayoutDatabase(createSupabaseAdmin());
 
     const { data: batches, error: batchError } = batchId
       ? await supabaseAdmin
@@ -66,6 +68,7 @@ export const handler: Handler = async (event) => {
         const payoutItemId = String(item?.payout_item_id || '').trim() || null;
         const txStatus = String(item?.transaction_status || '').toUpperCase();
         const normalizedItem = normalizePayoutItemStatus(txStatus);
+      if (['FAILED','BLOCKED','DENIED','RETURNED','REFUNDED'].includes(txStatus)) await queueOwnerAlert(supabaseAdmin,'payout-item:'+providerBatchId+':'+senderItemId+':'+txStatus,{title:'Individual payout needs review',batch_id:b.id,provider_batch_id:providerBatchId,item_id:senderItemId,status:txStatus});
         const status = normalizedItem.status;
         const errorMessage =
           status === 'FAILED'
@@ -113,6 +116,7 @@ export const handler: Handler = async (event) => {
             if (payoutItemRow?.order_money_ledger_id) {
               await query
                 .eq('id', String(payoutItemRow.order_money_ledger_id))
+              .eq('payout_batch_id', b.id)
                 .eq('status', 'ready');
             } else if (payoutItemRow.ledger_id) {
               const { data: payoutLedger } = await supabaseAdmin.from('payout_ledger')
@@ -124,9 +128,7 @@ export const handler: Handler = async (event) => {
                 .eq('payee_type', payeeType)
                 .eq('status', 'ready');
             }
-          } catch {
-            // non-fatal for environments without the itemized ledger migration
-          }
+          } catch (error) { throw error; }
         } else if (status === 'FAILED' && payoutItemRow?.payee_user_id && payoutItemRow?.payee_role) {
           const updatedAt = new Date().toISOString();
           const payeeType =
@@ -157,6 +159,7 @@ export const handler: Handler = async (event) => {
             if (payoutItemRow?.order_money_ledger_id) {
               await query
                 .eq('id', String(payoutItemRow.order_money_ledger_id))
+              .eq('payout_batch_id', b.id)
                 .in('status', ['ready', 'failed']);
             } else if (payoutItemRow.ledger_id) {
               const { data: payoutLedger } = await supabaseAdmin.from('payout_ledger')
@@ -168,9 +171,7 @@ export const handler: Handler = async (event) => {
                 .eq('payee_type', payeeType)
                 .in('status', ['ready', 'failed']);
             }
-          } catch {
-            // non-fatal for environments without the itemized ledger migration
-          }
+          } catch (error) { throw error; }
         }
       }
 
@@ -259,7 +260,7 @@ export const handler: Handler = async (event) => {
             .eq('status', 'READY_TO_PAY');
         }
 
-  
+
       }
 
       results.push({ id: b.id, provider_batch_id: providerBatchId, ok: true, batch_status: normalized, items: items.length });

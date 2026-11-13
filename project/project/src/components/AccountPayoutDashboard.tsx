@@ -131,13 +131,17 @@ export default function AccountPayoutDashboard() {
       .sort((a, b) => a.getTime() - b.getTime());
     return candidates.length ? candidates[0].toISOString() : null;
   }, [summaries]);
-  const isPayoutEligible = totals.ready >= MINIMUM_PAYOUT;
+  const qualifyingReady = Object.values(summaries)
+    .map(row => Number(row.current_balance || 0))
+    .filter(balance => balance >= MINIMUM_PAYOUT)
+    .reduce((sum, balance) => sum + balance, 0);
+  const isPayoutEligible = qualifyingReady >= MINIMUM_PAYOUT;
   const nextPayoutDate = useMemo(
-    () => (isPayoutEligible ? getReferencePayoutDate(totals.ready, nextReleaseAt) : null),
-    [isPayoutEligible, nextReleaseAt, totals.ready]
+    () => (isPayoutEligible ? getReferencePayoutDate(qualifyingReady, nextReleaseAt) : null),
+    [isPayoutEligible, nextReleaseAt, qualifyingReady]
   );
-  const nextExpectedPayment = isPayoutEligible ? totals.ready : 0;
-  const amountToMinimum = Math.max(0, MINIMUM_PAYOUT - totals.ready);
+  const nextExpectedPayment = qualifyingReady;
+  const amountToMinimum = Math.max(0, MINIMUM_PAYOUT - Math.max(0, ...Object.values(summaries).map(row => Number(row.current_balance || 0))));
   const roleCards = [
     {
       label: 'Seller',
@@ -196,7 +200,7 @@ export default function AccountPayoutDashboard() {
       ) : null}
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-        Beezio pays eligible balances through PayPal on the 15th and the last calendar day of each month. Earnings must clear the 14-day hold and the combined available balance must reach {money(MINIMUM_PAYOUT)}.
+        Beezio pays eligible balances through PayPal on the 15th and the last calendar day of each month. Earnings must clear the 14-day hold and each role’s available balance must reach {money(MINIMUM_PAYOUT)}.
       </div>
 
       <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
@@ -271,7 +275,7 @@ export default function AccountPayoutDashboard() {
       <div className="space-y-4">
         <PayPalPayoutSettingsCard
           title="PayPal payout settings"
-          description="Connect PayPal or save the payout email where Beezio should send your seller, affiliate, and influencer payout batches."
+          description="Connect and verify PayPal to receive automatic seller, affiliate, and ambassador payouts. Saving an email alone does not verify it."
         />
 
         <TaxComplianceCard

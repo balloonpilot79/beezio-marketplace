@@ -37,3 +37,10 @@ describe('PayPal payout reconciliation', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 });
+
+import { normalizePayoutBatchStatus } from './paypalPayoutReconciliation';
+describe('batch completion follows individual transfers',()=>{
+ it('keeps a successful batch with an unclaimed recipient under observation',()=>expect(normalizePayoutBatchStatus('SUCCESS',[{transaction_status:'SUCCESS'},{transaction_status:'UNCLAIMED'}])).toBe('SUBMITTED'));
+ it('marks paid only after every transfer succeeds',()=>expect(normalizePayoutBatchStatus('SUCCESS',[{transaction_status:'SUCCESS'}])).toBe('PAID'));
+ it('keeps mixed success and failure separate',()=>expect(normalizePayoutBatchStatus('SUCCESS',[{transaction_status:'SUCCESS'},{transaction_status:'FAILED'}])).toBe('PARTIAL'));
+});

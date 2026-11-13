@@ -8,6 +8,7 @@ type PayPalAccountRow = {
   user_id: string;
   role: PayPalAccountRole;
   paypal_email: string;
+  is_verified?: boolean;
 };
 
 interface PayPalPayoutSettingsCardProps {
@@ -40,7 +41,7 @@ export default function PayPalPayoutSettingsCard({
 
   const [email, setEmail] = useState('');
   const [confirmed, setConfirmed] = useState(false);
-  const [statusLabel, setStatusLabel] = useState<'Not set' | 'Saved'>('Not set');
+  const [statusLabel, setStatusLabel] = useState<'Not set' | 'Saved' | 'Verified'>('Not set');
   const NONCE_KEY = 'beezio_paypal_connect_nonce';
   const withTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
     return await Promise.race([
@@ -65,7 +66,7 @@ export default function PayPalPayoutSettingsCard({
         const { data, error: loadError } = await withTimeout(
           supabase
             .from('paypal_accounts')
-            .select('user_id, role, paypal_email')
+            .select('user_id, role, paypal_email, is_verified')
             .eq('user_id', profileId),
           15000,
           'Loading payout settings'
@@ -80,7 +81,7 @@ export default function PayPalPayoutSettingsCard({
         if (!rows.length || !firstEmail) {
           setStatusLabel('Not set');
         } else {
-          setStatusLabel('Saved');
+          setStatusLabel(rows.length === 3 && rows.every(r => r.is_verified === true) ? 'Verified' : 'Saved');
         }
       } catch (e: any) {
         setError(e?.message || 'Unable to load payout settings.');
@@ -123,7 +124,7 @@ export default function PayPalPayoutSettingsCard({
       if (upsertError) throw upsertError;
 
       setStatusLabel('Saved');
-      setSuccess('Saved.');
+      setSuccess('Email saved. Connect with PayPal to verify ownership and enable automatic payouts.');
       setConfirmed(false);
       await withTimeout(refreshProfile(), 15000, 'Refreshing profile');
     } catch (e: any) {
@@ -178,7 +179,8 @@ export default function PayPalPayoutSettingsCard({
 
   const badge = useMemo(() => {
     const common = 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold';
-    if (statusLabel === 'Saved') return <span className={`${common} bg-green-100 text-green-800`}>Saved</span>;
+    if (statusLabel === 'Verified') return <span className={`${common} bg-green-100 text-green-800`}>Verified</span>;
+    if (statusLabel === 'Saved') return <span className={`${common} bg-amber-100 text-amber-900`}>Saved — verification needed</span>;
     return <span className={`${common} bg-gray-100 text-gray-700`}>Not set</span>;
   }, [statusLabel]);
 

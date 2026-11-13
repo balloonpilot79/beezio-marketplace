@@ -8,7 +8,7 @@
   NODE_VERSION = "20.19.0"
   NPM_FLAGS = "--production=false"
 
-# IMPORTANT: No scheduled/background functions in the beta launch build.
+# Payout, payment recovery and owner-alert retry schedules are enabled explicitly.
 # These jobs were running automatically even when the site was idle and were
 # consuming Functions compute credits. Order/fulfillment functions remain
 # available on demand through their normal endpoints.

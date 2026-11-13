@@ -120,7 +120,7 @@ BEGIN
  SELECT * INTO b FROM public.payout_batches WHERE id=p_batch_id FOR UPDATE;
  IF b.id IS NULL OR b.status NOT IN ('PREPARED','CREATED') THEN RAISE EXCEPTION 'Batch is already submitted or requires reconciliation'; END IF;
  v_today:=(clock_timestamp() AT TIME ZONE 'America/Chicago')::date;
- IF b.payout_date<>v_today OR NOT (extract(day from v_today)=15 OR v_today=(date_trunc('month',v_today)+interval '1 month - 1 day')::date) THEN
+ IF b.payout_date IS DISTINCT FROM v_today OR NOT (extract(day from v_today)=15 OR v_today=(date_trunc('month',v_today)+interval '1 month - 1 day')::date) THEN
   RAISE EXCEPTION 'Payouts can only be submitted on their scheduled payday';
  END IF;
  IF EXISTS(SELECT 1 FROM public.payout_items WHERE payout_batch_id=b.id GROUP BY payee_user_id,payee_role HAVING sum(amount)<5) THEN
@@ -135,7 +135,7 @@ BEGIN
    AND coalesce(o.dispute_status::text,'NONE')='NONE' AND lower(o.status::text) !~ '(refund|cancel|revers|fail|denied)'
    AND NOT EXISTS(SELECT 1 FROM public.disputes d WHERE d.order_id=o.id AND d.status IN ('open','investigating','awaiting_response'))
    FOR UPDATE;
-  IF NOT FOUND OR i.ledger_status<>'READY_TO_PAY' OR i.hold_release_at IS NULL OR i.hold_release_at>clock_timestamp() THEN
+  IF NOT FOUND OR i.status NOT IN ('PREPARED','CREATED') OR i.ledger_status<>'READY_TO_PAY' OR i.hold_release_at IS NULL OR i.hold_release_at>clock_timestamp() THEN
    RAISE EXCEPTION 'Order is not eligible for payout'; END IF;
   PERFORM 1 FROM public.paypal_accounts a WHERE a.user_id=i.payee_user_id AND a.role=i.payee_role
    AND a.is_verified=true AND lower(btrim(a.paypal_email))=lower(btrim(i.recipient));
@@ -213,8 +213,12 @@ BEGIN
   AND payout_date<(clock_timestamp() AT TIME ZONE 'America/Chicago')::date FOR UPDATE LOOP
   PERFORM public.fail_normal_payout_batch(b.id,b.status,'Unsubmitted batch expired; eligible credits can be reselected');n:=n+1;
  END LOOP;
- UPDATE public.payout_batches SET status='RECONCILIATION_REQUIRED',failure_reason='Submission worker interrupted; check PayPal before retrying',updated_at=clock_timestamp()
- WHERE status='SUBMITTING' AND updated_at<clock_timestamp()-interval '3 minutes';
+ WITH interrupted AS (
+  UPDATE public.payout_batches SET status='RECONCILIATION_REQUIRED',failure_reason='Submission worker interrupted; check PayPal before retrying',updated_at=clock_timestamp()
+  WHERE status='SUBMITTING' AND updated_at<clock_timestamp()-interval '3 minutes' RETURNING id
+ ) INSERT INTO public.owner_alert_outbox(event_key,payload)
+ SELECT 'payout-reconcile:'||id,jsonb_build_object('title','Payout submission interrupted','batch_id',id,'action','Check PayPal before retrying. These earnings remain reserved.')
+ FROM interrupted ON CONFLICT(event_key) DO NOTHING;
  RETURN n;
 END $$;
 REVOKE ALL ON FUNCTION public.expire_unsubmitted_payout_batches() FROM PUBLIC,anon,authenticated;

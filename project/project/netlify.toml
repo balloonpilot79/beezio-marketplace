@@ -202,6 +202,19 @@
   status = 200
   force = true
 
+# Recipient PayPal ownership verification.
+[[redirects]]
+  from = "/api/paypal/connect-start"
+  to = "/.netlify/functions/paypal-connect-start"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/paypal/connect-complete"
+  to = "/.netlify/functions/paypal-connect-complete"
+  status = 200
+  force = true
+
 # SPA fallback must remain last so API requests are never swallowed by index.html.
 [[redirects]]
   from = "/*"
