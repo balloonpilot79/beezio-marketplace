@@ -86,6 +86,20 @@ export default function AmbassadorPage({ sideIncome = false }: { sideIncome?: bo
           </div>
         </div>
       </section>
+      {!sideIncome && <section className="border-b border-amber-200 bg-[#fff9df] px-5 py-14" aria-label="Help launch Beezio recruitment">
+        <div className="mx-auto max-w-5xl">
+          <span className="text-sm font-extrabold uppercase tracking-wide text-[#705100]">We're launching — join us early</span>
+          <h2 className="mt-3 max-w-4xl text-3xl font-extrabold text-[#101820] md:text-4xl">Help Launch Beezio — Become a Beezio Ambassador!</h2>
+          <p className="mt-5 max-w-4xl text-lg text-[#25303a]">Beezio is a new online marketplace, and we're looking for ambassadors to help bring sellers, affiliates, and shoppers together. Join early and help build a growing network of independent businesses and people who love sharing products.</p>
+          <div className="mt-7 grid gap-4 md:grid-cols-3">
+            <div className="rounded-xl border border-amber-200 bg-white p-5"><h3 className="font-extrabold text-[#101820]">Refer sellers</h3><p className="mt-2 text-gray-700">Introduce people who want to sell their own products in a free Beezio webstore.</p></div>
+            <div className="rounded-xl border border-amber-200 bg-white p-5"><h3 className="font-extrabold text-[#101820]">Refer affiliates</h3><p className="mt-2 text-gray-700">Invite people to earn by promoting eligible marketplace products. Affiliates can build a free webstore and sell their own items too.</p></div>
+            <div className="rounded-xl border border-amber-200 bg-white p-5"><h3 className="font-extrabold text-[#101820]">Earn as your network sells</h3><p className="mt-2 text-gray-700">Qualifying sales from sellers and affiliates you refer can generate ongoing ambassador commissions under program terms.</p></div>
+          </div>
+          <p className="mt-6 max-w-4xl font-semibold text-[#101820]">Free to join. Free webstores. No monthly subscription fees for sellers, affiliates, or ambassadors. No gimmicks — commissions depend on qualifying sales, and earnings are not guaranteed.</p>
+          <Link to="/signup?role=influencer" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#101820] px-7 py-4 font-extrabold !text-white hover:bg-gray-800">Become a Beezio Ambassador — Sign Up Free <ArrowRight size={20}/></Link>
+        </div>
+      </section>}
       <section className="mx-auto max-w-5xl px-5 py-14">
         <h2 className="text-3xl font-extrabold">{sideIncome ? 'You make the introduction. They make the sales.' : 'What is a Beezio Ambassador?'}</h2>
         <p className="mt-4 max-w-3xl text-lg text-gray-700">{sideIncome ? 'Know someone with products to sell? Or someone who enjoys recommending great finds? Introduce them to Beezio. Sellers open a free store and list their products. Affiliates promote participating products. As their qualifying sales happen, your eligible referral relationship can keep earning commissions under the program terms.' : 'An ambassador helps people discover Beezio: shoppers looking for products, sellers looking for a free storefront, and affiliates who want to promote participating merchandise. Ambassadors grow the marketplace; affiliates focus on promoting individual products.'}</p>
