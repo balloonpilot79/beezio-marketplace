@@ -47,7 +47,7 @@ const paths = [
   {
     title: "Sell your products.",
     label: "For sellers",
-    text: "Open a free store, list your items, and fulfill your orders. Choose which products affiliates can promote.",
+    text: "Build your own free online store, list your products, and fulfill your orders. Choose which products affiliates can promote.",
     signup: "/signup?role=seller",
     href: "/sellers",
     action: "Start selling",
@@ -57,7 +57,7 @@ const paths = [
   {
     title: "Promote products as an affiliate.",
     label: "For affiliates",
-    text: "Choose products to recommend. Earn a commission when your promotion leads to a qualifying sale. The seller fulfills the order.",
+    text: "Build your own free storefront with products from Beezio sellers. Earn commissions on qualifying sales you bring in, while the seller fulfills the order.",
     signup: "/signup?role=affiliate",
     href: "/affiliates",
     action: "Become an affiliate",
@@ -131,7 +131,7 @@ export default function HomePageBZO() {
               Find something worth <span>bringing home.</span>
             </h1>
             <p className="hm-hero-description">
-              Shop clothing, gifts, and everyday favorites from independent sellers.
+              Beezio is a free online marketplace where you can shop, build your own online store, sell your products, and earn commissions promoting products from other sellers.
             </p>
             <div className="hm-actions">
               <Link to="/marketplace" className="bz-button bz-button-gold">
