@@ -10,7 +10,7 @@ import { fetchPayPalPayoutBatchDetails, normalizePayoutItemStatus, normalizePayo
 
 
 export const handler: Handler = async (event) => {
-  if(event)await requireAdmin(event);
+  if(event) { try { await requireAdmin(event); } catch(error:any) { return {statusCode:Number(error?.statusCode)||401,body:JSON.stringify({error:error?.message||"Unauthorized"})}; } }
   const scheduledEnabled = getEnvBool('PAYOUTS_SCHEDULED_ENABLED', false);
   if (!scheduledEnabled) {
     return {

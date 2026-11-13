@@ -10,7 +10,11 @@ import { prepareNormalPayoutBatch } from "./_lib/normalPayouts";
 import { submitPreparedPayoutBatch } from "./_lib/payoutSubmission";
 import { queueOwnerAlert, dispatchOwnerAlerts } from "./_lib/owner-alerts";
 export const handler: Handler = async (event) => {
-  if (event) await requireAdmin(event);
+  if (event) {
+    try { await requireAdmin(event); } catch (error: any) {
+      return { statusCode: Number(error?.statusCode) || 401, body: JSON.stringify({ error: error?.message || "Unauthorized" }) };
+    }
+  }
   const skipped = (reason: string) => ({
     statusCode: 200,
     body: JSON.stringify({ ok: true, skipped: true, reason }),

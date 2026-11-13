@@ -29,7 +29,7 @@ export const handler: Handler = async (event) => {
     const resourceType = String(payload?.resource_type || '').trim();
     if (!eventId) return json(400, { error: 'Missing event id' });
 
-    if(eventType.startsWith('CUSTOMER.DISPUTE.')||eventType.startsWith('RISK.DISPUTE.'))await queueOwnerAlert(supabaseAdmin,'paypal-dispute:'+eventId,{title:'PayPal dispute notification',event_id:eventId,event_type:eventType,provider_dispute_id:payload?.resource?.dispute_id||payload?.resource?.id||null,description:'Review this dispute in PayPal and Beezio. Refund decisions are manual.'});
+    if(eventType.startsWith('CUSTOMER.DISPUTE.')||eventType.startsWith('RISK.DISPUTE.')||eventType==='PAYMENT.CAPTURE.REVERSED')await queueOwnerAlert(supabaseAdmin,'paypal-dispute:'+eventId,{title:'PayPal dispute notification',event_id:eventId,event_type:eventType,provider_dispute_id:payload?.resource?.dispute_id||payload?.resource?.id||null,description:'Review this dispute in PayPal and Beezio. Refund decisions are manual.'});
 
     const { error: insertError } = await supabaseAdmin
       .from('paypal_webhook_events')
@@ -45,7 +45,7 @@ export const handler: Handler = async (event) => {
       // Receipt is not proof of successful processing. A failed completion must
       // remain replayable when PayPal redelivers the same signed event.
       if (insertError.code === '23505' || msg.includes('duplicate') || msg.includes('unique')) {
-        if(eventType!=='PAYMENT.CAPTURE.COMPLETED'&&eventType!=='PAYMENT.CAPTURE.REFUNDED'&&!eventType.includes('DISPUTE.'))return json(200,{ok:true,skipped:true});
+        if(eventType!=='PAYMENT.CAPTURE.COMPLETED'&&eventType!=='PAYMENT.CAPTURE.REFUNDED'&&eventType!=='PAYMENT.CAPTURE.REVERSED'&&!eventType.includes('DISPUTE.'))return json(200,{ok:true,skipped:true});
       } else {
         return json(500, { error: insertError.message });
       }
@@ -57,7 +57,7 @@ export const handler: Handler = async (event) => {
       await recoverCompletedPayPalPayment({ supabaseAdmin, resource });
     }
 
-    if (eventType === 'PAYMENT.CAPTURE.REFUNDED') {
+    if (eventType === 'PAYMENT.CAPTURE.REFUNDED' || eventType === 'PAYMENT.CAPTURE.REVERSED') {
       const refundLinks = Array.isArray(resource?.links) ? resource.links : [];
       const captureId = String(
         resource?.supplementary_data?.related_ids?.capture_id ||

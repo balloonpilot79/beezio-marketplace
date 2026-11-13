@@ -202,6 +202,13 @@
   status = 200
   force = true
 
+# PayPal sends signed payment, refund and dispute events here.
+[[redirects]]
+  from = "/api/paypal/webhook"
+  to = "/.netlify/functions/paypal-webhook"
+  status = 200
+  force = true
+
 # Recipient PayPal ownership verification.
 [[redirects]]
   from = "/api/paypal/connect-start"
