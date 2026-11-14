@@ -56,7 +56,7 @@ const getReferencePayoutDate = (readyAmount: number, nextReleaseAt: string | nul
 const formatPayoutDate = (date: Date) =>
   date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 
-export default function AccountPayoutDashboard() {
+export default function AccountPayoutDashboard({ ambassadorOnly = false }: { ambassadorOnly?: boolean }) {
   const { session, profile, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [summaries, setSummaries] = useState<Record<RoleKey, EarningsSummary>>({
@@ -78,8 +78,8 @@ export default function AccountPayoutDashboard() {
       setLoadError(null);
       try {
         const [seller, affiliate, influencer] = await Promise.allSettled([
-          apiPost<EarningsPayload>('/api/user-earnings', session ?? null, { role: 'seller' }),
-          apiPost<EarningsPayload>('/api/user-earnings', session ?? null, { role: 'affiliate' }),
+          ambassadorOnly ? Promise.resolve({} as EarningsPayload) : apiPost<EarningsPayload>('/api/user-earnings', session ?? null, { role: 'seller' }),
+          ambassadorOnly ? Promise.resolve({} as EarningsPayload) : apiPost<EarningsPayload>('/api/user-earnings', session ?? null, { role: 'affiliate' }),
           apiPost<EarningsPayload>('/api/user-earnings', session ?? null, { role: 'influencer' }),
         ]);
 
@@ -107,7 +107,7 @@ export default function AccountPayoutDashboard() {
     return () => {
       alive = false;
     };
-  }, [session]);
+  }, [session, ambassadorOnly]);
 
   const totals = useMemo(() => {
     const rows = Object.values(summaries);
@@ -154,20 +154,20 @@ export default function AccountPayoutDashboard() {
       description: 'Affiliate payout totals show the same hold, ready, and paid flow for partner commissions that have been logged to your account.',
     },
     {
-      label: 'Influencer',
+      label: 'Ambassador',
       summary: summaries.influencer,
       description: 'Influencer payout totals show what is logged, what is still inside hold, and what has already cleared into a completed payout.',
     },
-  ];
+  ].filter(card => !ambassadorOnly || card.label === 'Ambassador');
 
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Account Payouts</h2>
+            <h2 className="text-xl font-bold text-gray-900">{ambassadorOnly ? 'Ambassador Earnings & Payouts' : 'Account Payouts'}</h2>
             <p className="mt-1 text-sm text-gray-600">
-              One combined payout view for seller, affiliate, and influencer earnings. This page is for hold timing, release timing, and completed Beezio payouts.
+              {ambassadorOnly ? 'Your referral earnings, hold timing, available balance, and completed payouts.' : 'One combined payout view for seller, affiliate, and influencer earnings. This page is for hold timing, release timing, and completed Beezio payouts.'}
             </p>
           </div>
           <CreditCard className="h-6 w-6 text-amber-600" />
@@ -267,15 +267,16 @@ export default function AccountPayoutDashboard() {
           <h3 className="text-xl font-bold text-gray-900">Complete earnings and payout history</h3>
           <p className="mt-1 text-sm text-gray-600">Every held earning, cleared balance, paid order, and PayPal transfer is separated by the role that earned it.</p>
         </div>
-        <PayoutHistoryCard role="SELLER" title="Seller Earnings & Payout History" ledger={histories.seller.ledger} items={histories.seller.items} loading={loading} error={loadError} />
-        <PayoutHistoryCard role="PARTNER" title="Affiliate Earnings & Payout History" ledger={histories.affiliate.ledger} items={histories.affiliate.items} loading={loading} error={loadError} />
-        <PayoutHistoryCard role="INFLUENCER" title="Influencer Earnings & Payout History" ledger={histories.influencer.ledger} items={histories.influencer.items} loading={loading} error={loadError} />
+        {!ambassadorOnly && <PayoutHistoryCard role="SELLER" title="Seller Earnings & Payout History" ledger={histories.seller.ledger} items={histories.seller.items} loading={loading} error={loadError} />}
+        {!ambassadorOnly && <PayoutHistoryCard role="PARTNER" title="Affiliate Earnings & Payout History" ledger={histories.affiliate.ledger} items={histories.affiliate.items} loading={loading} error={loadError} />}
+        <PayoutHistoryCard role="INFLUENCER" title="Ambassador Earnings & Payout History" ledger={histories.influencer.ledger} items={histories.influencer.items} loading={loading} error={loadError} />
       </div>
 
       <div className="space-y-4">
         <PayPalPayoutSettingsCard
+          ambassadorOnly={ambassadorOnly}
           title="PayPal payout settings"
-          description="Connect and verify PayPal to receive automatic seller, affiliate, and ambassador payouts. Saving an email alone does not verify it."
+          description={ambassadorOnly ? 'Connect and verify PayPal to receive ambassador payouts. Saving an email alone does not verify it.' : 'Connect and verify PayPal to receive automatic seller, affiliate, and ambassador payouts. Saving an email alone does not verify it.'}
         />
 
         <TaxComplianceCard

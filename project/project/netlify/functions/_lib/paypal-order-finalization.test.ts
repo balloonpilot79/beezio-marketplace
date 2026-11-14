@@ -1,9 +1,11 @@
+import { computeFixedTierPricing } from '../../../shared/customerPrice';
 import { describe, expect, it } from 'vitest';
 import { finalizePayPalOrderPayment } from './paypal-order-finalization';
 import { mirrorOrderToLegacyFinance } from './legacy-finance-mirror';
 
 class MockQuery {
   private filters: Record<string, unknown> = {};
+  private lteFilters: Record<string, unknown> = {};
   private inFilters: Record<string, unknown[]> = {};
   private pendingInsert: any[] | null = null;
   private pendingUpdate: Record<string, any> | null = null;
@@ -11,6 +13,7 @@ class MockQuery {
   select() { return this; }
   eq(column: string, value: unknown) { this.filters[column] = value; return this; }
   in(column: string, values: unknown[]) { this.inFilters[column] = values; return this; }
+  lte(column: string, value: unknown) { this.lteFilters[column] = value; return this; }
   limit() { return this; }
   order() { return this; }
   insert(payload: any) {
@@ -75,6 +78,7 @@ class MockQuery {
   private matchRows() {
     return (this.store[this.table] || []).filter((row) =>
       Object.entries(this.filters).every(([key, value]) => String((row as any)?.[key] ?? '') === String(value ?? ''))
+      && Object.entries(this.lteFilters).every(([key, value]) => String(row[key]) <= String(value))
       && Object.entries(this.inFilters).every(([key, values]) =>
         values.some((value) => String((row as any)?.[key] ?? '') === String(value ?? ''))
       )
@@ -287,5 +291,29 @@ describe('finalizePayPalOrderPayment', () => {
     expect(
       supabase.rpcCalls[0].payload.p_snapshots.filter((row: any) => row.payee_role === 'INFLUENCER')
     ).toHaveLength(2);
+  });
+});
+
+
+describe('buyer ambassadors use the existing payout system', () => {
+  it.each(['buyer', 'seller', 'affiliate'] as const)('credits a buyer ambassador for a referred %s transaction', async recruitedRole => {
+    const pricing = computeFixedTierPricing({ sellerPayout: 30, affiliatePayout: 5, shippingIncluded: 6 });
+    const recruitedId = recruitedRole === 'buyer' ? 'shopper' : recruitedRole;
+    const db = createSupabaseMock({
+      orders: [{ id: 'order', buyer_id: 'shopper', seller_id: 'seller', partner_id: 'affiliate', currency: 'USD', created_at: '2026-11-14T12:00:00Z', subtotal_listing: pricing.finalAdvertisedPrice * 2, shipping_amount: 0, tax_amount: 0 }],
+      order_items: [{ id: 'item', order_id: 'order', product_id: 'product', quantity: 2, seller_ask_amount: 30, computed_listing_price: pricing.finalAdvertisedPrice, affiliate_payout_amount: 5, shipping_reserve_amount: 6, influencer_allocation_amount: pricing.influencerAllocation, platform_fee_amount: pricing.platformFee, paypal_processing_allowance: pricing.paypalProcessingAllowance }],
+      profiles: [{ id: 'buyer-ambassador', user_id: 'buyer-ambassador', role: 'buyer', primary_role: 'buyer' }],
+      user_roles: [{ user_id: 'buyer-ambassador', role: 'buyer', is_active: true }],
+      influencer_referrals: [{ recruited_profile_id: recruitedId, recruited_role: recruitedRole, influencer_profile_id: 'buyer-ambassador', created_at: '2026-11-13T12:00:00Z' }],
+    });
+    await finalizePayPalOrderPayment({ supabaseAdmin: db, orderId: 'order', providerOrderId: 'paypal', providerCaptureId: 'capture', paidAt: '2026-11-14T12:00:00Z' });
+    const payload = db.rpcCalls.find(call => call.fn === 'record_paypal_order_finalization')!.payload;
+    expect(payload.p_snapshots.find((row: any) => row.payee_user_id === 'buyer-ambassador')).toMatchObject({ payee_role: 'INFLUENCER', amount: recruitedRole === 'buyer' ? 0.5 : pricing.influencerAllocation, status: 'PENDING_HOLD' });
+    expect(payload.p_ledger_totals.seller_earnings).toBe(72);
+    expect(payload.p_ledger_totals.partner_earnings).toBe(10);
+    expect(db.store.user_roles).toEqual([{ user_id: 'buyer-ambassador', role: 'buyer', is_active: true }]);
+    const before = db.store.order_money_ledger.length;
+    await finalizePayPalOrderPayment({ supabaseAdmin: db, orderId: 'order', providerOrderId: 'paypal', providerCaptureId: 'capture' });
+    expect(db.store.order_money_ledger).toHaveLength(before);
   });
 });

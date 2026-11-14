@@ -22,7 +22,7 @@ type RecruitedAccount = {
   created_at: string;
 };
 
-const InfluencerDashboard: React.FC = () => {
+const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = false }) => {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -179,6 +179,7 @@ const InfluencerDashboard: React.FC = () => {
 
         <div className="flex flex-col sm:flex-row gap-2">
           <input
+            aria-label="Your Beezio invite link"
             readOnly
             value={signupLink}
             className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-gray-50"
@@ -229,12 +230,12 @@ const InfluencerDashboard: React.FC = () => {
           <p className="text-xs text-slate-600">Qualifying new shopper and business accounts are linked to your referral. Rewards are earned on eligible purchases or sales.</p>
         </div>
       </div>
-      <div id="influencer-promo" className="mt-6 scroll-mt-32">
+      {!buyerView && <div id="influencer-promo" className="mt-6 scroll-mt-32">
         <InfluencerRecruitPromoStudio
           code={codeForLink}
           influencerName={String((profile as any)?.full_name || (profile as any)?.email || '')}
         />
-      </div>
+      </div>}
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl border border-purple-200 bg-purple-50 p-5">
@@ -300,13 +301,13 @@ const InfluencerDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-6">
+      {!buyerView && <div className="mt-6">
         <PayoutHistoryCard
           role="INFLUENCER"
           title="Ambassador Earnings History"
           description="See each recorded ambassador sale, hold status, and paid payout history."
         />
-      </div>
+      </div>}
     </div>
   );
 };

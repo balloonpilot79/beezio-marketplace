@@ -14,7 +14,7 @@ const fallbackBranding: StorefrontBranding = {
   homePath: '/',
 };
 
-const allowedTabs = new Set<BuyerDashboardTab>(['overview', 'orders', 'purchases', 'wishlist', 'recommendations', 'affiliates', 'watchlist', 'community', 'support']);
+const allowedTabs = new Set<BuyerDashboardTab>(['overview', 'orders', 'purchases', 'wishlist', 'recommendations', 'affiliates', 'watchlist', 'community', 'support', 'ambassador']);
 
 const StorefrontBuyerAccountPage: React.FC = () => {
   const { user, loading } = useAuth();
@@ -75,7 +75,7 @@ const StorefrontBuyerAccountPage: React.FC = () => {
       <EnhancedBuyerDashboard
         activeTabOverride={activeTab}
         title="Customer Account"
-        subtitle="Review orders, receipts, and seller messages."
+        subtitle="Shop, manage your orders, and refer people to earn as a Beezio ambassador."
       />
     </StorefrontBuyerShell>
   );

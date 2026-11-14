@@ -1,3 +1,4 @@
+import { loadAmbassadorProfile } from './_lib/ambassador-eligibility';
 import { getCartPickupLocation } from '../../shared/vendorPickup';
 import { allocateCombinedShipping, applyShippingAllocations, getCombinedShippingPolicy, shippingChannelKey } from '../../shared/combinedShipping';
 import { DOLLAR_CHECKOUT_TEST, isDollarCheckoutTest } from '../../shared/dollarCheckoutTest';
@@ -765,34 +766,7 @@ export const handler: Handler = async (event) => {
         ? await resolveAffiliateProfileId(supabaseAdmin, resolvedStorefrontProfileId)
         : null);
 
-    const isInfluencerProfile = async (profileId: string | null): Promise<boolean> => {
-      if (!profileId) return false;
-
-      const { data: profileRow } = await supabaseAdmin
-        .from('profiles')
-        .select('user_id,role,primary_role')
-        .eq('id', profileId)
-        .maybeSingle();
-
-      const role = String((profileRow as any)?.role || '').toLowerCase();
-      const primaryRole = String((profileRow as any)?.primary_role || '').toLowerCase();
-      if (role === 'influencer' || primaryRole === 'influencer') return true;
-
-      const roleUserIds = Array.from(new Set([
-        profileId,
-        String((profileRow as any)?.user_id || '').trim(),
-      ].filter(Boolean)));
-      const { data: influencerRole } = await supabaseAdmin
-        .from('user_roles')
-        .select('user_id')
-        .in('user_id', roleUserIds)
-        .eq('role', 'influencer')
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
-      return Boolean((influencerRole as any)?.user_id);
-    };
-    const explicitReferrerProfileId = await isInfluencerProfile(explicitReferrerCandidateId)
+    const explicitReferrerProfileId = await loadAmbassadorProfile(supabaseAdmin, explicitReferrerCandidateId)
       ? explicitReferrerCandidateId
       : null;
 

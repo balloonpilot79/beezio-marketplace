@@ -12,6 +12,7 @@ type PayPalAccountRow = {
 };
 
 interface PayPalPayoutSettingsCardProps {
+  ambassadorOnly?: boolean;
   title?: string;
   description?: string;
   className?: string;
@@ -25,6 +26,7 @@ export default function PayPalPayoutSettingsCard({
   title = DEFAULT_TITLE,
   description = DEFAULT_DESCRIPTION,
   className = '',
+  ambassadorOnly = false,
 }: PayPalPayoutSettingsCardProps) {
   const { profile, refreshProfile } = useAuth();
 
@@ -81,7 +83,7 @@ export default function PayPalPayoutSettingsCard({
         if (!rows.length || !firstEmail) {
           setStatusLabel('Not set');
         } else {
-          setStatusLabel(rows.length === 3 && rows.every(r => r.is_verified === true) ? 'Verified' : 'Saved');
+          setStatusLabel((ambassadorOnly ? rows.some(r => r.role === 'INFLUENCER' && r.is_verified === true) : rows.length === 3 && rows.every(r => r.is_verified === true)) ? 'Verified' : 'Saved');
         }
       } catch (e: any) {
         setError(e?.message || 'Unable to load payout settings.');
@@ -94,7 +96,7 @@ export default function PayPalPayoutSettingsCard({
     return () => {
       alive = false;
     };
-  }, [profileId]);
+  }, [profileId, ambassadorOnly]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -115,7 +117,7 @@ export default function PayPalPayoutSettingsCard({
               { user_id: profileId, role: 'SELLER', paypal_email: trimmed, is_verified: false },
               { user_id: profileId, role: 'PARTNER', paypal_email: trimmed, is_verified: false },
               { user_id: profileId, role: 'INFLUENCER', paypal_email: trimmed, is_verified: false },
-            ] as any,
+            ].filter(row => !ambassadorOnly || row.role === 'INFLUENCER') as any,
             { onConflict: 'user_id,role' }
           ),
         20000,

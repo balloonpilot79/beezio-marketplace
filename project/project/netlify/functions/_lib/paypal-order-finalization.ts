@@ -1,3 +1,4 @@
+import { loadAmbassadorProfile } from './ambassador-eligibility';
 import { getPayoutHoldDays } from './env';
 import { buildPayPalLedgerPlan } from '../../../server/payments/paypalPayoutLedger';
 import { mirrorOrderToLegacyFinance } from './legacy-finance-mirror';
@@ -144,32 +145,6 @@ async function selectOrderItems(supabaseAdmin: any, orderId: string) {
   throw new Error(String((lastError as any)?.message || 'Failed to load order items'));
 }
 
-async function isInfluencerProfile(supabaseAdmin: any, profileId: string | null): Promise<boolean> {
-  if (!profileId) return false;
-  const { data: profileRow } = await supabaseAdmin
-    .from('profiles')
-    .select('user_id,role,primary_role')
-    .eq('id', profileId)
-    .maybeSingle();
-
-  const role = String((profileRow as any)?.role || '').toLowerCase();
-  const primaryRole = String((profileRow as any)?.primary_role || '').toLowerCase();
-  if (role === 'influencer' || primaryRole === 'influencer') return true;
-
-  const roleUserIds = Array.from(new Set([
-    profileId,
-    String((profileRow as any)?.user_id || '').trim(),
-  ].filter(Boolean)));
-  const { data: influencerRole } = await supabaseAdmin
-    .from('user_roles')
-    .select('user_id')
-    .in('user_id', roleUserIds)
-    .eq('role', 'influencer')
-    .eq('is_active', true)
-    .limit(1)
-    .maybeSingle();
-  return Boolean((influencerRole as any)?.user_id);
-}
 
 async function selectMaybeSingleWithFallback(
   supabaseAdmin: any,
@@ -772,7 +747,7 @@ export async function finalizePayPalOrderPayment(params: {
       .maybeSingle();
     if (error) throw new Error(`Unable to verify buyer referral: ${error.message}`);
     const referrer = referral?.influencer_profile_id || null;
-    if (!sameProfileId(referrer, buyerId) && await isInfluencerProfile(supabaseAdmin, referrer)) {
+    if (!sameProfileId(referrer, buyerId) && await loadAmbassadorProfile(supabaseAdmin, referrer)) {
       buyerReferrerId = referrer;
     }
   }

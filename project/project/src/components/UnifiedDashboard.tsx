@@ -151,6 +151,7 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
     'watchlist',
     'community',
     'support',
+    'ambassador',
   ];
   useEffect(() => {
     if (activeSection === 'buyer') {

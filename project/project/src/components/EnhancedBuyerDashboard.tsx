@@ -1,3 +1,4 @@
+import BuyerAmbassadorPanel from './BuyerAmbassadorPanel';
 import { isConfirmedPaidOrder, isRefundedPayment } from '../../shared/accountingStatus';
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -106,7 +107,8 @@ export type BuyerDashboardTab =
   | 'affiliates'
   | 'watchlist'
   | 'community'
-  | 'support';
+  | 'support'
+  | 'ambassador';
 
 interface EnhancedBuyerDashboardProps {
   initialTab?: BuyerDashboardTab;
@@ -559,6 +561,7 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
           { id: 'wishlist', label: 'Wishlist', icon: Heart },
           { id: 'recommendations', label: 'For You', icon: Zap },
           { id: 'affiliates', label: 'My Affiliates', icon: Users },
+          { id: 'ambassador', label: 'Refer & Earn', icon: Gift },
           { id: 'support', label: 'Support', icon: HelpCircle }
         ].map((tab) => {
             const IconComponent = tab.icon;
@@ -582,8 +585,15 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
       )}
 
       {/* Enhanced Tab Content */}
+      {activeTab === 'ambassador' && <BuyerAmbassadorPanel />}
+
       {activeTab === 'overview' && (
         <div className="space-y-8">
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-5">
+            <h2 className="text-lg font-bold text-slate-900">Share Beezio. Earn as an ambassador.</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-700">Invite shoppers, sellers, and affiliates. Earn on their qualifying purchases and sales with your buyer account.</p>
+            <button type="button" onClick={() => handleTabChange('ambassador')} className="mt-4 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white">Open Refer &amp; Earn</button>
+          </div>
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
             <h3 className="text-lg font-semibold text-gray-900">What happens after you order</h3>
             <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">

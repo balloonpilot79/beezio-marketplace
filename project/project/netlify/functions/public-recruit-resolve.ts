@@ -1,3 +1,4 @@
+import { loadAmbassadorProfile } from './_lib/ambassador-eligibility';
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 
@@ -74,34 +75,6 @@ const normalizeRecruitCode = (input: string): string => {
     .replace(/\/$/, '');
 };
 
-async function loadActiveInfluencerProfile(supabaseAdmin: any, profileId: string) {
-  const id = String(profileId || '').trim();
-  if (!id) return null;
-
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('id,user_id,full_name,role,primary_role')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (!(profile as any)?.id) return null;
-  const directInfluencer = ['role', 'primary_role'].some(
-    (column) => String((profile as any)?.[column] || '').trim().toLowerCase() === 'influencer'
-  );
-  if (directInfluencer) return profile as any;
-
-  const userId = String((profile as any)?.user_id || '').trim();
-  if (!userId) return null;
-  const { data: roleRow } = await supabaseAdmin
-    .from('user_roles')
-    .select('user_id')
-    .eq('user_id', userId)
-    .eq('role', 'influencer')
-    .eq('is_active', true)
-    .maybeSingle();
-
-  return (roleRow as any)?.user_id ? profile as any : null;
-}
 
 const handler: Handler = async (event) => {
   try {
@@ -139,7 +112,7 @@ const handler: Handler = async (event) => {
 
     if (!profileError && Array.isArray(profileRows) && profileRows[0]?.id) {
       const row = profileRows[0] as any;
-      const influencer = await loadActiveInfluencerProfile(supabaseAdmin, String(row.id));
+      const influencer = await loadAmbassadorProfile(supabaseAdmin, String(row.id));
       if (influencer) {
         return json(200, {
           ok: true,
@@ -161,7 +134,7 @@ const handler: Handler = async (event) => {
 
       if (!usernameError && Array.isArray(byUsername) && byUsername[0]?.id) {
         const row = byUsername[0] as any;
-        const influencer = await loadActiveInfluencerProfile(supabaseAdmin, String(row.id));
+        const influencer = await loadAmbassadorProfile(supabaseAdmin, String(row.id));
         if (influencer) {
           return json(200, {
             ok: true,
@@ -191,7 +164,7 @@ const handler: Handler = async (event) => {
 
     const storeProfileId = String((affiliateStoreRes.data as any)?.profile_id || '').trim();
     if (storeProfileId) {
-      const influencer = await loadActiveInfluencerProfile(supabaseAdmin, storeProfileId);
+      const influencer = await loadAmbassadorProfile(supabaseAdmin, storeProfileId);
       if (influencer) {
         return json(200, {
           ok: true,
@@ -209,7 +182,7 @@ const handler: Handler = async (event) => {
 
     const settingsProfileId = String((affiliateSettingsRes.data as any)?.affiliate_id || '').trim();
     if (settingsProfileId) {
-      const influencer = await loadActiveInfluencerProfile(supabaseAdmin, settingsProfileId);
+      const influencer = await loadAmbassadorProfile(supabaseAdmin, settingsProfileId);
       if (influencer) {
         return json(200, {
           ok: true,
@@ -236,7 +209,7 @@ const handler: Handler = async (event) => {
 
     const slugMatchedProfileId = String((slugMatchedRow as any)?.profile_id || '').trim();
     if (slugMatchedProfileId) {
-      const influencer = await loadActiveInfluencerProfile(supabaseAdmin, slugMatchedProfileId);
+      const influencer = await loadAmbassadorProfile(supabaseAdmin, slugMatchedProfileId);
       if (influencer) {
         return json(200, {
           ok: true,
