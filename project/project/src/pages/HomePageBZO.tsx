@@ -67,8 +67,8 @@ const paths = [
   {
     title: "Refer people as a Beezio Ambassador.",
     label: "For ambassadors",
-    text: "Invite sellers and affiliates with your referral link and earn from their qualifying sales.",
-    signup: "/signup?role=influencer",
+    text: "Invite shoppers, sellers, and affiliates with your referral link and earn rewards from their qualifying purchases and sales. No store required.",
+    signup: "/account?tab=ambassador",
     href: "/ambassadors",
     action: "Become an ambassador",
     icon: Megaphone,
@@ -184,6 +184,18 @@ export default function HomePageBZO() {
               </Link>
             )}
           </div>
+        </section>
+        <section className="hm-earn-banner" aria-labelledby="home-referral-title">
+          <div className="hm-earn-icon"><Megaphone size={28} aria-hidden="true" /></div>
+          <div>
+            <p className="hm-kicker">Beezio Ambassadors</p>
+            <h2 id="home-referral-title">Earn cash by referring people to Beezio.</h2>
+            <p>Invite shoppers, sellers, and affiliates—and earn rewards from their qualifying purchases and sales.</p>
+            <p>Free to join. No store required.</p>
+          </div>
+          <Link to="/account?tab=ambassador" className="bz-button bz-button-gold">
+            Refer &amp; Earn <ArrowRight size={17} aria-hidden="true" />
+          </Link>
         </section>
         <section id="shop" className="hm-shop">
           <div className="hm-section-heading">
