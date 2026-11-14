@@ -192,7 +192,8 @@ const MarketplacePageDual: React.FC = () => {
 
   const businessRoles = getBusinessAccountRoles(userRoles, profile?.primary_role, profile?.role, currentRole);
   const canUseBusinessView = Boolean(user?.id) && businessRoles.length > 0;
-  const businessView = canUseBusinessView && searchParams.get('view') === 'business';
+  // Business accounts see earnings by default; an explicit Shop choice remains available.
+  const businessView = canUseBusinessView && searchParams.get('view') !== 'buyer';
   const isAffiliateViewer = businessView && businessRoles.includes('affiliate');
   const affiliateRef = isAffiliateViewer ? (profile?.id || user?.id || null) : null;
   const affiliateUid = isAffiliateViewer ? (user?.id || affiliateRef) : null;
@@ -200,7 +201,7 @@ const MarketplacePageDual: React.FC = () => {
   const selectBusinessView = (selected: boolean) => {
     const nextParams = new URLSearchParams(searchParams);
     if (selected) nextParams.set('view', 'business');
-    else nextParams.delete('view');
+    else nextParams.set('view', 'buyer');
     setSearchParams(nextParams);
     setSortBy('featured');
   };
