@@ -1,5 +1,5 @@
 .hm-page {
-  background: #f0eee8;
+  background: #f7f8fa;
   color: #13232c;
   padding-bottom: 36px;
   font-family: Inter, sans-serif;
@@ -32,8 +32,8 @@
   line-height: 1.6;
 }
 .hm-discovery {
-  background: #000;
-  color: #fff;
+  background: #fff;
+  color: #243442;
 }
 .hm-discovery-nav {
   display: flex;
@@ -48,17 +48,17 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  color: #e7eced;
+  color: #243442;
   font-size: 12px;
   font-weight: 550;
   padding: 12px 0;
 }
 .hm-discovery-nav a:last-child {
   margin-left: auto;
-  color: #ffdb55;
+  color: #705700;
 }
 .hm-discovery-nav a:hover {
-  color: #ffdb55;
+  color: #705700;
 }
 .hm-mobile-search {
   display: none !important;
@@ -66,8 +66,9 @@
 .hm-hero {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  background: #000;
-  color: #fff;
+  background: #fff;
+  border: 1px solid #e1e5e9;
+  color: #17212b;
   border-radius: 18px;
   overflow: hidden;
   margin-top: 22px;
@@ -76,7 +77,7 @@
   padding: 36px 38px;
 }
 .hm-hero .hm-kicker {
-  color: #f1d577;
+  color: #765700;
 }
 .hm-hero h1 {
   font-size: clamp(36px, 4vw, 55px);
@@ -86,13 +87,14 @@
   margin: 13px 0 17px;
 }
 .hm-hero h1 span {
-  color: #ffcf27;
+  color: #17212b;
+  background: linear-gradient(transparent 76%, #ffdf61 76%, #ffdf61 96%, transparent 96%);
 }
 .hm-hero-description {
   font-size: 14px;
   line-height: 1.75;
   max-width: 430px;
-  color: #d5e0e3;
+  color: #475569;
 }
 .hm-actions {
   display: flex;
@@ -102,7 +104,7 @@
   margin-top: 23px;
 }
 .hm-hero-secondary {
-  color: #fff;
+  color: #243442;
   font-size: 12px;
   font-weight: 600;
   display: inline-flex;
@@ -110,27 +112,27 @@
   gap: 8px;
 }
 .hm-hero-secondary:hover {
-  color: #ffcf27;
+  color: #765700;
 }
 .hm-hero-note {
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #c5d3d7;
+  color: #52606b;
   font-size: 10px;
   margin-top: 21px;
   line-height: 1.6;
 }
-/* Keep shopping links readable against the hero's dark background. */
+/* Shopping links use dark text on the light hero. */
 .hm-hero-copy nav[aria-label="Shopping links"] a {
-  color: #fff;
+  color: #243442;
   text-decoration-line: underline;
   text-decoration-color: currentColor;
   text-underline-offset: 3px;
 }
 .hm-hero-copy nav[aria-label="Shopping links"] a:hover,
 .hm-hero-copy nav[aria-label="Shopping links"] a:focus-visible {
-  color: #ffcf27;
+  color: #765700;
 }
 .hm-hero-copy nav[aria-label="Shopping links"] a:focus-visible {
   outline: 2px solid currentColor;
@@ -139,7 +141,7 @@
 }
 .hm-spotlight {
   padding: 26px;
-  background: #e9caae;
+  background: #fff8df;
   color: #19292d;
   display: flex;
   flex-direction: column;
@@ -171,7 +173,8 @@
   display: flex;
   flex-direction: column;
   color: #142a34;
-  background: #f9f4ec;
+  background: #fff;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 10px 10px 14px;
   min-width: 0;
@@ -479,20 +482,21 @@
   padding: 27px;
   border-radius: 14px;
   margin: 36px 0;
-  background: #000;
-  color: #fff;
+  background: #fff5c2;
+  border: 1px solid #ead792;
+  color: #17212b;
 }
 .hm-earn-icon {
   padding: 18px;
   border-radius: 14px;
-  background: #262626;
-  color: #ffdd70;
+  background: #ffe690;
+  color: #604800;
 }
 .hm-earn-banner > div:nth-child(2) {
   flex: 1;
 }
 .hm-earn-banner .hm-kicker {
-  color: #c7d8aa;
+  color: #705700;
 }
 .hm-earn-banner h2 {
   font-size: 21px;
@@ -502,7 +506,7 @@
   margin: 5px 0 7px;
 }
 .hm-earn-banner p:not(.hm-kicker) {
-  color: #cbdbd3;
+  color: #374151;
   font-size: 12px;
   line-height: 1.7;
   max-width: 620px;
@@ -518,8 +522,9 @@
 .hm-store-card {
   border-radius: 14px;
   overflow: hidden;
-  color: #fff;
-  background: #262626;
+  color: #17212b;
+  background: #fff;
+  border: 1px solid #e1e5e9;
 }
 .hm-store-card > img {
   width: 100%;

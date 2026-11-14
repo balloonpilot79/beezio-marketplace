@@ -280,18 +280,18 @@ const GlobalHeaderBar: React.FC = () => {
       >
         <div className="flex h-full items-center gap-3 px-3 lg:hidden">
           <MarketplaceSearch className="flex-1" />
-          <Link to="/marketplace#categories" className="shrink-0 py-3 text-xs font-semibold text-white">Categories</Link>
+          <Link to="/marketplace#categories" className="shrink-0 py-3 text-xs font-semibold text-slate-800">Categories</Link>
         </div>
         <div className="mx-auto hidden max-w-7xl items-center gap-7 overflow-x-auto px-4 sm:px-6 lg:flex lg:px-8">
           {hasBusinessAccess && (
-            <Link to="/business/products/add" className="bz-shopping-link text-[#ffdb55]">
+            <Link to="/business/products/add" className="bz-shopping-link">
               <Plus className="h-5 w-5" aria-hidden="true" />
               Add product
             </Link>
           )}
           {hasBusinessAccess && isBusiness ? (
             <>
-              <Link to="/store-builder" className="bz-shopping-link text-[#ffdb55]">Customize My Store</Link>
+              <Link to="/store-builder" className="bz-shopping-link">Customize My Store</Link>
               <Link to="/business?section=seller&tab=products" className="bz-shopping-link">My products</Link>
               <Link to="/business?tab=orders" className="bz-shopping-link">Orders</Link>
               <Link to="/business?tab=financials" className="bz-shopping-link">Earnings</Link>

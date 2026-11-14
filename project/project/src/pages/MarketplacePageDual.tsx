@@ -413,7 +413,7 @@ const MarketplacePageDual: React.FC = () => {
 
   return (
     <div className="bz-public marketplace-page min-h-screen bg-[#f7f8f8]">
-      <section className="border-b border-slate-200 bg-[#faf9f5] text-[#101820]">
+      <section className="border-b border-amber-200 bg-[#fff8df] text-[#101820]">
         <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
           <p className="bz-eyebrow">The Beezio marketplace</p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-4xl">Find something you’ll love.</h1>
