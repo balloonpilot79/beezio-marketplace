@@ -8,8 +8,6 @@ import { supabase } from '../lib/supabase';
 import { ensureSellerProductInOrder } from '../utils/sellerProductOrder';
 import ImageUpload from './ImageUpload';
 import ImageGallery from './ImageGallery';
-import PriceFitCheck from './PriceFitCheck';
-import { pricingReviewIssue, pricingReviewKey } from '../utils/priceFit';
 import { PricingBreakdown } from '../lib/pricing';
 import { callGPT } from '../lib/gptClient';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -253,14 +251,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [itemCondition, setItemCondition] = useState('');
   const [conditionNotes, setConditionNotes] = useState('');
   const [merchandiseType, setMerchandiseType] = useState('');
-  const [directMarketplace, setDirectMarketplace] = useState(false);
+  const [directMarketplace, setDirectMarketplace] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [digitalUploadLoading, setDigitalUploadLoading] = useState(false);
   const [showStickyAlert, setShowStickyAlert] = useState(false);
   const [pricingBreakdown, setPricingBreakdown] = useState<PricingBreakdown | null>(null);
-  const [reviewedPricing, setReviewedPricing] = useState('');
   const [pricingSeed, setPricingSeed] = useState<{
     supplierCost: number;
     sellerMarkup: number;
@@ -326,11 +323,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
     setPricingBreakdown(nextBreakdown);
   }, [formData.affiliate_enabled, formData.shipping_included_in_price, formData.shipping_price, formData.title, pricingSeed]);
-
-  const currentPricingReviewKey = pricingBreakdown ? pricingReviewKey(
-    pricingBreakdown.sellerAmount, pricingBreakdown.affiliateAmount,
-    pricingBreakdown.shippingIncludedAmount, pricingBreakdown.listingPrice, pricingSeed.supplierCost,
-  ) : '';
 
   // Use hard navigation from success CTAs to avoid rare router state stalls after save.
   const goTo = (path: string) => {
@@ -1239,14 +1231,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       abortSubmit('Please configure your pricing first');
       return;
     }
-    const priceReviewIssue = pricingReviewIssue(
-      pricingBreakdown.sellerAmount, pricingSeed.supplierCost, currentPricingReviewKey, reviewedPricing,
-    );
-    if (priceReviewIssue) {
-      abortSubmit(priceReviewIssue);
-      return;
-    }
-    const affiliateEnabled = formData.affiliate_enabled !== false;
+    const affiliateEnabled = formData.affiliate_enabled !== false && pricingBreakdown.affiliateAmount > 0;
     const listDirect = !affiliateEnabled && !formData.is_digital && directMarketplace;
     const effectivePickupMode = formData.is_digital ? 'shipping' : pickupMode;
     if (pickupEnabled && effectivePickupMode !== 'shipping' &&
@@ -1266,7 +1251,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       direct_marketplace_listing: listDirect,
     };
     if (affiliateEnabled && pricingBreakdown.affiliateAmount < MIN_AFFILIATE_PAYOUT) {
-      abortSubmit(`Affiliate-enabled products must pay at least $${MIN_AFFILIATE_PAYOUT.toFixed(2)} per completed sale.`);
+      abortSubmit(`Affiliate payout cannot be negative.`);
       return;
     }
     if (!formData.title.trim()) {
@@ -1803,7 +1788,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         setItemCondition('');
         setConditionNotes('');
         setMerchandiseType('');
-        setDirectMarketplace(false);
+        setDirectMarketplace(true);
         setTimeout(() => {
           resetForm();
         }, 600);
@@ -2375,7 +2360,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                         const ask = Math.max(0, Number.parseFloat(normalizeMoneyInput(e.target.value)) || 0);
                         setPricingSeed((prev) => ({
                           ...prev,
-                          sellerMarkup: ask - prev.supplierCost,
+                          supplierCost: Math.min(prev.supplierCost, ask),
+                          sellerMarkup: ask - Math.min(prev.supplierCost, ask),
                         }));
                       }}
                       className="w-full rounded-lg border border-gray-300 py-3 pl-8 pr-3 focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
@@ -2405,6 +2391,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                     Affiliate earns ${pricingSeed.affiliateAmount.toFixed(2)} per completed sale.
                   </div>
                   <div className="mt-1 text-xs text-gray-600">You choose the affiliate payout. A worthwhile commission helps affiliates decide to promote your product.</div>
+                  {pricingSeed.affiliateAmount <= 0 && <div className="mt-1 text-xs text-gray-600">With no affiliate payout, this item can sell directly but will not be offered for affiliate promotion.</div>}
                 </div>
               </div>
           </div>
@@ -2535,23 +2522,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   Estimated checkout total with 7% sales tax: <strong>${pricingBreakdown.estimatedCheckoutTotal.toFixed(2)}</strong>. Actual tax depends on the customer’s location.
                 </div>
               </div>
-              {!isTestItemTitle(formData.title) && <PriceFitCheck
-                sellerPayout={pricingBreakdown.sellerAmount}
-                affiliatePayout={pricingBreakdown.affiliateAmount}
-                shipping={pricingBreakdown.shippingIncludedAmount}
-                productCost={pricingSeed.supplierCost}
-                onApplySellerPayout={amount => setPricingSeed(previous => ({
-                  ...previous, sellerMarkup: amount - previous.supplierCost,
-                }))}
-              />}
-              {pricingBreakdown.sellerAmount < pricingSeed.supplierCost && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 font-semibold text-red-800">
-                Your seller payout is below the entered product cost. Review your costs and profit before publishing.
-              </p>}
-              <label className="mt-4 flex items-start gap-2 text-sm text-slate-100">
-                <input type="checkbox" className="mt-1" checked={reviewedPricing === currentPricingReviewKey}
-                  onChange={event => setReviewedPricing(event.target.checked ? currentPricingReviewKey : '')} />
-                <span>I reviewed the buyer total of ${pricingBreakdown.listingPrice.toFixed(2)} including shipping, before tax, and the affiliate payout of ${pricingBreakdown.affiliateAmount.toFixed(2)} per sale.</span>
-              </label>
             </section>
           )}
 
@@ -2879,7 +2849,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 </div>
               )}
 
-              {!formData.is_digital && !formData.affiliate_enabled && (
+              {!formData.is_digital && (!formData.affiliate_enabled || pricingSeed.affiliateAmount <= 0) && (
                 <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
                   <input type="checkbox" checked={directMarketplace}
                     onChange={(event) => setDirectMarketplace(event.target.checked)} />

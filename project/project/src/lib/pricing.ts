@@ -47,7 +47,7 @@ export const MIN_PLATFORM_FEE_RATE = 0;
 export const MAX_PLATFORM_FEE_RATE = 0;
 export const PROCESSING_FEE_RATE = 0.0399;
 export const PROCESSING_FEE_FIXED = 0.6;
-export const MIN_AFFILIATE_PAYOUT = 0.01;
+export const MIN_AFFILIATE_PAYOUT = 0;
 export const DEFAULT_REFERRAL_RATE = 0;
 export const MIN_REFERRAL_RATE = 0;
 export const MAX_REFERRAL_RATE = 0;
@@ -209,9 +209,6 @@ export const validatePricingInput = (input: PricingInput): string[] => {
     errors.push('Supplier cost plus seller markup must be greater than 0');
   }
   if (input.affiliateRate < 0) errors.push('Affiliate payout cannot be negative');
-  if (input.affiliateRate > 0 && input.affiliateRate < MIN_AFFILIATE_PAYOUT) {
-    errors.push(`Affiliate payout must be at least $${MIN_AFFILIATE_PAYOUT.toFixed(2)} when affiliates are enabled`);
-  }
   if (input.shippingIncludedAmount && input.shippingIncludedAmount < 0) {
     errors.push('Shipping cannot be negative');
   }

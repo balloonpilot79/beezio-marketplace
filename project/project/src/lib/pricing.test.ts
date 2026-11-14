@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { calculatePricing, validatePricingInput } from './pricing';
 
 describe('seller-reviewed product pricing', () => {
+  it.each([0, 0.01, 0.5, 5, 12])('lets sellers choose a $%s affiliate payout without a percentage or dollar minimum', affiliate => {
+    const input = { sellerDesiredAmount: 20, affiliateRate: affiliate, shippingIncludedAmount: 6 };
+    expect(validatePricingInput(input)).toEqual([]);
+    const result = calculatePricing(input);
+    expect(result.sellerAmount).toBe(20);
+    expect(result.sellerPayableAmount).toBe(26);
+    expect(result.affiliateAmount).toBe(affiliate);
+    expect(result.shippingIncludedAmount).toBe(6);
+    expect(result.listingPrice).toBeGreaterThan(26 + affiliate);
+  });
   it('keeps seller payout whole and adds shipping as a separate reserve', () => {
     const withoutShipping = calculatePricing({
       sellerDesiredAmount: 23.8,
