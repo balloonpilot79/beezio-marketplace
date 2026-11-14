@@ -6,10 +6,10 @@
  * amount remains with Beezio and is therefore Beezio profit.
  */
 export const DEFAULT_BEEZIO_PLATFORM_RATE = 0;
-export const DEFAULT_BEEZIO_UNDER_THRESHOLD_FLAT_FEE = 1;
+export const DEFAULT_BEEZIO_UNDER_THRESHOLD_FLAT_FEE = 1.25;
 export const DEFAULT_BEEZIO_PERCENT_RATE_THRESHOLD = 50;
-export const DEFAULT_BEEZIO_MIN_NET_PROFIT = 0.75;
-export const DEFAULT_BEEZIO_PLATFORM_FEE_MIN = 1.00;
+export const DEFAULT_BEEZIO_MIN_NET_PROFIT = 1;
+export const DEFAULT_BEEZIO_PLATFORM_FEE_MIN = 1.25;
 export const DEFAULT_BEEZIO_PLATFORM_FEE_CAP = Number.MAX_SAFE_INTEGER;
 export const DEFAULT_BEEZIO_LARGE_ORDER_THRESHOLD = Number.MAX_SAFE_INTEGER;
 export const DEFAULT_BEEZIO_LARGE_ORDER_FLAT_FEE = 0;
@@ -39,7 +39,9 @@ export function computeFixedBeezioPlatformFee(sellerAsk: number): number {
   const baseFee = price <= 50
     ? Math.min(2.25, Math.max(0.75, toMoney(price * 0.05)))
     : Math.ceil(Math.round(price * 100) / 2500);
-  return toMoney(baseFee + 0.25);
+  // The buyer-referral reward is paid from this fee. A $1.25 floor leaves
+  // at least $1.00 after that $0.25 reward, before payout/operating expenses.
+  return toMoney(Math.max(DEFAULT_BEEZIO_PLATFORM_FEE_MIN, baseFee + 0.25));
 }
 
 // Historical order lines without a frozen fee were created under the prior

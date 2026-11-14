@@ -28,7 +28,7 @@ describe('pricing utilities', () => {
     const overPrice = calculateSalePriceFromSellerAsk(17, 0, 'flat');
     const under = calculatePayouts(underPrice, 15, { hasAffiliate: false, hasAffiliateReferrer: true, influencerCount: 2 });
     const over = calculatePayouts(overPrice, 17, { hasAffiliate: false, hasAffiliateReferrer: true, influencerCount: 2 });
-    expect(underPrice).toBe(18.34);
+    expect(underPrice).toBe(18.61);
     expect(under.referralBonus).toBe(1);
     expect(overPrice).toBeGreaterThanOrEqual(20);
     expect(over.referralBonus).toBe(1);
