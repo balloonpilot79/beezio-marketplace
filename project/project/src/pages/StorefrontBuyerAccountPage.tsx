@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import EnhancedBuyerDashboard, { type BuyerDashboardTab } from '../components/EnhancedBuyerDashboard';
 import StorefrontBuyerShell from '../components/storefront/StorefrontBuyerShell';
@@ -19,6 +19,7 @@ const allowedTabs = new Set<BuyerDashboardTab>(['overview', 'orders', 'purchases
 const StorefrontBuyerAccountPage: React.FC = () => {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [branding, setBranding] = useState<StorefrontBranding>(fallbackBranding);
 
   useEffect(() => {
@@ -74,6 +75,11 @@ const StorefrontBuyerAccountPage: React.FC = () => {
     <StorefrontBuyerShell branding={branding}>
       <EnhancedBuyerDashboard
         activeTabOverride={activeTab}
+        onTabChange={(tab) => {
+          const params = new URLSearchParams(location.search);
+          params.set('tab', tab);
+          navigate({ pathname: location.pathname, search: params.toString() });
+        }}
         title="Customer Account"
         subtitle="Shop, manage your orders, and refer people to earn as a Beezio ambassador."
       />
