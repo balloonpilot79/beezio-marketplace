@@ -1300,7 +1300,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
               <span className="text-sm text-gray-600">{referredAffiliates.length} total</span>
             </div>
             {referredAffiliates.length === 0 ? (
-              <p className="text-sm text-gray-600">Invite sellers and affiliates. Eligible referral slots pay $0.50 below $25 or $1.00 at $25 and above.</p>
+              <p className="text-sm text-gray-600">Invite sellers and affiliates. Earn ambassador rewards on their qualifying sales.</p>
             ) : (
               <div className="space-y-3">
                 {referredAffiliates.map((aff) => (
@@ -1736,7 +1736,7 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
             <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
               <p className="text-xs sm:text-sm text-purple-800">
                 <strong>💰 Influencer Earnings:</strong> When someone signs up using your code/link and makes sales, 
-                you earn <strong>$0.50 per eligible item below $25 or $1.00 per eligible item at $25 and above</strong> while the program is active.
+                you earn ambassador rewards on their qualifying sales while the program is active.
               </p>
             </div>
           </div>

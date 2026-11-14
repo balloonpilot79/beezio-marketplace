@@ -9,7 +9,7 @@ export default function BuyerAmbassadorPanel() {
         <h2 className="mt-2 text-2xl font-bold text-slate-950">Refer people. Earn rewards.</h2>
         <p className="mt-3 text-sm leading-6 text-slate-800">Your buyer account can earn the same referral rewards as a business ambassador. Share one invite with shoppers, store owners, and affiliates.</p>
         <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-800">
-          <li><strong>Refer buyers:</strong> earn $0.25 per eligible item they purchase.</li>
+          <li><strong>Refer buyers:</strong> earn rewards on their qualifying purchases.</li>
           <li><strong>Refer sellers:</strong> earn the established ambassador reward on their qualifying sales.</li>
           <li><strong>Refer affiliates:</strong> earn the established ambassador reward on their qualifying referred sales.</li>
         </ul>
