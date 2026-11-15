@@ -1,3 +1,7 @@
+# AI recruiter disabled: serve a static notice without invoking a function.
+/.netlify/functions/admin-recruiting-agent    /recruiting-disabled.html    404!
+/admin/recruiting    /recruiting-disabled.html    200!
+/admin/recruiting/*    /recruiting-disabled.html    200!
 /api/order-details    /.netlify/functions/order-details   200!
 /api/paypal/connect-start    /.netlify/functions/paypal-connect-start    200!
 /api/paypal/connect-complete    /.netlify/functions/paypal-connect-complete    200!
