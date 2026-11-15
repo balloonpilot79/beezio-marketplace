@@ -126,26 +126,26 @@ export default function HomePageBZO() {
       <div className="hm-wrap">
         <section className="hm-hero">
           <div className="hm-hero-copy">
-            <p className="hm-kicker">Shop independent sellers</p>
+            <p className="hm-kicker">Sell. Promote. Refer. Earn.</p>
             <h1>
-              Find something worth <span>bringing home.</span>
+              Your Store. More Sales. <span>More Ways to Earn.</span>
             </h1>
             <p className="hm-hero-description">
-              Beezio is a free online marketplace where you can shop, build your own online store, sell your products, and earn commissions promoting products from other sellers.
+              Sell your own products, promote products from other sellers, or earn by referring people to Beezio. Free to join.
             </p>
             <div className="hm-actions">
-              <Link to="/marketplace" className="bz-button bz-button-gold">
+              <Link to="/signup" className="bz-button bz-button-gold">
+                Get Started Free <ArrowRight size={17} />
+              </Link>
+              <Link to="/marketplace" className="hm-hero-secondary">
                 Shop the Marketplace <ArrowRight size={17} />
               </Link>
-              <Link to="/account/signup" className="hm-hero-secondary">
-                Create Buyer Account <ArrowRight size={17} />
-              </Link>
-              <Link to="/signup" className="hm-hero-secondary">
-                Create Business Account <ArrowRight size={17} />
+              <Link to="/ambassadors" className="hm-hero-secondary">
+                Become an Ambassador <ArrowRight size={17} />
               </Link>
             </div>
             <p className="hm-hero-note">
-              <Check size={14} /> PayPal checkout. See delivery and return details before you buy.
+              <Check size={14} /> Free to join. No monthly store fees. Earnings depend on qualifying sales.
             </p>
           </div>
           <div className="hm-spotlight">
@@ -189,12 +189,12 @@ export default function HomePageBZO() {
           <div className="hm-earn-icon"><Megaphone size={28} aria-hidden="true" /></div>
           <div>
             <p className="hm-kicker">Beezio Ambassadors</p>
-            <h2 id="home-referral-title">Earn cash by referring people to Beezio.</h2>
-            <p>Invite shoppers, sellers, and affiliates—and earn rewards from their qualifying purchases and sales.</p>
+            <h2 id="home-referral-title">Become a Beezio Ambassador.</h2>
+            <p>Refer sellers, affiliates, and buyers. Earn rewards on qualifying purchases and sales from the people you introduce. Buyers can participate too.</p>
             <p>Free to join. No store required.</p>
           </div>
           <Link to="/account?tab=ambassador" className="bz-button bz-button-gold">
-            Refer &amp; Earn <ArrowRight size={17} aria-hidden="true" />
+            Become an Ambassador <ArrowRight size={17} aria-hidden="true" />
           </Link>
         </section>
         <section id="shop" className="hm-shop">
@@ -360,7 +360,7 @@ export default function HomePageBZO() {
           <summary>What does it cost to join Beezio?</summary>
           <p>{pricingExplanation}</p>
           <p>
-            Affiliate and influencer earnings come from eligible sales. Earnings
+            Affiliate and Ambassador earnings come from eligible sales. Earnings
             are not guaranteed and are subject to returns and payout terms.
           </p>
           <Link to="/how-it-works">
