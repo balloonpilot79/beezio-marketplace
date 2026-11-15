@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Settings,
   Store,
+  Bot,
   FlaskConical,
   RefreshCw
 } from 'lucide-react';
@@ -1745,6 +1746,14 @@ export default function PlatformAdminDashboard() {
               <p className="mt-1 text-sm text-gray-600">Choose the job you need instead of scrolling through one long dashboard.</p>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <Link
+                to="/admin/recruiting"
+                className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-left transition hover:border-amber-500 hover:bg-amber-100"
+              >
+                <Bot className="mb-2 h-5 w-5 text-amber-700" />
+                <div className="font-bold text-gray-900">Recruiting team</div>
+                <div className="mt-1 text-xs text-gray-600">Find, draft, approve</div>
+              </Link>
               <Link
                 to="/admin/products"
                 className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-amber-300 hover:bg-amber-50"

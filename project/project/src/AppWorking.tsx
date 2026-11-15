@@ -91,6 +91,7 @@ const BulkProductUploadPage = lazy(() => import('./pages/BulkProductUploadPage')
 const AdminProductHubPage = lazy(() => import('./pages/AdminProductHubPage'));
 const AdminPayoutsQueuePage = lazy(() => import('./pages/AdminPayoutsQueuePage'));
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
+const AdminRecruitingAgentsPage = lazy(() => import('./pages/AdminRecruitingAgentsPage'));
 const SupportOperationsPage = lazy(() => import('./pages/SupportOperationsPage'));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'));
 const PayPalConnectCallbackPage = lazy(() => import('./pages/PayPalConnectCallbackPage'));
@@ -860,6 +861,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/admin/platform" element={<AdminRoute><PlatformAdminDashboard /></AdminRoute>} />
                     <Route path="/admin/payouts" element={<AdminRoute><AdminPayoutsQueuePage /></AdminRoute>} />
                     <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
+                    <Route path="/admin/recruiting" element={<AdminRoute><AdminRecruitingAgentsPage /></AdminRoute>} />
                     <Route path="/admin/settings" element={<AdminRoute><PlatformSettings /></AdminRoute>} />
                     <Route path="/admin/messaging-smoke" element={<AdminRoute><MessagingSmokeTestPage /></AdminRoute>} />
                     <Route path="/support/ops" element={<SupportRoute><SupportOperationsPage /></SupportRoute>} />
