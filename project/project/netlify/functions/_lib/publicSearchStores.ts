@@ -19,7 +19,7 @@ export async function loadPublicSearchStores(db: any): Promise<SearchStore[]> {
     read('storefronts','id,slug,name,description,logo_url,is_active','id'),
     read('store_settings','seller_id,subdomain,store_name,store_description,store_logo','seller_id'),
     read('affiliate_store_settings','affiliate_id,subdomain,store_name,store_description,store_logo,is_active','affiliate_id'),
-    read('profiles','id,subdomain,full_name,bio,store_logo,role,primary_role','id'),
+    read('profiles','id,subdomain,full_name,bio,role,primary_role','id'),
   ]);
   const result = new Map<string, SearchStore>();
   const inactiveBrands = new Set(brands.filter(r => r.is_active === false).map(r => normalizeStoreSlug(r.slug)));
