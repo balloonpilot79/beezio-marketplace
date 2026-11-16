@@ -1,5 +1,4 @@
 import { escapeHtml, injectSearchPage, plainText, SEARCH_ORIGIN, SEARCH_APP_ROUTES, storeSearchUrl } from '../../shared/searchMetadata.ts';
-import { RESERVED_STORE_SLUGS } from '../../src/utils/storeSlug.ts';
 
 export default async (request: Request, context: { next: () => Promise<Response> }) => {
   if (request.method !== 'GET') return;
@@ -7,7 +6,7 @@ export default async (request: Request, context: { next: () => Promise<Response>
   const parts = url.pathname.split('/').filter(Boolean);
   const directory = url.pathname.replace(/\/$/,'') === '/stores';
   let slug = parts.length === 1 ? parts[0] : parts.length === 2 && ['store','seller'].includes(parts[0]) ? parts[1] : '';
-  if (!directory && (!/^[a-z0-9][a-z0-9-]{0,99}$/i.test(slug) || RESERVED_STORE_SLUGS.has(slug) || SEARCH_APP_ROUTES.has(slug) || ['ambassadors','earn-by-referring','business','store-builder'].includes(slug))) return;
+  if (!directory && (!/^[a-z0-9][a-z0-9-]{0,99}$/i.test(slug) || SEARCH_APP_ROUTES.has(slug) || ['ambassadors','earn-by-referring','business','store-builder'].includes(slug))) return;
   slug = slug.toLowerCase();
   const response = await context.next();
   if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) return response;
