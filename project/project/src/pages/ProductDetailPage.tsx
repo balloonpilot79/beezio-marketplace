@@ -1,3 +1,5 @@
+import { useSearchHead } from '../hooks/useSearchHead';
+import { productSearchData } from '../../shared/searchMetadata';
 import { getProductTerms } from '../utils/productTerms';
 import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
 import { productWithSelectedVariant } from '../../shared/productShipping';
@@ -143,6 +145,7 @@ const ProductDetailPage: React.FC = () => {
       videos: normalizeProductVideos((initialPrefill as any)?.videos),
     } as Product;
   });
+  useSearchHead(product ? productSearchData(product, productId, 'https://jzciypbdqkuwrepbfipx.supabase.co') : null);
   const [loading, setLoading] = useState(!initialPrefill);
   const [error, setError] = useState<string | null>(null);
   const [ownedSellerIds, setOwnedSellerIds] = useState<string[]>([]);

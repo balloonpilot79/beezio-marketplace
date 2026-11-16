@@ -14,7 +14,7 @@ const StoresPage: React.FC = () => {
       <header className="max-w-2xl">
         <p className="bz-eyebrow">Discover stores</p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">Independent stores. Ready to explore.</h1>
-        <p className="mt-5 leading-7 text-slate-600">Browse Beezio storefronts with live products. Explore each collection and shop directly from the store.</p>
+        <p className="mt-5 leading-7 text-slate-600">Browse Beezio seller and affiliate stores. Explore each collection and shop directly from the store.</p>
       </header>
       <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <label className="flex w-full max-w-md items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
@@ -32,7 +32,7 @@ const StoresPage: React.FC = () => {
             {visibleStores.map(store => (
               <Link key={store.slug} to={`/store/${encodeURIComponent(store.slug)}`} className="bz-panel overflow-hidden transition-shadow hover:shadow-lg">
                 <div className="flex h-56 items-center justify-center bg-[#faf9f5] p-5">{store.image ? <img src={store.image} alt={`${store.name} collection`} loading="lazy" className="h-full w-full object-contain" /> : <Store className="h-16 w-16 text-slate-400" aria-hidden="true" />}</div>
-                <div className="p-6"><h2 className="text-xl font-semibold">{store.name}</h2><p className="mt-2 text-sm text-slate-600">{store.productCount} {store.productCount === 1 ? 'live product' : 'live products'}</p><span className="bz-text-link mt-5">Visit store <ArrowRight className="h-4 w-4" /></span></div>
+                <div className="p-6"><h2 className="text-xl font-semibold">{store.name}</h2><p className="mt-2 text-sm text-slate-600">Explore this independent store</p><span className="bz-text-link mt-5">Visit store <ArrowRight className="h-4 w-4" /></span></div>
               </Link>
             ))}
           </div>

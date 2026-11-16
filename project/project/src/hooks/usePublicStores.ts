@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-type PublicStore = { slug: string; name: string; image: string | null; productCount: number };
+type PublicStore = { slug: string; name: string; image: string | null; productCount?: number };
 
 export function usePublicStores() {
   const [stores, setStores] = useState<PublicStore[]>([]);
@@ -15,11 +15,11 @@ export function usePublicStores() {
     setError(false);
     (async () => {
       try {
-        const response = await fetch('/api/public/marketplace/products?stores_only=1', { signal: controller.signal });
+        const response = await fetch('/.netlify/functions/public-stores', { signal: controller.signal });
         if (!response.ok) throw new Error('Stores unavailable');
         const payload = await response.json();
         if (!Array.isArray(payload.stores)) throw new Error('Invalid directory');
-        if (active) setStores(payload.stores.filter((store: PublicStore) => store.productCount > 0).sort((a: PublicStore, b: PublicStore) => a.name.localeCompare(b.name)));
+        if (active) setStores(payload.stores.sort((a: PublicStore, b: PublicStore) => a.name.localeCompare(b.name)));
       } catch {
         if (active) setError(true);
       } finally {

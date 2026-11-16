@@ -1,3 +1,5 @@
+import { useSearchHead } from '../hooks/useSearchHead';
+import { plainText, storeSearchUrl } from '../../shared/searchMetadata';
 import MareBelleCollectionHero from '../components/storefront/MareBelleCollectionHero';
 import CompactStoreHeader from '../components/storefront/CompactStoreHeader';
 import { isPublicStoreProduct } from '../../shared/publicProductVisibility';
@@ -40,6 +42,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
   const sellerId = propSellerId || paramSellerId;
   const { user, profile } = useAuth();
   const [seller, setSeller] = useState<any>(null);
+  useSearchHead(seller?.subdomain ? { title: `${seller.full_name || 'Store'} | Beezio`, description: plainText(seller.bio || `Explore ${seller.full_name || 'this store'} on Beezio.`).slice(0,300), canonical: storeSearchUrl(seller.subdomain), content: '', schema: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: seller.full_name || 'Store', url: storeSearchUrl(seller.subdomain) } } : null);
   const [products, setProducts] = useState<any[]>([]);
   const [insuranceListings, setInsuranceListings] = useState<any[]>([]);
   const [canonicalSellerId, setCanonicalSellerId] = useState<string | null>(null);
