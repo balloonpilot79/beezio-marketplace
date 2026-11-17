@@ -641,7 +641,7 @@ export default function InfluencerRecruitPromoStudio({ code, influencerName }: P
                             <div className={`text-[10px] uppercase tracking-[0.16em] ${previewText.metaLabel}`}>
                               {preview.target === 'seller' ? 'Seller signup' : 'Affiliate signup'}
                             </div>
-                            <div className={`mt-1 text-sm font-bold ${previewText.metaTitle}`}>{name}{' '}shared this invite</div>
+                            <div className={`mt-1 text-sm font-bold ${previewText.metaTitle}`}>{`${name} shared this invite`}</div>
                             <div className={`mt-1 text-xs leading-5 ${previewText.metaText}`}>
                               {preview.channel === 'facebook'
                                 ? 'Built for Facebook groups and community posts.'
