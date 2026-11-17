@@ -20,7 +20,7 @@ interface PayPalPayoutSettingsCardProps {
 
 const DEFAULT_TITLE = 'PayPal payout email';
 const DEFAULT_DESCRIPTION =
-  'This email is used to send seller payouts and partner/influencer commissions. You can update it anytime.';
+  'Connect PayPal to verify your payout email for seller, affiliate, and Ambassador earnings. Eligible earnings are paid on scheduled paydays after the hold and $5 minimum per role.';
 
 export default function PayPalPayoutSettingsCard({
   title = DEFAULT_TITLE,
@@ -109,24 +109,30 @@ export default function PayPalPayoutSettingsCard({
       if (!trimmed || !trimmed.includes('@')) throw new Error('Enter a valid PayPal email.');
       if (!confirmed) throw new Error('Please confirm your PayPal payout email.');
 
-      const { error: upsertError } = await withTimeout(
+      const { data: savedAccounts, error: upsertError } = await withTimeout(
         supabase
           .from('paypal_accounts')
           .upsert(
             [
-              { user_id: profileId, role: 'SELLER', paypal_email: trimmed, is_verified: false },
-              { user_id: profileId, role: 'PARTNER', paypal_email: trimmed, is_verified: false },
-              { user_id: profileId, role: 'INFLUENCER', paypal_email: trimmed, is_verified: false },
+              { user_id: profileId, role: 'SELLER', paypal_email: trimmed.toLowerCase() },
+              { user_id: profileId, role: 'PARTNER', paypal_email: trimmed.toLowerCase() },
+              { user_id: profileId, role: 'INFLUENCER', paypal_email: trimmed.toLowerCase() },
             ].filter(row => !ambassadorOnly || row.role === 'INFLUENCER') as any,
             { onConflict: 'user_id,role' }
-          ),
+          )
+          .select('user_id,role,paypal_email,is_verified'),
         20000,
         'Saving payout settings'
       );
       if (upsertError) throw upsertError;
 
-      setStatusLabel('Saved');
-      setSuccess('Email saved. Connect with PayPal to verify ownership and enable automatic payouts.');
+      const rows = (savedAccounts || []) as PayPalAccountRow[];
+      const verified = ambassadorOnly
+        ? rows.some(row => row.role === 'INFLUENCER' && row.is_verified === true)
+        : rows.length === 3 && rows.every(row => row.is_verified === true);
+      setEmail(trimmed.toLowerCase());
+      setStatusLabel(verified ? 'Verified' : 'Saved');
+      setSuccess(verified ? 'Your payout email is still verified.' : 'Email saved. Connect PayPal to verify ownership before payouts can be sent.');
       setConfirmed(false);
       await withTimeout(refreshProfile(), 15000, 'Refreshing profile');
     } catch (e: any) {
@@ -203,9 +209,9 @@ export default function PayPalPayoutSettingsCard({
       ) : (
         <div className="mt-4">
           <div className="mb-4 rounded-md border border-green-200 bg-green-50 p-3">
-            <div className="text-sm font-semibold text-green-900">Recommended: Connect with PayPal</div>
+            <div className="text-sm font-semibold text-green-900">Required for payouts: Connect PayPal</div>
             <div className="mt-1 text-xs text-green-800">
-              Verifies ownership and keeps your payout email in sync.
+              Verifies ownership of your PayPal email. Saving an email alone does not verify it. Changing the email requires reconnecting PayPal.
             </div>
             <button
               type="button"
@@ -248,7 +254,7 @@ export default function PayPalPayoutSettingsCard({
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
-            <div className="text-xs text-gray-500">Applies to Seller, Partner, and Influencer payouts.</div>
+            <div className="text-xs text-gray-500">{ambassadorOnly ? 'Applies to Ambassador payouts.' : 'Applies to seller, affiliate, and Ambassador payouts.'}</div>
           </div>
         </div>
       )}

@@ -3,137 +3,52 @@ import { json, assertPost, parseJson } from './_lib/http';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { extractAuthHeader, getAuthedUser, resolveProfileId } from './_lib/auth';
 import { getPayPalBaseUrl, isPayPalEnabled } from './_lib/paypal';
-
-type Body = {
-  code?: string;
-  state?: string;
-  expected_nonce?: string;
-};
-
-const fromBase64Url = (input: string): string => Buffer.from(input, 'base64url').toString('utf8');
-
-const decodeJwtPayload = (token: string): Record<string, any> | null => {
-  const parts = String(token || '').split('.');
-  if (parts.length < 2) return null;
-  try {
-    const raw = Buffer.from(parts[1], 'base64url').toString('utf8');
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : null;
-  } catch {
-    return null;
-  }
-};
-
-const getOriginFromEvent = (event: Parameters<Handler>[0]): string => {
-  const proto = String(event.headers['x-forwarded-proto'] || 'https').split(',')[0].trim() || 'https';
-  const host = String(event.headers['x-forwarded-host'] || event.headers.host || '').split(',')[0].trim();
-  if (!host) throw new Error('Missing host header');
-  return `${proto}://${host}`;
-};
+import { getVerifiedPayPalIdentity, paypalConnectCredentials, paypalConnectRedirectUri, verifyPayPalConnectState } from './_lib/paypalConnect';
 
 export const handler: Handler = async (event) => {
   try {
     assertPost(event.httpMethod);
     if (!isPayPalEnabled()) return json(503, { error: 'Payments are temporarily unavailable.', code: 'PAYMENTS_PAUSED' });
-
     const authHeader = extractAuthHeader(event);
     if (!authHeader) return json(401, { error: 'Unauthorized' });
     const { user, error } = await getAuthedUser(authHeader);
     if (!user || error) return json(401, { error: error || 'Unauthorized' });
-
-    const clientId = String(process.env.PAYPAL_CONNECT_CLIENT_ID || process.env.PAYPAL_CLIENT_ID || '').trim();
-    const secret = String(process.env.PAYPAL_CONNECT_CLIENT_SECRET || process.env.PAYPAL_CLIENT_SECRET || '').trim();
-    if (!clientId || !secret) return json(503, { error: 'PayPal is not configured.', code: 'PAYPAL_NOT_CONFIGURED' });
-
-    const body = parseJson<Body>(event.body);
-    const code = String(body?.code || '').trim();
-    const stateRaw = String(body?.state || '').trim();
-    const expectedNonce = String(body?.expected_nonce || '').trim();
-    if (!code) return json(400, { error: 'Missing code' });
-    if (!stateRaw) return json(400, { error: 'Missing state' });
-    if (!expectedNonce) return json(400, { error: 'Missing expected nonce' });
-
-    let state: { nonce?: string; returnTo?: string; iat?: number; uid?: string } = {};
+    const { clientId, secret } = paypalConnectCredentials();
+    const body = parseJson<{ code?: string; state?: string; expected_nonce?: string }>(event.body);
+    const code = String(body.code || '').trim();
+    if (!code) return json(400, { error: 'Missing PayPal authorization code. Please connect again.' });
+    let state: { returnTo: string };
     try {
-      state = JSON.parse(fromBase64Url(stateRaw));
-    } catch {
-      return json(400, { error: 'Invalid state' });
-    }
-
-    const nonce = String(state?.nonce || '').trim();
-    const issuedAt = Number(state?.iat || 0);
-    const stateUserId = String(state?.uid || '').trim();
-    const returnTo = String(state?.returnTo || '/dashboard').trim() || '/dashboard';
-
-    if (!nonce || nonce !== expectedNonce) return json(400, { error: 'Invalid nonce' });
-    if (!issuedAt || Date.now() - issuedAt > 15 * 60 * 1000) return json(400, { error: 'State has expired' });
-    if (stateUserId && stateUserId !== String(user.id)) return json(403, { error: 'State does not match current user' });
-
+      state = verifyPayPalConnectState(String(body.state || ''), String(body.expected_nonce || ''), String(user.id), secret);
+    } catch (e: any) { return json(400, { error: e.message }); }
     const baseUrl = await getPayPalBaseUrl();
-    const redirectUri =
-      String(process.env.PAYPAL_CONNECT_REDIRECT_URI || '').trim() ||
-      `${getOriginFromEvent(event)}/paypal/connect/callback`;
-    const auth = Buffer.from(`${clientId}:${secret}`).toString('base64');
-
     const tokenRes = await fetch(`${baseUrl}/v1/oauth2/token`, {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${auth}`,
+        Authorization: `Basic ${Buffer.from(`${clientId}:${secret}`).toString('base64')}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: `grant_type=authorization_code&code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(redirectUri)}`,
+      body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: paypalConnectRedirectUri() }).toString(),
+      signal: AbortSignal.timeout(12000),
     });
-
-    const tokenData = await tokenRes.json().catch(() => ({}));
-    if (!tokenRes.ok) {
-      return json(400, {
-        error: 'PayPal authorization failed',
-        details: String((tokenData as any)?.error_description || (tokenData as any)?.error || 'unknown'),
-      });
+    if (!tokenRes.ok) return json(400, { error: 'PayPal authorization failed. Please connect again. If this persists, contact Beezio support to check the PayPal app configuration.' });
+    const tokenData = await tokenRes.json();
+    let identity: { email: string; payerId: string };
+    try { identity = await getVerifiedPayPalIdentity(baseUrl, String(tokenData?.access_token || '')); }
+    catch (e: any) { return json(400, { error: e.message, emailVerified: false }); }
+    const profileId = await resolveProfileId(user);
+    if (!profileId) return json(400, { error: 'Unable to resolve your Beezio profile.' });
+    const roles = ['SELLER', 'PARTNER', 'INFLUENCER'];
+    const { data, error: saveError } = await createSupabaseAdmin().from('paypal_accounts')
+      .upsert(roles.map(role => ({ user_id: profileId, role, paypal_email: identity.email, is_verified: true })), { onConflict: 'user_id,role' })
+      .select('role,paypal_email,is_verified');
+    if (saveError) return json(500, { error: 'Unable to save your verified PayPal connection. Please try again.' });
+    if (data?.length !== 3 || !roles.every(role => data.some(row => row.role === role && row.is_verified === true && row.paypal_email === identity.email))) {
+      return json(500, { error: 'Your PayPal verification could not be confirmed in Beezio. Please contact support.', emailVerified: false });
     }
-
-    const idToken = String((tokenData as any)?.id_token || '').trim();
-    const idPayload = decodeJwtPayload(idToken);
-
-    const email = String(idPayload?.email || '').trim().toLowerCase();
-    const emailVerified = Boolean(idPayload?.email_verified);
-    const payerId = String(idPayload?.payer_id || idPayload?.sub || '').trim() || null;
-
-    if (!email) {
-      return json(400, {
-        error: 'PayPal did not return an email address. Please try again and allow email scope.',
-      });
-    }
-
-    const profileId = await resolveProfileId(user as any);
-    if (!profileId) return json(400, { error: 'Unable to resolve profile id' });
-
-    const supabaseAdmin = createSupabaseAdmin();
-    const rows = [
-      { user_id: profileId, role: 'SELLER', paypal_email: email, is_verified: emailVerified },
-      { user_id: profileId, role: 'PARTNER', paypal_email: email, is_verified: emailVerified },
-      { user_id: profileId, role: 'INFLUENCER', paypal_email: email, is_verified: emailVerified },
-    ];
-
-    const { error: upsertError } = await supabaseAdmin
-      .from('paypal_accounts')
-      .upsert(rows as any, { onConflict: 'user_id,role' });
-
-    if (upsertError) {
-      return json(500, { error: `Failed to save PayPal account: ${upsertError.message}` });
-    }
-
-    return json(200, {
-      ok: true,
-      paypalEmail: email,
-      emailVerified,
-      payerId,
-      returnTo: returnTo.startsWith('/') ? returnTo : '/dashboard',
-    });
+    return json(200, { ok: true, paypalEmail: identity.email, emailVerified: true, returnTo: state.returnTo });
   } catch (e: any) {
-    const statusCode = Number(e?.statusCode) || 500;
-    return json(statusCode, { error: e instanceof Error ? e.message : 'Unexpected error' });
+    return json(Number(e?.statusCode) || 500, { error: e instanceof Error ? e.message : 'Unexpected error' });
   }
 };
-
 export default handler;

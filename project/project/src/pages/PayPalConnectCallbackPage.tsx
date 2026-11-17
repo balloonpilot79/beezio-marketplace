@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
@@ -24,72 +24,53 @@ const PayPalConnectCallbackPage: React.FC = () => {
   const error = useMemo(() => String(searchParams.get('error') || '').trim(), [searchParams]);
   const errorDescription = useMemo(() => String(searchParams.get('error_description') || '').trim(), [searchParams]);
 
+  // Share the one-use code exchange across React effect re-runs.
+  const connection = useRef<{ key: string; request: Promise<ConnectCompleteResponse> } | null>(null);
   useEffect(() => {
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const run = async () => {
-      if (error) {
-        setStatus('error');
-        setMessage(errorDescription || error || 'PayPal authorization was canceled.');
-        return;
-      }
-
-      if (!code || !state) {
-        setStatus('error');
-        setMessage('Missing PayPal callback details. Please try connecting again.');
-        return;
-      }
-
-      const expectedNonce = String(localStorage.getItem(NONCE_KEY) || '').trim();
-      if (!expectedNonce) {
-        setStatus('error');
-        setMessage('Unable to verify the connection request. Please try again.');
-        return;
-      }
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = String(sessionData?.session?.access_token || '').trim();
-      if (!accessToken) {
-        setStatus('error');
-        setMessage('Please sign in again, then retry PayPal connect.');
-        return;
-      }
-
       try {
-        const res = await fetch('/api/paypal/connect-complete', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            code,
-            state,
-            expected_nonce: expectedNonce,
-          }),
-        });
-
-        const payload = (await res.json().catch(() => ({}))) as ConnectCompleteResponse;
-        if (!res.ok || !payload?.ok) {
-          setStatus('error');
-          setMessage(payload?.error || 'PayPal connect failed. Please try again.');
-          return;
+        if (error) throw new Error(errorDescription || 'PayPal authorization was canceled.');
+        if (!code || !state) throw new Error('Missing PayPal callback details. Please connect again.');
+        const key = `${code}:${state}`;
+        if (connection.current?.key !== key) {
+          const request = (async () => {
+            const expectedNonce = String(localStorage.getItem(NONCE_KEY) || '').trim();
+            if (!expectedNonce) throw new Error('Unable to verify the connection request. Please connect again.');
+            const { data: sessionData } = await supabase.auth.getSession();
+            const accessToken = String(sessionData?.session?.access_token || '').trim();
+            if (!accessToken) throw new Error('Please sign in again, then connect PayPal.');
+            const res = await fetch('/api/paypal/connect-complete', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+              body: JSON.stringify({ code, state, expected_nonce: expectedNonce }),
+              signal: AbortSignal.timeout(35000),
+            });
+            const payload = await res.json().catch(() => ({})) as ConnectCompleteResponse;
+            if (!res.ok || !payload.ok || payload.emailVerified !== true || !payload.paypalEmail) {
+              throw new Error(payload.error || 'PayPal email is not verified. Confirm your email in PayPal, then connect again.');
+            }
+            localStorage.removeItem(NONCE_KEY);
+            return payload;
+          })();
+          connection.current = { key, request };
         }
-
-        localStorage.removeItem(NONCE_KEY);
-        setConnectedEmail(String(payload.paypalEmail || ''));
+        const payload = await connection.current.request;
+        if (!active) return;
+        setConnectedEmail(String(payload.paypalEmail));
         setStatus('success');
-        setMessage('PayPal account connected successfully.');
-
-        const returnTo = String(payload.returnTo || '/onboarding').trim();
-        window.setTimeout(() => {
-          navigate(returnTo.startsWith('/') ? returnTo : '/onboarding');
-        }, 1200);
+        setMessage('PayPal email verified. Your payout connection is ready.');
+        const returnTo = String(payload.returnTo || '/dashboard');
+        timer = setTimeout(() => navigate(returnTo.startsWith('/') && !returnTo.startsWith('//') && !/[\\\s]/.test(returnTo) ? returnTo : '/dashboard'), 1200);
       } catch (e: any) {
+        if (!active) return;
         setStatus('error');
-        setMessage(e?.message || 'PayPal connect failed. Please try again.');
+        setMessage(e?.message || 'PayPal connection failed. Please try again.');
       }
     };
-
     void run();
+    return () => { active = false; if (timer) clearTimeout(timer); };
   }, [code, error, errorDescription, navigate, state]);
 
   return (
