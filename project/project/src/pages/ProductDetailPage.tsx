@@ -478,6 +478,7 @@ const ProductDetailPage: React.FC = () => {
   const derivedRole = normalizeAccountRole(profile?.primary_role || profile?.role || currentRole);
   const effectiveRole = derivedRole;
   const businessRoles = getBusinessAccountRoles(userRoles, profile?.primary_role, profile?.role, currentRole);
+  const isSellerRole = businessRoles.includes('seller');
   const canAddToAffiliateStore = businessRoles.includes('affiliate');
   const canAddToSellerStore = businessRoles.includes('seller');
   const storeScope = String(localStorage.getItem('beezio-store-scope') || '');
