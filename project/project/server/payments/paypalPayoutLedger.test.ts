@@ -138,10 +138,10 @@ describe('shirt pricing and historical fee snapshots', () => {
 
 // All referral roles remain funded while Beezio retains the new minimum.
 describe('minimum fee after a buyer referral', () => {
-  it.each([0.01, 1, 5, 15, 17, 19.99, 20, 20.10, 30, 30.01, 50, 50.01, 1000])('keeps at least $1 after buyer referral on seller ask $%s', ask => {
+  it.each([0.01, 1, 5, 5.01, 15, 17, 19.99, 20, 20.10, 30, 30.01, 50, 50.01, 1000])('keeps the tier minimum after buyer referral on seller ask $%s', ask => {
     const quote = computeFixedTierPricing({sellerPayout:ask,affiliatePayout:4});
     const plan = buildPayPalLedgerPlan(makeInput({buyerReferrerId:'buyer-recruiter',subtotalListing:quote.finalAdvertisedPrice,items:[{quantity:1,seller_ask_amount:ask,partner_rate:0,computed_listing_price:quote.finalAdvertisedPrice,affiliate_payout_amount:4,shipping_reserve_amount:0,influencer_allocation_amount:quote.influencerAllocation,platform_fee_amount:quote.platformFee,paypal_processing_allowance:quote.paypalProcessingAllowance}]}));
-    expect(plan.aggregate.beezioFeeNet).toBeGreaterThanOrEqual(1);
+    expect(plan.aggregate.beezioFeeNet).toBeGreaterThanOrEqual(ask <= 5 ? 0.5 : 1);
     expect(plan.aggregate.sellerEarnings).toBe(ask);
     expect(plan.aggregate.partnerEarnings).toBe(4);
     expect(plan.payees.find(row=>row.payeeUserId==='buyer-recruiter')?.amount).toBe(0.25);

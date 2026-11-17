@@ -36,6 +36,8 @@ export function computeFixedBeezioPlatformFee(sellerAsk: number): number {
     ? Math.max(0, toMoney(sellerAsk))
     : 0;
   if (price <= 0) return 0;
+  // Micro-price tier: the buyer's $0.25 referral comes out of this $0.75.
+  if (price <= 5) return 0.75;
   const baseFee = price <= 50
     ? Math.min(2.25, Math.max(0.75, toMoney(price * 0.05)))
     : Math.ceil(Math.round(price * 100) / 2500);

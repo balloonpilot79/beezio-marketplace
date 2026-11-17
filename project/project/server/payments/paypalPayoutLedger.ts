@@ -1,4 +1,4 @@
-import { getReferrerBonusTotal, getSmallOrderPlatformReallocation } from '../../shared/referralBonus';
+import { getSmallOrderPlatformReallocation } from '../../shared/referralBonus';
 import {
   computeLegacyBeezioPlatformFee,
 } from '../../shared/beezioFee';
@@ -196,7 +196,8 @@ export function buildPayPalLedgerPlan(input: BuildPayPalLedgerPlanInput): PayPal
         ? TEST_ITEM_INFLUENCER_FEE * quantity
         : (Number.isFinite(explicitInfluencerAllocation)
             ? Math.max(0, explicitInfluencerAllocation) * quantity / 2
-            : getReferrerBonusTotal(ask, quantity))
+            // Missing snapshots are historical orders, before the micro tier.
+            : round2((ask <= 30 ? 0.5 : 1) * quantity))
     );
     const paypalAllowanceLine = round2(
       (Number.isFinite(explicitPayPalAllowance)

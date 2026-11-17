@@ -15,6 +15,7 @@ export function getReferrerBonusPerItem(sellerAsk: number): number {
   const price = Number.isFinite(sellerAsk)
     ? Math.max(0, sellerAsk)
     : 0;
+  if (price > 0 && roundToCurrency(price) <= 5) return 0.25;
   return price <= REFERRER_BONUS_THRESHOLD
     ? REFERRER_BONUS_UNDER_THRESHOLD
     : REFERRER_BONUS_AT_OR_ABOVE_THRESHOLD;
