@@ -8,7 +8,6 @@ import { deriveStoreSlug, isValidStoreSlug } from '../utils/storeSlug';
 import { buildDeterministicReferralCode } from '../utils/referralCode';
 import { consumePostAuthPath, safePostAuthPath } from '../utils/storefrontScope';
 import { PASSWORD_REQUIREMENT_MESSAGE, validatePasswordPolicy } from '../utils/passwordPolicy';
-import { sendSignupVerificationEmail } from '../services/signupVerificationClient';
 import { isBeezioEmailVerified } from '../utils/emailVerification';
 
 // Runtime check for Vite env vars (will be inlined at build time)
@@ -101,7 +100,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
     ? [
         'One buyer account that works across every Beezio storefront.',
         'Your orders, receipts, and support history stay in one place.',
-        'Start shopping immediately—no email confirmation step.',
+        'Confirm your email, then start shopping across Beezio.',
       ]
     : [
         'Seller, affiliate, and influencer tools in one business account.',
@@ -389,26 +388,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           // Supabase: If email confirmation is required, session will be null.
           // Switch the UI immediately instead of waiting on profile setup work.
           if (!result.session || !isBeezioEmailVerified(result.user)) {
-            let emailSent = false;
-            let sendError = '';
-            try {
-              await sendSignupVerificationEmail({
-                userId: result.user.id,
-                email: formData.email,
-                fullName: formData.fullName,
-              });
-              emailSent = true;
-            } catch (resendErr: any) {
-              console.warn('AuthModal verification send failed after sign up:', resendErr);
-              sendError = String(resendErr?.message || 'Failed to send verification email.');
-            }
+            // Supabase sends the initial confirmation email. Avoid sending a
+            // second, different verification link for the same signup.
             onClose();
             const verifyParams = new URLSearchParams({
               flow: 'signup',
               email: formData.email,
-              email_sent: emailSent ? '1' : '0',
+              email_sent: '1',
             });
-            if (sendError) verifyParams.set('send_error', sendError);
             navigate(`/auth/verify?${verifyParams.toString()}`);
             setLoading(false);
             return;

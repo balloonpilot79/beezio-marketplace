@@ -2,31 +2,33 @@ import { describe, expect, it } from 'vitest';
 import { isBeezioEmailVerified, requiresBeezioEmailVerification } from './emailVerification';
 
 const user = (overrides: Record<string, unknown> = {}) => ({
-  created_at: '2026-09-28T00:00:00.000Z',
-  email_confirmed_at: '2026-09-28T00:00:01.000Z',
+  id: 'account',
+  created_at: '2026-11-17T00:00:00.000Z',
+  email_confirmed_at: null,
   app_metadata: {},
   user_metadata: {},
   ...overrides,
 }) as any;
 
-describe('Beezio email verification', () => {
-  it('does not require email verification for new accounts', () => {
-    expect(requiresBeezioEmailVerification(user())).toBe(false);
-    expect(isBeezioEmailVerified(user())).toBe(true);
+describe('Beezio email ownership verification', () => {
+  it('requires confirmation for an unconfirmed new signup even if a session exists', () => {
+    expect(requiresBeezioEmailVerification(user())).toBe(true);
+    expect(isBeezioEmailVerified(user())).toBe(false);
   });
-
-  it('accepts the server-only Beezio verification marker', () => {
-    expect(isBeezioEmailVerified(user({ app_metadata: { beezio_email_verified: true } }))).toBe(true);
+  it('does not trust editable metadata or an unrelated confirmation marker', () => {
+    expect(isBeezioEmailVerified(user({ user_metadata: { email_verified: true, beezio_email_verified: true } }))).toBe(false);
+    expect(isBeezioEmailVerified(user({ app_metadata: { beezio_email_verified: true } }))).toBe(false);
   });
-
-  it('keeps historically confirmed accounts working', () => {
-    expect(isBeezioEmailVerified(user({ created_at: '2026-01-01T00:00:00.000Z' }))).toBe(true);
+  it('accepts actual Supabase email confirmation', () => {
+    const confirmed = user({ email_confirmed_at: '2026-11-17T01:00:00Z' });
+    expect(isBeezioEmailVerified(confirmed)).toBe(true);
+    expect(requiresBeezioEmailVerification(confirmed)).toBe(false);
   });
-
-  it('does not re-enable verification from stale signup metadata', () => {
-    expect(isBeezioEmailVerified(user({
-      created_at: '2026-01-01T00:00:00.000Z',
-      user_metadata: { beezio_verification_required: true },
-    }))).toBe(true);
+  it('preserves existing confirmed accounts and ignores stale signup metadata', () => {
+    expect(isBeezioEmailVerified(user({ created_at: '2026-01-01T00:00:00Z', email_confirmed_at: '2026-01-01T00:00:01Z', user_metadata: { beezio_verification_required: true } }))).toBe(true);
+  });
+  it('does not treat a missing user as verified', () => {
+    expect(isBeezioEmailVerified(null)).toBe(false);
+    expect(isBeezioEmailVerified(undefined)).toBe(false);
   });
 });

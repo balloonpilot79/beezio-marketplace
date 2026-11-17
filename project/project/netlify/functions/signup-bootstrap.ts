@@ -50,6 +50,7 @@ export const handler: Handler = async (event) => {
 
     const { supabaseAdmin, authUser, error: userError } = await findSupabaseAdminForUser(userId, email);
     if (!supabaseAdmin || !authUser) return json(404, { error: 'Auth user not found', details: userError?.message });
+    if (!authUser.email_confirmed_at) return json(403, { error: 'Verify your email before completing account setup.', code: 'EMAIL_NOT_VERIFIED' });
     const createdAt = new Date(String(authUser.created_at || 0)).getTime();
     // Keep bootstrap limited to newly created accounts while allowing enough
     // time for a user to finish the signup form or recover from a brief delay.

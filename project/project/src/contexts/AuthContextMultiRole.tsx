@@ -17,7 +17,6 @@ import {
   clearPendingRecruitAttributionForUser,
   getPendingRecruitAttributionsForUser,
 } from '../utils/recruitAttribution';
-import { sendSignupVerificationEmail } from '../services/signupVerificationClient';
 import { isBeezioEmailVerified } from '../utils/emailVerification';
 import { isBuyerOnlyAccount } from '../utils/accountRoles';
 
@@ -1186,18 +1185,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Email address is required.');
       }
 
-      const pending = JSON.parse(localStorage.getItem(PENDING_SIGNUP_KEY) || '{}');
-      const pendingEmail = String(pending?.email || '').trim().toLowerCase();
-      const pendingUserId = String(pending?.userId || '').trim();
-      if (!pendingUserId || pendingEmail !== trimmedEmail.toLowerCase()) {
-        throw new Error('Sign in again with this email, then use Resend verification email.');
-      }
-
-      return sendSignupVerificationEmail({
-        userId: pendingUserId,
+      // Resend works on a different device too; it must not depend on a local
+      // signup payload containing the pending user's UUID.
+      const { data, error } = await supabase.auth.resend({
+        type: 'signup',
         email: trimmedEmail,
-        fullName: String(pending?.fullName || '').trim(),
+        options: { emailRedirectTo: getEmailVerificationRedirectUrl() },
       });
+      if (error) throw error;
+      return data;
     } catch (error) {
       console.error('Resend verification email error:', error);
       throw error;

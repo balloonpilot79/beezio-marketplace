@@ -7,7 +7,6 @@ import { deriveStoreSlug, isValidStoreSlug } from "../utils/storeSlug";
 import { buildDeterministicReferralCode } from "../utils/referralCode";
 import { assignInfluencerReferral } from "../utils/influencerReferrals";
 import { validatePasswordPolicy } from "../utils/passwordPolicy";
-import { sendSignupVerificationEmail } from "../services/signupVerificationClient";
 import {
   clearPendingRecruitAttributionForUser,
   queuePendingRecruitAttribution,
@@ -506,30 +505,13 @@ const SignUpPage: React.FC = () => {
       });
       if (result.user) {
         if (!result.session) {
-          let emailSent = false;
-          let sendError = "";
-          try {
-            await sendSignupVerificationEmail({
-              userId: result.user.id,
-              email: formData.email,
-              fullName: formData.fullName,
-            });
-            emailSent = true;
-          } catch (resendErr: any) {
-            console.warn(
-              "Signup verification send failed after sign up:",
-              resendErr,
-            );
-            sendError = String(
-              resendErr?.message || "Failed to send verification email.",
-            );
-          }
+          // A successful signup with no session means Supabase has queued its
+          // confirmation email through the configured SMTP provider.
           const verifyParams = new URLSearchParams({
             flow: "signup",
             email: formData.email,
-            email_sent: emailSent ? "1" : "0",
+            email_sent: "1",
           });
-          if (sendError) verifyParams.set("send_error", sendError);
           navigate(`/auth/verify?${verifyParams.toString()}`, {
             replace: true,
           });

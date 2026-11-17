@@ -25,7 +25,7 @@ export const handler: Handler = async (event) => {
 
     return json(200, {
       ok: true,
-      confirmed: authUser.app_metadata?.beezio_email_verified === true,
+      confirmed: Boolean(authUser.email_confirmed_at),
       confirmedAt: authUser.email_confirmed_at || null,
     });
   } catch (e: any) {
