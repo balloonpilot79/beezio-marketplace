@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
 import { normalizeProductImages } from '../utils/imageHelpers';
-import { archiveProductById } from '../utils/archiveProduct';
+import { useProductRemoval } from '../hooks/useProductRemoval';
 import { getProductReferenceLine } from '../utils/productIdentifiers';
 
 interface Product {
@@ -18,6 +18,7 @@ const SellerProducts: React.FC<{ sellerId: string }> = ({ sellerId }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { requestRemoval, removalDialog, removingProductId } = useProductRemoval();
 
   useEffect(() => {
     fetchProducts();
@@ -39,14 +40,13 @@ const SellerProducts: React.FC<{ sellerId: string }> = ({ sellerId }) => {
     setLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Remove this product from your active dashboard and marketplace listings? Promoter links and payout history will be kept.')) return;
-    try {
-      await archiveProductById({ productId: id, sellerId });
-      setProducts(products.filter(p => p.id !== id));
-    } catch {
-      alert('Failed to remove product.');
-    }
+  const handleDelete = (product: Product) => {
+    requestRemoval({
+      productId: product.id,
+      title: product.title,
+      sellerId,
+      onRemoved: () => setProducts((current) => current.filter(p => p.id !== product.id)),
+    });
   };
 
   if (loading) return <div>Loading...</div>;
@@ -54,6 +54,7 @@ const SellerProducts: React.FC<{ sellerId: string }> = ({ sellerId }) => {
 
   return (
     <div className="space-y-4">
+      {removalDialog}
       {products.length === 0 ? (
         <div className="text-gray-500">No products found.</div>
       ) : (
@@ -92,7 +93,7 @@ const SellerProducts: React.FC<{ sellerId: string }> = ({ sellerId }) => {
             </div>
             <div className="flex items-center space-x-2">
               <Link to={`/dashboard/products/edit/${product.id}`} className="text-blue-600 hover:underline">Edit</Link>
-              <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:underline">Remove</button>
+              <button type="button" disabled={removingProductId === product.id} onClick={() => handleDelete(product)} className="text-red-600 hover:underline disabled:opacity-50">{removingProductId === product.id ? 'Removing…' : 'Remove'}</button>
             </div>
           </div>
           );

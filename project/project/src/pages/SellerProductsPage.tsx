@@ -7,7 +7,7 @@ import ProductForm from '../components/ProductForm'; // Import the ProductForm c
 import { sanitizeDescriptionForDisplay } from '../utils/sanitizeDescription';
 import { ensureSellerProductInOrder } from '../utils/sellerProductOrder';
 import { normalizeProductImages } from '../utils/imageHelpers';
-import { archiveProductById } from '../utils/archiveProduct';
+import { useProductRemoval } from '../hooks/useProductRemoval';
 import { fetchAccountOwnedProducts } from '../utils/accountOwnedProducts';
 import { getProductReferenceLine } from '../utils/productIdentifiers';
 import { formatMoneyDisplay } from '../utils/moneyDisplay';
@@ -48,6 +48,7 @@ const SellerProductsPage: React.FC = () => {
   const [draftValues, setDraftValues] = useState<Record<string, ProductDraftState>>({});
   const [savingRowId, setSavingRowId] = useState<string | null>(null);
   const [rowFeedback, setRowFeedback] = useState<Record<string, string>>({});
+  const { requestRemoval, removalDialog, removingProductId } = useProductRemoval();
   const ownerIds = Array.from(
     new Set([profile?.id, (profile as any)?.user_id, user?.id].map((value) => String(value || '').trim()).filter(Boolean))
   );
@@ -267,16 +268,13 @@ const SellerProductsPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (product: Product) => {
-    const confirmMessage = `Remove "${product.title}" from your active seller dashboard and marketplace listings? Promoter links and payout history will be kept.`;
-    if (!confirm(confirmMessage)) return;
-
-    try {
-      await archiveProductById({ productId: product.id, sellerId: String((product as any)?.seller_id || profile?.id || '').trim() || undefined });
-      setProducts((prev) => prev.filter((p) => p.id !== product.id));
-    } catch (error) {
-      console.error('Error removing product:', error);
-    }
+  const handleDelete = (product: Product) => {
+    requestRemoval({
+      productId: product.id,
+      title: product.title,
+      sellerId: String(product.seller_id || profile?.id || '').trim() || undefined,
+      onRemoved: () => setProducts((prev) => prev.filter((p) => p.id !== product.id)),
+    });
   };
 
   const filteredProducts = useMemo(() => {
@@ -352,6 +350,7 @@ const SellerProductsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      {removalDialog}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -599,10 +598,12 @@ const SellerProductsPage: React.FC = () => {
                           {product.is_active ? 'Unlist' : 'Relist'}
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDelete(product)}
-                          className="text-red-700 hover:text-red-900 hover:bg-red-100 text-xs px-2 py-1 rounded"
+                          disabled={removingProductId === product.id}
+                          className="text-red-700 hover:text-red-900 hover:bg-red-100 text-xs px-2 py-1 rounded disabled:opacity-50"
                         >
-                          Remove
+                          {removingProductId === product.id ? 'Removing…' : 'Remove'}
                         </button>
                         {rowFeedback[product.id] && (
                           <div className={`pt-1 text-xs ${rowFeedback[product.id] === 'Saved.' ? 'text-emerald-600' : 'text-amber-700'}`}>

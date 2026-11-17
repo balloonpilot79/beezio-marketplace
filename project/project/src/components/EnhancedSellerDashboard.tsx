@@ -32,7 +32,7 @@ import AccountPayoutDashboard from './AccountPayoutDashboard';
 import { normalizeProductImages } from '../utils/imageHelpers';
 import { getBuyerFacingProductPrice } from '../utils/buyerPrice';
 import { resolveProfileIdForUser } from '../utils/resolveProfileId';
-import { archiveProductById } from '../utils/archiveProduct';
+import { useProductRemoval } from '../hooks/useProductRemoval';
 import { resolveAffiliateCommission } from '../utils/pricing';
 
 export type SellerDashboardTab =
@@ -236,7 +236,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
   const [resolvedAffiliateId, setResolvedAffiliateId] = useState<string>('');
   const [copiedAffiliateProductId, setCopiedAffiliateProductId] = useState<string>('');
   const [unlistingAffiliateProductId, setUnlistingAffiliateProductId] = useState<string>('');
-  const [removingSellerProductId, setRemovingSellerProductId] = useState<string>('');
+  const { requestRemoval, removalDialog, removingProductId: removingSellerProductId } = useProductRemoval();
   const [storePath, setStorePath] = useState<string>('/stores');
   const [affiliateSalePulse, setAffiliateSalePulse] = useState<AffiliateSalePulse[]>([]);
   const [influencerProgress, setInfluencerProgress] = useState<InfluencerProgressSummary>({
@@ -791,23 +791,15 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
     }
   };
 
-  const removeSellerProduct = async (productId: string) => {
+  const removeSellerProduct = (productId: string) => {
     if (!productId) return;
-    const confirmed = window.confirm('Remove this product from your active dashboard and marketplace listings? Promoter links and payout history will be kept.');
-    if (!confirmed) return;
-
-    try {
-      setRemovingSellerProductId(productId);
-      const product = products.find((entry) => entry.id === productId);
-      const sellerId = String(product?.seller_id || profile?.id || user?.id || '').trim() || undefined;
-      await archiveProductById({ productId, sellerId });
-      setProducts((prev) => prev.filter((entry) => entry.id !== productId));
-    } catch (err) {
-      console.warn('[EnhancedSellerDashboard] seller product remove failed:', err);
-      window.alert('Could not remove this product. Please try again.');
-    } finally {
-      setRemovingSellerProductId('');
-    }
+    const product = products.find((entry) => entry.id === productId);
+    requestRemoval({
+      productId,
+      title: product?.title || 'Untitled product',
+      sellerId: String(product?.seller_id || profile?.id || user?.id || '').trim() || undefined,
+      onRemoved: () => setProducts((prev) => prev.filter((entry) => entry.id !== productId)),
+    });
   };
 
   const stats = {
@@ -1138,6 +1130,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10">
+      {removalDialog}
       {!hideInternalTabs && (
         <div className="sticky top-16 z-40 -mx-4 border-b border-gray-200 bg-white/95 px-4 backdrop-blur sm:-mx-6 sm:px-6">
           <div className="py-3">
