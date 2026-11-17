@@ -1,3 +1,4 @@
+import { uploadPrivateDigitalFile } from '../services/digitalUpload';
 import type { PickupMode } from '../../shared/vendorPickup';
 import { ITEM_CONDITIONS, MERCHANDISE_TYPES } from '../../shared/vendorListing';
 import { validateProductTerms } from '../utils/productTerms';
@@ -257,6 +258,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [digitalUploadLoading, setDigitalUploadLoading] = useState(false);
+  const [digitalUploadProgress,setDigitalUploadProgress]=useState('');
   const [showStickyAlert, setShowStickyAlert] = useState(false);
   const [pricingBreakdown, setPricingBreakdown] = useState<PricingBreakdown | null>(null);
   const [pricingSeed, setPricingSeed] = useState<{
@@ -925,18 +927,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     }));
   };
 
-  const sanitizeStorageFileName = (value: string) => {
-    const trimmed = String(value || '').trim();
-    const extensionIndex = trimmed.lastIndexOf('.');
-    const extension = extensionIndex > 0 ? trimmed.slice(extensionIndex).replace(/[^a-zA-Z0-9.]/g, '') : '';
-    const baseName = (extensionIndex > 0 ? trimmed.slice(0, extensionIndex) : trimmed)
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 80) || 'download';
-    return `${baseName}${extension.slice(0, 12)}`;
-  };
-
   const uploadDigitalFile = async (file: File) => {
     if (!user?.id) {
       setError('Sign in again before uploading a digital file.');
@@ -946,41 +936,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     try {
       setDigitalUploadLoading(true);
       setError(null);
-      if (file.size > DIGITAL_MAX_BYTES) throw new Error('Maximum digital file size is 3 MB.');
+      if (file.size > DIGITAL_MAX_BYTES) throw new Error('Maximum digital file size is 50 MB.');
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token;
       if (!token) throw new Error('Sign in again before uploading a digital file.');
 
-      const fileData = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = String(reader.result || '');
-          const base64 = result.includes(',') ? result.split(',').pop() || '' : result;
-          resolve(base64);
-        };
-        reader.onerror = () => reject(new Error('Could not read the selected file.'));
-        reader.readAsDataURL(file);
-      });
-
-      const safeFilename = sanitizeStorageFileName(file.name);
-      const path = `${user.id}/${Date.now()}-${safeFilename}`;
-      const response = await fetch('/.netlify/functions/upload-digital-product-file', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          path,
-          filename: file.name,
-          contentType: file.type || 'application/octet-stream',
-          fileData,
-        }),
-      });
-      const payload = await response.json().catch(() => ({} as any));
-      if (!response.ok) {
-        throw new Error(String((payload as any)?.error || 'Digital file upload failed.'));
-      }
+      const payload = await uploadPrivateDigitalFile(file,token,setDigitalUploadProgress);
 
       setFormData((prev) => ({
         ...prev,
@@ -1002,6 +963,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       setError(err?.message || 'Digital file upload failed.');
     } finally {
       setDigitalUploadLoading(false);
+      setDigitalUploadProgress('');
     }
   };
 
@@ -2708,7 +2670,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                     Digital Delivery File
                   </label>
                   <p className="mb-3 text-sm text-gray-600">
-                    Upload the exact file the buyer should receive. It is stored in private storage and released only through signed download links after payment.
+                    Upload the exact file the buyer should receive. It uploads directly to private storage with progress and automatic retries, then is checked before it can be sold.
                   </p>
                   <input
                     type="file"
@@ -2722,8 +2684,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                     className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900"
                   />
                   <div className="mt-2 text-xs text-gray-600">
-                    Private upload limit: 3 MB. PDF, PNG, JPG, TXT, CSV, ZIP, DOCX, XLSX, PPTX. Archives are checked; executable files, macros, nested archives, and active content are blocked.
+                    Private upload limit: 50 MB. PDF, PNG, JPG, TXT, CSV, ZIP, DOCX, XLSX, PPTX. Archives are checked; executable files, macros, nested archives, and active content are blocked.
                   </div>
+                  {digitalUploadLoading && <p className="mt-2 text-sm font-semibold text-amber-800" role="status">{digitalUploadProgress || 'Preparing private upload…'}</p>}
                   {formData.digital_download_path ? (
                     <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
                       <div className="font-semibold">{formData.digital_download_filename || 'Digital file uploaded'}</div>

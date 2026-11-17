@@ -1,7 +1,7 @@
 import { randomUUID, createHash } from 'node:crypto';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { validateDigitalFile } from './_lib/digital-file-validation';
-import { DIGITAL_MAX_BYTES } from '../../shared/digitalPolicy';
+import { DIGITAL_INLINE_MAX_BYTES } from '../../shared/digitalPolicy';
 export default async (req: Request) => {
   const reply = (status:number, body:any) => Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
   if (req.method !== 'POST') return reply(405,{error:'Method not allowed'});
@@ -13,7 +13,7 @@ export default async (req: Request) => {
   if (!auth.user.email_confirmed_at) return reply(403,{error:'Verify your email before uploading.'});
   try {
     const raw = await req.text();
-    if (raw.length > DIGITAL_MAX_BYTES*1.4 + 2048) return reply(413,{error:'Maximum file size is 3 MB.'});
+    if (raw.length > DIGITAL_INLINE_MAX_BYTES*1.4 + 2048) return reply(413,{error:'Files over 3 MB must use the direct private uploader.'});
     const body = JSON.parse(raw);
     const filename = String(body.filename || '');
     const encoded = String(body.fileData || '');

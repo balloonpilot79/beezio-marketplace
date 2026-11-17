@@ -2,7 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { createHash } from 'node:crypto';
 import { createSupabaseAdmin } from './_lib/supabase';
 import { json } from './_lib/http';
-import { DIGITAL_MAX_BYTES, DIGITAL_POLICY_VERSION, DIGITAL_RETURN_POLICY } from '../../shared/digitalPolicy';
+import { DIGITAL_MAX_BYTES, DIGITAL_INLINE_MAX_BYTES, DIGITAL_POLICY_VERSION, DIGITAL_RETURN_POLICY } from '../../shared/digitalPolicy';
 const reply = (status:number,body:any) => json(status,body,{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});
 export const handler: Handler = async event => {
   if (!['GET','POST'].includes(event.httpMethod)) return reply(405,{error:'Method not allowed'});
@@ -29,6 +29,17 @@ export const handler: Handler = async event => {
     if (!e) return reply(404,{error:'Download not found.'});
     if (e.access_status!=='active' || e.download_count>=e.download_limit) return reply(410,{error:'This download is unavailable or its download limit has been reached. Contact support if you need help.'});
     if (e.storage_bucket!=='digital-products-private' || e.file_size_bytes>DIGITAL_MAX_BYTES) return reply(503,{error:'Delivery file needs support review.'});
+    if(Number(e.file_size_bytes)>DIGITAL_INLINE_MAX_BYTES){
+      // Large, immutable files were fully checked before approval. Deliver them
+      // directly from private storage, avoiding Netlify's binary response cap.
+      const {data:info,error:infoError}=await db.storage.from(e.storage_bucket).info(e.storage_path);
+      if(infoError||!info||Number(info.size ?? info.metadata?.size)!==Number(e.file_size_bytes))return reply(503,{error:'Delivery file could not be verified. No download was consumed.'});
+      const {data:signed,error:signError}=await db.storage.from(e.storage_bucket).createSignedUrl(e.storage_path,30,{download:e.original_filename});
+      if(signError||!signed?.signedUrl)return reply(503,{error:'Unable to prepare private download. No download was consumed.'});
+      const {error:consumeError}=await db.rpc('consume_digital_download',{p_entitlement:e.id,p_buyer:auth.user.id,p_user_agent:event.headers['user-agent']||'',p_policy:body.policyVersion});
+      if(consumeError)return reply(409,{error:'Download access is unavailable. Check payment, dispute status, or remaining downloads.'});
+      return reply(200,{url:signed.signedUrl,filename:e.original_filename,expiresIn:30});
+    }
     const {data:file,error:fileError} = await db.storage.from(e.storage_bucket).download(e.storage_path);
     if (fileError || !file) return reply(503,{error:'File could not be retrieved. No download was consumed. Please retry.'});
     const bytes = Buffer.from(await file.arrayBuffer());

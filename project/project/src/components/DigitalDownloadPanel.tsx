@@ -81,11 +81,17 @@ const DigitalDownloadPanel: React.FC<DigitalDownloadPanelProps> = ({ orderId }) 
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload.error || 'Download failed');
       }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url),60000);
+      if((response.headers.get('content-type')||'').includes('application/json')){
+        const delivery=await response.json();
+        if(!delivery.url)throw new Error('Download link is missing.');
+        window.location.assign(delivery.url);
+      }else{
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url),60000);
+      }
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Download failed.');

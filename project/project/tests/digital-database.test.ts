@@ -19,6 +19,7 @@ beforeAll(async()=>{
  create table storage.objects(bucket_id text,name text);
  `);
  await db.exec(readFileSync('supabase/migrations/20261117080354_secure_digital_downloads.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20261117085253_large_private_digital_uploads.sql','utf8'));
  await db.exec(`select public.reserve_digital_upload('${seller}','${seller}/one.txt','one.txt','text/plain',5,'hash1'); insert into storage.objects values('digital-products-private','${seller}/one.txt');
  insert into products(id,seller_id,title,is_digital,digital_download_path,digital_download_limit) values('${seller}','${seller}','Download',true,'${seller}/one.txt',1);
  insert into orders(id,status,payment_status,digital_buyer_user_id,digital_policy_version,digital_policy_accepted_at) values('${buyer}','created','unpaid','${buyer}','2026-11-17',now());
@@ -29,7 +30,7 @@ afterAll(async()=>{await db?.close()});
 describe.sequential('digital delivery database lifecycle',()=>{
  it('keeps unpaid downloads pending and rejects access',async()=>{expect((await scalar('select access_status from digital_download_entitlements')).access_status).toBe('pending');await expect(consume(entitlement)).rejects.toThrow();});
  it('canonicalizes digital shipping to zero',async()=>{expect(await scalar('select requires_shipping,shipping_cost,track_inventory from products')).toEqual({requires_shipping:false,shipping_cost:'0',track_inventory:false});});
- it('cannot attach another seller file or an unvalidated path',async()=>{await expect(db.exec("update products set digital_download_path='somebody/secret.pdf' ")).rejects.toThrow(/owned/)});
+ it('cannot attach another seller file or an unvalidated path',async()=>{await expect(db.exec("update products set digital_download_path='somebody/secret.pdf' ")).rejects.toThrow(/owned|validation/)});
  it('does not activate on a paid status without finalized capture',async()=>{await db.exec("update orders set payment_status='paid',paid_at=now()");expect((await scalar('select access_status from digital_download_entitlements')).access_status).toBe('pending');});
  it('activates from finalized payment, including webhook path',async()=>{await db.exec("update orders set provider_capture_id='capture',payment_finalized_at=now()");expect((await scalar('select access_status from digital_download_entitlements')).access_status).toBe('active');});
  it('rejects another buyer',async()=>{await expect(consume(entitlement,other)).rejects.toThrow(/unavailable/)});
@@ -39,4 +40,25 @@ describe.sequential('digital delivery database lifecycle',()=>{
  it('refund revokes access',async()=>{await db.exec("update orders set status='refunded'");expect((await scalar('select access_status from digital_download_entitlements')).access_status).toBe('revoked');});
  it('does not let anonymous or authenticated clients call service RPCs or read private records',async()=>{for(const role of ['anon','authenticated']){await db.exec(`set role ${role}`);await expect(consume(entitlement)).rejects.toThrow(/permission/);await expect(db.query('select * from digital_file_uploads')).rejects.toThrow(/permission/);await db.exec('reset role');}});
  it('leaves physical product/order inserts independent of digital delivery',async()=>{await db.exec(`insert into products(id,title,is_digital,shipping_cost) values('${other}','Physical',false,8);insert into orders(id) values('${other}');insert into order_items values('${other}','${other}','${other}',null)`);expect((await scalar(`select shipping_cost from products where id='${other}'`)).shipping_cost).toBe('8');expect((await scalar('select count(*) n from digital_download_entitlements')).n).toBe(1);});
+ it('reserves 50 MB directly, blocks pending publication and only allows its owner to claim validation',async()=>{
+  const row=await scalar(`select public.begin_digital_upload('${seller}','${seller}/final-large.txt','${seller}/quarantine-large.txt','large.txt','text/plain',52428800) id`);
+  await db.exec(`insert into storage.objects values('digital-products-private','${seller}/final-large.txt')`);
+  await expect(db.exec(`insert into products(id,seller_id,title,is_digital,digital_download_path) values('44444444-4444-4444-8444-444444444444','${seller}','Pending file',true,'${seller}/final-large.txt')`)).rejects.toThrow(/validation/);
+  expect((await db.query(`select * from public.claim_digital_upload('${row.id}','${buyer}')`)).rows).toHaveLength(0);
+  expect((await db.query(`select * from public.claim_digital_upload('${row.id}','${seller}')`)).rows).toHaveLength(1);
+  expect((await db.query(`select * from public.claim_digital_upload('${row.id}','${seller}')`)).rows).toHaveLength(0);
+  await db.exec(`update digital_file_uploads set validation_status='approved',sha256='large-hash' where upload_id='${row.id}'`);
+  await db.exec(`insert into products(id,seller_id,title,is_digital,digital_download_path) values('44444444-4444-4444-8444-444444444444','${seller}','Approved large file',true,'${seller}/final-large.txt')`);
+  expect((await scalar("select digital_download_file_size n from products where id='44444444-4444-4444-8444-444444444444'")).n).toBe(52428800);
+ });
+ it('rejects oversized direct reservations and crossed seller paths',async()=>{
+  await expect(db.query(`select public.begin_digital_upload('${seller}','${seller}/x','${seller}/q','x.txt','text/plain',52428801)`)).rejects.toThrow(/50 MB/);
+  await expect(db.query(`select public.begin_digital_upload('${seller}','${buyer}/x','${seller}/q','x.txt','text/plain',4)`)).rejects.toThrow(/path/);
+ });
+ it('keeps direct-upload RPCs service-only',async()=>{
+  await db.exec('set role authenticated');
+  await expect(db.query(`select public.begin_digital_upload('${seller}','${seller}/x','${seller}/q','x.txt','text/plain',4)`)).rejects.toThrow(/permission/);
+  await db.exec('reset role');
+ });
+
 });
