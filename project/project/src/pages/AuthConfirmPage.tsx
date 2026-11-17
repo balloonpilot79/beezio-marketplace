@@ -1,15 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { sendWelcomeEmail } from '../services/transactionalEmailClient';
-import { confirmSignupEmail, sendSignupVerificationEmail } from '../services/signupVerificationClient';
+import { confirmSignupEmail } from '../services/signupVerificationClient';
 
 const PENDING_SIGNUP_KEY = 'beezio-pending-signup-bootstrap';
 const VERIFY_STATUS_POLL_MS = 3000;
 
-type ConfirmState = 'pending' | 'checking' | 'success' | 'error';
+type ConfirmState = 'ready' | 'pending' | 'checking' | 'success' | 'error';
 
 const isBusinessSignupPayload = (payload: any) =>
   Boolean(payload?.bundleBusinessRoles) || String(payload?.role || '').trim().toLowerCase() !== 'buyer';
@@ -30,6 +30,9 @@ const AuthConfirmPage: React.FC = () => {
   const [pendingEmail, setPendingEmail] = useState('');
   const [resendBusy, setResendBusy] = useState(false);
   const [deliveryMessage, setDeliveryMessage] = useState('');
+  const [confirmationRequested, setConfirmationRequested] = useState(false);
+  // A single-use token must only be exchanged once, including effect reruns.
+  const confirmationRequest = useRef<ReturnType<typeof supabase.auth.verifyOtp> | null>(null);
 
   const authParams = useMemo(() => {
     if (typeof window === 'undefined') return new URLSearchParams();
@@ -109,6 +112,7 @@ const AuthConfirmPage: React.FC = () => {
       String(authParams.get('email') || storedPayload?.email || user?.email || '').trim().toLowerCase();
     const flow = String(authParams.get('flow') || '').trim().toLowerCase();
     const verifyToken = String(authParams.get('verify_token') || '').trim();
+    const tokenHash = String(authParams.get('token_hash') || '').trim();
 
     if (resolvedPendingEmail) {
       setPendingEmail(resolvedPendingEmail);
@@ -217,6 +221,25 @@ const AuthConfirmPage: React.FC = () => {
       }
 
       try {
+        if (tokenHash) {
+          if (!confirmationRequested) {
+            setState('ready');
+            setMessage('Tap Confirm my email to activate your Beezio account.');
+            return;
+          }
+          setState('checking');
+          setMessage('Confirming your email...');
+          confirmationRequest.current ??= supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
+          const { data, error } = await confirmationRequest.current;
+          if (!active) return;
+          if (error || !data.user?.email_confirmed_at) {
+            finalizeError(error?.message || 'This link could not be confirmed. Request a fresh email below.');
+            return;
+          }
+          await completeConfirmedSignup(data.user);
+          return;
+        }
+
         const code = String(authParams.get('code') || '').trim();
         const hasTokenPayload =
           Boolean(authParams.get('token_hash')) ||
@@ -312,7 +335,7 @@ const AuthConfirmPage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [authParams, pendingUserId, resendVerificationEmail, storedPayload, user?.email]);
+  }, [authParams, confirmationRequested, pendingUserId, resendVerificationEmail, storedPayload, user?.email]);
 
   useEffect(() => {
     if (state !== 'pending' || !pendingUserId || !pendingEmail) return;
@@ -381,7 +404,9 @@ const AuthConfirmPage: React.FC = () => {
         </div>
 
         <h1 className="mb-3 text-center text-3xl font-bold text-gray-900">
-          {state === 'pending'
+          {state === 'ready'
+            ? 'Confirm your email'
+            : state === 'pending'
             ? 'Check your email'
             : state === 'checking'
             ? 'Confirming your account'
@@ -392,39 +417,37 @@ const AuthConfirmPage: React.FC = () => {
 
         <p className="mb-6 text-center text-gray-700">{message}</p>
 
-        {state === 'pending' && pendingEmail && (
-          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <p className="font-medium">{deliveryMessage || `Check ${pendingEmail} for your verification email.`}</p>
-            <p className="mt-1">Open that message and click the confirmation link to finish your signup.</p>
-            <button
-              type="button"
-              onClick={async () => {
-                setResendBusy(true);
-                try {
-                  if (pendingUserId) {
-                    await sendSignupVerificationEmail({
-                      userId: pendingUserId,
-                      email: pendingEmail,
-                      fullName: String(storedPayload?.fullName || '').trim(),
-                    });
-                  } else {
-                    await resendVerificationEmail(pendingEmail);
-                  }
-                  setDeliveryMessage(`Verification email sent again to ${pendingEmail}.`);
-                  setMessage('Thank you for signing up. Please verify your email to activate your Beezio account.');
-                } catch (err: any) {
-                  setState('error');
-                  setMessage(err?.message || 'Failed to resend verification email.');
-                } finally {
-                  setResendBusy(false);
-                }
-              }}
-              disabled={resendBusy}
-              className="mt-3 font-medium text-amber-700 underline hover:text-amber-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
+        {state === 'ready' && (
+          <button type="button" onClick={() => setConfirmationRequested(true)}
+            className="mb-6 w-full rounded-lg bg-amber-500 px-5 py-3 font-semibold text-black hover:bg-amber-600">
+            Confirm my email
+          </button>
+        )}
+
+        {(state === 'pending' || state === 'error') && (
+          <form className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              setResendBusy(true);
+              try {
+                await resendVerificationEmail(pendingEmail.trim());
+                setDeliveryMessage(`A fresh verification email was requested for ${pendingEmail.trim()}. Open the newest message. If this account is already confirmed, go to sign in.`);
+              } catch (err: any) {
+                setDeliveryMessage(err?.message || 'Failed to resend verification email.');
+              } finally {
+                setResendBusy(false);
+              }
+            }}>
+            <p className="font-medium">{deliveryMessage || 'A link can only be used once. If you already confirmed your email, go to sign in. Otherwise request a fresh email below.'}</p>
+            <label htmlFor="verification-email" className="mt-3 block font-medium">Signup email address</label>
+            <input id="verification-email" type="email" required value={pendingEmail}
+              onChange={(event) => setPendingEmail(event.target.value)} autoComplete="email"
+              className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900" />
+            <button type="submit" disabled={resendBusy}
+              className="mt-3 font-medium text-amber-700 underline hover:text-amber-800 disabled:cursor-not-allowed disabled:opacity-60">
               {resendBusy ? 'Sending...' : 'Resend verification email'}
             </button>
-          </div>
+          </form>
         )}
 
         {state === 'success' && (
@@ -434,7 +457,7 @@ const AuthConfirmPage: React.FC = () => {
         )}
 
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-          {state !== 'checking' && state !== 'pending' && (
+          {state !== 'ready' && state !== 'checking' && state !== 'pending' && (
             <button
               type="button"
               onClick={() => navigate(primaryTarget, { replace: true })}
