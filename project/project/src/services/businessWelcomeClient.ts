@@ -1,0 +1,18 @@
+/** Retry transient delivery failures without holding up signup or dashboard loading. */
+export async function requestBusinessWelcome(accessToken: string): Promise<boolean> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch('/.netlify/functions/signup-welcome', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (response.ok) return true;
+      // Authentication failures need a fresh session rather than immediate retries.
+      if (response.status < 500 && response.status !== 429) return false;
+    } catch { /* A brief network interruption can be retried. */ }
+    if (attempt < 2) await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1500));
+  }
+  console.warn('[AuthContext] Welcome tutorial delivery pending; will retry on next visit');
+  return false;
+}

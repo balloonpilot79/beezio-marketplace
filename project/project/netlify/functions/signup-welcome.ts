@@ -13,7 +13,8 @@ export const handler: Handler = async (event) => {
     const { supabaseAdmin, authUser } = await findSupabaseAdminForUser(data.user.id, data.user.email);
     if (!supabaseAdmin || !authUser) return json(401, { error: 'Account not found' });
     const result = await sendBusinessWelcome(supabaseAdmin, authUser);
-    return json(result.reason === 'delivery_pending' ? 502 : 200, result);
+    const skipped = ['unconfirmed', 'before_tutorial_launch', 'already_sent', 'not_business'].includes(result.reason || '');
+    return json(result.sent || skipped ? 200 : 502, result);
   } catch {
     return json(500, { error: 'Welcome tutorial delivery unavailable' });
   }

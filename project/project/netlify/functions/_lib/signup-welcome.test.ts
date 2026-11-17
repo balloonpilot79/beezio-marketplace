@@ -30,4 +30,13 @@ describe('signup welcome endpoint', () => {
     expect(findSupabaseAdminForUser).toHaveBeenCalledWith(user.id, user.email);
     expect(sendBusinessWelcome).toHaveBeenCalledWith(db, user);
   });
+  it('returns a retryable error when the email provider rejects delivery', async () => {
+    const user = { id: 'real-user', email: 'real@example.com' };
+    vi.mocked(createSupabaseAuthed).mockReturnValue({ auth: { getUser: async () => ({ data: { user }, error: null }) } } as any);
+    vi.mocked(findSupabaseAdminForUser).mockResolvedValue({ supabaseAdmin: {}, authUser: user } as any);
+    vi.mocked(sendBusinessWelcome).mockResolvedValue({ sent: false, reason: 'resend_error_503' });
+    const result: any = await handler({ httpMethod: 'POST', headers: { authorization: 'Bearer valid' } } as any, {} as any, () => {});
+    expect(result.statusCode).toBe(502);
+  });
+
 });

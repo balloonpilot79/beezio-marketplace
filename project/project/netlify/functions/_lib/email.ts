@@ -29,7 +29,7 @@ const escapeHtml = (value: unknown) =>
 const money = (value: number, currency = 'USD') =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number.isFinite(value) ? value : 0);
 
-export async function sendTransactionalEmail(payload: EmailPayload): Promise<{ sent: boolean; reason?: string }> {
+export async function sendTransactionalEmail(payload: EmailPayload): Promise<{ sent: boolean; reason?: string; providerId?: string }> {
   const to = String(payload.to || '').trim();
   if (!to || !to.includes('@')) return { sent: false, reason: 'invalid_recipient' };
 
@@ -59,7 +59,8 @@ export async function sendTransactionalEmail(payload: EmailPayload): Promise<{ s
       return { sent: false, reason: `resend_error_${res.status}:${body.slice(0, 200)}` };
     }
 
-    return { sent: true };
+    const accepted = await res.json() as { id?: string };
+    return { sent: true, providerId: accepted.id };
   }
 
   return { sent: false, reason: 'unsupported_provider' };

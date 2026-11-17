@@ -19,18 +19,22 @@ export function buildBusinessWelcomeEmail(name: string) {
   };
 }
 
-/** One onboarding message per new, verified business account, even across callback retries. */
-export async function sendBusinessWelcome(db: any, user: any): Promise<{ sent: boolean; reason?: string }> {
+// Earlier accounts predate the visual tutorial rollout. Failed onboarding for
+// accounts created since launch remains eligible on later sign-ins.
+export const BUSINESS_WELCOME_LAUNCHED_AT = Date.parse('2026-11-13T00:00:00Z');
+
+/** One onboarding message per verified business account, even across callback retries. */
+export async function sendBusinessWelcome(db: any, user: any): Promise<{ sent: boolean; reason?: string; providerId?: string }> {
   try {
-    if (!user?.email_confirmed_at || !user.email) return { sent: false, reason: 'unconfirmed' };
-    const age = Date.now() - new Date(user.created_at).getTime();
-    if (!Number.isFinite(age) || age < 0 || age >= 24 * 60 * 60 * 1000) {
-      return { sent: false, reason: 'not_new_signup' };
-    }
-    // Refresh trusted metadata: the confirmation and bootstrap calls can hold different snapshots.
+    // Refresh first: caller snapshots may predate confirmation or a successful send.
     const fresh = await db.auth.admin.getUserById(user.id);
     if (fresh.error || !fresh.data?.user) return { sent: false, reason: 'user_lookup_failed' };
     user = fresh.data.user;
+    if (!user?.email_confirmed_at || !user.email) return { sent: false, reason: 'unconfirmed' };
+    const createdAt = Date.parse(user.created_at);
+    if (!Number.isFinite(createdAt) || createdAt > Date.now() || createdAt < BUSINESS_WELCOME_LAUNCHED_AT) {
+      return { sent: false, reason: 'before_tutorial_launch' };
+    }
     if (user.app_metadata?.business_welcome_sent_at) return { sent: false, reason: 'already_sent' };
     const roles = await db.from('user_roles').select('role').eq('user_id', user.id).eq('is_active', true);
     if (roles.error) return { sent: false, reason: 'role_lookup_failed' };
@@ -42,16 +46,28 @@ export async function sendBusinessWelcome(db: any, user: any): Promise<{ sent: b
       to: user.email, ...template,
       from: 'Beezio Welcome <welcome@beezio.co>',
       replyTo: 'support@beezio.co',
-      // Resend deduplicates concurrent requests for 24h, matching the signup window above.
+      // Resend deduplicates concurrent attempts; trusted metadata prevents later duplicates.
       idempotencyKey: `business-welcome/${user.id}`,
       timeoutMs: 10000,
     });
+    const logged = await db.from('email_notifications').insert({
+      recipient_email: user.email,
+      recipient_type: roles.data.some((row: any) => row.role === 'seller') ? 'seller'
+        : roles.data.some((row: any) => row.role === 'affiliate') ? 'affiliate' : 'influencer',
+      notification_type: 'business_welcome',
+      status: result.sent ? 'sent' : 'failed',
+      sent_at: result.sent ? new Date().toISOString() : null,
+      error_message: result.sent ? null : result.reason || 'delivery_failed',
+      email_data: { user_id: user.id, subject: template.subject, version: 2,
+        provider: 'resend', provider_id: result.providerId || null },
+    });
+    if (logged.error) console.warn('[business-welcome] email history failed', { userId: user.id });
     if (!result.sent) {
       console.warn('[business-welcome] delivery failed', { userId: user.id, reason: result.reason });
       return result;
     }
     const marked = await db.auth.admin.updateUserById(user.id, {
-      app_metadata: { ...user.app_metadata, business_welcome_sent_at: new Date().toISOString(), business_welcome_version: 2 },
+      app_metadata: { ...user.app_metadata, business_welcome_sent_at: new Date().toISOString(), business_welcome_version: 2, business_welcome_provider_id: result.providerId },
     });
     if (marked.error) console.warn('[business-welcome] delivery marker failed', { userId: user.id });
     console.info('[business-welcome] tutorial accepted by email provider', { userId: user.id });

@@ -1,3 +1,4 @@
+import { requestBusinessWelcome } from '../services/businessWelcomeClient';
 import { deferredAuthListener } from '../utils/deferredAuthListener';
 import {
   TAX_COMPLIANCE_VERSION,
@@ -814,6 +815,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfile((prev: any) => (prev ? { ...prev, primary_role: stored } : prev));
   }, [currentRole, getStoredRole, user, userRoles]);
 
+  const welcomeAttemptedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!session?.user) { welcomeAttemptedRef.current = null; return; }
+    if (!session.access_token || !isBeezioEmailVerified(session.user)
+      || session.user.app_metadata?.business_welcome_sent_at
+      || Date.parse(session.user.created_at) < Date.parse('2026-11-13T00:00:00Z')
+      || !userRoles.some(role => ['seller', 'affiliate', 'influencer'].includes(role))
+      || welcomeAttemptedRef.current === session.user.id) return;
+    welcomeAttemptedRef.current = session.user.id;
+    void requestBusinessWelcome(session.access_token);
+  }, [session, userRoles]);
+
   const signUp = async (email: string, password: string, userData: any) => {
     try {
       console.log('[AuthContext] Starting signUp for:', email);
@@ -1104,16 +1117,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.session?.access_token) {
-        // Covers confirmed signups that return a session without a confirmation callback.
-        try {
-          const welcomeResponse = await fetch('/.netlify/functions/signup-welcome', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${data.session.access_token}` },
-          });
-          if (!welcomeResponse.ok) console.warn('[AuthContext] Welcome tutorial delivery pending');
-        } catch (welcomeError) {
-          console.warn('[AuthContext] Welcome tutorial delivery pending', welcomeError);
-        }
+        // Also cover confirmation-free signup; provider idempotency protects overlap with session recovery.
+        void requestBusinessWelcome(data.session.access_token);
       }
       return data;
     } catch (error) {

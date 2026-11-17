@@ -17,7 +17,7 @@ function fixture(roles = ['seller', 'affiliate', 'influencer']) {
   });
   const db: any = {
     auth: { admin: { getUserById: vi.fn(async () => ({ data: { user }, error: null })), updateUserById } },
-    from: vi.fn(() => query),
+    from: vi.fn(() => ({ ...query, insert: vi.fn(async () => ({ error: null })) })),
   };
   return { user, db, updateUserById };
 }
@@ -49,14 +49,36 @@ describe('automatic business welcome tutorial', () => {
     expect(await sendBusinessWelcome(db, user)).toEqual({ sent: false, reason: 'not_business' });
     expect(sendTransactionalEmail).not.toHaveBeenCalled();
   });
-  it('does not email unconfirmed or older accounts', async () => {
+  it('does not email unconfirmed accounts or accounts predating the tutorial', async () => {
     const { user, db } = fixture();
     user.email_confirmed_at = null;
     expect((await sendBusinessWelcome(db, user)).reason).toBe('unconfirmed');
     user.email_confirmed_at = new Date().toISOString();
-    user.created_at = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
-    expect((await sendBusinessWelcome(db, user)).reason).toBe('not_new_signup');
+    user.created_at = '2026-11-12T12:00:00Z';
+    expect((await sendBusinessWelcome(db, user)).reason).toBe('before_tutorial_launch');
     expect(sendTransactionalEmail).not.toHaveBeenCalled();
+  });
+  it('recovers a missed welcome more than 24 hours after registration', async () => {
+    const { user, db } = fixture();
+    user.created_at = '2026-11-14T07:25:51Z';
+    expect((await sendBusinessWelcome(db, user)).sent).toBe(true);
+  });
+  it('records provider acceptance and failures in the production email history schema', async () => {
+    const { user, db } = fixture();
+    const insert = vi.fn(async () => ({ error: null }));
+    const base = db.from;
+    db.from = vi.fn((table) => table === 'email_notifications' ? { insert } : base(table));
+    vi.mocked(sendTransactionalEmail).mockResolvedValueOnce({ sent: false, reason: 'provider_error' });
+    await sendBusinessWelcome(db, user);
+    expect(insert).toHaveBeenLastCalledWith(expect.objectContaining({
+      notification_type: 'business_welcome', status: 'failed', sent_at: null, error_message: 'provider_error',
+    }));
+    vi.mocked(sendTransactionalEmail).mockResolvedValueOnce({ sent: true, providerId: 'provider-123' });
+    await sendBusinessWelcome(db, user);
+    expect(insert).toHaveBeenLastCalledWith(expect.objectContaining({
+      status: 'sent', email_data: expect.objectContaining({ provider_id: 'provider-123' }),
+    }));
+    expect(user.app_metadata.business_welcome_provider_id).toBe('provider-123');
   });
   it('allows a failed delivery to retry without marking it sent', async () => {
     const { user, db, updateUserById } = fixture();
