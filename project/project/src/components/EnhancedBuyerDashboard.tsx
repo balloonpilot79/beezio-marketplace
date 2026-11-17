@@ -726,6 +726,7 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
             </div>
 
             <div className="space-y-4">
+              <DigitalDownloadPanel />
               {purchases.map((purchase) => (
                 <div key={purchase.id} className="border border-gray-200 rounded-lg p-6">
                   <div className="flex items-start justify-between mb-4">

@@ -1,3 +1,4 @@
+import { DIGITAL_RETURN_POLICY } from '../../shared/digitalPolicy';
 import React from 'react';
 import PublicLayout from '../components/layout/PublicLayout';
 
@@ -10,6 +11,7 @@ const ReturnsPage: React.FC = () => {
           <p className="text-gray-600">Our goal is to make returns clear and fair for buyers and sellers.</p>
         </header>
 
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-gray-900"><h2 className="mb-2 font-bold">Digital downloads</h2><p>{DIGITAL_RETURN_POLICY}</p></section>
         <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4 text-gray-700 text-sm">
           <p>
             Request a return within 14 days of delivery. Check the product page for clearly disclosed exclusions and conditions before purchasing.

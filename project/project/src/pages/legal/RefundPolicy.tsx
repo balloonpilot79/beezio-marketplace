@@ -1,8 +1,9 @@
+import { DIGITAL_RETURN_POLICY } from '../../../shared/digitalPolicy';
 import React from 'react';
 import LegalPageLayout from './LegalPageLayout';
 
 const RefundPolicy: React.FC = () => (
-  <LegalPageLayout title="Refund & Returns Policy" updated="June 13, 2026">
+  <LegalPageLayout title="Refund & Returns Policy" updated="November 17, 2026">
     <section>
       <h2 className="text-xl font-semibold text-gray-900">1. Who Handles Returns</h2>
       <p>
@@ -20,9 +21,7 @@ const RefundPolicy: React.FC = () => (
     <section>
       <h2 className="text-xl font-semibold text-gray-900">3. Digital Products</h2>
       <p>
-        Digital downloads are not refundable after the file has been downloaded except where the file is corrupted,
-        inaccessible, or materially different from the listing. Buyers must contact the seller promptly if the file
-        delivered is incorrect or unusable.
+        {DIGITAL_RETURN_POLICY}
       </p>
     </section>
     <section>
