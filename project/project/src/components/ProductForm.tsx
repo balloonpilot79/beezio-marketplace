@@ -632,6 +632,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [selectedStorefrontIds, setSelectedStorefrontIds] = useState<string[]>([]);
   const [storefrontsLoading, setStorefrontsLoading] = useState(false);
   const digitalCategoryId = categories.find((category) => isDigitalCategoryOption(category))?.id || DIGITAL_CATEGORY_FALLBACK.id;
+  // Digital listings may store only a category name in older database schemas.
+  const selectedCategoryId = formData.is_digital ? digitalCategoryId : formData.category_id;
 
   useEffect(() => {
     let cancelled = false;
@@ -1226,7 +1228,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       abortSubmit('Please add a product description');
       return;
     }
-    if (!formData.category_id) {
+    if (!selectedCategoryId) {
       abortSubmit('Please select a category');
       return;
     }
@@ -1319,7 +1321,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
 
-    const categorySelection = String(formData.category_id || '').trim();
+    const categorySelection = String(selectedCategoryId || '').trim();
     const selectedCategoryName =
       categories.find((category) => String(category.id) === categorySelection)?.name || categorySelection || null;
 
@@ -2131,13 +2133,16 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             </label>
             <select
               name="category_id"
-              value={formData.category_id}
+              value={selectedCategoryId}
               onChange={handleInputChange}
               required
               disabled={formData.is_digital === true}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
             >
               <option value="">Select a category...</option>
+              {formData.is_digital && (
+                <option value={digitalCategoryId}>Digital Products</option>
+              )}
               {categories.filter((c) => !isDigitalCategoryOption(c)).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
