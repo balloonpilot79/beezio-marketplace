@@ -1137,6 +1137,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       abortSubmit('You must be logged in to create a product');
       return;
     }
+    if (digitalUploadLoading) {
+      abortSubmit('Wait for the private file upload and validation to finish before saving.');
+      return;
+    }
     if (buyerOnlyAccount) {
       abortSubmit('Customer accounts can view purchases in the customer dashboard. Open a Beezio business account before creating products.');
       return;
@@ -1824,14 +1828,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                 <button
                   onClick={() => handleSubmit(undefined, true)}
-                  disabled={loading}
+                  disabled={loading || digitalUploadLoading}
                   className="w-full bg-white border border-gray-300 text-gray-900 px-5 py-2.5 rounded-lg font-semibold hover:bg-gray-50 disabled:bg-gray-200 transition-all sm:w-auto"
                 >
                   {loading ? 'Saving...' : 'Save & Add Another'}
                 </button>
                 <button
                   onClick={() => handleSubmit()}
-                  disabled={loading}
+                  disabled={loading || digitalUploadLoading}
                   className="w-full bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200 sm:w-auto"
                 >
                   {loading ? 'Saving...' : editMode ? 'Update Product' : 'Save Product'}
@@ -2850,7 +2854,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
           <div className="pt-4">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || digitalUploadLoading}
               className="w-full bg-black text-white rounded-lg py-3 font-semibold shadow-md hover:shadow-lg hover:bg-gray-800 disabled:bg-gray-400 transition-all"
             >
               {loading ? 'Saving...' : editMode ? 'Update Product' : 'Add Product'}
