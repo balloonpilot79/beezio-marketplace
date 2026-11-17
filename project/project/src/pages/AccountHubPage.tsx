@@ -1,3 +1,4 @@
+import AccountInviterCard from '../components/AccountInviterCard';
 import React, { useMemo } from 'react';
 import { ArrowRight, Briefcase, ShoppingBag } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
@@ -37,6 +38,7 @@ const AccountHubPage: React.FC = () => {
           Use this business login to sell, promote, refer, and shop.
         </p>
 
+        <AccountInviterCard />
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">

@@ -1,3 +1,4 @@
+import AccountInviterCard from '../components/AccountInviterCard';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -73,6 +74,7 @@ const StorefrontBuyerAccountPage: React.FC = () => {
 
   return (
     <StorefrontBuyerShell branding={branding}>
+      <div className="mx-auto max-w-7xl px-4"><AccountInviterCard /></div>
       <EnhancedBuyerDashboard
         activeTabOverride={activeTab}
         onTabChange={(tab) => {

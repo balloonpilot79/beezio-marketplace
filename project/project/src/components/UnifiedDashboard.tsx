@@ -1,3 +1,4 @@
+import AccountInviterCard from './AccountInviterCard';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -401,6 +402,7 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
   return (
     <div className="dashboard-theme min-h-screen bg-gray-50">
       <main>
+        <div className="mx-auto max-w-7xl px-4 pt-2 sm:px-6 lg:px-8"><AccountInviterCard /></div>
         {businessOnly && (
           <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
             <div className="rounded-2xl border border-slate-200 bg-[#faf9f5] p-5">
