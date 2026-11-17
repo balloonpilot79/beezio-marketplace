@@ -2,6 +2,7 @@ import type { PickupMode } from '../../shared/vendorPickup';
 import { ITEM_CONDITIONS, MERCHANDISE_TYPES } from '../../shared/vendorListing';
 import { validateProductTerms } from '../utils/productTerms';
 import { getCombinedShippingPolicy } from '../../shared/combinedShipping';
+import { DIGITAL_ACCEPT, DIGITAL_MAX_BYTES, DIGITAL_RETURN_POLICY } from '../../shared/digitalPolicy';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
@@ -92,7 +93,7 @@ const isDigitalCategoryOption = (category: { id?: string; name?: string }) => {
 };
 
 const DIGITAL_RETURN_POLICY_DEFAULT =
-  'No refunds are available after a digital file is downloaded unless the file is corrupted, inaccessible, or materially different from the listing.';
+  DIGITAL_RETURN_POLICY;
 
 const DIGITAL_CATEGORY_FALLBACK = { id: 'digital-products', name: 'Digital Products' };
 
@@ -296,7 +297,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     digital_download_filename: (product as any)?.digital_download_filename || '',
     digital_download_content_type: (product as any)?.digital_download_content_type || '',
     digital_download_file_size: Number((product as any)?.digital_download_file_size || 0) || 0,
-    digital_download_limit: Math.max(1, Number((product as any)?.digital_download_limit || 1)),
+    digital_download_limit: Math.max(1, Number((product as any)?.digital_download_limit || 5)),
     digital_download_instructions: (product as any)?.digital_download_instructions || '',
     digital_return_policy_notice: (product as any)?.digital_return_policy_notice || DIGITAL_RETURN_POLICY_DEFAULT,
   });
@@ -372,7 +373,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       digital_download_filename: '',
       digital_download_content_type: '',
       digital_download_file_size: 0,
-      digital_download_limit: 1,
+      digital_download_limit: 5,
       digital_download_instructions: '',
       digital_return_policy_notice: DIGITAL_RETURN_POLICY_DEFAULT,
     });
@@ -522,7 +523,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             digital_download_filename: data.digital_download_filename || '',
             digital_download_content_type: data.digital_download_content_type || '',
             digital_download_file_size: Number(data.digital_download_file_size || 0) || 0,
-            digital_download_limit: Math.max(1, Number((data as any).digital_download_limit || 1)),
+            digital_download_limit: Math.max(1, Number((data as any).digital_download_limit || 5)),
             digital_download_instructions: data.digital_download_instructions || '',
             digital_return_policy_notice: data.digital_return_policy_notice || DIGITAL_RETURN_POLICY_DEFAULT,
           });
@@ -919,7 +920,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       shipping_options: nextIsDigital
         ? []
         : normalizeShippingOptions(prev.shipping_options, Number(prev.shipping_price) || 0, true),
-      digital_download_limit: Math.max(1, Number((prev as any).digital_download_limit || 1)),
+      digital_download_limit: Math.max(1, Number((prev as any).digital_download_limit || 5)),
       digital_return_policy_notice: String((prev as any).digital_return_policy_notice || '').trim() || DIGITAL_RETURN_POLICY_DEFAULT,
     }));
   };
@@ -945,6 +946,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     try {
       setDigitalUploadLoading(true);
       setError(null);
+      if (file.size > DIGITAL_MAX_BYTES) throw new Error('Maximum digital file size is 3 MB.');
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token;
       if (!token) throw new Error('Sign in again before uploading a digital file.');
@@ -1173,10 +1175,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       abortSubmit('You must be logged in to create a product');
       return;
     }
-    if (formData.is_digital === true || isDigitalCategoryOption(categories.find((category) => category.id === formData.category_id) || { id: formData.category_id, name: formData.category_id })) {
-      abortSubmit('Digital products are not available during beta. Please list a physical product.');
-      return;
-    }
     if (buyerOnlyAccount) {
       abortSubmit('Customer accounts can view purchases in the customer dashboard. Open a Beezio business account before creating products.');
       return;
@@ -1232,7 +1230,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
     const affiliateEnabled = formData.affiliate_enabled !== false && pricingBreakdown.affiliateAmount > 0;
-    const listDirect = !affiliateEnabled && !formData.is_digital && directMarketplace;
+    const listDirect = !affiliateEnabled && directMarketplace;
     const effectivePickupMode = formData.is_digital ? 'shipping' : pickupMode;
     if (pickupEnabled && effectivePickupMode !== 'shipping' &&
       (!/^[A-Z]{2}$/.test(pickupState) || !/^\d{5}$/.test(pickupZip))) {
@@ -1476,7 +1474,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             digital_download_filename: isDigitalProduct ? (formData as any).digital_download_filename : null,
             digital_download_content_type: isDigitalProduct ? (formData as any).digital_download_content_type : null,
             digital_download_file_size: isDigitalProduct ? (formData as any).digital_download_file_size : null,
-            digital_download_limit: isDigitalProduct ? Math.max(1, Number((formData as any).digital_download_limit || 1)) : null,
+            digital_download_limit: isDigitalProduct ? Math.max(1, Number((formData as any).digital_download_limit || 5)) : null,
             digital_download_instructions: isDigitalProduct ? (formData as any).digital_download_instructions : null,
             digital_return_policy_notice: isDigitalProduct ? (formData as any).digital_return_policy_notice : null,
             affiliate_enabled: affiliateEnabled,
@@ -1617,7 +1615,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             digital_download_filename: isDigitalProduct ? (formData as any).digital_download_filename : null,
             digital_download_content_type: isDigitalProduct ? (formData as any).digital_download_content_type : null,
             digital_download_file_size: isDigitalProduct ? (formData as any).digital_download_file_size : null,
-            digital_download_limit: isDigitalProduct ? Math.max(1, Number((formData as any).digital_download_limit || 1)) : null,
+            digital_download_limit: isDigitalProduct ? Math.max(1, Number((formData as any).digital_download_limit || 5)) : null,
             digital_download_instructions: isDigitalProduct ? (formData as any).digital_download_instructions : null,
             digital_return_policy_notice: isDigitalProduct ? (formData as any).digital_return_policy_notice : null,
             affiliate_enabled: affiliateEnabled,
@@ -2153,6 +2151,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               >
                 <div className="font-semibold">Physical Product</div>
                 <div className="mt-1 text-sm text-gray-600">Ships to the buyer and uses fulfillment tracking.</div>
+              </button>
+              <button type="button" onClick={() => setProductType(true)} className={`rounded-xl border px-4 py-4 text-left ${formData.is_digital ? 'border-[#ffcb05] bg-amber-50' : 'border-gray-200 bg-white'}`}>
+                <div className="font-semibold text-gray-900">Digital Download</div>
+                <div className="mt-1 text-sm text-gray-600">Deliver a private file after verified payment. Standard Beezio fees and affiliate settings apply; no shipping.</div>
               </button>
             </div>
           </div>
@@ -2710,6 +2712,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   </p>
                   <input
                     type="file"
+                    accept={DIGITAL_ACCEPT}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) void uploadDigitalFile(file);
@@ -2719,7 +2722,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                     className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900"
                   />
                   <div className="mt-2 text-xs text-gray-600">
-                    Private upload limit: 25 MB per file. Accepted format depends on what you are selling.
+                    Private upload limit: 3 MB. PDF, PNG, JPG, TXT, CSV, ZIP, DOCX, XLSX, PPTX. Archives are checked; executable files, macros, nested archives, and active content are blocked.
                   </div>
                   {formData.digital_download_path ? (
                     <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
@@ -2765,6 +2768,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                     <label className="mb-2 block text-sm font-semibold text-gray-900">Digital refund policy notice</label>
                     <textarea
                       name="digital_return_policy_notice"
+                      readOnly
                       value={(formData as any).digital_return_policy_notice}
                       onChange={handleInputChange}
                       rows={3}

@@ -154,6 +154,12 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    if (orderId && disputeTypeInput === 'refund_request' && !isAdmin) {
+      const {data:access,error:accessError} = await supabaseAdmin.from('digital_download_entitlements').select('id').eq('order_id',orderId).eq('buyer_user_id',filerUserId).not('first_access_at','is',null).limit(1);
+      if (accessError && !String(accessError.message).includes('does not exist')) return json(503,{error:'Unable to check digital access. Please contact support.'});
+      if (access?.length) return json(400,{error:'Digital purchases are final after download access begins. For a corrupt, inaccessible, misdescribed, or unauthorized purchase, report that specific issue or contact support.'});
+    }
+
     if (orderId) {
       const { data: active } = await supabaseAdmin.from('disputes').select('id')
         .eq('order_id', orderId).in('status', ['open', 'investigating', 'awaiting_response'])

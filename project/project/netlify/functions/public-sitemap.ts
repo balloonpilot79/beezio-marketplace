@@ -20,7 +20,7 @@ const handler: Handler = async () => {
         .range(offset, offset + pageSize - 1);
       if (error) throw error;
       for (const product of data || []) {
-        if (isPublicMarketplaceProduct(product) && product.is_digital !== true && /^[0-9a-f-]{36}$/i.test(product.id)) {
+        if (isPublicMarketplaceProduct(product) && /^[0-9a-f-]{36}$/i.test(product.id)) {
           urls.push('https://beezio.co/product/' + product.id);
         }
       }

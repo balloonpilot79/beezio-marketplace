@@ -1,6 +1,7 @@
 import { getCombinedShippingTotal, shippingChannelKey } from '../../shared/combinedShipping';
 import { getCartUnitPrice as getOrderCartUnitPrice } from '../../shared/orderPricing';
 import { paymentRecoveryMessage, safePayPalApprovalUrl } from '../utils/paymentRecovery';
+import { DIGITAL_POLICY_VERSION, DIGITAL_RETURN_POLICY } from '../../shared/digitalPolicy';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -218,6 +219,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError, localPi
   const requiresQuotedShippingRef = useRef(requiresQuotedShipping);
   const userRef = useRef(user);
   const hasDigitalItemsRef = useRef(false);
+  const digitalConsentRef = useRef(false);
+  const [digitalConsent, setDigitalConsent] = useState(false);
   const payPalListingSubtotalRef = useRef(0);
 
   useEffect(() => {
@@ -653,9 +656,10 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError, localPi
     try {
       const payload = await buildOrderPayload();
 
+      const {data: sessionData} = await supabase.auth.getSession();
       const response = await fetch('/api/paypal/create-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(sessionData.session?.access_token ? {Authorization: `Bearer ${sessionData.session.access_token}`} : {}) },
         body: JSON.stringify(payload),
       });
 
@@ -870,6 +874,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError, localPi
     requireSignedInBuyer(currentUser?.id);
 
     if (!currentItems.length) throw new Error('Your cart is empty.');
+    if (currentHasDigitalItems && !digitalConsentRef.current) throw new Error('Please accept the digital download policy before paying.');
     if (currentHasDigitalItems && !currentUser?.id) {
       throw new Error('You must sign in to purchase digital products so delivery stays secure.');
     }
@@ -988,6 +993,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError, localPi
         email: currentBillingDetails.email || currentUser?.email || '',
         name: currentBillingDetails.name || '',
       },
+      ...(currentHasDigitalItems ? {digital_policy_version:DIGITAL_POLICY_VERSION} : {}),
       fulfillment_method: orderUsesPickup ? 'pickup' : 'shipping',
       shipping_info: orderUsesPickup ? null : shipping_info,
       shipping_option: orderUsesPickup ? null : shipping_option,
@@ -1462,6 +1468,10 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError, localPi
         </div>
       </div>
 
+      {hasDigitalItems && <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-gray-900">
+        <p className="mb-3 text-sm">{DIGITAL_RETURN_POLICY}</p>
+        <label className="flex items-start gap-3 text-sm font-semibold"><input type="checkbox" checked={digitalConsent} onChange={e => {setDigitalConsent(e.target.checked);digitalConsentRef.current=e.target.checked;}} className="mt-1" />I agree to the digital download policy. Access is tied to my buyer account.</label>
+      </div>}
       {paymentProvider === 'paypal' && resolvedPayPalClientId && (
         <div className={`rounded-xl border border-gray-200 bg-white p-3 shadow-sm ${recoveryOrderId ? 'hidden' : ''}`} aria-hidden={Boolean(recoveryOrderId)}>
           <div className="flex flex-col gap-3">

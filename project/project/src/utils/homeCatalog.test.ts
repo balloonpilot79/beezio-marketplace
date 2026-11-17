@@ -35,7 +35,6 @@ describe("homepage live catalog", () => {
     });
   });
   it.each([
-    { is_digital: true },
     { status: "draft" },
     { status: "archived" },
     { status: "store_only" },

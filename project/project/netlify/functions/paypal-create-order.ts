@@ -1,3 +1,5 @@
+import { DIGITAL_POLICY_VERSION } from '../../shared/digitalPolicy';
+import { extractAuthHeader } from './_lib/auth';
 import { loadAmbassadorProfile } from './_lib/ambassador-eligibility';
 import { getCartPickupLocation } from '../../shared/vendorPickup';
 import { allocateCombinedShipping, applyShippingAllocations, getCombinedShippingPolicy, shippingChannelKey } from '../../shared/combinedShipping';
@@ -94,6 +96,10 @@ const PRODUCT_SELECT_COLUMNS = [
   'pickup_state',
   'pickup_zip',
   'is_digital',
+  'is_active',
+  'status',
+  'digital_download_path',
+  'digital_download_bucket',
   'track_inventory',
   'inventory_source',
   'in_stock',
@@ -489,6 +495,7 @@ type CartLineItem = {
 };
 
 type CreateOrderBody = {
+  digital_policy_version?: string;
   cart: {
     line_items: CartLineItem[];
     shipping_amount: number;
@@ -753,7 +760,7 @@ export const handler: Handler = async (event) => {
     });
 
     const supabaseAdmin = createSupabaseAdmin();
-    const buyerId = await resolveProfileId(supabaseAdmin, requestedBuyerId);
+    let buyerId = await resolveProfileId(supabaseAdmin, requestedBuyerId);
     const storefrontContext = await resolveStorefrontContext(supabaseAdmin, storefrontId, orderSource);
     const resolvedStorefrontId = storefrontContext.storefrontId;
     const resolvedStorefrontProfileId = storefrontContext.storefrontProfileId;
@@ -825,11 +832,26 @@ export const handler: Handler = async (event) => {
     }
 
     const hasDigitalProduct = productTokens.some((token) => tokenToProduct.get(token)?.is_digital === true);
+    const digitalOnly = productTokens.every(token => tokenToProduct.get(token)?.is_digital === true);
+    let digitalBuyerUserId: string | null = null;
     if (hasDigitalProduct) {
-      return json(400, {
-        error: 'Digital products are not available for purchase during beta.',
-        code: 'DIGITAL_PRODUCTS_UNAVAILABLE',
-      });
+      const header = extractAuthHeader(event as any);
+      if (!header) return json(401, { error: 'Sign in to buy digital downloads.' });
+      const {data: auth, error: authError} = await supabaseAdmin.auth.getUser(header.replace(/^Bearer /, ''));
+      if (authError || !auth.user?.email_confirmed_at) return json(403, { error: 'Use a verified account to buy digital downloads.' });
+      const {data: profile, error: profileError} = await supabaseAdmin.from('profiles').select('id').eq('user_id', auth.user.id).maybeSingle();
+      if (profileError || !profile?.id) return json(403, {error: 'Complete your buyer account setup.'});
+      if (buyerId && buyerId !== profile.id) return json(403, {error: 'Buyer account does not match your session.'});
+      buyerId = profile.id;
+      digitalBuyerUserId = auth.user.id;
+      if (body.digital_policy_version !== DIGITAL_POLICY_VERSION) return json(400, {error: 'Accept the digital download policy before paying.', code:'DIGITAL_POLICY_REQUIRED'});
+      if (body.fulfillment_method === 'pickup') return json(400, {error: 'Digital downloads cannot use local pickup.'});
+      for (const product of productMap.values()) {
+        if (!product.is_digital) continue;
+        if (!isPublicStoreProduct(product) || product.digital_download_bucket !== 'digital-products-private' || !product.digital_download_path) return json(409,{error:'A digital product is no longer available.'});
+        const {data:file,error:fileError} = await supabaseAdmin.from('digital_file_uploads').select('storage_path').eq('storage_path',product.digital_download_path).maybeSingle();
+        if (fileError || !file) return json(409,{error:'A digital delivery file is unavailable. No payment was created.'});
+      }
     }
 
     const sellerIds = Array.from(new Set(productTokens.map((token) => String(tokenToProduct.get(token)?.seller_id || '').trim()).filter(Boolean)));
@@ -1695,7 +1717,8 @@ export const handler: Handler = async (event) => {
       total_amount: totalCharged,
       customer_name: body?.customer?.name || null,
       customer_email: body?.customer?.email || null,
-      shipping_address: localPickup ? null : body?.shipping_info || null,
+      shipping_address: localPickup || digitalOnly ? null : body?.shipping_info || null,
+      ...(hasDigitalProduct ? {digital_buyer_user_id:digitalBuyerUserId,digital_policy_version:DIGITAL_POLICY_VERSION,digital_policy_accepted_at:new Date().toISOString()} : {}),
       created_at: new Date().toISOString(),
     };
 
@@ -1833,12 +1856,13 @@ export const handler: Handler = async (event) => {
         currency,
         subtotal: subtotalListing,
         shipping: shippingAmount,
-        localPickup,
+        localPickup: localPickup || digitalOnly,
         tax: taxAmount,
         items: purchaseUnitItems.map((it) => ({
           name: it.name,
           quantity: Number(it.quantity),
           unit_amount: Number(it.unit_amount.value),
+          category: it.category as 'DIGITAL_GOODS' | 'PHYSICAL_GOODS',
         })),
         referenceId: beezioOrderId,
         requestId: paypalRequestId(`bzo_${beezioOrderId}`),

@@ -658,65 +658,7 @@ export const handler: Handler = async (event) => {
       finalizationIdempotent: finalization.idempotent,
     });
 
-    try {
-      const digitalItemsResult = await selectWithFallback(
-        supabaseAdmin,
-        'order_items',
-        [
-          'id',
-          'order_id',
-          'product_id',
-          'seller_id',
-          'quantity',
-          'products:product_id(title,is_digital,digital_download_bucket,digital_download_path,digital_download_filename,digital_download_content_type,digital_download_file_size,digital_download_limit)',
-        ],
-        'order_id',
-        orderId
-      );
-      const digitalItems = digitalItemsResult.data;
-      const digitalItemsError = digitalItemsResult.error;
-
-      if (digitalItemsError) {
-        console.warn('[paypal-capture-order] digital entitlement load failed:', digitalItemsError.message);
-      } else {
-        const entitlementPayload = ((digitalItems as any[]) || [])
-          .filter((row) => row?.products?.is_digital === true)
-          .filter((row) => String(row?.products?.digital_download_bucket || '').trim() && String(row?.products?.digital_download_path || '').trim())
-          .map((row) => {
-            const quantity = Math.max(1, Math.floor(Number(row?.quantity || 0)));
-            const configuredLimit = Math.max(1, Number(row?.products?.digital_download_limit || 1));
-            return {
-              order_id: orderId,
-              order_item_id: String(row.id),
-              product_id: String(row.product_id),
-              seller_id: row.seller_id ? String(row.seller_id) : (String((orderRow as any)?.seller_id || '').trim() || null),
-              buyer_user_id: String((orderRow as any)?.buyer_id || '').trim() || null,
-              billing_email: String((orderRow as any)?.customer_email || '').trim() || null,
-              storage_bucket: String(row.products.digital_download_bucket),
-              storage_path: String(row.products.digital_download_path),
-              original_filename: String(row.products.digital_download_filename || `${String(row.products.title || 'download').trim() || 'download'}`),
-              content_type: String(row.products.digital_download_content_type || '').trim() || null,
-              file_size_bytes: Number(row.products.digital_download_file_size || 0) || null,
-              download_limit: Math.max(quantity, configuredLimit),
-              access_status: 'active',
-              metadata: {
-                product_title: String(row?.products?.title || '').trim() || null,
-              },
-            };
-          });
-
-        if (entitlementPayload.length > 0) {
-          const { error: entitlementError } = await supabaseAdmin
-            .from('digital_download_entitlements')
-            .upsert(entitlementPayload, { onConflict: 'order_item_id' });
-          if (entitlementError) {
-            console.warn('[paypal-capture-order] digital entitlement upsert failed:', entitlementError.message);
-          }
-        }
-      }
-    } catch (digitalErr) {
-      console.warn('[paypal-capture-order] digital entitlement creation failed (non-fatal):', digitalErr);
-    }
+    // Digital entitlements are snapshotted and activated atomically by database triggers.
 
     // Best-effort buyer confirmation email
     try {

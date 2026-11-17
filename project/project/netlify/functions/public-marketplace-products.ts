@@ -39,7 +39,6 @@ function isLiveMarketplaceProduct(product: any): boolean {
     product?.is_active === true &&
     ((product?.is_promotable === true && product?.affiliate_enabled === true) ||
       (product?.direct_marketplace_listing === true && product?.affiliate_enabled === false)) &&
-    product?.is_digital !== true &&
     text(product?.status).toLowerCase() === 'active'
   );
 }

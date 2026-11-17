@@ -1,3 +1,4 @@
+import DigitalDownloadPanel from './DigitalDownloadPanel';
 import BuyerAmbassadorPanel from './BuyerAmbassadorPanel';
 import { isConfirmedPaidOrder, isRefundedPayment } from '../../shared/accountingStatus';
 ﻿import React, { useState, useEffect, useRef } from 'react';
@@ -861,7 +862,7 @@ const EnhancedBuyerDashboard: React.FC<EnhancedBuyerDashboardProps> = ({
       {activeTab === 'orders' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold">Order History</h3>
+            <h3 className="text-lg font-semibold">Order History</h3><div className="mt-4"><DigitalDownloadPanel /></div>
           </div>
           <div className="divide-y divide-gray-200">
             {orders.length === 0 && (

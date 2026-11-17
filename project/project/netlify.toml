@@ -41,6 +41,12 @@
 
 # Force HTTPS
 [[redirects]]
+  from = "/api/digital-downloads"
+  to = "/.netlify/functions/digital-downloads"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "http://beezio.co/*"
   to = "https://beezio.co/:splat"
   status = 301

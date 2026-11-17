@@ -1,3 +1,4 @@
+import DigitalDownloadPanel from './DigitalDownloadPanel';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -42,7 +43,7 @@ const BuyerOrders: React.FC<{ buyerId: string }> = ({ buyerId }) => {
   if (error) return <div className="text-red-500">{error}</div>;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2"><DigitalDownloadPanel />
       {orders.length === 0 ? (
         <div className="text-gray-500">No purchases found.</div>
       ) : (

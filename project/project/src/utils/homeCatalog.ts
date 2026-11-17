@@ -27,7 +27,6 @@ export function prepareHomeProducts(rows: any[]): HomeProduct[] {
         isPublicTestProduct(row) ||
         seen.has(String(row.id)) ||
         !row.title ||
-        row.is_digital === true ||
         row.catalog_preview ||
         row.is_active === false ||
         ["draft", "archived", "store_only"].includes(status)

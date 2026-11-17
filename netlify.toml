@@ -15,6 +15,12 @@
 
 # Redirect www to non-www
 [[redirects]]
+  from = "/api/digital-downloads"
+  to = "/.netlify/functions/digital-downloads"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "https://www.beezio.co/*"
   to = "https://beezio.co/:splat"
   status = 301

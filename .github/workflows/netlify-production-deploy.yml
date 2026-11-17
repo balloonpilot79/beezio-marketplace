@@ -41,6 +41,9 @@ jobs:
       - name: Install app dependencies
         run: npm ci
 
+      - name: Load approved public production configuration
+        run: node scripts/load-netlify-build-env.mjs
+
       - name: Run production build once
         run: npm run build
 

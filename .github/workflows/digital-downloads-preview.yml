@@ -1,0 +1,32 @@
+name: Digital downloads isolated preview
+on:
+  push:
+    branches: [feature/secure-digital-downloads]
+permissions:
+  contents: read
+concurrency:
+  group: digital-downloads-preview
+  cancel-in-progress: true
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: project/project
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: dce9ccf9-b35a-4c99-99b0-02b5a2272d13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: project/project/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: node scripts/load-netlify-build-env.mjs
+      - run: npm test
+      - run: npm run build
+      - name: Deploy isolated draft without changing production
+        run: npx --yes netlify-cli@latest deploy --site "$NETLIFY_SITE_ID" --context production --dir dist --alias digital-downloads-qa --message "Digital downloads QA $GITHUB_SHA"

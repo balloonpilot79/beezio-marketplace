@@ -1,113 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const authGetUser = vi.fn();
-const maybeSingle = vi.fn();
-const eqSelect = vi.fn();
-const select = vi.fn();
-const eqUpdateBuyer = vi.fn();
-const eqUpdateId = vi.fn();
-const update = vi.fn();
-const createSignedUrl = vi.fn();
-
-vi.mock('../netlify/functions/_lib/supabase', () => ({
-  createSupabaseAdmin: () => ({
-    auth: {
-      getUser: authGetUser,
-    },
-    from: (table: string) => {
-      if (table !== 'digital_download_entitlements') {
-        throw new Error(`Unexpected table ${table}`);
-      }
-
-      return {
-        select: (...args: any[]) => {
-          select(...args);
-          return {
-            eq: (...eqArgs: any[]) => {
-              eqSelect(...eqArgs);
-              return {
-                eq: (...nestedEqArgs: any[]) => {
-                  eqSelect(...nestedEqArgs);
-                  return {
-                    maybeSingle,
-                  };
-                },
-              };
-            },
-          };
-        },
-        update: (...args: any[]) => {
-          update(...args);
-          return {
-            eq: (...eqArgs: any[]) => {
-              eqUpdateId(...eqArgs);
-              return {
-                eq: (...nestedEqArgs: any[]) => {
-                  eqUpdateBuyer(...nestedEqArgs);
-                  return { error: null };
-                },
-              };
-            },
-          };
-        },
-      };
-    },
-    storage: {
-      from: () => ({
-        createSignedUrl,
-      }),
-    },
-  }),
-}));
-
-describe('digital-downloads handler', () => {
-  beforeEach(() => {
-    vi.resetModules();
-    vi.clearAllMocks();
-    authGetUser.mockResolvedValue({ data: { user: { id: 'buyer-1' } }, error: null });
-    maybeSingle.mockResolvedValue({
-      data: {
-        id: 'ent-1',
-        buyer_user_id: 'buyer-1',
-        storage_bucket: 'digital-products-private',
-        storage_path: 'buyer-1/file.zip',
-        original_filename: 'file.zip',
-        download_limit: 1,
-        download_count: 0,
-        access_status: 'active',
-      },
-      error: null,
-    });
-    createSignedUrl.mockResolvedValue({
-      data: { signedUrl: 'https://example.com/signed-download' },
-      error: null,
-    });
-  });
-
-  it('redeems an entitlement into a signed download url and consumes one download', async () => {
-    const { handler } = await import('../netlify/functions/digital-downloads');
-
-    const response = await handler({
-      httpMethod: 'POST',
-      headers: {
-        authorization: 'Bearer token-123',
-      },
-      body: JSON.stringify({ entitlementId: 'ent-1' }),
-    } as any, {} as any);
-
-    expect(response?.statusCode).toBe(200);
-    const body = JSON.parse(String(response?.body || '{}'));
-    expect(body.ok).toBe(true);
-    expect(body.url).toBe('https://example.com/signed-download');
-    expect(body.remainingDownloads).toBe(0);
-    expect(createSignedUrl).toHaveBeenCalledWith('buyer-1/file.zip', 120, {
-      download: 'file.zip',
-    });
-    expect(update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        download_count: 1,
-        access_status: 'exhausted',
-      })
-    );
-  });
+import {beforeEach,describe,expect,it,vi} from 'vitest';
+import {createHash} from 'node:crypto';
+const bytes=Buffer.from('test download');
+const state=vi.hoisted(()=>({user:{id:'buyer'},entitlement:null as any,rpcError:null as any,fileError:null as any}));
+const rpc=vi.fn();
+const download=vi.fn();
+vi.mock('../netlify/functions/_lib/supabase',()=>({createSupabaseAdmin:()=>({auth:{getUser:async()=>({data:{user:state.user}})},from:()=>({select:()=>({eq:()=>({eq:()=>({maybeSingle:async()=>({data:state.entitlement})})})})}),rpc:async(...args:any[])=>{rpc(...args);return {error:state.rpcError}},storage:{from:()=>({download:async(...args:any[])=>{download(...args);return {data:new Blob([bytes]),error:state.fileError}}})}})}));
+import {handler} from '../netlify/functions/digital-downloads';
+const request=(body:any={},headers:any={authorization:'Bearer verified'})=>handler({httpMethod:'POST',headers,body:JSON.stringify({entitlementId:'11111111-1111-4111-8111-111111111111',policyVersion:'2026-11-17',...body})} as any,{} as any);
+beforeEach(()=>{vi.clearAllMocks();state.user={id:'buyer'};state.rpcError=null;state.fileError=null;state.entitlement={id:'entitlement',storage_bucket:'digital-products-private',storage_path:'seller/file.txt',original_filename:'file.txt',content_type:'text/plain',file_size_bytes:bytes.length,metadata:{sha256:createHash('sha256').update(bytes).digest('hex')},access_status:'active',download_count:0,download_limit:5}});
+describe('authenticated download delivery',()=>{
+ it('blocks unauthenticated access',async()=>expect((await request({},{}))?.statusCode).toBe(401));
+ it('requires explicit policy acceptance',async()=>{expect((await request({policyVersion:null}))?.statusCode).toBe(400);expect(rpc).not.toHaveBeenCalled()});
+ it('does not deliver missing or another buyer entitlement',async()=>{state.entitlement=null;expect((await request())?.statusCode).toBe(404);expect(download).not.toHaveBeenCalled()});
+ it('does not consume a download if storage fails',async()=>{state.fileError={message:'missing'};expect((await request())?.statusCode).toBe(503);expect(rpc).not.toHaveBeenCalled()});
+ it('does not deliver tampered bytes',async()=>{state.entitlement.metadata.sha256='wrong';expect((await request())?.statusCode).toBe(503);expect(rpc).not.toHaveBeenCalled()});
+ it('rejects exhausted and revoked access',async()=>{for(const status of ['exhausted','revoked','pending']){state.entitlement.access_status=status;expect((await request())?.statusCode).toBe(410)}expect(download).not.toHaveBeenCalled()});
+ it('does not deliver after atomic payment/dispute/limit validation fails',async()=>{state.rpcError={message:'denied'};expect((await request())?.statusCode).toBe(409)});
+ it('delivers exact bytes with no reusable storage URL and no caching',async()=>{const result:any=await request();expect(result.statusCode).toBe(200);expect(Buffer.from(result.body,'base64')).toEqual(bytes);expect(result.headers['Cache-Control']).toContain('no-store');expect(result.headers['Content-Disposition']).toContain('file.txt');expect(rpc).toHaveBeenCalledWith('consume_digital_download',expect.objectContaining({p_buyer:'buyer',p_policy:'2026-11-17'}));});
 });

@@ -46,7 +46,6 @@ export function isPublicMarketplaceProduct(product: any): boolean {
     product?.affiliate_enabled === false &&
     product?.status === 'active' &&
     product?.is_active === true &&
-    product?.is_digital !== true &&
     isPublicStoreProduct(product)
   );
 }

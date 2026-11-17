@@ -1,3 +1,4 @@
+import { DIGITAL_POLICY_VERSION, DIGITAL_RETURN_POLICY } from '../../shared/digitalPolicy';
 import React, { useEffect, useState } from 'react';
 import { Download, FileText, ShieldAlert } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -59,7 +60,8 @@ const DigitalDownloadPanel: React.FC<DigitalDownloadPanelProps> = ({ orderId }) 
     load();
   }, [orderId]);
 
-  const handleRedeem = async (entitlementId: string) => {
+  const handleRedeem = async (entitlementId: string, filename: string) => {
+    if (!window.confirm(`${DIGITAL_RETURN_POLICY}\n\nStart download access now?`)) return;
     setRedeemingId(entitlementId);
     setError(null);
     try {
@@ -73,12 +75,17 @@ const DigitalDownloadPanel: React.FC<DigitalDownloadPanelProps> = ({ orderId }) 
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ entitlementId }),
+        body: JSON.stringify({ entitlementId, policyVersion:DIGITAL_POLICY_VERSION }),
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(String((payload as any)?.error || 'Download failed'));
-      const url = String((payload as any)?.url || '').trim();
-      if (url) window.location.assign(url);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Download failed');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url),60000);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Download failed.');
@@ -97,7 +104,7 @@ const DigitalDownloadPanel: React.FC<DigitalDownloadPanelProps> = ({ orderId }) 
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Digital Delivery</h3>
           <p className="mt-1 text-sm text-amber-900">
-            Each paid download can be redeemed only the number of times purchased. After download, refunds are not available unless the file is corrupted, inaccessible, or materially different from what was sold.
+            {DIGITAL_RETURN_POLICY}
           </p>
         </div>
       </div>
@@ -126,11 +133,11 @@ const DigitalDownloadPanel: React.FC<DigitalDownloadPanelProps> = ({ orderId }) 
                 <button
                   type="button"
                   disabled={item.remainingDownloads <= 0 || redeemingId === item.id}
-                  onClick={() => handleRedeem(item.id)}
+                  onClick={() => handleRedeem(item.id, item.filename)}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Download className="h-4 w-4" />
-                  {redeemingId === item.id ? 'Preparing...' : item.remainingDownloads > 0 ? 'Download once' : 'Downloaded'}
+                  {redeemingId === item.id ? 'Preparing...' : item.remainingDownloads > 0 ? 'Download file' : 'Unavailable'}
                 </button>
               </div>
             </div>
