@@ -25,6 +25,7 @@ export type LedgerRow = {
     paypal_fee_estimate?: number | null;
     tax_amount?: number | null;
     shipping_amount?: number | null;
+    affiliate_payout_paid_to_seller_total?: number | null;
     affiliate_payout_paid_total?: number | null;
     influencer_bonus_paid_total?: number | null;
     buyer_referral_total?: number | null;

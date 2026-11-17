@@ -108,9 +108,21 @@ const handler: Handler = async (event) => {
     const orderStates: any[] = [];
     for (let offset = 0; offset < orderIds.length; offset += 200) {
       orderStates.push(...await readAccountingPages((from, to) => supabaseAdmin.from('orders')
-        .select('id,status,payment_status').in('id', orderIds.slice(offset, offset + 200)).order('id').range(from, to)));
+        .select('id,status,payment_status,seller_id,partner_id,affiliate_id').in('id', orderIds.slice(offset, offset + 200)).order('id').range(from, to)));
     }
     snapshotRows = annotateReversedEarnings(snapshotRows, orderStates);
+    const ordersById = new Map(orderStates.map(order => [String(order.id), order]));
+    snapshotRows = snapshotRows.map(row => {
+      const order = ordersById.get(String(row.order_id));
+      const affiliateId = order?.partner_id || order?.affiliate_id;
+      const selfSale = Boolean(order?.seller_id && affiliateId && order.seller_id === affiliateId);
+      if (!row.snapshot_json) return row;
+      return { ...row, snapshot_json: { ...row.snapshot_json,
+        affiliate_payout_paid_to_seller_total: selfSale
+          ? Number(row.snapshot_json.affiliate_payout_paid_total ?? row.snapshot_json.payee_breakdown?.partner_amount ?? 0)
+          : 0,
+      } };
+    });
     const historicalPaid = snapshotRows.filter(row => row.status === 'PAID').reduce((sum, row) => sum + Math.round(Number(row.amount || 0) * 100), 0) / 100;
     const refundedAfterPayout = snapshotRows.filter(row => row.status === 'PAID' && row.accounting_reversed).reduce((sum, row) => sum + Math.round(Number(row.amount || 0) * 100), 0) / 100;
     const summary = summarizePayeeSnapshots(snapshotRows, null, payeeRole);

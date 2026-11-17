@@ -3,7 +3,7 @@ export function earningsBreakdown(snapshot: any) {
   if (!breakdown) return null;
   const amount = (value: unknown) => Math.round(Number(value || 0) * 100) / 100;
   const lines = [
-    { label: 'Seller payout (includes shipping)', amount: amount(breakdown.seller_payable_amount ?? breakdown.seller_amount) },
+    { label: 'Seller proceeds and shipping (excluding affiliate commission)', amount: amount(Number(breakdown.seller_payable_amount ?? breakdown.seller_amount ?? 0) - Number(snapshot.affiliate_payout_paid_to_seller_total || 0)) },
     { label: 'Affiliate commissions', amount: amount(snapshot.affiliate_payout_paid_total ?? breakdown.partner_amount) },
     { label: 'Ambassador rewards', amount: amount(Number(snapshot.influencer_bonus_paid_total || 0) + Number(snapshot.buyer_referral_total || 0)) },
     { label: 'Payment processing (recorded estimate)', amount: amount(snapshot.paypal_fee_estimate ?? breakdown.paypal_fee_estimate) },
