@@ -1,3 +1,4 @@
+import { matchesMarketplaceSearch } from '../utils/marketplaceSearch';
 import { shoppingCategory } from "../utils/shoppingCategory";
 import { matchesMerchandiseFilter, MERCHANDISE_TYPES } from '../../shared/vendorListing';
 import { isPublicMarketplaceProduct } from '../../shared/publicProductVisibility';
@@ -184,7 +185,7 @@ const MarketplacePageDual: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState<SortOption>('featured');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [categoryRows, setCategoryRows] = useState<CategoryRow[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -281,7 +282,7 @@ const MarketplacePageDual: React.FC = () => {
   );
 
   const categoryOptions = useMemo(() => {
-    const counts = new Map<string, number>([['Clothing', 0]]);
+    const counts = new Map<string, number>([['Clothing', 0], ['Digital Products', 0]]);
     productsWithCategory.forEach((product) => {
       const category = String((product as any).derivedCategory || '').trim();
       if (!category) return;
@@ -322,15 +323,7 @@ const MarketplacePageDual: React.FC = () => {
     let filtered = productsWithCategory.filter((product) => matchesMerchandiseFilter(product, merchandiseFilter));
 
     if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (product) =>
-          product.title.toLowerCase().includes(term) ||
-          product.description?.toLowerCase().includes(term) ||
-          String(product.category || '').toLowerCase().includes(term) ||
-          String((product as any).category_name || '').toLowerCase().includes(term) ||
-          String((product as any).derivedCategory || '').toLowerCase().includes(term)
-      );
+      filtered = filtered.filter((product) => matchesMarketplaceSearch(product, searchTerm));
     }
 
     if (selectedCategory !== 'All') {
@@ -624,8 +617,8 @@ const MarketplacePageDual: React.FC = () => {
       <section aria-label="Marketplace products" className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
         <div className="mb-4 flex flex-col gap-2 text-sm text-slate-600 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
           <span>
-            Showing <strong>{filteredProducts.length}</strong> products
-            {selectedCategory !== 'All' && ` in ${selectedCategoryLabel}`}
+            {loading ? 'Loading products…' : error ? 'Products could not be loaded.' : <>Showing <strong>{filteredProducts.length}</strong> products
+            {selectedCategory !== 'All' && ` in ${selectedCategoryLabel}`}</>}
           </span>
         </div>
 
@@ -659,7 +652,9 @@ const MarketplacePageDual: React.FC = () => {
         {!loading && !error && filteredProducts.length === 0 && (
           <div className="rounded-3xl border border-dashed border-amber-300 bg-white p-12 text-center">
             <h3 className="mb-3 text-xl font-semibold text-slate-900">No products found.</h3>
-            <p className="mb-6 text-slate-600">Try clearing your search or switching categories.</p>
+            <p className="mb-6 text-slate-600">{selectedCategory === 'digital-products' && !searchTerm.trim()
+              ? 'No digital downloads match these filters yet. Published marketplace downloads will appear here.'
+              : 'Try clearing your search or switching categories.'}</p>
             <button
               onClick={() => {
                 setSearchTerm('');

@@ -2033,7 +2033,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-3">
               <div>1. Add title, category, photos, and price.</div>
               <div>2. Save fast if this is a simple product.</div>
-              <div>3. Open optional sections for variants, shipping, or video only.</div>
+              <div>3. Open optional sections for {formData.is_digital ? 'download settings, videos, or affiliates' : 'variants, shipping, or videos'}.</div>
             </div>
           </div>
 
@@ -2146,7 +2146,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             </select>
             {formData.is_digital === true && (
               <p className="mt-2 text-xs text-gray-600">
-                Digital products are automatically listed in the Digital Products marketplace category.
+                Publish with affiliate marketing or direct marketplace listing to appear in the Digital Products category.
               </p>
             )}
           </div>
@@ -2304,13 +2304,21 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             )}
           </div>
 
+              {(!formData.affiliate_enabled || pricingSeed.affiliateAmount <= 0) && (
+                <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+                  <input type="checkbox" checked={directMarketplace}
+                    onChange={(event) => setDirectMarketplace(event.target.checked)} />
+                  Also list this item in the Beezio marketplace for direct purchase
+                </label>
+              )}
+
           {/* Pricing */}
           <div className="border-t border-gray-200 pt-6">
             <label className="block text-sm font-bold text-gray-900 mb-3">
               Pricing <span className="text-red-500">*</span>
             </label>
               <p className="mb-4 text-sm leading-6 text-gray-600">
-                Enter your seller ask, the affiliate payout, and the shipping cost. You receive 100% of your ask plus the shipping amount; the affiliate receives 100% of the payout you set. Beezio calculates the customer price automatically.
+                {formData.is_digital ? 'Enter your seller ask and the affiliate payout. Digital downloads have no shipping charge. You receive 100% of your ask; the affiliate receives 100% of the payout you set. Beezio calculates the customer price automatically.' : 'Enter your seller ask, the affiliate payout, and the shipping cost. You receive 100% of your ask plus the shipping amount; the affiliate receives 100% of the payout you set. Beezio calculates the customer price automatically.'}
               </p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
@@ -2479,12 +2487,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               <div className="mt-4 rounded-xl bg-[#ffcc00] p-4 text-slate-950">
                 <div className="text-sm font-bold uppercase tracking-wide">Final product price</div>
                 <div className="mt-1 text-4xl font-black">${Math.max(0, pricingBreakdown.listingPrice - Number(formData.shipping_price || 0)).toFixed(2)}</div>
-                <div className="mt-1 text-sm font-semibold">Shipping & tax at checkout</div>
+                <div className="mt-1 text-sm font-semibold">{formData.is_digital ? 'No shipping charge. Applicable tax at checkout.' : 'Shipping & tax at checkout'}</div>
                 <div className="mt-2 text-base font-bold">
-                  Total including shipping, before tax: ${pricingBreakdown.listingPrice.toFixed(2)}
+                  {formData.is_digital ? 'Total before tax:' : 'Total including shipping, before tax:'} ${pricingBreakdown.listingPrice.toFixed(2)}
                 </div>
                 <p className="mt-2 text-sm">
-                  Compare this delivered total with similar products before publishing. Your ask should cover your product costs and profit; choose an affiliate payout that your margin can support.
+                  Compare this {formData.is_digital ? 'price' : 'delivered total'} with similar products before publishing. Your ask should cover your product costs and profit; choose an affiliate payout that your margin can support.
                 </p>
                 <div className="mt-2 text-sm">
                   Estimated checkout total with 7% sales tax: <strong>${pricingBreakdown.estimatedCheckoutTotal.toFixed(2)}</strong>. Actual tax depends on the customer’s location.
@@ -2610,7 +2618,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="font-bold text-gray-900">Optional selling details</div>
-                  <div className="mt-1 text-sm text-gray-600">Open this for shipping, videos, and affiliate settings.</div>
+                  <div className="mt-1 text-sm text-gray-600">Open this for {formData.is_digital ? 'download settings, videos, and affiliate settings' : 'shipping, videos, and affiliate settings'}.</div>
                 </div>
                 <div className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-600">
                   Optional
@@ -2714,7 +2722,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                         className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
                       />
                       <p className="mt-2 text-xs text-gray-600">
-                        Default is 1. Quantity purchased can still increase available downloads automatically.
+                        Default is 5 downloads per unit purchased. Quantity purchased increases the total available downloads.
                       </p>
                     </div>
 
@@ -2820,13 +2828,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 </div>
               )}
 
-              {!formData.is_digital && (!formData.affiliate_enabled || pricingSeed.affiliateAmount <= 0) && (
-                <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
-                  <input type="checkbox" checked={directMarketplace}
-                    onChange={(event) => setDirectMarketplace(event.target.checked)} />
-                  Also list this item in the Beezio marketplace for direct purchase
-                </label>
-              )}
               {/* Affiliate Marketing Toggle */}
               <div className="border-t border-gray-200 pt-6">
                 <label className="flex items-start gap-3 cursor-pointer group">

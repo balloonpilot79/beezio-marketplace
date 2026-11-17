@@ -745,7 +745,7 @@ const AppWorking: React.FC = () => {
                     <Route path="/revolutionary" element={<Navigate to="/how-it-works" replace />} />
                     <Route path="/marketplace" element={<MarketplacePage />} />
                     <Route path="/picks" element={<SharedProductCollectionPage />} />
-                    <Route path="/digital-products" element={<Navigate to="/marketplace" replace />} />
+                    <Route path="/digital-products" element={<Navigate to="/marketplace?category=digital-products" replace />} />
                     <Route path="/products" element={<MarketplacePage />} />
                     <Route path="/insurance" element={<InsurancePublicRoute><InsuranceMarketplacePage /></InsurancePublicRoute>} />
                     <Route path="/insurance/agent/setup" element={<InsuranceAgentRoute><InsuranceAgentSetupPage /></InsuranceAgentRoute>} />

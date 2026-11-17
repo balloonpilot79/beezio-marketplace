@@ -318,6 +318,9 @@ const GlobalHeaderBar: React.FC = () => {
           >
             Shop by category
           </Link>
+          <Link to="/marketplace?category=digital-products" className="bz-shopping-link">
+            Digital downloads
+          </Link>
           <Link to="/stores" className="bz-shopping-link bz-shopping-link-accent">
             Discover stores
           </Link>

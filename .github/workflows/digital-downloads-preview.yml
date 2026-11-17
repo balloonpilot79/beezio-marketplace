@@ -1,7 +1,7 @@
 name: Digital downloads isolated preview
 on:
   push:
-    branches: [feature/secure-digital-downloads, feature/large-digital-files]
+    branches: [feature/secure-digital-downloads, feature/large-digital-files, feature/digital-discovery]
 permissions:
   contents: read
 concurrency:
