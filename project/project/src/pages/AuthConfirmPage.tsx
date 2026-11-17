@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, Mail, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { sendWelcomeEmail } from '../services/transactionalEmailClient';
@@ -396,6 +396,8 @@ const AuthConfirmPage: React.FC = () => {
         <div className="mb-6 flex justify-center">
           {state === 'pending' || state === 'checking' ? (
             <Loader2 className="h-12 w-12 animate-spin text-amber-500" />
+          ) : state === 'ready' ? (
+            <Mail className="h-12 w-12 text-amber-500" />
           ) : state === 'success' ? (
             <CheckCircle2 className="h-12 w-12 text-green-600" />
           ) : (
