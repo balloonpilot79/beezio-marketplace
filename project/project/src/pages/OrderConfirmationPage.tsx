@@ -67,6 +67,7 @@ interface Order {
     name?: string | null;
     email?: string | null;
   } | null;
+  fee_summary?: {affiliate_earnings: number; seller_earnings: number; applied_affiliate_commission_total: number; influencer_earnings: number; beezio_fee_gross: number; beezio_retained_total: number; paypal_fee_estimate: number; tax_amount: number};
   items: OrderItem[];
 }
 
@@ -314,6 +315,22 @@ export default function OrderConfirmationPage() {
             </div>
           </div>
 
+          {order.fee_summary && <details className="mt-6 rounded-lg border border-gray-200 p-4 text-gray-900">
+            <summary className="cursor-pointer font-semibold">Business payment breakdown</summary>
+            <p className="mt-2 text-xs text-gray-500">Visible to authorized business participants only. Processing is the recorded estimate.</p>
+            <dl className="mt-3 space-y-2 text-sm">
+              {[
+                ['Seller earnings (including any self-sale commission)', order.fee_summary.seller_earnings],
+                ['Affiliate payout', order.fee_summary.affiliate_earnings],
+                ['Ambassador payouts', order.fee_summary.influencer_earnings],
+                ['Payment processing', order.fee_summary.paypal_fee_estimate],
+                ['Beezio retained (fees and reserves)', order.fee_summary.beezio_retained_total],
+                ['Tax', order.fee_summary.tax_amount],
+              ].map(([label, amount]) => <div key={String(label)} className="flex justify-between gap-3"><dt>{label}</dt><dd>${Number(amount || 0).toFixed(2)}</dd></div>)}
+            </dl>
+            <p className="mt-3 text-xs text-gray-600">Platform fee included in Beezio retained: ${Number(order.fee_summary.beezio_fee_gross || 0).toFixed(2)}.</p>
+          </details>}
+
           {/* Shipping Address */}
           <div className="border-t border-gray-200 mt-6 pt-6">
             <div className="grid gap-6 md:grid-cols-2">
@@ -337,8 +354,8 @@ export default function OrderConfirmationPage() {
           </div>
 
           <div className="border-t border-gray-200 mt-6 pt-6">
-            <h3 className="font-bold text-gray-900 mb-3">{order?.fulfillment_method === 'pickup' ? 'Local pickup' : 'Shipping Address'}</h3>
-            {order?.fulfillment_method === 'pickup' ? (
+            <h3 className="font-bold text-gray-900 mb-3">{order?.fulfillment_method === 'digital' ? 'Digital delivery' : order?.fulfillment_method === 'pickup' ? 'Local pickup' : 'Shipping Address'}</h3>
+            {order?.fulfillment_method === 'digital' ? <p className="text-gray-600">No shipping address needed. Your files are available in Digital Delivery below.</p> : order?.fulfillment_method === 'pickup' ? (
               <p className="text-gray-600">
                 {order.picked_up_at ? 'Pickup confirmed.' : `Arrange pickup with the seller in ${order.pickup_location?.state || ''} ${order.pickup_location?.zip || ''}.`}
               </p>

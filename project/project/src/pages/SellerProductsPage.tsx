@@ -246,14 +246,16 @@ const SellerProductsPage: React.FC = () => {
     try {
       const isListed = product.is_active !== false;
       const nextIsActive = !isListed;
-      if (!nextIsActive && !confirm('Unlist this product from the marketplace?')) return;
+      if (!nextIsActive) { handleDelete(product); return; }
 
       const nextStatus = nextIsActive ? 'active' : 'archived';
       const { error } = await supabase
         .from('products')
         .update({ is_active: nextIsActive, is_promotable: nextIsActive, status: nextStatus })
         .eq('id', product.id)
-        .eq('seller_id', profile?.id);
+        .eq('seller_id', product.seller_id || profile?.id)
+        .select('id')
+        .single();
 
       if (error) throw error;
 

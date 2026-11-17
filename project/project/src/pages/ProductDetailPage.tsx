@@ -1,3 +1,4 @@
+import { useProductRemoval } from '../hooks/useProductRemoval';
 import { useSearchHead } from '../hooks/useSearchHead';
 import { productSearchData } from '../../shared/searchMetadata';
 import { getProductTerms } from '../utils/productTerms';
@@ -31,8 +32,6 @@ import { getBuyerFacingProductPrice, getProductShipping } from '../utils/buyerPr
 import { getBusinessAccountRoles, normalizeAccountRole } from '../utils/accountRoles';
 import { fetchProductById, getVariantOptions, resolveImageUrl, resolveVariant, type ProductVariant } from '../services/productService';
 import { getCJProductInventory } from '../services/cjDropshipping';
-import { deleteProductById } from '../utils/deleteProduct';
-import { archiveProductById } from '../utils/archiveProduct';
 import { fetchAccountOwnedProducts } from '../utils/accountOwnedProducts';
 import { formatMoneyDisplay, formatShippingDisplay } from '../utils/moneyDisplay';
 import { normalizeProductVideos } from '../utils/imageHelpers';
@@ -160,7 +159,6 @@ const ProductDetailPage: React.FC = () => {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [selectedShipping, setSelectedShipping] = useState<{ id: string; name: string; cost: number; estimated_days: string } | null>(null);
   const [listingUpdating, setListingUpdating] = useState(false);
-  const [deleteUpdating, setDeleteUpdating] = useState(false);
   const [variantOptions, setVariantOptions] = useState<ProductVariant[]>([]);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
@@ -1502,6 +1500,14 @@ const ProductDetailPage: React.FC = () => {
     navigate('/checkout');
   };
 
+  const { requestRemoval, removalDialog, removingProductId } = useProductRemoval();
+  const deleteUpdating = Boolean(removingProductId);
+  const requestListingRemoval = () => {
+    if (!product || !canManageListing) return;
+    requestRemoval({productId: product.id, title: product.title, sellerId: product.seller_id,
+      onRemoved: () => navigate(isAdminRole ? '/dashboard?section=admin' : '/dashboard/products')});
+  };
+
   const handleToggleListing = async () => {
     if (!product) return;
     if (!canManageListing) {
@@ -1512,7 +1518,7 @@ const ProductDetailPage: React.FC = () => {
     const nextIsActive = !isListed;
     const verb = nextIsActive ? 'Relist' : 'Unlist';
     const needsConfirm = !nextIsActive;
-    if (needsConfirm && !confirm('Unlist this product from the marketplace? Buyers will no longer see it.')) return;
+    if (needsConfirm) { requestListingRemoval(); return; }
 
     try {
       setListingUpdating(true);
@@ -1552,29 +1558,7 @@ const ProductDetailPage: React.FC = () => {
       return;
     }
 
-    const confirmed = isAdminRole
-      ? confirm('Permanently delete this product if it has no order history? Products with order history will be safely archived instead.')
-      : confirm('Remove this product from your active dashboard and marketplace listings? Promoter links and payout history will be kept.');
-    if (!confirmed) return;
-
-    try {
-      setDeleteUpdating(true);
-      const sellerId = canManageListing ? product.seller_id : undefined;
-      const result = isAdminRole
-        ? await deleteProductById({ productId: product.id, sellerId })
-        : (await archiveProductById({ productId: product.id, sellerId }), { mode: 'archived' as const });
-      alert(
-        result.mode === 'deleted'
-          ? 'Product permanently deleted.'
-          : 'Product removed from active listings and safely archived.'
-      );
-      navigate(isAdminRole ? '/dashboard?section=admin' : '/dashboard/products');
-    } catch (e) {
-      console.error('[ProductDetailPage] delete failed', e);
-      alert('Unable to remove this product right now.');
-    } finally {
-      setDeleteUpdating(false);
-    }
+    requestListingRemoval();
   };
 
   const storeNavigationPath = storeBasePath || '/marketplace';
@@ -2494,6 +2478,7 @@ const ProductDetailPage: React.FC = () => {
         </div>
       </div>
 
+      {removalDialog}
       <StoreContactModal
         isOpen={contactModal}
         onClose={() => setContactModal(false)}

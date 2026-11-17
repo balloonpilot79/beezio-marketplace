@@ -29,6 +29,9 @@ const DigitalDownloadPanel: React.FC<DigitalDownloadPanelProps> = ({ orderId }) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
+  const [confirmItem, setConfirmItem] = useState<Entitlement | null>(null);
+  const [readyFile, setReadyFile] = useState<{url: string; filename: string} | null>(null);
+  useEffect(() => () => { if (readyFile?.url.startsWith('blob:')) URL.revokeObjectURL(readyFile.url); }, [readyFile]);
 
   const load = async () => {
     setLoading(true);
@@ -61,7 +64,8 @@ const DigitalDownloadPanel: React.FC<DigitalDownloadPanelProps> = ({ orderId }) 
   }, [orderId]);
 
   const handleRedeem = async (entitlementId: string, filename: string) => {
-    if (!window.confirm(`${DIGITAL_RETURN_POLICY}\n\nStart download access now?`)) return;
+    setConfirmItem(null);
+    setReadyFile(null);
     setRedeemingId(entitlementId);
     setError(null);
     try {
@@ -84,13 +88,11 @@ const DigitalDownloadPanel: React.FC<DigitalDownloadPanelProps> = ({ orderId }) 
       if((response.headers.get('content-type')||'').includes('application/json')){
         const delivery=await response.json();
         if(!delivery.url)throw new Error('Download link is missing.');
-        window.location.assign(delivery.url);
+        setReadyFile({url: delivery.url, filename});
       }else{
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
-        window.setTimeout(() => URL.revokeObjectURL(url),60000);
+        setReadyFile({url, filename});
       }
       await load();
     } catch (err) {
@@ -115,6 +117,18 @@ const DigitalDownloadPanel: React.FC<DigitalDownloadPanelProps> = ({ orderId }) 
         </div>
       </div>
 
+      {confirmItem && <div role="dialog" aria-modal="true" aria-label="Confirm digital download" className="mt-4 rounded-lg border border-amber-300 bg-white p-4 text-gray-900">
+        <p className="font-semibold">Start download access for {confirmItem.filename}?</p>
+        <p className="mt-2 text-sm">{DIGITAL_RETURN_POLICY}</p>
+        <div className="mt-3 flex gap-3">
+          <button type="button" onClick={() => setConfirmItem(null)} className="rounded border px-4 py-2">Cancel</button>
+          <button type="button" onClick={() => handleRedeem(confirmItem.id, confirmItem.filename)} className="rounded bg-gray-900 px-4 py-2 text-white">Accept and prepare file</button>
+        </div>
+      </div>}
+      {readyFile && <div role="status" className="mt-4 rounded-lg border border-green-300 bg-white p-4 text-gray-900">
+        <p>Your file is ready. Tap below to save or open it.</p>
+        <a href={readyFile.url} download={readyFile.filename} className="mt-2 inline-block rounded bg-gray-900 px-4 py-2 font-semibold text-white">Save {readyFile.filename}</a>
+      </div>}
       {error && <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
       <div className="mt-4 space-y-3">
@@ -139,7 +153,7 @@ const DigitalDownloadPanel: React.FC<DigitalDownloadPanelProps> = ({ orderId }) 
                 <button
                   type="button"
                   disabled={item.remainingDownloads <= 0 || redeemingId === item.id}
-                  onClick={() => handleRedeem(item.id, item.filename)}
+                  onClick={() => setConfirmItem(item)}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Download className="h-4 w-4" />

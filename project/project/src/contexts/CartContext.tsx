@@ -87,7 +87,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [items, setItems] = useState<CartItem[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [shippingOption, setShippingOption] = useState<ShippingOptionSelection | null>(null);
-  const [isCartHydrated, setIsCartHydrated] = useState(false);
+  const [hydratedKey, setHydratedKey] = useState<string | null>(null);
 
   const STORE_SCOPE_KEY = 'beezio-store-scope';
   const LEGACY_CART_KEY = 'beezio-cart';
@@ -98,6 +98,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userId ? `beezio-cart-${scope}-${userId}` : `beezio-cart-${scope}-guest`;
   const resolveShippingKey = (userId: string | null, scope: string) =>
     userId ? `beezio-shipping-${scope}-${userId}` : `beezio-shipping-${scope}-guest`;
+
+  const isCartHydrated = hydratedKey === resolveCartKey(currentUserId, storeScope);
 
   const loadStoredShippingOption = (userId: string | null, scope: string) => {
     const storageKey = resolveShippingKey(userId, scope);
@@ -178,7 +180,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Load cart whenever user or store scope changes
   useEffect(() => {
-    setIsCartHydrated(false);
+    setHydratedKey(null);
 
     const userId = currentUserId;
     const userCartKey = resolveCartKey(userId, storeScope);
@@ -192,7 +194,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...(lastScope && lastScope !== storeScope ? [resolveCartKey(userId, lastScope), resolveCartKey(null, lastScope)] : []),
         LEGACY_CART_KEY,
       ];
-      const loaded = loadCartFromKeys(candidateKeys, true);
+      const loaded = loadCartFromKeys(candidateKeys);
       setItems(loaded.items.filter(item => !isPublicTestProduct({ id: item.productId })));
 
       // Migrate guest/legacy/previous-scope carts into the current signed-in scope key.
@@ -208,7 +210,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...(lastScope && lastScope !== storeScope ? [resolveCartKey(null, lastScope)] : []),
         LEGACY_CART_KEY,
       ];
-      const loaded = loadCartFromKeys(candidateKeys, true);
+      const loaded = loadCartFromKeys(candidateKeys);
       setItems(loaded.items.filter(item => !isPublicTestProduct({ id: item.productId })));
 
       // Keep guest cart aligned to current scope for stable refresh behavior.
@@ -218,7 +220,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     loadStoredShippingOption(userId, storeScope);
-    setIsCartHydrated(true);
+    setHydratedKey(resolveCartKey(userId, storeScope));
   }, [currentUserId, storeScope]);
 
   const baseProductIds = Array.from(new Set(items.filter(item => !item.isSample).map(item => item.productId))).sort().join(',');
@@ -359,9 +361,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems([]);
     setShippingOption(null);
     // Also clear from localStorage
-    localStorage.removeItem(resolveCartKey(currentUserId, storeScope));
+    localStorage.setItem(resolveCartKey(currentUserId, storeScope), '[]');
     localStorage.removeItem(resolveShippingKey(currentUserId, storeScope));
-    localStorage.removeItem(LEGACY_CART_KEY);
+    localStorage.setItem(LEGACY_CART_KEY, '[]');
   };
 
   const getTotalItems = () => {

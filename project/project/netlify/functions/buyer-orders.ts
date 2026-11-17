@@ -18,6 +18,8 @@ const toMoney = (value: unknown): number => {
 const extractMissingColumnName = (message: string): string | null => {
   const pg = String(message || '').match(/column\s+"([^"]+)"\s+of\s+relation\s+"[^"]+"\s+does\s+not\s+exist/i);
   if (pg?.[1]) return pg[1];
+  const pgDot = String(message || '').match(/column\s+(?:[a-z0-9_]+\.)?"?([a-z0-9_]+)"?\s+does\s+not\s+exist/i);
+  if (pgDot?.[1]) return pgDot[1];
   const pgrst = String(message || '').match(/Could not find the '([^']+)' column of '[^']+' in the schema cache/i);
   return pgrst?.[1] || null;
 };
@@ -85,6 +87,7 @@ export const handler: Handler = async (event) => {
       'order_number',
       'buyer_id',
       'user_id',
+      'digital_buyer_user_id',
       'seller_id',
       'provider_order_id',
       'status',
@@ -111,15 +114,14 @@ export const handler: Handler = async (event) => {
     if (ownerIds.length) {
       queries.push(selectRows(supabaseAdmin, 'orders', orderFields, (query) => query.in('buyer_id', ownerIds)));
       queries.push(selectRows(supabaseAdmin, 'orders', orderFields, (query) => query.in('user_id', ownerIds)));
+      queries.push(selectRows(supabaseAdmin, 'orders', orderFields, (query) => query.in('digital_buyer_user_id', ownerIds)));
     }
     const results = await Promise.all(queries);
     const byId = new Map<string, any>();
     for (const result of results) {
       if (result.error) {
         const message = String((result.error as any)?.message || '');
-        if (!message.toLowerCase().includes('does not exist') && !message.toLowerCase().includes('schema cache')) {
-          return json(500, { error: message || 'Failed to load buyer orders' });
-        }
+        return json(503, { error: message || 'Failed to load buyer orders' });
       }
       for (const row of result.data || []) {
         const id = String(row?.id || '').trim();

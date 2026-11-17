@@ -164,6 +164,7 @@ export const handler: Handler = async (event) => {
       'picked_up_at',
       'total_amount',
       'total_charged',
+      'tax_amount',
       'tracking_number',
       'tracking_url',
     ];
@@ -246,7 +247,7 @@ export const handler: Handler = async (event) => {
     const productsResult = await selectInWithFallback(
       supabaseAdmin,
       'products',
-      ['id', 'title', 'description', 'images', 'image_url', 'sku', 'seller_id'],
+      ['id', 'title', 'description', 'images', 'image_url', 'sku', 'seller_id', 'is_digital'],
       'id',
       productIds
     );
@@ -460,7 +461,7 @@ export const handler: Handler = async (event) => {
         billing_email: String(orderRow.customer_email || '').trim() || '',
         billing_name: String(orderRow.customer_name || '').trim() || '',
         shipping_address: orderRow.shipping_address || null,
-        fulfillment_method: orderRow.fulfillment_method || 'shipping',
+        fulfillment_method: rawItems.length > 0 && rawItems.every(item => productById.get(String(item.product_id))?.is_digital === true) ? 'digital' : orderRow.fulfillment_method || 'shipping',
         pickup_location: orderRow.pickup_location || null,
         picked_up_at: orderRow.picked_up_at || null,
         tracking_number: String(orderRow.tracking_number || '').trim() || null,
@@ -478,6 +479,9 @@ export const handler: Handler = async (event) => {
         items,
         ...(mayViewInternalOrderData ? { fee_summary: {
           seller_earnings: Number(payoutLedger?.seller_earnings || 0) || 0,
+          tax_amount: Number(orderRow.tax_amount || 0),
+          affiliate_earnings: Number(payoutLedger?.partner_earnings || 0),
+          beezio_retained_total: Number(payoutLedger?.beezio_profit || 0),
           configured_affiliate_commission_total: configuredAffiliateCommissionTotal,
           applied_affiliate_commission_total: appliedAffiliateCommissionTotal,
           influencer_earnings: Number(payoutLedger?.influencer_earnings || 0) || 0,

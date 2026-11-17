@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const state = vi.hoisted(() => ({ tables: {} as Record<string, any[]>, pageFailure: '', authed: true }));
+const state = vi.hoisted(() => ({ tables: {} as Record<string, any[]>, pageFailure: '', missingColumns: {} as Record<string, string[]>, authed: true }));
 class Query {
   filters: Array<(row: any) => boolean> = []; offset = 0; count = Infinity; sorting: Array<[string, boolean]> = [];
   constructor(public table: string) {}
-  select() { return this; }
+  selected = '';
+  select(fields = '') { this.selected = fields; return this; }
   eq(key: string, value: any) { this.filters.push(row => row[key] === value); return this; }
   in(key: string, values: any[]) { this.filters.push(row => values.includes(row[key])); return this; }
   or(value: string) { this.filters.push(row => value.split(',').some(clause => { const [key, , match] = clause.split('.'); return String(row[key]) === match; })); return this; }
@@ -13,6 +14,8 @@ class Query {
   limit(count: number) { this.count = count; return this; }
   range(from: number, to: number) { this.offset = from; this.count = to - from + 1; return this; }
   then(resolve: any) {
+    const missing = (state.missingColumns[this.table] || []).find(field => this.selected.split(',').includes(field));
+    if (missing) return Promise.resolve(resolve({error: {message: `column ${this.table}.${missing} does not exist`}, data: null}));
     if (this.table === state.pageFailure && this.offset >= 500) return Promise.resolve(resolve({ error: new Error('later page failed'), data: null }));
     const rows = (state.tables[this.table] || []).filter(row => this.filters.every(filter => filter(row)));
     rows.sort((a, b) => { for (const [key, asc] of this.sorting) { const n = String(a[key] || '').localeCompare(String(b[key] || '')); if (n) return asc ? n : -n; } return 0; });
@@ -36,7 +39,7 @@ const snapshot = (id: string, amount: number, role = 'SELLER', extra = {}) => ({
 describe('dashboard accounting endpoints', () => {
   beforeEach(() => {
     process.env.SUPABASE_URL = 'https://example.supabase.co'; process.env.SUPABASE_SERVICE_ROLE_KEY = 'test';
-    state.authed = true; state.pageFailure = '';
+    state.authed = true; state.pageFailure = ''; state.missingColumns = {};
     state.tables = { profiles: [{ id: 'profile', user_id: 'auth-user' }, { id: 'unrelated-profile', user_id: 'other-user' }],
       orders: [{ id: 'order', seller_id: 'profile', buyer_id: 'auth-user', payment_status: 'paid', status: 'completed', total_charged: 100, tax_amount: 0, created_at: '2026-10-01T12:00:00Z' }],
       products: [{ id: 'product', seller_id: 'profile' }], order_items: [{ id: 'item', order_id: 'order', seller_id: 'profile', product_id: 'product', quantity: 2, computed_listing_price: 50 }],
@@ -82,6 +85,13 @@ describe('dashboard accounting endpoints', () => {
   it('shows buyers the frozen checkout price for each item', async () => {
     const result = await invoke(buyer, {}, 'GET');
     expect(result.body.orders[0]).toMatchObject({total_amount:100,items:[expect.objectContaining({unit_price:50,line_total:100})]});
+  });
+  it('keeps paid buyer history when optional legacy columns are absent', async () => {
+    state.missingColumns = {orders:['billing_name','billing_email'], order_items:['product_title','title_snapshot','sku']};
+    const result = await invoke(buyer, {}, 'GET');
+    expect(result.status).toBe(200);
+    expect(result.body.orders).toHaveLength(1);
+    expect(result.body.orders[0]).toMatchObject({id:'order',payment_status:'paid',total_amount:100});
   });
   it('does not expose an unrelated order just because its customer email matches the signed-in account', async () => {
     state.tables.orders.push({
