@@ -1,5 +1,5 @@
 import { removeStoreProducts } from '../api/removeStoreProducts';
-import { productAvailabilityNotice } from '../../shared/publicProductVisibility';
+import { isProductPublished, productAvailabilityNotice } from '../../shared/publicProductVisibility';
 import { isConfirmedPaidOrder, isEarningSnapshot } from '../../shared/accountingStatus';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -227,6 +227,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
     [mode]
   );
   const [activeTab, setActiveTab] = useState<SellerDashboardTab>(normalizeTab(activeTabOverride || initialTab || (mode === 'seller' ? 'products' : 'overview')));
+  const needsSellerData = activeTab !== 'financials';
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [promotedProducts, setPromotedProducts] = useState<Product[]>([]);
@@ -302,6 +303,11 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
         return;
       }
 
+      // Financials loads its own authenticated earnings data independently.
+      if (!needsSellerData) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError(null);
 
@@ -366,7 +372,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [mode, profile?.id, session, user?.id]);
+  }, [needsSellerData, mode, profile?.id, session?.access_token, user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -547,7 +553,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
           .map((row: any) => {
             const product = row?.products || row?.product;
             const productId = String(product?.id || row?.product_id || '').trim();
-            if (!productId || seenProductIds.has(productId)) return null;
+            if (!productId || !isProductPublished(product) || seenProductIds.has(productId)) return null;
             seenProductIds.add(productId);
             const commission = resolveAffiliateCommission(product);
             return {
@@ -1198,7 +1204,7 @@ const EnhancedSellerDashboard: React.FC<EnhancedSellerDashboardProps> = ({
           </div>
         )}
 
-        {loading ? (
+        {loading && activeTab !== 'financials' ? (
           <div className="flex min-h-[360px] items-center justify-center">
             <div className="text-center">
               <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600" />

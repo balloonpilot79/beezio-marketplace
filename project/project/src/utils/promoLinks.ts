@@ -1,3 +1,4 @@
+import { buildDeterministicReferralCode } from './referralCode';
 import { getBuyerFacingProductPrice } from './buyerPrice';
 
 type PromoPriceProduct = {
@@ -32,20 +33,10 @@ export const slugifyPromoValue = (value: string): string =>
 
 export const getPromoDisplayPrice = (product: PromoPriceProduct): number => getBuyerFacingProductPrice(product || {});
 
-export const getInfluencerPublicCode = ({ username, storeSlug, storeName, referralCode, profileId }: InfluencerCodeInput): string => {
-  const slug = String(storeSlug || '').trim();
-  if (slug) return slug;
-
-  const normalizedUsername = String(username || '').trim();
-  if (normalizedUsername) return normalizedUsername;
-
-  const normalizedStoreName = String(storeName || '').trim();
-  if (normalizedStoreName) return slugifyPromoValue(normalizedStoreName);
-
-  const normalizedReferralCode = String(referralCode || '').trim();
-  if (normalizedReferralCode) return normalizedReferralCode;
-
-  const id = String(profileId || '').trim();
-  const compact = id.replace(/-/g, '').toLowerCase();
-  return compact ? `bzo-${compact.slice(0, 10)}` : '';
+export const getInfluencerPublicCode = ({ referralCode, profileId }: InfluencerCodeInput): string => {
+  // Store aliases may arrive asynchronously or change. Only publish permanent
+  // account identity; the resolver accepts both stored and full deterministic codes.
+  const code = String(referralCode || '').trim();
+  if (code) return code;
+  return buildDeterministicReferralCode(String(profileId || '').trim());
 };

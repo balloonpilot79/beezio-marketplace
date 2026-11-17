@@ -124,8 +124,6 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [sellerFulfillmentAlert, setSellerFulfillmentAlert] = useState<SellerFulfillmentAlert | null>(null);
   const [sellerFulfillmentAlertDismissed, setSellerFulfillmentAlertDismissed] = useState(false);
-  const [recruiterStoreSlug, setRecruiterStoreSlug] = useState('');
-  const [recruiterStoreName, setRecruiterStoreName] = useState('');
 
   const sellerTabList: SellerDashboardTab[] = [
     'products',
@@ -287,74 +285,10 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
     };
   }, [user, visibleRoles]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadRecruiterStoreIdentity = async () => {
-      const profileId = String((profile as any)?.id || '').trim();
-      if (!profileId) {
-        if (!cancelled) {
-          setRecruiterStoreSlug('');
-          setRecruiterStoreName('');
-        }
-        return;
-      }
-
-      try {
-        const [affiliateStoreRes, affiliateSettingsRes] = await Promise.all([
-          supabase
-            .from('affiliate_stores')
-            .select('store_slug, store_name')
-            .eq('profile_id', profileId)
-            .maybeSingle(),
-          supabase
-            .from('affiliate_store_settings')
-            .select('subdomain, store_name')
-            .eq('affiliate_id', profileId)
-            .maybeSingle(),
-        ]);
-
-        if (cancelled) return;
-
-        const resolvedSlug = String(
-          (affiliateStoreRes.data as any)?.store_slug ||
-          (affiliateSettingsRes.data as any)?.subdomain ||
-          (profile as any)?.store_slug ||
-          (profile as any)?.subdomain ||
-          ''
-        ).trim();
-        const resolvedName = String(
-          (affiliateStoreRes.data as any)?.store_name ||
-          (affiliateSettingsRes.data as any)?.store_name ||
-          ''
-        ).trim();
-
-        setRecruiterStoreSlug(resolvedSlug);
-        setRecruiterStoreName(resolvedName);
-      } catch {
-        if (!cancelled) {
-          setRecruiterStoreSlug(String((profile as any)?.store_slug || (profile as any)?.subdomain || '').trim());
-          setRecruiterStoreName('');
-        }
-      }
-    };
-
-    void loadRecruiterStoreIdentity();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [profile]);
-
-  const recruiterCode = useMemo(() => {
-    return getInfluencerPublicCode({
-      username: (profile as any)?.username,
-      storeSlug: recruiterStoreSlug || (profile as any)?.store_slug || (profile as any)?.subdomain || (profile as any)?.slug,
-      storeName: recruiterStoreName,
-      referralCode: (profile as any)?.referral_code,
-      profileId: (profile as any)?.id,
-    });
-  }, [profile, recruiterStoreName, recruiterStoreSlug]);
+  const recruiterCode = getInfluencerPublicCode({
+    referralCode: profile?.referral_code,
+    profileId: profile?.__is_fallback ? '' : profile?.id,
+  });
 
   const recruiterInviteLink = useMemo(() => {
     if (typeof window === 'undefined') return '';

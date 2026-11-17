@@ -1,3 +1,4 @@
+import RecruitInviteNotice, { useRecruitInvite } from '../components/RecruitInviteNotice';
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, ShoppingBag, Store } from "lucide-react";
 import PublicLayout from "../components/layout/PublicLayout";
@@ -9,6 +10,7 @@ export default function JoinPage() {
   const { user } = useAuth();
   const [params] = useSearchParams();
   const recruit = params.get("recruit");
+  const invite = useRecruitInvite(recruit);
   return (
     <PublicLayout>
       <div className="mx-auto max-w-4xl py-4 sm:py-10">
@@ -20,6 +22,7 @@ export default function JoinPage() {
           Choose a shopper account to shop and manage orders. A business account
           lets you shop, sell, promote products as an affiliate, and refer people as a Beezio Ambassador.
         </p>
+        <RecruitInviteNotice invite={invite} />
         <div className="mt-10 grid gap-5 md:grid-cols-2">
           <section className="bz-panel flex flex-col p-7">
             <ShoppingBag className="h-7 w-7" />

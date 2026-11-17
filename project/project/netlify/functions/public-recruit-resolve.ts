@@ -1,4 +1,5 @@
 import { loadAmbassadorProfile } from './_lib/ambassador-eligibility';
+import { legacyReferralCodeBounds } from '../../shared/legacyReferralCode';
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 
@@ -57,7 +58,8 @@ const normalizeRecruitCode = (input: string): string => {
         parsed.searchParams.get('ic') ||
         parsed.searchParams.get('ref') ||
         '';
-      candidate = String(fromQuery || '').trim() || candidate;
+      const pathCode = parsed.pathname.match(/^\/i\/([^/]+)\/?$/)?.[1];
+      candidate = String(fromQuery || pathCode || '').trim() || candidate;
     } catch {
       // keep raw candidate
     }
@@ -87,10 +89,25 @@ const handler: Handler = async (event) => {
     const code = normalizeRecruitCode(codeRaw);
 
     if (!code) return json(400, { ok: false, valid: false, error: 'Missing code' });
+    if (!/^[a-z0-9_-]{1,128}$/i.test(code)) return json(200, { ok: true, valid: false });
 
     const supabaseUrl = requireEnv('SUPABASE_URL', ['VITE_SUPABASE_URL']);
     const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+    const legacyBounds = legacyReferralCodeBounds(code);
+    if (legacyBounds) {
+      const { data: candidates, error } = await supabaseAdmin.from('profiles')
+        .select('id').gte('id', legacyBounds.lower).lte('id', legacyBounds.upper).limit(2);
+      if (error) throw error;
+      // Never attribute a referral to an arbitrary account if a prefix collides.
+      if (candidates?.length !== 1) return json(200, { ok: true, valid: false });
+      const influencer = await loadAmbassadorProfile(supabaseAdmin, candidates[0].id);
+      return json(200, influencer ? {
+        ok: true, valid: true, referrerProfileId: String(influencer.id),
+        referrerName: String(influencer.full_name || 'a Beezio Ambassador'),
+      } : { ok: true, valid: false });
+    }
 
     const profileFilters = [`referral_code.ilike.${code}`];
     if (isUuid(code)) {

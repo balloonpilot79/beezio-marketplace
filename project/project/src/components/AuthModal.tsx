@@ -1,3 +1,4 @@
+import RecruitInviteNotice, { useRecruitInvite } from './RecruitInviteNotice';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Eye, EyeOff } from 'lucide-react';
@@ -72,6 +73,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
   const [storeSlugMessage, setStoreSlugMessage] = useState('');
   const [storeSlugValue, setStoreSlugValue] = useState('');
   const isBuyerAudience = audience === 'buyer';
+  const buyerInvite = useRecruitInvite(isOpen && isBuyerAudience && mode === 'register' ? buyerReferralCode : null);
   const isBusinessAudience = !isBuyerAudience;
   const storeSlugBlockingState =
     isBusinessAudience &&
@@ -369,7 +371,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           const response = await fetch(`/api/public/recruit/resolve?code=${encodeURIComponent(buyerReferralCode)}`);
           if (!response.ok) throw new Error('Could not check your referral link. Please try again.');
           const referral = await response.json();
-          if (referral.valid) buyerReferrerProfileId = String(referral.referrerProfileId || '');
+          if (!referral.ok || !referral.valid || !referral.referrerProfileId) throw new Error('Your invite link could not be verified. Please check it before creating your account.');
+          buyerReferrerProfileId = String(referral.referrerProfileId);
         }
         const result = await signUp(formData.email, formData.password, {
           ...formData,
@@ -529,6 +532,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         </div>
         <form className="flex-1 overflow-y-auto" onSubmit={handleSubmit}>
           <div className="p-6 space-y-4">
+            <RecruitInviteNotice invite={buyerInvite} />
             {allowAudienceSwitch && mode === 'login' && <div>
               <div className="grid grid-cols-2 gap-2" aria-label="Choose your account space">
                 {(['business', 'buyer'] as const).map(value => <button key={value} type="button" disabled={loading} aria-pressed={audience === value} onClick={() => { consumePostAuthPath(); setIgnoreReturnTo(true); setAudience(value); setError(null); }} className={`rounded-lg border px-3 py-3 text-sm font-semibold ${audience === value ? 'border-[#101820] bg-[#101820] text-white' : 'border-slate-200 text-slate-600'}`}>{value === 'business' ? 'Business Center' : 'Shopping'}</button>)}

@@ -1,3 +1,4 @@
+import { earningsBreakdown } from '../utils/earningsBreakdown';
 import { isEarningSnapshot } from '../../shared/accountingStatus';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -17,6 +18,16 @@ export type LedgerRow = {
   gross_amount: number | null;
   created_at?: string | null;
   snapshot_json?: {
+    correction?: string | null;
+    payee_breakdown?: Record<string, number | null>;
+    platform_fee_gross_total?: number | null;
+    beezio_operating_profit?: number | null;
+    paypal_fee_estimate?: number | null;
+    tax_amount?: number | null;
+    shipping_amount?: number | null;
+    affiliate_payout_paid_total?: number | null;
+    influencer_bonus_paid_total?: number | null;
+    buyer_referral_total?: number | null;
     order_number?: string | null;
     total_charged?: number | null;
     items?: Array<{ product_title?: string | null }>;
@@ -66,7 +77,7 @@ function formatProducts(row: LedgerRow) {
 export default function PayoutHistoryCard({
   role,
   title = 'Payout History',
-  description = 'Track holds, ready-to-pay amounts, and completed transfers.',
+  description = 'Track holds, ready-to-pay amounts, and completed transfers. Affiliate commissions and Ambassador rewards are separate earnings; self-referral rewards are excluded.',
   ledger: controlledLedger,
   items: controlledItems,
   loading: controlledLoading,
@@ -221,7 +232,7 @@ export default function PayoutHistoryCard({
       {!loading && !error && canceledEarnings.length > 0 && <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
         <div className="font-semibold">Canceled or reversed earnings</div>
         <p>These entries are kept for your history and do not count toward a payout.</p>
-        {canceledEarnings.map(row => <div key={row.id} className="mt-2 break-all">{formatReference(row)} — {formatMoney(Number(row.amount || 0))} — {row.accounting_reversed ? 'Order refunded or canceled' : row.status}</div>)}
+        {canceledEarnings.map(row => <div key={row.id} className="mt-2 break-all">{formatReference(row)} — {formatMoney(Number(row.amount || 0))} — {row.accounting_reversed ? 'Order refunded or canceled' : row.snapshot_json?.correction || row.status}</div>)}
       </div>}
       {!loading && !error ? (
         <div className="mt-5 space-y-6">
@@ -241,9 +252,27 @@ export default function PayoutHistoryCard({
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <div className="text-xs uppercase text-gray-500">Paid</div>
               <div className="mt-1 text-sm font-semibold text-gray-900">{formatMoney(realTimeStatus.paidAmount)}</div>
-              <div className="mt-1 text-xs text-gray-500">Next release {formatDate(nextPayoutDate)}</div>
+              {nextPayoutDate && <div className="mt-1 text-xs text-gray-500">Next hold release {formatDate(nextPayoutDate)}</div>}
             </div>
           </div>
+
+          {role === 'SELLER' && ledger.length > 0 && <section aria-label="Order fee breakdowns">
+            <h3 className="text-sm font-semibold text-gray-800">Order fee breakdowns</h3>
+            <p className="mt-1 text-xs text-gray-600">Recorded order allocations are separate from your seller earnings. The platform fee is included in Beezio retained.</p>
+            {ledger.map(row => {
+              const breakdown = earningsBreakdown(row.snapshot_json);
+              return <details key={row.id} className="mt-2 rounded-lg border border-gray-200 p-3">
+                <summary className="cursor-pointer text-sm font-semibold">{formatReference(row)} — your earnings {formatMoney(Number(row.amount || 0))}</summary>
+                {breakdown ? <div className="mt-3 space-y-2 text-sm">
+                  {breakdown.lines.map(line => <div key={line.label} className="flex justify-between gap-4"><span>{line.label}</span><span>{formatMoney(line.amount)}</span></div>)}
+                  <div className="text-xs text-gray-600">Included platform fee: {formatMoney(breakdown.platformFee)}</div>
+                  <div className="flex justify-between gap-4 border-t pt-2 font-semibold"><span>Buyer paid</span><span>{formatMoney(breakdown.total)}</span></div>
+                  {!breakdown.reconciles && <p className="text-xs text-amber-800">This historical allocation does not fully reconcile to the charged total. Contact support for a review.</p>}
+                  {row.accounting_reversed && <p className="text-xs text-amber-800">Original sale allocation; order later refunded or canceled.</p>}
+                </div> : <p className="mt-2 text-sm text-gray-600">No itemized allocation was saved for this historical entry.</p>}
+              </details>;
+            })}
+          </section>}
 
           <div>
             <div className="text-sm font-semibold text-gray-800">Upcoming / On Hold</div>

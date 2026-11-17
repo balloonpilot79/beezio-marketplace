@@ -1082,7 +1082,7 @@ const SignUpPage: React.FC = () => {
               )}
               {!referralValidationLoading && referralValid === true && (
                 <p className="mt-1 text-xs text-emerald-700">
-                  Invite link accepted.
+                  Invite link accepted. Invited by {referrerName || "a Beezio Ambassador"} (code: {urlInfluencer}).
                 </p>
               )}
               {!referralValidationLoading && referralValid === false && (

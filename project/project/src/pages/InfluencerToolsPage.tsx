@@ -1,9 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Megaphone, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContextMultiRole';
+import { getInfluencerPublicCode } from '../utils/promoLinks';
 import InfluencerDashboard from '../components/InfluencerDashboard';
 
 export default function InfluencerToolsPage() {
+  const { profile } = useAuth();
+  const code = getInfluencerPublicCode({ referralCode: profile?.referral_code, profileId: profile?.__is_fallback ? '' : profile?.id });
+  const inviteLink = code ? `${window.location.origin}/i/${encodeURIComponent(code)}` : '';
+
   return (
     <main className="min-h-screen bg-[#faf9f5] px-3 pb-16 pt-6 sm:px-6">
       <div className="mx-auto max-w-7xl">
@@ -25,10 +31,10 @@ export default function InfluencerToolsPage() {
         </div>
         <section className="mt-6 rounded-2xl border border-amber-200 bg-white p-5 sm:p-7">
           <h2 className="text-xl font-bold text-slate-950">Your first 72 hours: sharing kit</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-700">Use your personal tracked influencer link from the dashboard above. Replace [YOUR REFERRAL LINK] before posting. Only share in communities that permit promotions.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-700">Your personal tracked invite link is included below. Only share in communities that permit promotions.</p>
           <div className="mt-4 rounded-xl bg-amber-50 p-4">
             <h3 className="font-bold text-slate-900">Day 1: Your first post</h3>
-            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-800">{'Looking for a free way to start building an online income opportunity?\\n\\nBeezio lets sellers open online stores and affiliates promote products. As an influencer, I can also introduce sellers and affiliates and potentially earn from their qualifying sales. No inventory purchase is required for influencer participation. Earnings are not guaranteed.\\n\\nI may earn compensation from eligible referrals. Learn more: [YOUR REFERRAL LINK]'}</p>
+            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-800">{`Looking for a free way to start building an online income opportunity?\n\nBeezio lets sellers open online stores and affiliates promote products. As an influencer, I can also introduce sellers and affiliates and potentially earn from their qualifying sales. No inventory purchase is required for influencer participation. Earnings are not guaranteed.\n\nI may earn compensation from eligible referrals. Learn more: ${inviteLink || 'Your invite link is loading…'}`}</p>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl border p-4"><h3 className="font-bold">Day 2: Personal invitation</h3><p className="mt-2 text-sm leading-6 text-slate-700">Know someone selling products or exploring a side hustle? Invite them personally, explain the difference between seller and affiliate roles, and include your tracked link and compensation disclosure.</p></div>

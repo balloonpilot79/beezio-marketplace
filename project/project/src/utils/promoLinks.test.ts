@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getInfluencerPublicCode, getPromoDisplayPrice, slugifyPromoValue } from './promoLinks';
+import { getInfluencerPublicCode, getPromoDisplayPrice } from './promoLinks';
 
 describe('getPromoDisplayPrice', () => {
   it('prefers buyer-facing computed price over raw stored price', () => {
@@ -24,7 +24,7 @@ describe('getPromoDisplayPrice', () => {
 });
 
 describe('getInfluencerPublicCode', () => {
-  it('prefers store slug over username and referral code', () => {
+  it('uses the permanent referral code regardless of asynchronously loaded store identity', () => {
     expect(
       getInfluencerPublicCode({
         storeSlug: 'my-growth-link',
@@ -32,24 +32,28 @@ describe('getInfluencerPublicCode', () => {
         referralCode: 'BZOABC123',
         profileId: '12345678-1234-1234-1234-1234567890ab',
       })
-    ).toBe('my-growth-link');
+    ).toBe('BZOABC123');
   });
 
-  it('falls back to username when slug is missing', () => {
+  it('keeps the permanent code when store data is missing', () => {
     expect(
       getInfluencerPublicCode({
         username: 'someuser',
         referralCode: 'BZOABC123',
       })
-    ).toBe('someuser');
+    ).toBe('BZOABC123');
   });
 
-  it('slugifies store name before using referral code fallback', () => {
+  it('does not derive referral identity from the store name', () => {
     expect(
       getInfluencerPublicCode({
         storeName: 'My Growth Store',
         referralCode: 'BZOABC123',
       })
-    ).toBe(slugifyPromoValue('My Growth Store'));
+    ).toBe('BZOABC123');
   });
+});
+it('uses the complete deterministic fallback accepted by the resolver', () => {
+  expect(getInfluencerPublicCode({ profileId: '1deb1c67-4058-4f34-8c7c-1f0a9ecf47db' })).toBe('BZO1DEB1C6740584F348C7C1F0A9ECF47DB');
+  expect(getInfluencerPublicCode({ storeName: 'MareBelle', username: 'someone' })).toBe('');
 });

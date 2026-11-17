@@ -914,6 +914,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
   const setProductType = (nextIsDigital: boolean) => {
     setError(null);
+    if (nextIsDigital) setVariantConfig((prev) => ({ ...prev, enabled: false }));
     setFormData((prev) => ({
       ...prev,
       is_digital: nextIsDigital,
@@ -1363,7 +1364,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       const normalizedCategoryName =
         categories.find((c) => String(c.id) === categorySelection)?.name || categorySelection || null;
       const mergedTags = [...new Set(formData.tags)];
-      const hasVariants = Boolean(adminUrlImport?.variants?.length || variantConfig.enabled);
+      const hasVariants = !isDigitalProduct && Boolean(adminUrlImport?.variants?.length || variantConfig.enabled);
       const importedSourcePayload = adminUrlImport ? {
         source_platform: adminUrlImport.sourcePlatform,
         source_url: adminUrlImport.sourceUrl,
@@ -2206,7 +2207,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
           )}
 
           {/* Stock Quantity */}
-          <div>
+          {!formData.is_digital && <div>
             <label className="block text-sm font-bold text-gray-900 mb-2">
               Stock Quantity
             </label>
@@ -2220,7 +2221,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               placeholder="1"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00]/20"
             />
-          </div>
+          </div>}
 
           {import.meta.env.VITE_BEEZIO_VENDOR_STOCK_RESERVATIONS === 'true' &&
             editProductId && !managedStock && !formData.is_digital && (
@@ -2229,7 +2230,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                 Enable in-person stock controls
               </button>
             )}
-          {managedStock && (
+          {!formData.is_digital && managedStock && (
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" disabled={adjustingStock || formData.stock_quantity < 1}
                 className="min-h-11 rounded-lg border px-3 disabled:opacity-50"
@@ -2506,6 +2507,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             </section>
           )}
 
+          {!formData.is_digital && (
           <div className="border border-gray-200 rounded-xl bg-white p-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
@@ -2617,6 +2619,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               </div>
             )}
           </div>
+
+          )}
 
           <details className="rounded-xl border border-gray-200 bg-gray-50">
             <summary className="cursor-pointer list-none px-4 py-4">

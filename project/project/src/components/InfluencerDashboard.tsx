@@ -28,17 +28,7 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<InfluencerStatsRow | null>(null);
   const [copied, setCopied] = useState(false);
-  const [storeSlug, setStoreSlug] = useState<string | null>(null);
-  const [storeName, setStoreName] = useState<string | null>(null);
   const [recruitedAccounts, setRecruitedAccounts] = useState<RecruitedAccount[]>([]);
-
-  const slugify = (value: string): string =>
-    value
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 48);
 
   useEffect(() => {
     let alive = true;
@@ -57,7 +47,7 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
         const [{ data }, { data: referralRows, error: referralError }] = await Promise.all([
           supabase
             .from('profile_directory')
-            .select('id, username, referral_code')
+            .select('id, referral_code')
             .eq('id', profileId)
             .maybeSingle(),
           supabase
@@ -89,42 +79,10 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
     };
   }, [profile?.id]);
 
-  useEffect(() => {
-    let mounted = true;
-    const run = async () => {
-      const pid = String((profile as any)?.id || '').trim();
-      if (!pid) return;
-      try {
-        const { data } = await supabase
-          .from('affiliate_stores')
-          .select('store_slug, store_name')
-          .eq('profile_id', pid)
-          .maybeSingle();
-        if (!mounted) return;
-        setStoreSlug((data as any)?.store_slug ? String((data as any).store_slug) : null);
-        setStoreName((data as any)?.store_name ? String((data as any).store_name) : null);
-      } catch {
-        // Store naming is helpful for the invite code, but not required.
-      }
-    };
-    void run();
-    return () => {
-      mounted = false;
-    };
-  }, [profile?.id]);
-
-  const codeForLink = useMemo(() => {
-    // Prefer a permanent referral code. The public resolver also accepts the
-    // canonical profile UUID, so never publish a truncated/unresolvable fallback.
-    return String(stats?.referral_code || (profile as any)?.referral_code || profile?.id ||
-      getInfluencerPublicCode({
-        username: profile?.username,
-        storeSlug,
-        storeName,
-        referralCode: stats?.referral_code,
-        profileId: profile?.id,
-      }) || '').trim();
-  }, [profile?.id, profile?.username, stats?.referral_code, storeName, storeSlug]);
+  const codeForLink = getInfluencerPublicCode({
+    referralCode: profile?.referral_code || stats?.referral_code,
+    profileId: profile?.__is_fallback ? '' : profile?.id,
+  });
 
   const signupLink = useMemo(() => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
