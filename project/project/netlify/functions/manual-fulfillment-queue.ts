@@ -1,3 +1,4 @@
+import { digitalDeliveryLabel, fulfillmentQueueBucket, isDigitalOnlyOrder } from '../../shared/orderDelivery';
 import type { Handler } from '@netlify/functions';
 import { requireAdmin, requireSellerOrAdmin as requireSellerOrAdminShared } from './_lib/auth';
 import { json, parseJson } from './_lib/http';
@@ -44,18 +45,7 @@ const parseImages = (value: unknown): string[] => {
   }
 };
 
-const queueBucket = (item: any): 'needs_ordering' | 'ordered' | 'shipped' => {
-  const vendorStatus = String(item?.vendorStatus || '').toLowerCase();
-  const fulfillmentStatus = String(item?.fulfillmentStatus || '').toLowerCase();
-  const orderStatus = String(item?.orderStatus || '').toLowerCase();
-  if (item.pickedUpAt || vendorStatus === 'shipped' || fulfillmentStatus === 'shipped' || orderStatus === 'shipped' || orderStatus === 'delivered') {
-    return 'shipped';
-  }
-  if (vendorStatus === 'ordered' || vendorStatus === 'processing') {
-    return 'ordered';
-  }
-  return 'needs_ordering';
-};
+const queueBucket = fulfillmentQueueBucket;
 
 async function requireSellerOrAdmin(event: Parameters<Handler>[0], scope: QueueScope) {
   return scope === 'admin' ? requireAdmin(event as any) : requireSellerOrAdminShared(event as any);
@@ -251,7 +241,7 @@ async function loadQueue(profileId: string, scope: QueueScope) {
     if (snapshotStorefrontId && !storefrontIds.includes(snapshotStorefrontId)) storefrontIds.push(snapshotStorefrontId);
   });
 
-  const [vendorResult, cjResult, affiliateResult, productResult, storefrontResult] = await Promise.all([
+  const [vendorResult, cjResult, affiliateResult, productResult, storefrontResult, digitalResult] = await Promise.all([
     orderIds.length
       ? selectRowsResilient(
           supabaseAdmin,
@@ -280,7 +270,7 @@ async function loadQueue(profileId: string, scope: QueueScope) {
       ? selectRowsResilient(
           supabaseAdmin,
           'products',
-          ['id', 'title', 'description', 'images', 'primary_image_url', 'vendor_sku', 'source_url'],
+          ['id', 'title', 'description', 'images', 'primary_image_url', 'vendor_sku', 'source_url', 'is_digital'],
           (query) => query.in('id', productIds)
         )
       : Promise.resolve({ data: [], error: null } as any),
@@ -292,7 +282,15 @@ async function loadQueue(profileId: string, scope: QueueScope) {
           (query) => query.in('id', storefrontIds)
         )
       : Promise.resolve({ data: [], error: null } as any),
+    orderIds.length
+      ? selectRowsResilient(supabaseAdmin, 'digital_download_entitlements',
+          ['order_id', 'order_item_id', 'access_status', 'download_count', 'download_limit', 'first_access_at', 'last_downloaded_at'],
+          query => query.in('order_id', orderIds))
+      : Promise.resolve({ data: [], error: null } as any),
   ]);
+
+  if (digitalResult.error) throw new Error(digitalResult.error.message);
+  const digitalByItemId = new Map<string, any>((digitalResult.data || []).map((row: any) => [String(row.order_item_id), row]));
 
   if (vendorResult.error) throw new Error(vendorResult.error.message);
   if (cjResult.error) throw new Error(cjResult.error.message);
@@ -355,6 +353,10 @@ async function loadQueue(profileId: string, scope: QueueScope) {
       const snapshotStorefrontId = toSafeString(item?.storefront_id_snapshot) || toSafeString(order?.storefront_id);
       const storefront = snapshotStorefrontId ? storefrontById.get(snapshotStorefrontId) : null;
       return {
+        isDigital: product?.is_digital === true || digitalByItemId.has(String(item?.id)),
+        digitalDeliveryStatus: digitalDeliveryLabel(digitalByItemId.get(String(item?.id))),
+        downloadCount: Number(digitalByItemId.get(String(item?.id))?.download_count || 0),
+        firstAccessAt: toSafeString(digitalByItemId.get(String(item?.id))?.first_access_at),
         id: String(item?.id || ''),
         productId: toSafeString(item?.product_id),
         title: String(item?.product_title_snapshot || product?.title || 'Product'),
@@ -393,7 +395,7 @@ async function loadQueue(profileId: string, scope: QueueScope) {
       customerName: toSafeString(order?.billing_name) || toSafeString(order?.shipping_address?.name),
       customerEmail: toSafeString(order?.billing_email) || toSafeString(order?.customer_email),
       customerPhone: toSafeString(order?.shipping_address?.phone),
-      fulfillmentMethod: order?.fulfillment_method || 'shipping',
+      fulfillmentMethod: isDigitalOnlyOrder({ items: normalizedItems, fulfillmentMethod: order?.fulfillment_method }) ? 'digital' : order?.fulfillment_method || 'shipping',
       pickedUpAt: toSafeString(order?.picked_up_at),
       shippingAddress: order?.shipping_address && typeof order.shipping_address === 'object' ? order.shipping_address : null,
       trackingNumber: toSafeString(order?.tracking_number),
@@ -420,6 +422,7 @@ async function loadQueue(profileId: string, scope: QueueScope) {
 
   const summary = {
     total: items.length,
+    digital: items.filter(item => queueBucket(item) === 'digital').length,
     needsOrdering: items.filter((item) => queueBucket(item) === 'needs_ordering').length,
     ordered: items.filter((item) => queueBucket(item) === 'ordered').length,
     shipped: items.filter((item) => queueBucket(item) === 'shipped').length,
@@ -444,6 +447,21 @@ async function loadAuthorizedOrder(profileId: string, scope: QueueScope, orderId
     const err: any = new Error('Order not found');
     err.statusCode = 404;
     throw err;
+  }
+  const orderItems = Array.isArray(order.order_items) ? order.order_items : [];
+  const productIds = [...new Set(orderItems.map((item: any) => item.product_id).filter(Boolean))];
+  const [productResult, accessResult] = await Promise.all([
+    productIds.length ? supabaseAdmin.from('products').select('id,is_digital').in('id', productIds) : Promise.resolve({ data: [], error: null }),
+    supabaseAdmin.from('digital_download_entitlements').select('order_item_id').eq('order_id', orderId),
+  ]);
+  if (productResult.error || accessResult.error) throw new Error('Unable to verify order delivery type. Try again.');
+  const digitalProductIds = new Set((productResult.data || []).filter((product: any) => product.is_digital).map((product: any) => product.id));
+  const digitalItemIds = new Set((accessResult.data || []).map((access: any) => access.order_item_id));
+  const digitalOnly = isDigitalOnlyOrder({ fulfillmentMethod: order.fulfillment_method, items: orderItems.map((item: any) => ({ isDigital: digitalProductIds.has(item.product_id) || digitalItemIds.has(item.id) })) });
+  if (digitalOnly) {
+    const error: any = new Error('Digital downloads are delivered electronically and cannot be marked ordered or shipped.');
+    error.statusCode = 409;
+    throw error;
   }
   return order as any;
 }

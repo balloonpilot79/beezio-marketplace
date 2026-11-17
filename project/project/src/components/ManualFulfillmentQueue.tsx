@@ -1,9 +1,11 @@
+import { fulfillmentQueueBucket } from '../../shared/orderDelivery';
+import DigitalOrderFulfillment from './DigitalOrderFulfillment';
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, ClipboardCopy, ExternalLink, Loader2, Package, Printer, RefreshCw, ShoppingCart, Truck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type QueueScope = 'admin' | 'seller';
-type QueueBucket = 'needs_ordering' | 'ordered' | 'shipped';
+type QueueBucket = 'needs_ordering' | 'ordered' | 'shipped' | 'digital';
 
 type QueueItem = {
   orderId: string;
@@ -43,6 +45,10 @@ type QueueItem = {
   items: Array<{
     id: string;
     productId: string | null;
+    isDigital?: boolean;
+    digitalDeliveryStatus?: string;
+    downloadCount?: number;
+    firstAccessAt?: string | null;
     title: string;
     description: string | null;
     quantity: number;
@@ -67,6 +73,7 @@ type QueueResponse = {
     needsOrdering: number;
     ordered: number;
     shipped: number;
+    digital?: number;
   };
   items: QueueItem[];
   error?: string;
@@ -131,7 +138,7 @@ const buildFulfillmentSheet = (item: QueueItem) => {
     ...addressLines(item.shippingAddress),
     ``,
     `ITEMS TO PICK`,
-    ...item.items.flatMap((orderItem, index) => [
+    ...item.items.filter(orderItem => !orderItem.isDigital).flatMap((orderItem, index) => [
       `${index + 1}. ${orderItem.title}`,
       `   Qty: ${orderItem.quantity}`,
       `   SKU: ${orderItem.sku || 'N/A'}`,
@@ -241,18 +248,7 @@ const copyDocument = async (contents: string) => {
   document.body.removeChild(textarea);
 };
 
-const queueBucket = (item: QueueItem): QueueBucket => {
-  const vendorStatus = String(item.vendorStatus || '').toLowerCase();
-  const fulfillmentStatus = String(item.fulfillmentStatus || '').toLowerCase();
-  const orderStatus = String(item.orderStatus || '').toLowerCase();
-  if (item.pickedUpAt || vendorStatus === 'shipped' || fulfillmentStatus === 'shipped' || orderStatus === 'shipped' || orderStatus === 'delivered') {
-    return 'shipped';
-  }
-  if (vendorStatus === 'ordered' || vendorStatus === 'processing') {
-    return 'ordered';
-  }
-  return 'needs_ordering';
-};
+const queueBucket = fulfillmentQueueBucket;
 
 const statusTone = (bucket: QueueBucket) => {
   if (bucket === 'needs_ordering') return 'bg-amber-100 text-amber-900 border-amber-200';
@@ -310,6 +306,7 @@ export default function ManualFulfillmentQueue({
   }
 
   const normalizeBucketForScope = (bucket: QueueBucket): QueueBucket => {
+    if (bucket === 'digital') return 'digital';
     if (scope === 'seller') {
       return bucket === 'shipped' ? 'shipped' : 'needs_ordering';
     }
@@ -339,6 +336,7 @@ export default function ManualFulfillmentQueue({
       if (!response.ok) throw new Error(String((payload as any)?.error || 'Failed to load fulfillment queue'));
 
       setItems(Array.isArray(payload.items) ? payload.items : []);
+      if (mode === 'initial' && payload.items?.length && payload.items.every(item => queueBucket(item) === 'digital')) setActiveBucket('digital');
       setSummary(payload.summary || summary);
       setOrderRefs((prev) => {
         const next = { ...prev };
@@ -503,6 +501,10 @@ export default function ManualFulfillmentQueue({
             <div className="text-xs uppercase text-emerald-700">Shipped</div>
             <div className="mt-1 text-lg font-semibold text-emerald-900">{summary.shipped}</div>
           </div>
+          {Number(summary.digital || 0) > 0 && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+            <div className="text-xs uppercase text-blue-700">Digital Downloads</div>
+            <div className="mt-1 text-lg font-semibold text-blue-900">{summary.digital}</div>
+          </div>}
         </div>
 
         {error ? (
@@ -540,6 +542,10 @@ export default function ManualFulfillmentQueue({
         >
           Shipped
         </button>
+        {Number(summary.digital || 0) > 0 && <button type="button" onClick={() => setActiveBucket('digital')}
+          className={`rounded-lg px-4 py-2 text-sm font-semibold ${activeBucket === 'digital' ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-700'}`}>
+          Digital Downloads
+        </button>}
         {scope === 'admin' && brandOptions.length ? (
           <label className="ml-auto flex items-center gap-2 text-sm font-medium text-gray-700">
             Brand
@@ -598,11 +604,13 @@ export default function ManualFulfillmentQueue({
                     </div>
                     <div className="text-sm text-gray-600">
                       <div>Payment: {item.paymentStatus || 'unknown'}</div>
-                      <div className="mt-1">Tracking: {item.trackingNumber || item.cjTrackingNumber || 'Pending'}</div>
+                      {bucket === 'digital'
+                        ? <div className="mt-1">Delivery: {[...new Set(item.items.map(orderItem => orderItem.digitalDeliveryStatus || 'Preparing download'))].join(', ')}</div>
+                        : <div className="mt-1">Tracking: {item.trackingNumber || item.cjTrackingNumber || 'Pending'}</div>}
                     </div>
                     <div className="flex justify-start lg:justify-end">
                       <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusTone(bucket)}`}>
-                        {scope === 'seller'
+                        {bucket === 'digital' ? 'Digital download' : scope === 'seller'
                           ? bucket === 'shipped'
                             ? 'Shipped'
                             : 'Ready To Ship'
@@ -616,7 +624,7 @@ export default function ManualFulfillmentQueue({
                   </div>
                 </button>
 
-                {expanded ? (
+                {expanded ? bucket === 'digital' ? <DigitalOrderFulfillment order={item} /> : (
                   <div className="border-t border-gray-200 bg-gray-50/50 px-5 py-5">
                     <div className="mb-4 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
                       {scope === 'seller'
@@ -691,6 +699,7 @@ export default function ManualFulfillmentQueue({
                                   <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
                                     {orderItem.brandName || item.brandName}
                                   </div>
+                                  {orderItem.isDigital && <div className="mt-2 text-sm font-semibold text-blue-800">Digital download — {orderItem.digitalDeliveryStatus}</div>}
                                   {orderItem.description ? (
                                     <div className="mt-1 text-xs text-gray-600">{orderItem.description}</div>
                                   ) : null}
