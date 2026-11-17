@@ -21,4 +21,16 @@ describe('marketplace product search', () => {
     expect(matchesMarketplaceSearch({}, '  ')).toBe(true);
     expect(matchesMarketplaceSearch({}, 'shirt')).toBe(false);
   });
+  it('finds physical and digital products by their public seller name or store slug', () => {
+    for (const product of [
+      { title: 'Heritage Horseshoe Garden', profiles: { full_name: 'MareBelle' }, storefront_slug: 'marebelle' },
+      { title: 'Printable planner', profiles: { full_name: 'Prairie Paper Studio' }, storefront_slug: 'prairie-paper', derivedCategory: 'Digital Products' },
+    ]) {
+      expect(matchesMarketplaceSearch(product, product.profiles.full_name.toUpperCase())).toBe(true);
+      expect(matchesMarketplaceSearch(product, product.storefront_slug)).toBe(true);
+      expect(matchesMarketplaceSearch(product, `${product.profiles.full_name} ${product.title}`)).toBe(true);
+      expect(matchesMarketplaceSearch(product, 'Unrelated Store')).toBe(false);
+    }
+    expect(matchesMarketplaceSearch({ profiles: null }, 'MareBelle')).toBe(false);
+  });
 });

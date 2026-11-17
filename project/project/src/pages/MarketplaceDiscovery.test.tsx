@@ -18,6 +18,16 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 describe('digital marketplace discovery', () => {
+  it('finds the actual catalog seller name when it is absent from the product title', async () => {
+    catalog.fetch.mockResolvedValue([
+      { ...physical, profiles: { full_name: 'MareBelle' }, storefront_slug: 'marebelle' },
+      { ...digital, profiles: { full_name: 'Other Store' } },
+    ]);
+    let view: any;
+    await act(async () => { view = create(<MemoryRouter initialEntries={['/marketplace?q=MareBelle']}><MarketplacePage /></MemoryRouter>); });
+    expect(view.root.findAllByType('article').map((row: any) => row.children.join(''))).toEqual([physical.title]);
+    act(() => view.unmount());
+  });
   it('keeps the Digital Products category available with an empty catalog', async () => {
     catalog.fetch.mockResolvedValue([]);
     let view: any;

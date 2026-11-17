@@ -50,6 +50,7 @@ interface MarketplaceProduct {
   status?: string;
   is_promotable?: boolean | null;
   profiles?: ProductProfile | null;
+  storefront_slug?: string | null;
   average_rating?: number;
   review_count?: number;
   created_at?: string;
