@@ -44,7 +44,7 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
       }
 
       try {
-        const [{ data }, { data: referralRows, error: referralError }] = await Promise.all([
+        const [{ data, error: profileError }, { data: referralRows, error: referralError }] = await Promise.all([
           supabase
             .from('profile_directory')
             .select('id, referral_code')
@@ -58,10 +58,13 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
         ]);
 
         if (!alive) return;
+        if (profileError) throw profileError;
+        const resolvedCode = String((data as any)?.referral_code || (profile as any)?.referral_code || '').trim();
+        if (!resolvedCode) throw new Error('Your invite code could not be loaded. Please retry before sharing.');
         setStats({
           profile_id: String((data as any)?.id || profileId),
           username: (data as any)?.username ?? (profile as any)?.username ?? null,
-          referral_code: (data as any)?.referral_code ?? null,
+          referral_code: resolvedCode,
         });
         if (referralError) throw referralError;
         setRecruitedAccounts((referralRows as RecruitedAccount[]) || []);
@@ -87,10 +90,11 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
   const signupLink = useMemo(() => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const encoded = encodeURIComponent(codeForLink);
-    return `${origin}/i/${encoded}`;
+    return codeForLink ? `${origin}/i/${encoded}` : '';
   }, [codeForLink]);
 
   const handleCopy = async () => {
+    if (!signupLink) return;
     const copiedOk = await copyTextToClipboard(signupLink);
     if (copiedOk) {
       setCopied(true);
@@ -144,6 +148,7 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
           />
           <button
             onClick={handleCopy}
+            disabled={!signupLink}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
           >
             <Copy className="w-4 h-4" />
@@ -154,11 +159,11 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
         <div className="mt-4 text-xs text-gray-500">
           Your code: <span className="font-semibold">{codeForLink || '-'}</span>
         </div>
-        <ReferralShareActions
+        {signupLink && <ReferralShareActions
           referralUrl={signupLink}
           message="Join Beezio through my invite to shop, sell, or promote products."
           className="mt-4"
-        />
+        />}
         <p className="mt-2 text-xs text-gray-500">
           Text invite opens your SMS app. Messenger copies the complete tracked invite before opening Messenger.
         </p>
