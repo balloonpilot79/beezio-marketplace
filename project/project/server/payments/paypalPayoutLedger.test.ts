@@ -27,6 +27,23 @@ describe('buildPayPalLedgerPlan fixed-tier accounting', () => {
     expect(plan.payees[0].snapshot.total_charged).toBe(baseline.payees[0].snapshot.total_charged);
   });
 
+  it('pays the shopper referrer even when that referrer is also the seller, without consuming seller proceeds', () => {
+    const plan = buildPayPalLedgerPlan(makeInput({
+      sellerId: 'jason', partnerId: null, sellerInfluencerId: null, partnerInfluencerId: null,
+      buyerReferrerId: 'jason', subtotalListing: 2.46, taxAmount: 0.17, paypalFeeAmount: 0.37,
+      items: [{ id: 'digital', quantity: 1, seller_ask_amount: 0.50, computed_listing_price: 2.46,
+        affiliate_payout_amount: 0, shipping_reserve_amount: 0, influencer_allocation_amount: 0.50,
+        platform_fee_amount: 0.75, paypal_processing_allowance: 0.71, product_title: 'TEST — 50¢ Tracking Test' }],
+    }));
+    expect(plan.payees.map(row => [row.payeeRole, row.payeeUserId, row.amount])).toEqual([
+      ['SELLER', 'jason', 0.50], ['INFLUENCER', 'jason', 0.25],
+    ]);
+    expect(plan.aggregate.beezioFeeGross).toBe(0.75);
+    expect(plan.aggregate.beezioProfit).toBe(1.34);
+    expect(plan.moneyEntries.reduce((sum, row) => sum + Math.round(row.netAmount * 100), 0)).toBe(263);
+    expect(plan.moneyEntries.filter(row => row.metadata.source === 'buyer_referral')).toHaveLength(1);
+  });
+
   it('skips buyer rewards on lines with no eligible platform fee', () => {
     const input = makeInput();
     input.items[0].platform_fee_amount = 0;

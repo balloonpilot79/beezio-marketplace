@@ -379,7 +379,7 @@ async function loadQueue(profileId: string, scope: QueueScope) {
     const orderStorefront = storefrontById.get(String(order?.storefront_id || '').trim()) || null;
     const brandName = toSafeString(orderStorefront?.name)
       || normalizedItems.map((item) => toSafeString(item?.brandName)).find(Boolean)
-      || 'Unassigned storefront';
+      || (order?.storefront_id ? 'Storefront unavailable' : 'Marketplace / direct order');
 
     return {
       orderId,
