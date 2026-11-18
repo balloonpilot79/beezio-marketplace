@@ -54,6 +54,9 @@ interface AffiliateProviderProps {
 
 export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }) => {
   const { user, profile } = useAuth();
+  const userId = user?.id;
+  const profileId = profile?.id;
+  const profileReferralCode = profile?.referral_code;
   const [selectedProducts, setSelectedProducts] = useState<AffiliateProduct[]>([]);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [affiliateShareBase, setAffiliateShareBase] = useState<{ origin: string; pathPrefix: string } | null>(null);
@@ -69,7 +72,7 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
   // Fetch referral code when user/profile loads
   useEffect(() => {
     const fetchReferralCode = async () => {
-      if (user && profile) {
+      if (userId && profileId) {
         const ensureStableReferralCode = async (profileId: string) => {
           // Deterministic + stable: derived from profile UUID (never changes).
           const deterministic = buildDeterministicReferralCode(profileId);
@@ -110,44 +113,44 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
         };
 
         // Try to get from profile first
-        if (profile.referral_code) {
-          setReferralCode(profile.referral_code);
+        if (profileReferralCode) {
+          setReferralCode(profileReferralCode);
           return;
         }
 
         // If profile has an id, we can safely expose the deterministic code immediately,
         // even if the DB update hasn't completed yet.
-        if (profile.id) {
-          setReferralCode(buildDeterministicReferralCode(profile.id));
+        if (profileId) {
+          setReferralCode(buildDeterministicReferralCode(profileId));
         }
 
         // Otherwise fetch from database
         const { data, error } = await supabase
           .from('profile_directory')
           .select('referral_code')
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .single();
 
         if (data?.referral_code) {
           setReferralCode(data.referral_code);
-        } else if (profile.id) {
+        } else if (profileId) {
           // If they don't have one yet (new affiliate), create it once.
-          await ensureStableReferralCode(profile.id);
+          await ensureStableReferralCode(profileId);
         }
       }
     };
 
     fetchReferralCode();
-  }, [user, profile]);
+  }, [userId, profileId, profileReferralCode]);
 
   useEffect(() => {
-    if (!user || !profile) {
+    if (!userId || !profileId) {
       setAffiliateShareBase(null);
       setAffiliatePublicToken(null);
       return;
     }
     let cancelled = false;
-    const affiliateId = profile?.id || user.id;
+    const affiliateId = profileId;
     (async () => {
       try {
         const { data } = await supabase
@@ -161,11 +164,11 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
         const origin = customDomain ? `https://${customDomain}` : window.location.origin;
         const pathPrefix = customDomain ? '' : subdomain ? `/store/${subdomain}` : '';
         setAffiliateShareBase({ origin, pathPrefix });
-        setAffiliatePublicToken(subdomain || profile?.referral_code || profile?.id || user.id);
+        setAffiliatePublicToken(subdomain || null);
       } catch {
         if (!cancelled) {
           setAffiliateShareBase(null);
-          setAffiliatePublicToken(profile?.referral_code || profile?.id || user.id);
+          setAffiliatePublicToken(null);
         }
       }
     })();
@@ -173,15 +176,15 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
     return () => {
       cancelled = true;
     };
-  }, [user, profile]);
+  }, [userId, profileId]);
 
   // Hydrate product selections from the server so dashboard/store state survives
   // across devices and is not limited to localStorage.
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     let cancelled = false;
     const loadServerSelections = async () => {
-      const affiliateId = String(profile?.id || user.id || '').trim();
+      const affiliateId = String(profileId || userId).trim();
       if (!affiliateId) return;
       const { data, error } = await supabase
         .from('affiliate_products')
@@ -213,7 +216,7 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
       cancelled = true;
       window.removeEventListener('affiliate-products-changed', refresh);
     };
-  }, [user, profile?.id]);
+  }, [userId, profileId]);
 
   // Load affiliate data from localStorage
   useEffect(() => {
@@ -275,7 +278,7 @@ export const AffiliateProvider: React.FC<AffiliateProviderProps> = ({ children }
     const baseUrl = affiliateShareBase?.origin || window.location.origin;
     const pathPrefix = affiliateShareBase?.pathPrefix || '';
     const affiliateId = profile?.id || user.id;
-    const publicToken = String(affiliatePublicToken || affiliateId).trim();
+    const publicToken = String(affiliatePublicToken || profileReferralCode || affiliateId).trim();
     const promoterUserId = user.id || affiliateId;
     const timestamp = Date.now();
     
