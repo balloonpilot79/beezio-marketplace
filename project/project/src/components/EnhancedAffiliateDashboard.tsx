@@ -1,6 +1,6 @@
 import { productAvailabilityNotice } from '../../shared/publicProductVisibility';
 import { isEarningSnapshot } from '../../shared/accountingStatus';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { useAffiliate } from '../contexts/AffiliateContext';
@@ -349,29 +349,6 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
 
     return { href: '', display: '' };
   }, [partnerOwnerId, storeCustomDomain, storeSubdomain]);
-
-  useEffect(() => {
-    if (user) {
-      fetchAffiliateData();
-    } else {
-      setLoading(false);
-    }
-  }, [user, profile, partnerOwnerId]);
-
-  useEffect(() => {
-    const refreshAffiliateProducts = (event: Event) => {
-      const detail = (event as CustomEvent<{ affiliateId?: string | null }>).detail || {};
-      const changedAffiliateId = String(detail.affiliateId || '').trim();
-      if (!changedAffiliateId || affiliateOwnerIds.includes(changedAffiliateId)) {
-        void fetchAffiliateData();
-      }
-    };
-
-    window.addEventListener('affiliate-products-changed', refreshAffiliateProducts as EventListener);
-    return () => {
-      window.removeEventListener('affiliate-products-changed', refreshAffiliateProducts as EventListener);
-    };
-  }, [affiliateOwnerIds.join('|'), partnerOwnerId]);
 
   const fetchAffiliateData = async () => {
     try {
@@ -725,6 +702,52 @@ const EnhancedAffiliateDashboard: React.FC<EnhancedAffiliateDashboardProps> = ({
       setLoading(false);
     }
   };
+
+  const fetchAffiliateDataRef = useRef(fetchAffiliateData);
+  useEffect(() => {
+    fetchAffiliateDataRef.current = fetchAffiliateData;
+  });
+
+  const userId = user?.id;
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    let running = false;
+    let refreshPending = false;
+    const load = async () => {
+      if (running) {
+        refreshPending = true;
+        return;
+      }
+      running = true;
+      try {
+        do {
+          refreshPending = false;
+          await fetchAffiliateDataRef.current();
+        } while (active && refreshPending);
+      } finally {
+        running = false;
+      }
+    };
+
+    const refreshProducts = (event: Event) => {
+      const changedAffiliateId = String((event as CustomEvent<{ affiliateId?: string }>).detail?.affiliateId || '').trim();
+      if (!changedAffiliateId || affiliateOwnerIds.includes(changedAffiliateId)) {
+        void load();
+      }
+    };
+
+    void load();
+    window.addEventListener('affiliate-products-changed', refreshProducts);
+    return () => {
+      active = false;
+      window.removeEventListener('affiliate-products-changed', refreshProducts);
+    };
+  }, [userId, partnerOwnerId, affiliateOwnerIds]);
 
   useEffect(() => {
     let active = true;
