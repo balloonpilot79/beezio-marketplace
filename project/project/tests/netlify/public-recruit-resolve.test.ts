@@ -39,3 +39,16 @@ it('rejects filter syntax before querying profiles', async () => {
   expect(await resolve('%,role.eq.admin')).toMatchObject({ valid: false });
   expect(state.from).not.toHaveBeenCalled();
 });
+it('reports an unavailable lookup as retryable and does not cache it', async () => {
+  const limit = async () => ({ data: null, error: { message: 'database unavailable' } });
+  state.from.mockReturnValue({ select: () => ({ or: () => ({ limit }) }) });
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    const result: any = await handler({ queryStringParameters: { code: 'alice' } } as any, {} as any, () => {});
+    expect(result.statusCode).toBe(503);
+    expect(result.headers['Cache-Control']).toBe('no-store');
+    expect(JSON.parse(result.body)).toEqual({ ok: false, error: 'Invite lookup temporarily unavailable' });
+  } finally {
+    log.mockRestore();
+  }
+});

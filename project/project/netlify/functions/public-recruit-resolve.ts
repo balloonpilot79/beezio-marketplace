@@ -8,7 +8,7 @@ function json(statusCode: number, body: unknown) {
     statusCode,
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400',
+      'Cache-Control': 'no-store',
     },
     body: JSON.stringify(body),
   };
@@ -93,7 +93,11 @@ const handler: Handler = async (event) => {
 
     const supabaseUrl = requireEnv('SUPABASE_URL', ['VITE_SUPABASE_URL']);
     const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const deadline = AbortSignal.timeout(8000);
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: (input, init) => fetch(input, { ...init, signal: deadline }) },
+    });
 
     const legacyBounds = legacyReferralCodeBounds(code);
     if (legacyBounds) {
@@ -109,7 +113,7 @@ const handler: Handler = async (event) => {
       } : { ok: true, valid: false });
     }
 
-    const profileFilters = [`referral_code.ilike.${code}`];
+    const profileFilters = [`referral_code.ilike.${code.replace(/_/g, '\\_')}`];
     if (isUuid(code)) {
       profileFilters.push(`id.eq.${code}`);
       profileFilters.push(`user_id.eq.${code}`);
@@ -127,7 +131,8 @@ const handler: Handler = async (event) => {
       .or(profileFilters.join(','))
       .limit(1);
 
-    if (!profileError && Array.isArray(profileRows) && profileRows[0]?.id) {
+    if (profileError) throw profileError;
+    if (profileRows?.[0]?.id) {
       const row = profileRows[0] as any;
       const influencer = await loadAmbassadorProfile(supabaseAdmin, String(row.id));
       if (influencer) {
@@ -146,7 +151,7 @@ const handler: Handler = async (event) => {
       const { data: byUsername, error: usernameError } = await supabaseAdmin
         .from('profiles')
         .select('id,full_name,username')
-        .ilike('username', code)
+        .ilike('username', code.replace(/_/g, '\\_'))
         .limit(1);
 
       if (!usernameError && Array.isArray(byUsername) && byUsername[0]?.id) {
@@ -242,14 +247,11 @@ const handler: Handler = async (event) => {
       }
     }
 
+    deadline.throwIfAborted();
     return json(200, { ok: true, valid: false });
-  } catch (e) {
-    return json(500, {
-      ok: false,
-      valid: false,
-      error: 'Unexpected error',
-      details: e instanceof Error ? e.message : String(e),
-    });
+  } catch (error) {
+    console.error('Recruit invite lookup failed', error);
+    return json(503, { ok: false, error: 'Invite lookup temporarily unavailable' });
   }
 };
 

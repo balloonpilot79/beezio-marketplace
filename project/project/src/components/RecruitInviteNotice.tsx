@@ -7,6 +7,44 @@ export type RecruitInvite = {
   referrerProfileId?: string;
 };
 
+async function fetchRecruitInvite(code: string, signal?: AbortSignal): Promise<RecruitInvite> {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  const timeout = window.setTimeout(abort, 12000);
+
+  try {
+    const response = await fetch(`/api/public/recruit/resolve?code=${encodeURIComponent(code)}`, {
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error('Could not verify invite');
+    const payload = await response.json();
+    if (payload.ok !== true) throw new Error('Could not verify invite');
+    if (payload.valid === false) return { code, status: 'invalid' };
+    if (payload.valid !== true || !payload.referrerProfileId) throw new Error('Incomplete invite response');
+    return { code, status: 'accepted', referrerName: payload.referrerName, referrerProfileId: payload.referrerProfileId };
+  } catch {
+    return { code, status: 'error' };
+  } finally {
+    window.clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
+  }
+}
+
+export async function requireRecruitInviter(invite: RecruitInvite | null): Promise<string> {
+  if (!invite) return '';
+  const result = invite.status === 'accepted' || invite.status === 'invalid'
+    ? invite
+    : await fetchRecruitInvite(invite.code);
+  if (result.status === 'invalid') {
+    throw new Error('This invite could not be verified. Ask your Ambassador for a working link, or start a signup without the invite.');
+  }
+  if (result.status !== 'accepted' || !result.referrerProfileId) {
+    throw new Error('We could not verify your invite right now. Try again to continue with referral credit.');
+  }
+  return result.referrerProfileId;
+}
+
 export function useRecruitInvite(code: string | null | undefined): RecruitInvite | null {
   const cleanCode = String(code || '').trim();
   const [result, setResult] = useState<RecruitInvite | null>(null);
@@ -14,21 +52,10 @@ export function useRecruitInvite(code: string | null | undefined): RecruitInvite
     if (!cleanCode) { setResult(null); return; }
     const controller = new AbortController();
     setResult({ code: cleanCode, status: 'checking' });
-    const timeout = window.setTimeout(() => controller.abort(), 12000);
-    let active = true;
-    void fetch(`/api/public/recruit/resolve?code=${encodeURIComponent(cleanCode)}`, { signal: controller.signal })
-      .then(async response => {
-        if (!response.ok) throw new Error('Could not verify invite');
-        return response.json();
-      })
-      .then(payload => {
-        if (!active) return;
-        setResult({ code: cleanCode, status: payload.ok && payload.valid && payload.referrerProfileId ? 'accepted' : 'invalid',
-          referrerName: payload.referrerName, referrerProfileId: payload.referrerProfileId });
-      })
-      .catch(() => { if (active) setResult({ code: cleanCode, status: 'error' }); })
-      .finally(() => window.clearTimeout(timeout));
-    return () => { active = false; window.clearTimeout(timeout); controller.abort(); };
+    void fetchRecruitInvite(cleanCode, controller.signal).then(result => {
+      if (!controller.signal.aborted) setResult(result);
+    });
+    return () => controller.abort();
   }, [cleanCode]);
   if (!cleanCode) return null;
   return result?.code === cleanCode ? result : { code: cleanCode, status: 'checking' };
