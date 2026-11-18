@@ -1,4 +1,4 @@
-import RecruitInviteNotice, { useRecruitInvite } from './RecruitInviteNotice';
+import RecruitInviteNotice, { requireRecruitInviter, useRecruitInvite } from './RecruitInviteNotice';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Eye, EyeOff } from 'lucide-react';
@@ -365,14 +365,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
           }
         }
 
-        let buyerReferrerProfileId = '';
-        if (isBuyerAudience && buyerReferralCode) {
-          const response = await fetch(`/api/public/recruit/resolve?code=${encodeURIComponent(buyerReferralCode)}`);
-          if (!response.ok) throw new Error('Could not check your referral link. Please try again.');
-          const referral = await response.json();
-          if (!referral.ok || !referral.valid || !referral.referrerProfileId) throw new Error('Your invite link could not be verified. Please check it before creating your account.');
-          buyerReferrerProfileId = String(referral.referrerProfileId);
-        }
+        const buyerReferrerProfileId = await requireRecruitInviter(buyerInvite);
         const result = await signUp(formData.email, formData.password, {
           ...formData,
           role: signupRole,

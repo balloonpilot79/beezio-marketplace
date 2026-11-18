@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Copy, Link as LinkIcon, Megaphone, QrCode } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Copy, Link as LinkIcon, Megaphone } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { supabase } from '../lib/supabase';
@@ -9,12 +9,6 @@ import { getInfluencerPublicCode } from '../utils/promoLinks';
 import PayoutHistoryCard from './PayoutHistoryCard';
 import ReferralShareActions from './ReferralShareActions';
 
-type InfluencerStatsRow = {
-  profile_id: string;
-  username: string | null;
-  referral_code: string | null;
-};
-
 type RecruitedAccount = {
   id: string;
   recruited_profile_id: string;
@@ -23,12 +17,13 @@ type RecruitedAccount = {
 };
 
 const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = false }) => {
-  const { profile } = useAuth();
+  const { profile, user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<InfluencerStatsRow | null>(null);
   const [copied, setCopied] = useState(false);
-  const [recruitedAccounts, setRecruitedAccounts] = useState<RecruitedAccount[]>([]);
+  const [recruitedAccounts, setRecruitedAccounts] = useState<RecruitedAccount[] | null>(null);
+  const [reload, setReload] = useState(0);
+  const profileId = profile?.__is_fallback || profile?.user_id !== user?.id ? '' : String(profile?.id || '');
 
   useEffect(() => {
     let alive = true;
@@ -37,37 +32,25 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
       setLoading(true);
       setError(null);
 
-      const profileId = String((profile as any)?.id || '').trim();
+      setRecruitedAccounts(null);
       if (!profileId) {
         setLoading(false);
         return;
       }
 
       try {
-        const [{ data }, { data: referralRows, error: referralError }] = await Promise.all([
-          supabase
-            .from('profile_directory')
-            .select('id, referral_code')
-            .eq('id', profileId)
-            .maybeSingle(),
-          supabase
-            .from('influencer_referrals')
-            .select('id,recruited_profile_id,recruited_role,created_at')
-            .eq('influencer_profile_id', profileId)
-            .order('created_at', { ascending: false }),
-        ]);
+        const { data, error } = await supabase
+          .from('influencer_referrals')
+          .select('id,recruited_profile_id,recruited_role,created_at')
+          .eq('influencer_profile_id', profileId)
+          .order('created_at', { ascending: false })
+          .abortSignal(AbortSignal.timeout(12000));
 
-        if (!alive) return;
-        setStats({
-          profile_id: String((data as any)?.id || profileId),
-          username: (data as any)?.username ?? (profile as any)?.username ?? null,
-          referral_code: (data as any)?.referral_code ?? null,
-        });
-        if (referralError) throw referralError;
-        setRecruitedAccounts((referralRows as RecruitedAccount[]) || []);
-      } catch (e: any) {
-        if (!alive) return;
-        setError(e?.message || 'Failed to load ambassador recruiting tools');
+        if (error) throw error;
+        if (alive) setRecruitedAccounts(data as RecruitedAccount[]);
+      } catch (error) {
+        console.warn('Could not load ambassador assignments', error);
+        if (alive) setError('Could not load your referral counts right now.');
       } finally {
         if (alive) setLoading(false);
       }
@@ -77,20 +60,15 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
     return () => {
       alive = false;
     };
-  }, [profile?.id]);
+  }, [profileId, reload]);
 
-  const codeForLink = getInfluencerPublicCode({
-    referralCode: profile?.referral_code || stats?.referral_code,
-    profileId: profile?.__is_fallback ? '' : profile?.id,
-  });
-
-  const signupLink = useMemo(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const encoded = encodeURIComponent(codeForLink);
-    return `${origin}/i/${encoded}`;
-  }, [codeForLink]);
+  const codeForLink = profileId
+    ? getInfluencerPublicCode({ referralCode: profile.referral_code, profileId })
+    : '';
+  const signupLink = codeForLink ? `https://beezio.co/i/${encodeURIComponent(codeForLink)}` : '';
 
   const handleCopy = async () => {
+    if (!signupLink) return;
     const copiedOk = await copyTextToClipboard(signupLink);
     if (copiedOk) {
       setCopied(true);
@@ -112,20 +90,19 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
     URL.revokeObjectURL(blobUrl);
   };
 
-  if (loading) {
+  if (!signupLink) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="text-gray-700">Loading ambassador recruiting tools...</div>
+      <div className="max-w-7xl mx-auto px-4 py-10">
+        <p>Your Ambassador profile is temporarily unavailable.</p>
+        <button type="button" onClick={() => void refreshProfile()} className="bz-button bz-button-gold mt-4">
+          Retry loading profile
+        </button>
       </div>
     );
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {error ? (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</div>
-      ) : null}
-
       <div id="invite-link" className="rounded-xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-3">
           <LinkIcon className="w-5 h-5 text-gray-600" />
@@ -152,7 +129,7 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
         </div>
 
         <div className="mt-4 text-xs text-gray-500">
-          Your code: <span className="font-semibold">{codeForLink || '-'}</span>
+          Your code: <span className="font-semibold">{codeForLink}</span>
         </div>
         <ReferralShareActions
           referralUrl={signupLink}
@@ -166,10 +143,10 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
 
       <div className="mt-4 grid gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:grid-cols-[180px_1fr] sm:p-6">
         <div className="flex flex-col items-center justify-center gap-2 rounded-xl bg-white p-4">
-          {codeForLink ? <QRCodeSVG id="beezio-influencer-signup-qr" value={signupLink} size={144} includeMargin aria-label="Ambassador signup QR code" /> : <QrCode className="h-16 w-16 text-slate-300" />}
+          <QRCodeSVG id="beezio-influencer-signup-qr" value={signupLink} size={144} includeMargin aria-label="Ambassador signup QR code" />
           <span className="text-center text-xs font-bold text-slate-700">Scan to join through you</span>
-          <button type="button" disabled={!codeForLink} onClick={downloadInviteQr}
-            className="mt-1 min-h-10 rounded-lg border border-amber-300 bg-amber-50 px-3 text-xs font-bold text-amber-900 disabled:opacity-50">Download QR for flyers</button>
+          <button type="button" onClick={downloadInviteQr}
+            className="mt-1 min-h-10 rounded-lg border border-amber-300 bg-amber-50 px-3 text-xs font-bold text-amber-900">Download QR for flyers</button>
         </div>
         <div className="space-y-3">
           <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900"><Megaphone className="h-5 w-5 text-amber-700" /> Ready-to-share invitation</h3>
@@ -195,54 +172,64 @@ const InfluencerDashboard: React.FC<{ buyerView?: boolean }> = ({ buyerView = fa
         />
       </div>}
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-purple-200 bg-purple-50 p-5">
-          <div className="text-sm font-semibold text-purple-900">Recruited business accounts</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">
-            {new Set(recruitedAccounts.filter((row) => row.recruited_role !== 'buyer').map((row) => row.recruited_profile_id)).size}
+      {loading && <p role="status" className="mt-6 text-sm text-gray-700">Loading referral counts…</p>}
+      {error && (
+        <div role="status" className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+          {error}{' '}
+          <button type="button" onClick={() => setReload(value => value + 1)} className="underline">Retry</button>
+        </div>
+      )}
+      {recruitedAccounts && <>
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-purple-200 bg-purple-50 p-5">
+            <div className="text-sm font-semibold text-purple-900">Recruited business accounts</div>
+            <div className="mt-2 text-3xl font-bold text-gray-900">
+              {new Set(recruitedAccounts.filter((row) => row.recruited_role !== 'buyer').map((row) => row.recruited_profile_id)).size}
+            </div>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+            <div className="text-sm font-semibold text-amber-900">Seller assignments</div>
+            <div className="mt-2 text-3xl font-bold text-gray-900">
+              {recruitedAccounts.filter((row) => row.recruited_role === 'seller').length}
+            </div>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+            <div className="text-sm font-semibold text-emerald-900">Affiliate assignments</div>
+            <div className="mt-2 text-3xl font-bold text-gray-900">
+              {recruitedAccounts.filter((row) => row.recruited_role === 'affiliate').length}
+            </div>
+          </div>
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+            <div className="text-sm font-semibold text-blue-900">Shopper accounts</div>
+            <div className="mt-2 text-3xl font-bold text-gray-900">{recruitedAccounts.filter((row) => row.recruited_role === 'buyer').length}</div>
           </div>
         </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-          <div className="text-sm font-semibold text-amber-900">Seller assignments</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">
-            {recruitedAccounts.filter((row) => row.recruited_role === 'seller').length}
-          </div>
-        </div>
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
-          <div className="text-sm font-semibold text-emerald-900">Affiliate assignments</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">
-            {recruitedAccounts.filter((row) => row.recruited_role === 'affiliate').length}
-          </div>
-        </div>
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
-          <div className="text-sm font-semibold text-blue-900">Shopper accounts</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">{recruitedAccounts.filter((row) => row.recruited_role === 'buyer').length}</div>
-        </div>
-      </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-5 py-4">
-          <h3 className="font-semibold text-gray-900">Lifetime referral assignments</h3>
-          <p className="mt-1 text-sm text-gray-600">Each business can have a seller assignment and an affiliate assignment under the ambassador who recruited it.</p>
-        </div>
-        {recruitedAccounts.length ? (
-          <div className="divide-y divide-gray-100">
-            {recruitedAccounts.slice(0, 20).map((row) => (
-              <div key={row.id} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
-                <div>
-                  <div className="font-medium capitalize text-gray-900">{row.recruited_role === 'buyer' ? 'Shopper' : row.recruited_role} activity</div>
-                  <div className="text-xs text-gray-500">{row.recruited_role === 'buyer' ? 'Shopper' : 'Business'} …{row.recruited_profile_id.slice(-8)}</div>
-                </div>
-                <div className="text-right text-xs text-gray-500">
-                  Attached {new Date(row.created_at).toLocaleDateString()}
-                </div>
-              </div>
-            ))}
+        <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-5 py-4">
+            <h3 className="font-semibold text-gray-900">Lifetime referral assignments</h3>
+            <p className="mt-1 text-sm text-gray-600">Each business can have a seller assignment and an affiliate assignment under the ambassador who recruited it.</p>
           </div>
-        ) : (
-          <div className="px-5 py-8 text-center text-sm text-gray-500">No referred accounts yet. Share your invite link to begin.</div>
-        )}
-      </div>
+          {recruitedAccounts.length ? (
+            <div className="divide-y divide-gray-100">
+              {recruitedAccounts.slice(0, 20).map((row) => (
+                <div key={row.id} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
+                  <div>
+                    <div className="font-medium capitalize text-gray-900">{row.recruited_role === 'buyer' ? 'Shopper' : row.recruited_role} activity</div>
+                    <div className="text-xs text-gray-500">{row.recruited_role === 'buyer' ? 'Shopper' : 'Business'} …{row.recruited_profile_id.slice(-8)}</div>
+                  </div>
+                  <div className="text-right text-xs text-gray-500">
+                    Attached {new Date(row.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-5 py-8 text-center text-sm text-gray-500">No referred accounts yet. Share your invite link to begin.</div>
+          )}
+        </div>
+
+      </>}
 
       <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-6">
         <h3 className="text-lg font-semibold text-gray-900">How ambassador earnings work</h3>

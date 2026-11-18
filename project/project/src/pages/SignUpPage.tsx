@@ -7,6 +7,8 @@ import { deriveStoreSlug, isValidStoreSlug } from "../utils/storeSlug";
 import { buildDeterministicReferralCode } from "../utils/referralCode";
 import { assignInfluencerReferral } from "../utils/influencerReferrals";
 import { validatePasswordPolicy } from "../utils/passwordPolicy";
+import RecruitInviteNotice, { requireRecruitInviter, useRecruitInvite } from "../components/RecruitInviteNotice";
+import { withRecruitCode } from "../utils/referralSharing";
 import {
   clearPendingRecruitAttributionForUser,
   queuePendingRecruitAttribution,
@@ -42,21 +44,12 @@ const SignUpPage: React.FC = () => {
   const [paypalConfirmed, setPaypalConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [referralCode, setReferralCode] = useState("");
-  const [referralValid, setReferralValid] = useState<boolean | null>(null);
-  const [referralValidationLoading, setReferralValidationLoading] =
-    useState(false);
-  const [referrerName, setReferrerName] = useState("");
-  const [referrerProfileId, setReferrerProfileId] = useState<string | null>(
-    null,
-  );
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
   const [storeSlugStatus, setStoreSlugStatus] = useState<
     "idle" | "checking" | "available" | "taken" | "invalid" | "error"
   >("idle");
   const [storeSlugMessage, setStoreSlugMessage] = useState("");
   const [storeSlugValue, setStoreSlugValue] = useState("");
-  const enableReferralCode = false;
   const {
     signUp,
     signIn,
@@ -69,7 +62,6 @@ const SignUpPage: React.FC = () => {
     loading: authLoading,
   } = useAuth();
   const navigate = useNavigate();
-  // Compliance hardening: disable recruiter/referrer signup codes.
 
   // Password strength calculation
   const getPasswordStrength = (password: string) => {
@@ -99,7 +91,7 @@ const SignUpPage: React.FC = () => {
     searchParams.get("influencer") ||
     searchParams.get("ic");
   const urlInfluencer = String(referralFromLink || "").trim();
-  const inviteLinkPresent = Boolean(urlInfluencer);
+  const invite = useRecruitInvite(urlInfluencer);
 
   const isIgnorableLookupError = (err: any) => {
     if (!err) return true;
@@ -114,128 +106,6 @@ const SignUpPage: React.FC = () => {
       message.includes("could not find the")
     );
   };
-
-  const normalizeRecruitCode = (input: string): string => {
-    const raw = String(input || "").trim();
-    if (!raw) return "";
-
-    let candidate = raw;
-    if (/^https?:\/\//i.test(candidate)) {
-      try {
-        const parsed = new URL(candidate);
-        const fromQuery =
-          parsed.searchParams.get("recruit") ||
-          parsed.searchParams.get("influencer") ||
-          parsed.searchParams.get("ic") ||
-          parsed.searchParams.get("code") ||
-          "";
-        candidate = String(fromQuery || "").trim() || candidate;
-      } catch {
-        // keep raw input
-      }
-    }
-
-    try {
-      candidate = decodeURIComponent(candidate);
-    } catch {
-      // keep undecoded value
-    }
-
-    return candidate
-      .trim()
-      .replace(/^['"`]+|['"`]+$/g, "")
-      .replace(/\/$/, "");
-  };
-
-  const validateReferralCode = useCallback(async (code: string) => {
-    const trimmed = normalizeRecruitCode(code);
-    if (!trimmed || trimmed.length < 3) {
-      setReferralValid(null);
-      setReferrerName("");
-      setReferrerProfileId(null);
-      setReferralValidationLoading(false);
-      return;
-    }
-
-    try {
-      setReferralValidationLoading(true);
-      let explicitlyInvalid = false;
-      // Prefer server-side resolver (service-role) so invite validation works for anonymous visitors.
-      try {
-        const response = await fetch(
-          `/api/public/recruit/resolve?code=${encodeURIComponent(trimmed)}`,
-        );
-        if (response.ok) {
-          const payload = await response.json();
-          if (payload?.ok && payload?.valid && payload?.referrerProfileId) {
-            setReferralValid(true);
-            setReferrerProfileId(String(payload.referrerProfileId));
-            setReferrerName(String(payload.referrerName || "this ambassador"));
-            return;
-          }
-          if (payload?.ok && payload?.valid === false) {
-            explicitlyInvalid = true;
-          }
-        }
-      } catch {
-        // fallback below
-      }
-
-      // Fallback: direct client lookup for local/dev environments without Netlify function routing.
-      const isUuid =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-          trimmed,
-        );
-      const profileFilters = [
-        `referral_code.ilike.${trimmed}`,
-        `username.ilike.${trimmed}`,
-      ];
-      if (isUuid) profileFilters.push(`id.eq.${trimmed}`);
-
-      const { data: profileRows, error: profileError } = await supabase
-        .from('profile_directory')
-        .select("id, full_name, username")
-        .or(profileFilters.join(","))
-        .limit(1);
-
-      const data = Array.isArray(profileRows) ? profileRows[0] : null;
-      if (!profileError && data?.id) {
-        setReferralValid(true);
-        setReferrerProfileId(String(data.id));
-        setReferrerName(data.full_name || data.username || "this ambassador");
-        return;
-      }
-
-      const { data: storeRow } = await supabase
-        .from("affiliate_stores")
-        .select("profile_id, store_name, store_slug")
-        .eq("store_slug", trimmed.toLowerCase())
-        .maybeSingle();
-
-      if ((storeRow as any)?.profile_id) {
-        setReferralValid(true);
-        setReferrerProfileId(String((storeRow as any).profile_id));
-        setReferrerName(
-          String(
-            (storeRow as any).store_name ||
-              (storeRow as any).store_slug ||
-              "this ambassador",
-          ),
-        );
-        return;
-      }
-
-      setReferralValid(explicitlyInvalid ? false : null);
-      setReferrerName("");
-      setReferrerProfileId(null);
-    } catch {
-      setReferralValid(null);
-      setReferrerName("");
-      setReferrerProfileId(null);
-    } finally {
-      setReferralValidationLoading(false);
-    }
-  }, []);
 
   const resolveStoreName = useCallback(() => {
     const trimmed = String(formData.storeName || "").trim();
@@ -466,14 +336,6 @@ const SignUpPage: React.FC = () => {
       }
     }
 
-    if (inviteLinkPresent && referralValidationLoading) {
-      setError(
-        "Invite link validation is still loading. Please try again in a moment.",
-      );
-      setLoading(false);
-      return;
-    }
-
     try {
       if (!isValidStoreSlug(storeSlug)) {
         setError(
@@ -491,6 +353,7 @@ const SignUpPage: React.FC = () => {
         return;
       }
 
+      const referrerProfileId = await requireRecruitInviter(invite);
       const result = await signUp(formData.email, formData.password, {
         ...formData,
         role: "seller",
@@ -499,7 +362,7 @@ const SignUpPage: React.FC = () => {
         storeSlug,
         paypalEmail: paypalEmail.trim(),
         paypalConfirmed,
-        referrerProfileId: referrerProfileId || "",
+        referrerProfileId,
         independentContractorAcknowledged: acceptedIndependentContractor,
         taxDeliveryAcknowledged: acceptedTaxDelivery,
       });
@@ -646,19 +509,9 @@ const SignUpPage: React.FC = () => {
 
   useEffect(() => {
     if (urlRole === "buyer") {
-      navigate("/account/signup", { replace: true });
+      navigate(withRecruitCode("/account/signup", urlInfluencer), { replace: true });
     }
-  }, [navigate, urlRole]);
-
-  // Influencer recruiting link support (separate from site-wide partner attribution `?ref=`)
-  // Important: this is one-time attribution during signup; we never overwrite it later.
-  useEffect(() => {
-    if (!urlInfluencer) return;
-    const trimmed = normalizeRecruitCode(String(urlInfluencer));
-    if (!trimmed) return;
-    setReferralCode(trimmed);
-    void validateReferralCode(trimmed);
-  }, [urlInfluencer, validateReferralCode]);
+  }, [navigate, urlRole, urlInfluencer]);
 
   if (authLoading) {
     return (
@@ -729,7 +582,7 @@ const SignUpPage: React.FC = () => {
               <button
                 onClick={async () => {
                   await signOut();
-                  navigate("/signup", { replace: true });
+                  navigate(withRecruitCode("/signup", urlInfluencer), { replace: true });
                 }}
                 className="inline-flex items-center justify-center px-5 py-3 rounded-lg bg-amber-500 text-black font-semibold hover:bg-amber-600 disabled:opacity-60 transition-colors"
               >
@@ -762,7 +615,7 @@ const SignUpPage: React.FC = () => {
                   } catch {
                     // ignore
                   }
-                  navigate("/signup", { replace: true });
+                  navigate(withRecruitCode("/signup", urlInfluencer), { replace: true });
                 }}
                 className="inline-flex items-center justify-center px-5 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 font-semibold hover:bg-gray-50 transition-colors"
               >
@@ -831,7 +684,7 @@ const SignUpPage: React.FC = () => {
         <p className="mb-6 text-center text-xs text-slate-500">
           Just shopping?{" "}
           <Link
-            to="/account/signup"
+            to={withRecruitCode("/account/signup", urlInfluencer)}
             className="font-semibold text-slate-700 underline underline-offset-4"
           >
             Create a shopper account
@@ -1048,32 +901,7 @@ const SignUpPage: React.FC = () => {
             )}
           </div>
 
-          {inviteLinkPresent && (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-              <p className="text-sm font-medium text-emerald-900">
-                Invite link detected
-              </p>
-              <p className="mt-1 text-xs text-emerald-700">
-                This recruiter code will be attached to this business account
-                across the combined tools.
-              </p>
-              {referralValidationLoading && (
-                <p className="mt-1 text-xs text-emerald-700">
-                  Verifying referrer...
-                </p>
-              )}
-              {!referralValidationLoading && referralValid === true && (
-                <p className="mt-1 text-xs text-emerald-700">
-                  Invite link accepted. Invited by {referrerName || "a Beezio Ambassador"} (code: {urlInfluencer}).
-                </p>
-              )}
-              {!referralValidationLoading && referralValid === false && (
-                <p className="mt-1 text-xs text-red-700">
-                  Invite link could not be verified. You can still continue.
-                </p>
-              )}
-            </div>
-          )}
+          <RecruitInviteNotice invite={invite} />
           <details className="space-y-4">
             <summary className="cursor-pointer text-sm font-semibold">Contact and address (optional)</summary>
             <p className="text-sm text-gray-600">Complete these later in your Business Center.</p>
@@ -1320,7 +1148,7 @@ const SignUpPage: React.FC = () => {
               loading ||
               !acceptedTerms ||
               !acceptedIndependentContractor ||
-              (inviteLinkPresent && referralValidationLoading) ||
+              invite?.status === "checking" ||
               storeSlugBlockingState
             }
             className="bz-button bz-button-gold w-full disabled:opacity-50 disabled:cursor-not-allowed"
