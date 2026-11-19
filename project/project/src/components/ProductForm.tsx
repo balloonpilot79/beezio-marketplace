@@ -256,6 +256,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
   const [directMarketplace, setDirectMarketplace] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptedListingContactPolicy, setAcceptedListingContactPolicy] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [digitalUploadLoading, setDigitalUploadLoading] = useState(false);
   const [digitalUploadProgress,setDigitalUploadProgress]=useState('');
@@ -387,6 +388,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     });
     setProductImages([]);
     setAdminUrlImport(null);
+    setAcceptedListingContactPolicy(false);
     setCurrentProductId(null);
     setCreatedProductId(null);
     setCreatedMarketplaceStatus(null);
@@ -1129,6 +1131,16 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
   async function handleSubmit(e?: React.FormEvent, addAnother: boolean = false) {
     if (e) e.preventDefault();
+    if (!acceptedListingContactPolicy) {
+      setError('Please confirm the product image and contact information policy before saving.');
+      return;
+    }
+    // Detect contact details in listing text; images need separate visual review.
+    const listingText = [formData.title, formData.description, ...(formData.tags || [])].join(' ');
+    if (/(?:https?:\/\/|www\.|wa\.me\/|whatsapp|telegram|@[a-z0-9._-]+\.[a-z]{2,}|\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b|\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b)/i.test(listingText)) {
+      setError('Remove external contact details or purchase links from the product title, description, and tags before saving.');
+      return;
+    }
     if (submitLockRef.current || loading) return;
     submitLockRef.current = true;
     const abortSubmit = (message: string) => {
@@ -2859,6 +2871,16 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             </div>
           </details>
 
+
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-gray-900">
+            <p className="font-semibold">Product images and off-platform contact policy</p>
+            <p className="mt-2">Do not put phone numbers, WhatsApp details, email addresses, QR codes, external purchase links, or instructions to buy elsewhere in your product photos, descriptions, or videos. Buyers who find your product on Beezio must complete their purchases through Beezio checkout. Listings that violate this rule may be flagged for review and sellers may be asked to replace an image.</p>
+            <p className="mt-2 text-xs text-amber-900">Please check the images themselves, including any text printed on them. Automatic image-text detection is not yet available.</p>
+            <label className="mt-3 flex items-start gap-2 font-medium">
+              <input type="checkbox" checked={acceptedListingContactPolicy} onChange={(event) => setAcceptedListingContactPolicy(event.target.checked)} required className="mt-1 h-4 w-4" />
+              <span>I confirm my listing follows this policy and understand Beezio may request corrections.</span>
+            </label>
+          </div>
 
           {/* Bottom submit action */}
           <div className="pt-4">
