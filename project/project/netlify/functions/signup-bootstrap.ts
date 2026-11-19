@@ -79,6 +79,10 @@ export const handler: Handler = async (event) => {
     const storeSlug = await slugAvailable(supabaseAdmin, requestedSlug, userId);
     const city = String(body.city || '').trim();
     const state = String(body.state || '').trim();
+    const zipCode = String(body.zipCode || body.zip_code || '').trim();
+    if (!/^[A-Za-z]{2}$/.test(state) || !/^\d{5}(-\d{4})?$/.test(zipCode)) {
+      return json(400, { error: 'A two-letter US state and valid ZIP code are required.' });
+    }
     const location = [city, state].filter(Boolean).join(', ') || null;
     const paypalEmail = String(metadata.paypal_email || body.paypalEmail || '').trim();
     const paypalConfirmed = Boolean(metadata.paypal_confirmed ?? body.paypalConfirmed) && paypalEmail.includes('@');
@@ -127,7 +131,10 @@ export const handler: Handler = async (event) => {
       primary_role: primaryRole,
       phone: String(body.phone || '').trim() || null,
       location,
-      zip_code: String(body.zipCode || body.zip_code || '').trim() || null,
+      city: city || null,
+      state: state.toUpperCase(),
+      country: 'US',
+      zip_code: zipCode,
       ...(!existingProfile?.recruited_by_influencer_id && referrerProfileId
         ? { recruited_by_influencer_id: referrerProfileId }
         : {}),
