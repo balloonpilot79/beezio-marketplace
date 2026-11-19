@@ -752,13 +752,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      State
+                      State *
                     </label>
                     <input
                       type="text"
                       name="state"
                       value={formData.state}
                       onChange={handleChange}
+                      required
+                      maxLength={2}
+                      pattern="[A-Za-z]{2}"
+                      title="Enter your two-letter US state code"
 
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
@@ -766,13 +770,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                ZIP Code (Optional)
+                ZIP Code *
               </label>
               <input
                 type="text"
                 name="zipCode"
                 value={formData.zipCode}
                 onChange={handleChange}
+                required
+                inputMode="numeric"
+                pattern="[0-9]{5}(-[0-9]{4})?"
+                title="Enter a five-digit ZIP code"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
