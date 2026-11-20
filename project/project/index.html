@@ -5,6 +5,45 @@
     <link rel="icon" type="image/svg+xml" href="/bumblebee.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- Google Analytics 4: Beezio web traffic and SPA navigation -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-RNZSDH7MB9"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      window.gtag = gtag;
+      gtag('js', new Date());
+      gtag('config', 'G-RNZSDH7MB9', { send_page_view: false });
+      (function () {
+        var previousUrl = '';
+        function trackPage() {
+          var url = location.href;
+          if (url === previousUrl) return;
+          previousUrl = url;
+          gtag('event', 'page_view', {
+            page_location: url,
+            page_title: document.title,
+            page_referrer: document.referrer
+          });
+        }
+        var pending = false;
+        function schedulePageView() {
+          if (pending) return;
+          pending = true;
+          setTimeout(function () { pending = false; trackPage(); }, 0);
+        }
+        ['pushState', 'replaceState'].forEach(function (method) {
+          var original = history[method];
+          history[method] = function () {
+            var result = original.apply(this, arguments);
+            schedulePageView();
+            return result;
+          };
+        });
+        window.addEventListener('popstate', schedulePageView);
+        window.addEventListener('hashchange', schedulePageView);
+        trackPage();
+      })();
+    </script>
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
 
