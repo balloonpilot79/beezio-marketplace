@@ -911,6 +911,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
+        // GA4 registration conversion. Never send email, name, user ID, or referral data.
+        // This records accepted registrations; email verification is a separate step.
+        try {
+          if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
+            (window as any).gtag('event', 'sign_up', {
+              method: 'email',
+              account_type: bundleBusinessRoles || initialRole !== 'buyer' ? 'business' : 'buyer',
+            });
+          }
+        } catch {
+          // Analytics must never interrupt signup.
+        }
         console.log('[AuthContext] User created:', data.user.id);
         try {
           if (typeof window !== 'undefined') {
