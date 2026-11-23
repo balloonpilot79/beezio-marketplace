@@ -115,11 +115,12 @@ export default function HomePageBZO() {
       ),
     [products, rotationSlot],
   );
-  const selected =
-    category === "All"
-      ? rotateCatalog(products.filter((product) => product.available), rotationSlot)
-      : rotateCatalog(products.filter((product) => product.available && product.category === category), rotationSlot);
-  const spotlight = rotateCatalog(products.filter((product) => product.available), rotationSlot).slice(0, 4);
+  // The public catalog returns newest listings first. Keep that order on the homepage.
+  const availableProducts = products.filter((product) => product.available);
+  const selected = category === "All"
+    ? availableProducts
+    : rotateCatalog(availableProducts.filter((product) => product.category === category), rotationSlot);
+  const spotlight = availableProducts.slice(0, 4);
 
   return (
     <div className="hm-page">
@@ -150,9 +151,9 @@ export default function HomePageBZO() {
           </div>
           <div className="hm-spotlight">
             <div className="hm-spotlight-heading">
-              <span>Featured finds</span>
+              <span>New arrivals</span>
               <a href="#shop">
-                Shop the finds <ArrowRight size={15} />
+                Shop new arrivals <ArrowRight size={15} />
               </a>
             </div>
             {spotlight.length ? (
@@ -221,7 +222,7 @@ export default function HomePageBZO() {
                 aria-pressed={category === name}
                 onClick={() => setCategory(name)}
               >
-                {name === "All" ? "All finds" : name}
+                {name === "All" ? "Newest first" : name}
               </button>
             ))}
           </div>
