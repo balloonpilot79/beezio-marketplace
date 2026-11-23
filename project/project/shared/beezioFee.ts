@@ -36,14 +36,13 @@ export function computeFixedBeezioPlatformFee(sellerAsk: number): number {
     ? Math.max(0, toMoney(sellerAsk))
     : 0;
   if (price <= 0) return 0;
-  // Micro-price tier: the buyer's $0.25 referral comes out of this $0.75.
-  if (price <= 4.50) return 0.75;
+  if (price <= 4.50) return 1.25;
   const baseFee = price <= 50
     ? Math.min(2.25, Math.max(0.75, toMoney(price * 0.05)))
     : Math.ceil(Math.round(price * 100) / 2500);
-  // The buyer-referral reward is paid from this fee. A $1.25 floor leaves
-  // at least $1.00 after that $0.25 reward, before payout/operating expenses.
-  return toMoney(Math.max(DEFAULT_BEEZIO_PLATFORM_FEE_MIN, baseFee + 0.25));
+  // The buyer-referral reward is paid from this fee.
+  const tierIncrease = price <= 50 ? 0.50 : 0;
+  return toMoney(Math.max(DEFAULT_BEEZIO_PLATFORM_FEE_MIN, baseFee + 0.25) + tierIncrease);
 }
 
 // Historical order lines without a frozen fee were created under the prior

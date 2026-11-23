@@ -9,8 +9,8 @@ describe('pricing utilities', () => {
   it('adds a fixed affiliate payout and shipping above the seller payout', () => {
     const withoutShipping = calculateSalePriceFromSellerAsk(23.8, 5, 'flat', 0);
     const withShipping = calculateSalePriceFromSellerAsk(23.8, 5, 'flat', 9.99);
-    expect(withoutShipping).toBe(33.17);
-    expect(withShipping).toBe(43.57);
+    expect(withoutShipping).toBe(33.7);
+    expect(withShipping).toBe(44.09);
   });
   it('keeps the seller and affiliate payouts whole', () => {
     const salePrice = calculateSalePriceFromSellerAsk(100, 20, 'flat');
@@ -28,7 +28,7 @@ describe('pricing utilities', () => {
     const overPrice = calculateSalePriceFromSellerAsk(17, 0, 'flat');
     const under = calculatePayouts(underPrice, 15, { hasAffiliate: false, hasAffiliateReferrer: true, influencerCount: 2 });
     const over = calculatePayouts(overPrice, 17, { hasAffiliate: false, hasAffiliateReferrer: true, influencerCount: 2 });
-    expect(underPrice).toBe(18.61);
+    expect(underPrice).toBe(19.12);
     expect(under.referralBonus).toBe(1);
     expect(overPrice).toBeGreaterThanOrEqual(20);
     expect(over.referralBonus).toBe(1);
