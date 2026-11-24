@@ -1,6 +1,7 @@
 import type { Handler } from '@netlify/functions';
 import { findSupabaseAdminForUser } from './_lib/supabase';
 import { sendBusinessWelcome } from './_lib/business-welcome';
+import { SIGNUP_GUIDE_LAUNCHED_AT } from '../../src/content/signupWelcome';
 
 function json(statusCode: number, body: unknown) {
   return {
@@ -238,6 +239,8 @@ export const handler: Handler = async (event) => {
     return json(200, {
       ok: true,
       welcomeEmail,
+      usesSignupWelcomeGuide: createdAt >= SIGNUP_GUIDE_LAUNCHED_AT
+        && (isBuyerSignup ? metadata.account_type === 'buyer' : Boolean(businessRole)),
       profileId,
       role: primaryRole,
       roles: assignedRoles,

@@ -31,6 +31,7 @@ const AuthConfirmPage: React.FC = () => {
   const [resendBusy, setResendBusy] = useState(false);
   const [deliveryMessage, setDeliveryMessage] = useState('');
   const [confirmationRequested, setConfirmationRequested] = useState(false);
+  const [confirmedDestination, setConfirmedDestination] = useState<{ path: string; signedIn: boolean } | null>(null);
   // A single-use token must only be exchanged once, including effect reruns.
   const confirmationRequest = useRef<ReturnType<typeof supabase.auth.verifyOtp> | null>(null);
 
@@ -172,7 +173,7 @@ const AuthConfirmPage: React.FC = () => {
       }
 
       const bootstrapData = await bootstrapResponse.json().catch(() => ({}));
-      if (bootstrapData?.createdProfile && !isBusinessSignupPayload(payload)) {
+      if (bootstrapData?.createdProfile && !bootstrapData?.usesSignupWelcomeGuide && !isBusinessSignupPayload(payload)) {
         try {
           await sendWelcomeEmail(
             confirmedUser.id,
@@ -190,15 +191,21 @@ const AuthConfirmPage: React.FC = () => {
         // ignore
       }
 
+      const signup = {
+        ...payload,
+        role: bootstrapData?.role || payload.role || 'buyer',
+      };
+      const { data: { session: confirmedSession } } = await supabase.auth.getSession();
+      const signedIn = confirmedSession?.user.id === confirmedUser.id;
+      const path = signedIn ? resolveDashboardTarget(signup) : resolveSignInTarget(signup);
+      if (!active) return;
+      setConfirmedDestination({ path, signedIn });
       finalizeSuccess();
+      if (!signedIn && bootstrapData?.usesSignupWelcomeGuide) {
+        setMessage('Your email is confirmed. Sign in to see your welcome guide.');
+      }
       window.setTimeout(() => {
-        if (!active) return;
-        const nextTarget = resolveDashboardTarget({
-          ...payload,
-          role: bootstrapData?.role || payload.role || 'buyer',
-          bundleBusinessRoles: payload.bundleBusinessRoles,
-        });
-        navigate(nextTarget, { replace: true });
+        if (active) navigate(path, { replace: true });
       }, 1400);
     };
 
@@ -373,14 +380,15 @@ const AuthConfirmPage: React.FC = () => {
   }, [pendingEmail, pendingUserId, state]);
 
   const primaryTarget =
-    user || profile
+    confirmedDestination?.path ?? (user || profile
       ? resolveDashboardTarget({
           role: String((profile as any)?.primary_role || (profile as any)?.role || storedPayload?.role || 'buyer'),
           bundleBusinessRoles: Boolean((storedPayload as any)?.bundleBusinessRoles),
         })
-      : resolveSignInTarget(storedPayload);
+      : resolveSignInTarget(storedPayload));
 
-  const primaryLabel = user || profile ? 'Continue to dashboard' : 'Go to sign in';
+  const primaryLabel = (confirmedDestination?.signedIn ?? Boolean(user || profile))
+    ? 'Continue to dashboard' : 'Go to sign in';
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-16">

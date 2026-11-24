@@ -114,6 +114,14 @@ describe('automatic business welcome tutorial', () => {
     expect(html).not.toContain('<img src=x onerror=alert(1)>');
     expect(html).toContain('&lt;img');
     for (const label of ['Customize My Store', 'Seller', 'Affiliate', 'Ambassador', 'Add to My Store', 'Financials', 'support@beezio.co']) expect(html).toContain(label);
+    const guide = signupWelcomeGuides.business;
+    for (const step of guide.steps) {
+      expect(html).toContain(step.heading);
+      expect(html).toContain(`https://beezio.co${step.path}`);
+    }
+    expect(html).toContain('Use all three roles together');
+    expect(html).toContain('the same webstore');
+    expect(html).toContain('View My Store');
     expect(html).not.toContain('Stripe');
   });
 });

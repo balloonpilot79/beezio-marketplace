@@ -8,6 +8,7 @@ vi.mock('../services/transactionalEmailClient', () => ({ sendWelcomeEmail: vi.fn
 vi.mock('../services/signupVerificationClient', () => ({ confirmSignupEmail: vi.fn() }));
 vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate, Link: ({ children }: any) => <a>{children}</a> }));
 import Page from './AuthConfirmPage';
+import { sendWelcomeEmail } from '../services/transactionalEmailClient';
 let view: ReactTestRenderer;
 beforeEach(() => {
   vi.useFakeTimers(); vi.clearAllMocks();
@@ -48,4 +49,22 @@ it('offers recovery for legacy links that arrive with an expired-token error', a
   await act(async () => { view = create(<Page />); });
   expect(JSON.stringify(view.toJSON())).toContain('Resend verification email');
   expect(mocks.verify).not.toHaveBeenCalled();
+});
+
+it.each([
+  ['buyer', '/account/login?next=%2Fdashboard%3Fsection%3Dbuyer'],
+  ['seller', '/auth/login?next=%2Fdashboard'],
+])('takes a confirmed %s without a session to sign-in for the matching guide', async (role, signInPath) => {
+  mocks.verify.mockResolvedValue({ data: { user: {
+    id: 'test', email: 'test@example.test', email_confirmed_at: '2026-11-24', user_metadata: { role },
+  } }, error: null });
+  vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({
+    createdProfile: true, usesSignupWelcomeGuide: true, role, welcomeEmail: { sent: true },
+  })));
+  await act(async () => { view = create(<Page />); });
+  await act(async () => view.root.findAllByType('button').find(x => x.children.includes('Confirm my email'))!.props.onClick());
+  expect(JSON.stringify(view.toJSON())).toContain('Sign in to see your welcome guide');
+  expect(sendWelcomeEmail).not.toHaveBeenCalled();
+  await act(async () => { await vi.advanceTimersByTimeAsync(1400); });
+  expect(mocks.navigate).toHaveBeenCalledWith(signInPath, { replace: true });
 });

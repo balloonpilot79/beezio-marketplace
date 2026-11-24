@@ -59,7 +59,8 @@ export const signupWelcomeGuides: Record<SignupGuideAudience, {
       {
         heading: 'Want to sell or promote products?',
         instructions: [
-          'A free Business Account adds Seller and Affiliate tools. Sellers list their own products. Affiliates promote eligible products from other Beezio sellers and can earn a commission on sales credited to them.',
+          'A free Business Account adds a customizable webstore and Seller and Affiliate tools. List your own products as a Seller, then add eligible products from other Beezio sellers as an Affiliate. You can show both in one webstore.',
+          'You can also use your Ambassador invite link to bring new shoppers, sellers, and affiliates to Beezio. Each activity has its own way to earn on qualifying transactions.',
         ],
         action: 'Explore the Affiliate Program',
         path: '/affiliates',
@@ -81,13 +82,22 @@ export const signupWelcomeGuides: Record<SignupGuideAudience, {
       {
         heading: 'Earn as a Beezio Affiliate',
         instructions: [
-          'In the Marketplace, switch to Business tools. Find an eligible product, review the commission set by its seller, and choose Add to My Store when available.',
-          'Open the promotion tools, select a product, and copy its tracked link. Include the link alongside any graphics or QR codes you share, and disclose that you may earn a commission.',
-          'You earn the listed commission on qualifying sales credited to you. The original seller handles fulfillment.',
+          'Open the Marketplace and select Business tools. Choose an eligible product from another seller, review the commission that seller offers, then select Add to Store (shown as Add to My Store in some views).',
+          'Open your webstore preview and check that the product appears. On qualifying sales credited to you, you earn the listed affiliate commission. The original seller fulfills those orders.',
         ],
         action: 'Find products to promote',
         path: '/marketplace?view=business',
         image: '06-marketplace.jpg',
+      },
+      {
+        heading: 'Share a product with your tracked affiliate link',
+        instructions: [
+          'In the Business Center, open Product Links & QR Codes. Search for and select the product you want to promote, then copy your tracked link.',
+          'Include that link or its QR code when you share the product, and tell people you may earn a commission if they buy through it.',
+        ],
+        action: 'Open Product Links & QR Codes',
+        path: '/business/promote',
+        image: '07-sharing.jpg',
       },
       {
         heading: 'Sell your own products',
@@ -101,14 +111,26 @@ export const signupWelcomeGuides: Record<SignupGuideAudience, {
         image: '03-listing.jpg',
       },
       {
-        heading: 'Set up and share your free storefront',
+        heading: 'Build and share your free custom webstore',
         instructions: [
-          'Choose Customize My Store to set your store name, add a logo or banner, and choose your colors. Save and preview your storefront before sharing its link.',
-          'You can display your own listings and eligible products you promote in the same storefront.',
+          'In the Business Center, choose Customize My Store. Enter your store name, choose your store URL, and write a short description of what you offer.',
+          'Choose a theme and colors, then add your logo and banner. Save your changes and select View My Store to check how it looks on desktop and mobile.',
+          'Check that your own listings and the other sellers’ products you added are visible. Copy your live store link to share the whole shop.',
         ],
         action: 'Customize My Store',
         path: '/store-builder',
         image: '02-store.jpg',
+      },
+      {
+        heading: 'Use all three roles together',
+        instructions: [
+          'Say you run a horse-themed shop. As a Seller, list your own downloadable horse-care planner and receive your seller earnings when it sells.',
+          'As an Affiliate, add an eligible grooming kit from another seller to the same webstore. You earn the seller’s commission on qualifying sales credited to you, and that seller ships the kit.',
+          'As an Ambassador, share your personal invite link with a shopper, tack maker, or creator. If they sign up through your link, qualifying purchases or sales can earn you referral rewards.',
+          'Use your store link to share the whole shop, your tracked affiliate product link to promote a specific item, and your Ambassador invite link to invite people to join Beezio.',
+        ],
+        action: 'Open your Business Center',
+        path: '/business',
       },
       {
         heading: 'Manage orders, earnings, and payouts',
