@@ -5,4 +5,8 @@
 /api/order-details    /.netlify/functions/order-details   200!
 /api/paypal/connect-start    /.netlify/functions/paypal-connect-start    200!
 /api/paypal/connect-complete    /.netlify/functions/paypal-connect-complete    200!
+/api/admin/users-overview    /.netlify/functions/admin-users-overview    200!
+/api/admin/sales-ledger    /.netlify/functions/admin-sales-ledger    200!
+/api/admin-sales-ledger    /.netlify/functions/admin-sales-ledger    200!
+/api/admin/user-moderation    /.netlify/functions/admin-user-moderation    200!
 /*    /index.html   200
