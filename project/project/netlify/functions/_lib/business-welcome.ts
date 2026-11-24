@@ -1,29 +1,48 @@
 import { sendTransactionalEmail } from './email';
+import { SIGNUP_GUIDE_LAUNCHED_AT, signupWelcomeGuides, WELCOME_SUPPORT } from '../../../src/content/signupWelcome';
+import type { SignupGuideAudience } from '../../../src/content/signupWelcome';
+
+const SITE = 'https://beezio.co';
 
 const escapeHtml = (value: unknown) => String(value ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 
-export function buildBusinessWelcomeEmail(name: string) {
+function buildWelcomeEmail(name: string, audience: SignupGuideAudience) {
+  const guide = signupWelcomeGuides[audience];
+  const steps = guide.steps.map(step => `
+    <section style="margin:24px 0;padding-top:16px;border-top:1px solid #e5e7eb">
+      <h2 style="font-size:22px;line-height:1.3;margin:0 0 12px">${escapeHtml(step.heading)}</h2>
+      ${step.image ? `<img src="${SITE}/tutorial/business-v2/${step.image}" alt="Beezio example: ${escapeHtml(step.heading)}" width="592" style="display:block;width:100%;max-width:592px;height:auto;border:1px solid #e5e7eb;border-radius:8px">` : ''}
+      <ol style="padding-left:22px">${step.instructions.map(instruction => `<li style="margin:6px 0">${escapeHtml(instruction)}</li>`).join('')}</ol>
+      <p><a href="${SITE}${escapeHtml(step.path)}" style="color:#765400;font-weight:bold">${escapeHtml(step.action)}</a></p>
+    </section>`).join('');
   return {
-    subject: 'Welcome to Beezio — your visual business tutorial',
-    html: `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Beezio Visual Welcome Guide</title></head><body style="margin:0;background:#f4f4f4;color:#171717;font-family:Arial,sans-serif;line-height:1.6"><div style="max-width:640px;margin:0 auto;background:white"><div style="background:#ffcb05;padding:28px 24px"><h1 style="margin:0;color:#101820">Welcome to Beezio!</h1><p style="margin:8px 0 0">Your picture-by-picture business getting-started guide.</p></div><main style="padding:24px"><p>Hi ${escapeHtml(name || 'there')},</p><p>Sell your own products, promote products as an affiliate, or invite businesses as an ambassador. Start with the path that fits you.</p><p><a href="https://beezio.co/tutorial/business-v2/Beezio-Visual-Welcome-Guide.pdf" style="display:inline-block;background:#101820;color:#ffcb05;padding:12px 18px;border-radius:6px;text-decoration:none;font-weight:bold">Download the picture guide (PDF)</a></p><p style="font-size:13px;color:#53616b">Screenshots show an example store. Use your own store details, personal links, and QR code. If your email hides pictures, <a href="https://beezio.co/tutorial/business-v2/index.html">open the visual guide in your browser</a>.</p><section style="margin:28px 0;padding-bottom:20px;border-bottom:1px solid #e5e7eb"><h2 style="font-size:22px;line-height:1.3;margin:0 0 8px">01. Start in your Business Center</h2><p style="font-size:14px;color:#53616b;margin:0 0 12px">Choose your business role.</p><a href="https://beezio.co/business"><img src="https://beezio.co/tutorial/business-v2/01-dashboard.jpg" alt="Beezio screenshot: Start in your Business Center. Numbered highlights match the instructions below." width="592" style="display:block;width:100%;max-width:592px;height:auto;border:1px solid #e5e7eb;border-radius:8px" /></a><p>1. Use Seller, Affiliate, or Ambassador to find the tools for your goal.<br/>2. Choose Customize My Store to build your storefront.<br/>3. My Referral Links &amp; Invites opens your ambassador sharing tools.</p><p><a href="https://beezio.co/business" style="color:#765400;font-weight:bold">Open this step on Beezio →</a></p></section>
-<section style="margin:28px 0;padding-bottom:20px;border-bottom:1px solid #e5e7eb"><h2 style="font-size:22px;line-height:1.3;margin:0 0 8px">02. Make your store yours</h2><p style="font-size:14px;color:#53616b;margin:0 0 12px">Add your name, description, and branding.</p><a href="https://beezio.co/store-builder"><img src="https://beezio.co/tutorial/business-v2/02-store.jpg" alt="Beezio screenshot: Make your store yours. Numbered highlights match the instructions below." width="592" style="display:block;width:100%;max-width:592px;height:auto;border:1px solid #e5e7eb;border-radius:8px" /></a><p>1. Set your store name, URL slug, and a short description.<br/>2. Choose a look and check the live preview. Add a logo or banner in Images and color palette below.<br/>Save changes, then Preview live store before sharing your store URL.</p><p><a href="https://beezio.co/store-builder" style="color:#765400;font-weight:bold">Open this step on Beezio →</a></p></section>
-<section style="margin:28px 0;padding-bottom:20px;border-bottom:1px solid #e5e7eb"><h2 style="font-size:22px;line-height:1.3;margin:0 0 8px">03. List a product you sell</h2><p style="font-size:14px;color:#53616b;margin:0 0 12px">Business Center &gt; Add product</p><a href="https://beezio.co/business/products/add"><img src="https://beezio.co/tutorial/business-v2/03-listing.jpg" alt="Beezio screenshot: List a product you sell. Numbered highlights match the instructions below." width="592" style="display:block;width:100%;max-width:592px;height:auto;border:1px solid #e5e7eb;border-radius:8px" /></a><p>1. Enter a clear product title.<br/>2. Describe the item accurately, including condition and what is included.<br/>3. Select the category. Complete the condition and merchandise fields below when relevant.</p><p><a href="https://beezio.co/business/products/add" style="color:#765400;font-weight:bold">Open this step on Beezio →</a></p></section>
-<section style="margin:28px 0;padding-bottom:20px;border-bottom:1px solid #e5e7eb"><h2 style="font-size:22px;line-height:1.3;margin:0 0 8px">04. Add quantity and real photos</h2><p style="font-size:14px;color:#53616b;margin:0 0 12px">Help customers see what they are buying.</p><a href="https://beezio.co/business/products/add"><img src="https://beezio.co/tutorial/business-v2/04-photos.jpg" alt="Beezio screenshot: Add quantity and real photos. Numbered highlights match the instructions below." width="592" style="display:block;width:100%;max-width:592px;height:auto;border:1px solid #e5e7eb;border-radius:8px" /></a><p>1. Set the quantity you can supply. Use condition notes for wear, missing pieces, or repairs.<br/>2. Upload clear product images. Show the actual item or accurately labeled product mockups.<br/>For sizes and colors, use the variants section further down the form.</p><p><a href="https://beezio.co/business/products/add" style="color:#765400;font-weight:bold">Open this step on Beezio →</a></p></section>
-<section style="margin:28px 0;padding-bottom:20px;border-bottom:1px solid #e5e7eb"><h2 style="font-size:22px;line-height:1.3;margin:0 0 8px">05. Set payouts and shipping</h2><p style="font-size:14px;color:#53616b;margin:0 0 12px">Complete the listing before saving.</p><a href="https://beezio.co/business/products/add"><img src="https://beezio.co/tutorial/business-v2/05-shipping.jpg" alt="Beezio screenshot: Set payouts and shipping. Numbered highlights match the instructions below." width="592" style="display:block;width:100%;max-width:592px;height:auto;border:1px solid #e5e7eb;border-radius:8px" /></a><p>1. Enter your seller ask and the affiliate payout you choose. Review the calculated customer price.<br/>2. Enter shipping expense, production time if needed, and estimated delivery time.<br/>3. Write shipping and return terms. Review the form and choose Save Product. You fulfill your own product orders.</p><p><a href="https://beezio.co/business/products/add" style="color:#765400;font-weight:bold">Open this step on Beezio →</a></p></section>
-<section style="margin:28px 0;padding-bottom:20px;border-bottom:1px solid #e5e7eb"><h2 style="font-size:22px;line-height:1.3;margin:0 0 8px">06. Find products to promote</h2><p style="font-size:14px;color:#53616b;margin:0 0 12px">Affiliate path: Marketplace &gt; Business tools</p><a href="https://beezio.co/marketplace?view=business"><img src="https://beezio.co/tutorial/business-v2/06-marketplace.jpg" alt="Beezio screenshot: Find products to promote. Numbered highlights match the instructions below." width="592" style="display:block;width:100%;max-width:592px;height:auto;border:1px solid #e5e7eb;border-radius:8px" /></a><p>1. Switch the marketplace to Business tools.<br/>2. Open promotion kit to prepare tracked product sharing.<br/>3. Browse categories and eligible products. Use Add to My Store where available to build your affiliate store.<br/>The seller fulfills their products; your affiliate earnings depend on qualifying referred sales.</p><p><a href="https://beezio.co/marketplace?view=business" style="color:#765400;font-weight:bold">Open this step on Beezio →</a></p></section>
-<section style="margin:28px 0;padding-bottom:20px;border-bottom:1px solid #e5e7eb"><h2 style="font-size:22px;line-height:1.3;margin:0 0 8px">07. Share a product with pictures</h2><p style="font-size:14px;color:#53616b;margin:0 0 12px">Promotion kit &gt; choose a product</p><a href="https://beezio.co/business/promote"><img src="https://beezio.co/tutorial/business-v2/07-sharing.jpg" alt="Beezio screenshot: Share a product with pictures. Numbered highlights match the instructions below." width="592" style="display:block;width:100%;max-width:592px;height:auto;border:1px solid #e5e7eb;border-radius:8px" /></a><p>Select a product, then choose a square post, pin, story, or flyer. Download the picture and use your own Copy link or Copy caption controls.<br/><br/>Images alone are not clickable. Include the tracked link in your post, profile, or other supported link field. Always use the link generated inside your own account.</p><p><a href="https://beezio.co/business/promote" style="color:#765400;font-weight:bold">Open this step on Beezio →</a></p></section>
-<section style="margin:28px 0;padding-bottom:20px;border-bottom:1px solid #e5e7eb"><h2 style="font-size:22px;line-height:1.3;margin:0 0 8px">08. Invite businesses as an ambassador</h2><p style="font-size:14px;color:#53616b;margin:0 0 12px">Business Center &gt; My Referral Links &amp; Invites</p><a href="https://beezio.co/business/invites"><img src="https://beezio.co/tutorial/business-v2/08-invites.jpg" alt="Beezio screenshot: Invite businesses as an ambassador. Numbered highlights match the instructions below." width="592" style="display:block;width:100%;max-width:592px;height:auto;border:1px solid #e5e7eb;border-radius:8px" /></a><p>1. Copy your own personal invitation link. Use Text invite or Messenger when useful.<br/>2. Download your QR for flyers or copy the ready-to-share invitation.<br/>People register through your link so their referral can attach to you. Earnings come from qualifying sales, not signup alone.</p><p><a href="https://beezio.co/business/invites" style="color:#765400;font-weight:bold">Open this step on Beezio →</a></p></section>
-<section style="margin:28px 0;padding-bottom:20px;border-bottom:1px solid #e5e7eb"><h2 style="font-size:22px;line-height:1.3;margin:0 0 8px">09. Save, preview, and take one step</h2><p style="font-size:14px;color:#53616b;margin:0 0 12px">Your first launch checklist</p><a href="https://beezio.co/business"><img src="https://beezio.co/tutorial/business-v2/09-save.jpg" alt="Beezio screenshot: Save, preview, and take one step. Numbered highlights match the instructions below." width="592" style="display:block;width:100%;max-width:592px;height:auto;border:1px solid #e5e7eb;border-radius:8px" /></a><p>Save your store changes and preview the live store. Publish one product, add one eligible affiliate product, or send one helpful ambassador invitation.<br/><br/>Use Orders to manage sales and fulfillment. Use Earnings / Financials to review balances and payout requirements. Check account messages and order updates regularly.<br/><br/>Need help? Reply to your welcome email or write to support@beezio.co.</p><p><a href="https://beezio.co/business" style="color:#765400;font-weight:bold">Open this step on Beezio →</a></p></section><p style="margin:28px 0"><a href="https://beezio.co/business" style="display:inline-block;background:#ffcb05;color:#101820;padding:14px 22px;border-radius:6px;font-weight:bold;text-decoration:none">Open my business dashboard</a></p><p>Need help? Reply or email <a href="mailto:support@beezio.co">support@beezio.co</a>.</p><p>The Beezio Team</p></main></div></body></html>`,
+    subject: guide.subject,
+    html: `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(guide.subject)}</title></head><body style="margin:0;background:#f4f4f4;color:#171717;font-family:Arial,sans-serif;line-height:1.6">
+    <div style="max-width:640px;margin:0 auto;background:white">
+      <header style="background:#ffcb05;padding:24px"><h1 style="margin:0;color:#101820">Welcome to Beezio!</h1></header>
+      <main style="padding:24px">
+        <p>Hi ${escapeHtml(name || 'there')},</p><p>${escapeHtml(guide.intro)}</p>
+        <p>Save this email so you can return to your welcome guide anytime.</p>
+        ${steps}
+        ${audience === 'business' ? `<p><a href="${SITE}/tutorial/business-v2/Beezio-Visual-Welcome-Guide.pdf">Download the illustrated Business Account guide (PDF)</a></p>` : ''}
+        <p><a href="${SITE}${guide.dashboard}" style="display:inline-block;background:#101820;color:#ffcb05;padding:12px 18px;border-radius:6px;text-decoration:none;font-weight:bold">Open your Beezio account</a></p>
+        <p>Need help? Email <a href="mailto:${WELCOME_SUPPORT}">${WELCOME_SUPPORT}</a>.</p>
+        <p>Jason Loving<br>Founder, Beezio</p>
+      </main>
+    </div></body></html>`,
   };
 }
+
+export const buildBusinessWelcomeEmail = (name: string) => buildWelcomeEmail(name, 'business');
+export const buildShopperWelcomeEmail = (name: string) => buildWelcomeEmail(name, 'shopper');
 
 // Earlier accounts predate the visual tutorial rollout. Failed onboarding for
 // accounts created since launch remains eligible on later sign-ins.
 export const BUSINESS_WELCOME_LAUNCHED_AT = Date.parse('2026-11-13T00:00:00Z');
 
-/** One onboarding message per verified business account, even across callback retries. */
+/** One welcome email per verified signup, even across callback retries. */
 export async function sendBusinessWelcome(db: any, user: any): Promise<{ sent: boolean; reason?: string; providerId?: string }> {
   try {
     // Refresh first: caller snapshots may predate confirmation or a successful send.
@@ -35,30 +54,39 @@ export async function sendBusinessWelcome(db: any, user: any): Promise<{ sent: b
     if (!Number.isFinite(createdAt) || createdAt > Date.now() || createdAt < BUSINESS_WELCOME_LAUNCHED_AT) {
       return { sent: false, reason: 'before_tutorial_launch' };
     }
-    if (user.app_metadata?.business_welcome_sent_at) return { sent: false, reason: 'already_sent' };
+    if (user.app_metadata?.business_welcome_sent_at || user.app_metadata?.shopper_welcome_sent_at) {
+      return { sent: false, reason: 'already_sent' };
+    }
     const roles = await db.from('user_roles').select('role').eq('user_id', user.id).eq('is_active', true);
     if (roles.error) return { sent: false, reason: 'role_lookup_failed' };
-    if (!roles.data?.some((row: any) => ['seller', 'affiliate', 'influencer'].includes(row.role))) {
-      return { sent: false, reason: 'not_business' };
+    const activeRoles: string[] = (roles.data || []).map((row: { role: string }) => row.role);
+    const businessRole = ['seller', 'affiliate', 'influencer'].find(role => activeRoles.includes(role));
+    const shopper = activeRoles.includes('buyer') && user.user_metadata?.account_type === 'buyer'
+      && createdAt >= SIGNUP_GUIDE_LAUNCHED_AT;
+    if (!businessRole && !shopper) {
+      const waitsForRoles = createdAt >= SIGNUP_GUIDE_LAUNCHED_AT
+        && ['business', 'buyer'].includes(user.user_metadata?.account_type);
+      return { sent: false, reason: waitsForRoles ? 'role_lookup_failed' : 'not_business' };
     }
-    const template = buildBusinessWelcomeEmail(String(user.user_metadata?.full_name || 'there'));
+    const audience = shopper ? 'shopper' : 'business';
+    const sentMarker = shopper ? 'shopper_welcome_sent_at' : 'business_welcome_sent_at';
+    const template = buildWelcomeEmail(String(user.user_metadata?.full_name || 'there'), audience);
     const result = await sendTransactionalEmail({
       to: user.email, ...template,
       from: 'Beezio Welcome <welcome@beezio.co>',
-      replyTo: 'support@beezio.co',
+      replyTo: WELCOME_SUPPORT,
       // Resend deduplicates concurrent attempts; trusted metadata prevents later duplicates.
-      idempotencyKey: `business-welcome/${user.id}`,
+      idempotencyKey: `${audience}-welcome/${user.id}`,
       timeoutMs: 10000,
     });
     const logged = await db.from('email_notifications').insert({
       recipient_email: user.email,
-      recipient_type: roles.data.some((row: any) => row.role === 'seller') ? 'seller'
-        : roles.data.some((row: any) => row.role === 'affiliate') ? 'affiliate' : 'influencer',
+      recipient_type: shopper ? 'buyer' : businessRole,
       notification_type: 'business_welcome',
       status: result.sent ? 'sent' : 'failed',
       sent_at: result.sent ? new Date().toISOString() : null,
       error_message: result.sent ? null : result.reason || 'delivery_failed',
-      email_data: { user_id: user.id, subject: template.subject, version: 2,
+      email_data: { user_id: user.id, subject: template.subject, version: 3, audience,
         provider: 'resend', provider_id: result.providerId || null },
     });
     if (logged.error) console.warn('[business-welcome] email history failed', { userId: user.id });
@@ -67,7 +95,11 @@ export async function sendBusinessWelcome(db: any, user: any): Promise<{ sent: b
       return result;
     }
     const marked = await db.auth.admin.updateUserById(user.id, {
-      app_metadata: { ...user.app_metadata, business_welcome_sent_at: new Date().toISOString(), business_welcome_version: 2, business_welcome_provider_id: result.providerId },
+      app_metadata: {
+        [sentMarker]: new Date().toISOString(),
+        [`${audience}_welcome_version`]: 3,
+        [`${audience}_welcome_provider_id`]: result.providerId,
+      },
     });
     if (marked.error) console.warn('[business-welcome] delivery marker failed', { userId: user.id });
     console.info('[business-welcome] tutorial accepted by email provider', { userId: user.id });

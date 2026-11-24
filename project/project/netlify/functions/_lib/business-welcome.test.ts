@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildBusinessWelcomeEmail, sendBusinessWelcome } from './business-welcome';
 import { sendTransactionalEmail } from './email';
+import { SIGNUP_GUIDE_LAUNCHED_AT, signupWelcomeGuides } from '../../../src/content/signupWelcome';
 
 vi.mock('./email', () => ({ sendTransactionalEmail: vi.fn() }));
 
@@ -12,7 +13,7 @@ function fixture(roles = ['seller', 'affiliate', 'influencer']) {
   };
   const query: any = { select: () => query, eq: () => query, then: (resolve: any) => Promise.resolve({ data: roles.map(role => ({ role })) }).then(resolve) };
   const updateUserById = vi.fn(async (_id, changes) => {
-    Object.assign(user, changes);
+    user.app_metadata = { ...user.app_metadata, ...changes.app_metadata };
     return { data: { user }, error: null };
   });
   const db: any = {
@@ -33,8 +34,28 @@ describe('automatic business welcome tutorial', () => {
       idempotencyKey: 'business-welcome/signup-user',
     }));
     expect(updateUserById).toHaveBeenCalledWith(user.id, expect.objectContaining({
-      app_metadata: expect.objectContaining({ provider: 'email', business_welcome_sent_at: expect.any(String) }),
+      app_metadata: expect.objectContaining({ business_welcome_sent_at: expect.any(String) }),
     }));
+    expect(user.app_metadata.provider).toBe('email');
+  });
+  it('sends the shared Shopper Account guide once to a new, confirmed shopper', async () => {
+    const { user, db } = fixture(['buyer']);
+    user.user_metadata.account_type = 'buyer';
+    user.created_at = new Date(SIGNUP_GUIDE_LAUNCHED_AT).toISOString();
+    expect(await sendBusinessWelcome(db, user)).toEqual({ sent: true });
+    const payload = vi.mocked(sendTransactionalEmail).mock.calls[0][0];
+    expect(payload).toMatchObject({ subject: signupWelcomeGuides.shopper.subject });
+    for (const step of signupWelcomeGuides.shopper.steps) expect(payload.html).toContain(step.heading);
+    expect(payload.html).not.toContain('Add a product');
+    expect(await sendBusinessWelcome(db, user)).toEqual({ sent: false, reason: 'already_sent' });
+    expect(sendTransactionalEmail).toHaveBeenCalledTimes(1);
+  });
+  it('keeps existing shoppers outside the new-signup welcome', async () => {
+    const { user, db } = fixture(['buyer']);
+    user.user_metadata.account_type = 'buyer';
+    user.created_at = new Date(SIGNUP_GUIDE_LAUNCHED_AT - 1).toISOString();
+    expect(await sendBusinessWelcome(db, user)).toEqual({ sent: false, reason: 'not_business' });
+    expect(sendTransactionalEmail).not.toHaveBeenCalled();
   });
   it('does not send twice when confirmation is followed by account bootstrap', async () => {
     const { user, db } = fixture();

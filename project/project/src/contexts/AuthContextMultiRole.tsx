@@ -1,3 +1,4 @@
+import { SIGNUP_GUIDE_LAUNCHED_AT } from '../content/signupWelcome';
 import { parseSignupAddress } from '../utils/signupAddress';
 import { requestBusinessWelcome } from '../services/businessWelcomeClient';
 import { deferredAuthListener } from '../utils/deferredAuthListener';
@@ -818,10 +819,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const welcomeAttemptedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!session?.user) { welcomeAttemptedRef.current = null; return; }
+    const createdAt = Date.parse(session.user.created_at);
+    const newGuide = createdAt >= SIGNUP_GUIDE_LAUNCHED_AT
+      && ['buyer', 'business'].includes(session.user.user_metadata?.account_type);
     if (!session.access_token || !isBeezioEmailVerified(session.user)
       || session.user.app_metadata?.business_welcome_sent_at
-      || Date.parse(session.user.created_at) < Date.parse('2026-11-13T00:00:00Z')
-      || !userRoles.some(role => ['seller', 'affiliate', 'influencer'].includes(role))
+      || session.user.app_metadata?.shopper_welcome_sent_at
+      || createdAt < Date.parse('2026-11-13T00:00:00Z')
+      || (newGuide ? !session.user.app_metadata?.signup_welcome_completed_at
+        : !userRoles.some(role => ['seller', 'affiliate', 'influencer'].includes(role)))
       || welcomeAttemptedRef.current === session.user.id) return;
     welcomeAttemptedRef.current = session.user.id;
     void requestBusinessWelcome(session.access_token);
@@ -878,6 +884,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             store_name: storeName,
             role: initialRole,
             primary_role: initialRole,
+            account_type: bundleBusinessRoles || initialRole !== 'buyer' ? 'business' : 'buyer',
             store_slug: storeSlug,
             phone: userData.phone || null,
             street_address: address.streetAddress,
@@ -1125,10 +1132,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       }
 
-      if (data.session?.access_token) {
-        // Also cover confirmation-free signup; provider idempotency protects overlap with session recovery.
-        void requestBusinessWelcome(data.session.access_token);
-      }
       return data;
     } catch (error) {
       console.error('SignUp error:', error);

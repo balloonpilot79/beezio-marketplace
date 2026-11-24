@@ -1,3 +1,4 @@
+import SignupWelcomeGuide from './components/SignupWelcomeGuide';
 import StorefrontShoppingPage from './components/storefront/StorefrontShoppingPage';
 import { hasStoredStorefrontScope } from './utils/storefrontScope';
 import React, { useState, useEffect, Suspense, lazy } from 'react';
@@ -737,6 +738,7 @@ const AppWorking: React.FC = () => {
             <Router>
               <ScrollToTop />
               <CustomDomainHandler>
+              <SignupWelcomeGuide />
               <StorefrontChromeGate>
                 <Suspense fallback={<RouteFallback />}>
                   <Routes>
