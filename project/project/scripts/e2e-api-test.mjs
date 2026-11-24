@@ -65,7 +65,10 @@ async function runUserFlow(user) {
   // Sign up (if already exists, try sign in)
   let signUpData = null;
   try {
-    const res = await supabase.auth.signUp({ email: user.email, password: user.password });
+    const res = await supabase.auth.signUp({
+      email: user.email, password: user.password,
+      options: { data: { street_address: '123 Test St', city: 'Des Moines', state: 'IA', zip_code: '50309' } },
+    });
     signUpData = res.data;
     if (res.error) throw res.error;
     console.log('Sign up ok. user id:', signUpData?.user?.id || 'n/a');

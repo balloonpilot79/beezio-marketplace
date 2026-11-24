@@ -1,3 +1,4 @@
+import SignupAddressFields from "./SignupAddressFields";
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
@@ -145,22 +146,6 @@ const SimpleSignupModal: React.FC<SimpleSignupModalProps> = ({ isOpen, onClose, 
           setLoading(false);
           return;
         }
-        if (!String(formData.streetAddress || '').trim()) {
-          setError('Street address is required.');
-          setLoading(false);
-          return;
-        }
-        if (!String(formData.city || '').trim()) {
-          setError('City is required.');
-          setLoading(false);
-          return;
-        }
-        if (!String(formData.state || '').trim()) {
-          setError('State is required.');
-          setLoading(false);
-          return;
-        }
-
         if (!isValidStoreSlug(storeSlug)) {
           setError('Your store URL is not valid. Please choose a different business name.');
           setLoading(false);
@@ -504,60 +489,10 @@ const SimpleSignupModal: React.FC<SimpleSignupModalProps> = ({ isOpen, onClose, 
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Street Address
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.streetAddress}
-                        onChange={(e) => setFormData({ ...formData, streetAddress: e.target.value })}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                        placeholder="123 Main St"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        ZIP Code (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.zipCode}
-                        onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                        placeholder="12345"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        City
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.city}
-                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                        placeholder="Your city"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        State
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.state}
-                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                        placeholder="State"
-                      />
-                    </div>
+                    <SignupAddressFields
+                      address={formData}
+                      onChange={(event) => setFormData({ ...formData, [event.target.name]: event.target.value })}
+                    />
                   </>
                 )}
               </div>

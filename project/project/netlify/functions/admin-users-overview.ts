@@ -74,6 +74,10 @@ export const handler: Handler = async (event) => {
       'created_at',
       'username',
       'store_name',
+      'street_address',
+      'city',
+      'state',
+      'zip_code',
       'recruited_by_influencer_id',
     ];
 
@@ -258,6 +262,10 @@ export const handler: Handler = async (event) => {
         primary_role: asText(profile?.primary_role).toLowerCase(),
         username: asText(profile?.username),
         store_name: asText(profile?.store_name),
+        street_address: asText(profile?.street_address),
+        city: asText(profile?.city),
+        state: asText(profile?.state),
+        zip_code: asText(profile?.zip_code),
         created_at: profile?.created_at || null,
         paypal_accounts: Array.from(
           new Map(paypalAccounts.map((account) => [`${account.role}::${account.paypal_email}`, account])).values()
@@ -286,6 +294,10 @@ export const handler: Handler = async (event) => {
           user.primary_role,
           user.username,
           user.store_name,
+          user.street_address,
+          user.city,
+          user.state,
+          user.zip_code,
           user.recruited_by_influencer_id,
           ...user.paypal_accounts.flatMap((account: any) => [account.role, account.paypal_email]),
           ...(Array.isArray((user as any).influencer_relationships)

@@ -77,13 +77,6 @@ export const handler: Handler = async (event) => {
     const storeName = String(metadata.store_name || body.storeName || fullName || email.split('@')[0] || 'My Store').trim();
     const requestedSlug = cleanSlug(metadata.store_slug || body.storeSlug || storeName || email.split('@')[0]);
     const storeSlug = await slugAvailable(supabaseAdmin, requestedSlug, userId);
-    const city = String(body.city || '').trim();
-    const state = String(body.state || '').trim();
-    const zipCode = String(body.zipCode || body.zip_code || '').trim();
-    if (!/^[A-Za-z]{2}$/.test(state) || !/^\d{5}(-\d{4})?$/.test(zipCode)) {
-      return json(400, { error: 'A two-letter US state and valid ZIP code are required.' });
-    }
-    const location = [city, state].filter(Boolean).join(', ') || null;
     const paypalEmail = String(metadata.paypal_email || body.paypalEmail || '').trim();
     const paypalConfirmed = Boolean(metadata.paypal_confirmed ?? body.paypalConfirmed) && paypalEmail.includes('@');
     const requestedReferrerProfileId = String(metadata.referrer_profile_id || body.referrerProfileId || '').trim();
@@ -93,9 +86,14 @@ export const handler: Handler = async (event) => {
 
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
-      .select('id,recruited_by_influencer_id')
+      .select('id,recruited_by_influencer_id,street_address,city,state,zip_code')
       .eq('id', userId)
       .maybeSingle();
+
+    const streetAddress = String(metadata.street_address || '').trim();
+    const city = String(metadata.city || '').trim();
+    const state = String(metadata.state || '').trim().toUpperCase();
+    const zipCode = String(metadata.zip_code || '').trim();
 
     let referrerProfileId = '';
     if (isUuid(requestedReferrerProfileId) && requestedReferrerProfileId !== userId) {
@@ -130,11 +128,11 @@ export const handler: Handler = async (event) => {
       role: primaryRole,
       primary_role: primaryRole,
       phone: String(body.phone || '').trim() || null,
-      location,
-      city: city || null,
-      state: state.toUpperCase(),
       country: 'US',
-      zip_code: zipCode,
+      ...(!existingProfile?.street_address && streetAddress ? { street_address: streetAddress } : {}),
+      ...(!existingProfile?.city && city ? { city } : {}),
+      ...(!existingProfile?.state && state ? { state } : {}),
+      ...(!existingProfile?.zip_code && zipCode ? { zip_code: zipCode } : {}),
       ...(!existingProfile?.recruited_by_influencer_id && referrerProfileId
         ? { recruited_by_influencer_id: referrerProfileId }
         : {}),
@@ -196,10 +194,10 @@ export const handler: Handler = async (event) => {
           user_id: profileId,
           legal_name: fullName,
           delivery_email: email,
-          street_address: String(body.streetAddress || '').trim() || null,
-          city: city || null,
-          state_region: state || null,
-          postal_code: String(body.zipCode || body.zip_code || '').trim() || null,
+          ...(streetAddress ? { street_address: streetAddress } : {}),
+          ...(city ? { city: city } : {}),
+          ...(state ? { state_region: state } : {}),
+          ...(zipCode ? { postal_code: zipCode } : {}),
           country: 'US',
           tax_country: 'US',
           certification_name: fullName,

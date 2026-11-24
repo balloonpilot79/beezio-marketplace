@@ -25,7 +25,10 @@ async function run() {
 
   // Sign up
   console.log('Signing up...');
-  const signupRes = await supabase.auth.signUp({ email, password });
+  const signupRes = await supabase.auth.signUp({
+      email, password,
+      options: { data: { street_address: '123 Test St', city: 'Des Moines', state: 'IA', zip_code: '50309' } },
+    });
   if (signupRes.error) {
     console.warn('Sign up returned error:', signupRes.error.message || signupRes.error);
     // try sign in if already exists

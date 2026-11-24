@@ -1,3 +1,4 @@
+import { parseSignupAddress } from '../utils/signupAddress';
 import { requestBusinessWelcome } from '../services/businessWelcomeClient';
 import { deferredAuthListener } from '../utils/deferredAuthListener';
 import {
@@ -830,6 +831,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('[AuthContext] Starting signUp for:', email);
 
+      const address = parseSignupAddress(userData);
       const initialRole = userData?.role || 'buyer';
       const fullName = userData?.fullName || '';
       const storeName = userData?.storeName || '';
@@ -852,10 +854,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               storeName,
               storeSlug,
               phone: userData.phone || '',
-              streetAddress: userData.streetAddress || '',
-              city: userData.city || '',
-              state: userData.state || '',
-              zipCode: userData.zipCode || '',
               paypalEmail: payoutEmail,
               paypalConfirmed: payoutConfirmed,
               referrerProfileId,
@@ -882,10 +880,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             primary_role: initialRole,
             store_slug: storeSlug,
             phone: userData.phone || null,
-            street_address: userData.streetAddress || null,
-            city: userData.city || null,
-            state: userData.state || null,
-            zip_code: userData.zipCode || null,
+            street_address: address.streetAddress,
+            city: address.city,
+            state: address.state,
+            zip_code: address.zipCode,
             paypal_email: payoutConfirmed ? payoutEmail : '',
             paypal_confirmed: payoutConfirmed,
             referrer_profile_id: referrerProfileId,
@@ -1076,10 +1074,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await upsertTaxComplianceProfile(profileId, {
               legal_name: fullName || null,
               delivery_email: email,
-              street_address: String(userData.streetAddress || '').trim() || null,
-              city: String(userData.city || '').trim() || null,
-              state_region: String(userData.state || '').trim() || null,
-              postal_code: String(userData.zipCode || '').trim() || null,
+              street_address: address.streetAddress,
+              city: address.city,
+              state_region: address.state,
+              postal_code: address.zipCode,
               country: 'US',
               tax_country: 'US',
               certification_name: fullName || null,

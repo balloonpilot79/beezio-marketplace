@@ -69,10 +69,6 @@ const AuthConfirmPage: React.FC = () => {
       storeName: String(storedPayload.storeName || ''),
       storeSlug: String(storedPayload.storeSlug || ''),
       phone: String(storedPayload.phone || ''),
-      streetAddress: String(storedPayload.streetAddress || ''),
-      city: String(storedPayload.city || ''),
-      state: String(storedPayload.state || ''),
-      zipCode: String(storedPayload.zipCode || ''),
       paypalEmail: String(storedPayload.paypalEmail || ''),
       paypalConfirmed: Boolean(storedPayload.paypalConfirmed),
       referrerProfileId: String(storedPayload.referrerProfileId || ''),
@@ -141,10 +137,6 @@ const AuthConfirmPage: React.FC = () => {
         storeName: String(metadata.store_name || storedPayload?.storeName || ''),
         storeSlug: String(metadata.store_slug || storedPayload?.storeSlug || ''),
         phone: String(metadata.phone || storedPayload?.phone || ''),
-        streetAddress: String(metadata.street_address || storedPayload?.streetAddress || ''),
-        city: String(metadata.city || storedPayload?.city || ''),
-        state: String(metadata.state || storedPayload?.state || ''),
-        zipCode: String(metadata.zip_code || storedPayload?.zipCode || ''),
         paypalEmail: String(metadata.paypal_email || storedPayload?.paypalEmail || ''),
         paypalConfirmed: Boolean(
           metadata.paypal_confirmed ??

@@ -1,3 +1,4 @@
+import SignupAddressFields from "./SignupAddressFields";
 import RecruitInviteNotice, { requireRecruitInviter, useRecruitInvite } from './RecruitInviteNotice';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -706,85 +707,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
                     </label>
                   </div>
                 )}
+                <SignupAddressFields address={formData} onChange={handleChange} />
                 {isBusinessAudience && (
-                  <details className="space-y-3">
-                    <summary className="cursor-pointer text-sm font-semibold">Contact and address (optional)</summary>
-                    <p className="text-xs text-gray-600">You can complete these details in your Business Center.</p>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Street Address
-                  </label>
-                  <input
-                    type="text"
-                    name="streetAddress"
-                    value={(formData as any).streetAddress || ''}
-                    onChange={handleChange}
-
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      City
+                      Phone (optional)
                     </label>
                     <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
+                      type="tel"
+                      name="phone"
+                      aria-label="Phone"
+                      autoComplete="tel"
+                      value={formData.phone}
                       onChange={handleChange}
 
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      State *
-                    </label>
-                    <input
-                      type="text"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleChange}
-                      required
-                      maxLength={2}
-                      pattern="[A-Za-z]{2}"
-                      title="Enter your two-letter US state code"
-
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                ZIP Code *
-              </label>
-              <input
-                type="text"
-                name="zipCode"
-                value={formData.zipCode}
-                onChange={handleChange}
-                required
-                inputMode="numeric"
-                pattern="[0-9]{5}(-[0-9]{4})?"
-                title="Enter a five-digit ZIP code"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-                  </details>
                 )}
               </React.Fragment>
             )}

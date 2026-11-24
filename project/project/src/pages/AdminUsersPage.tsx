@@ -11,6 +11,10 @@ type AdminUserOverview = {
   primary_role: string;
   username: string;
   store_name: string;
+  street_address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
   created_at: string | null;
   recruited_by_influencer_id?: string;
   influencer_relationships?: Array<{
@@ -126,6 +130,10 @@ type UserPanel = {
   primaryRole: string;
   username: string;
   storeName: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  zipCode: string;
   createdAt: string | null;
   recruitedByInfluencerId: string;
   influencerRelationships: NonNullable<AdminUserOverview['influencer_relationships']>;
@@ -237,6 +245,10 @@ const createEmptyPanel = (user: AdminUserOverview): UserPanel => ({
   primaryRole: normalizeRole(user.primary_role),
   username: user.username || '',
   storeName: user.store_name || '',
+  streetAddress: user.street_address || '',
+  city: user.city || '',
+  state: user.state || '',
+  zipCode: user.zip_code || '',
   createdAt: user.created_at,
   recruitedByInfluencerId: String(user.recruited_by_influencer_id || '').trim(),
   influencerRelationships: Array.isArray(user.influencer_relationships) ? user.influencer_relationships : [],
@@ -407,6 +419,10 @@ export default function AdminUsersPage() {
         panel.primaryRole,
         panel.username,
         panel.storeName,
+        panel.streetAddress,
+        panel.city,
+        panel.state,
+        panel.zipCode,
         panel.recruitedByInfluencerId,
         ...panel.paypalEmails,
         ...panel.influencerRelationships.flatMap((relationship) => [
@@ -957,7 +973,7 @@ export default function AdminUsersPage() {
       <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_220px_220px]">
           <label className="text-sm text-gray-700">
-            <div className="mb-1 font-medium">Search User, Product, Email, PayPal, Or Order</div>
+            <div className="mb-1 font-medium">Search users, location, products, or orders</div>
             <input
               type="text"
               value={search}
@@ -1101,6 +1117,10 @@ export default function AdminUsersPage() {
                     <div className="mt-2 space-y-1 text-sm text-gray-600">
                       <div>Email: {selectedUser.email || 'No email'}</div>
                       <div>Username: {selectedUser.username || 'No username'}</div>
+                      <div>Street address: {selectedUser.streetAddress || 'Missing'}</div>
+                      <div>City: {selectedUser.city || 'Missing'}</div>
+                      <div>State: {selectedUser.state || 'Missing'}</div>
+                      <div>ZIP code: {selectedUser.zipCode || 'Missing'}</div>
                       <div>Store: {selectedUser.storeName || 'No store name'}</div>
                       <div>Created: {formatDateTime(selectedUser.createdAt)}</div>
                       <div>PayPal: {selectedUser.paypalEmails.join(', ') || 'No PayPal emails'}</div>

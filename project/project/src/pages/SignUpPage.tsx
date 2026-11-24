@@ -1,3 +1,4 @@
+import SignupAddressFields from "../components/SignupAddressFields";
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContextMultiRole";
@@ -188,10 +189,6 @@ const SignUpPage: React.FC = () => {
             fullName: formData.fullName,
             storeName: formData.storeName,
             phone: formData.phone,
-            streetAddress: formData.streetAddress,
-            city: formData.city,
-            state: formData.state,
-            zipCode: formData.zipCode,
             role: formData.role,
           },
           acceptedTerms,
@@ -902,12 +899,10 @@ const SignUpPage: React.FC = () => {
           </div>
 
           <RecruitInviteNotice invite={invite} />
-          <details className="space-y-4">
-            <summary className="cursor-pointer text-sm font-semibold">Contact and address (optional)</summary>
-            <p className="text-sm text-gray-600">Complete these later in your Business Center.</p>
+          <SignupAddressFields address={formData} onChange={handleChange} />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Phone
+              Phone (optional)
             </label>
             <input
               type="tel"
@@ -919,73 +914,6 @@ const SignUpPage: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Street Address
-            </label>
-            <input
-              type="text"
-              name="streetAddress"
-              aria-label="Street Address"
-              autoComplete="street-address"
-              value={formData.streetAddress}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                City
-              </label>
-              <input
-                type="text"
-                name="city"
-                aria-label="City"
-                autoComplete="address-level2"
-                value={formData.city}
-                onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                State *
-              </label>
-              <input
-                type="text"
-                name="state"
-                aria-label="State"
-                autoComplete="address-level1"
-                value={formData.state}
-                onChange={handleChange}
-                      required
-                      maxLength={2}
-                      pattern="[A-Za-z]{2}"
-                      title="Enter your two-letter US state code"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              ZIP Code *
-            </label>
-            <input
-              type="text"
-              name="zipCode"
-              aria-label="ZIP Code *"
-              autoComplete="postal-code"
-              value={formData.zipCode}
-              onChange={handleChange}
-                required
-                inputMode="numeric"
-                pattern="[0-9]{5}(-[0-9]{4})?"
-                title="Enter a five-digit ZIP code"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
-          </div>
-          </details>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-semibold">
