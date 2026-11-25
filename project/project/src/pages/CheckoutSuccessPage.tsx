@@ -55,7 +55,7 @@ export default function CheckoutSuccessPage() {
         if (orderId && String(payload?.order?.payment_status || '').toLowerCase() === 'paid') {
           try { localStorage.removeItem('beezio-pending-paypal-payment'); } catch { /* non-fatal */ }
           clearReferralData();
-          navigate(`/order-confirmation?order=${orderId}`, { replace: true });
+          navigate(`/order-confirmation?order=${encodeURIComponent(orderId)}&review=1`, { replace: true });
           return;
         }
 

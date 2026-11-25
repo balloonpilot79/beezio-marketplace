@@ -727,7 +727,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError, localPi
       clearReferralData();
       clearCart();
       onSuccessRef.current(beezioOrderId || 'paid');
-      window.location.href = beezioOrderId ? `/order-confirmation?order=${encodeURIComponent(beezioOrderId)}` : '/';
+      window.location.href = beezioOrderId ? `/order-confirmation?order=${encodeURIComponent(beezioOrderId)}&review=1` : '/';
     } catch (err) {
       const message = err instanceof Error ? err.message : 'PayPal checkout failed';
       setError(message);
@@ -992,6 +992,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError, localPi
       customer: {
         email: currentBillingDetails.email || currentUser?.email || '',
         name: currentBillingDetails.name || '',
+        country: currentBillingDetails.address.country,
       },
       ...(currentHasDigitalItems ? {digital_policy_version:DIGITAL_POLICY_VERSION} : {}),
       fulfillment_method: orderUsesPickup ? 'pickup' : 'shipping',

@@ -32,6 +32,7 @@ import { isTestItemTitle, TEST_ITEM_PLATFORM_GROSS, TEST_ITEM_PRICE } from '../.
 import { getLowPriceFlatFeeTotal, isLowPriceAmount } from '../../shared/lowPriceFeePolicy';
 import { computeFixedTierPricing } from '../../shared/customerPrice';
 import { resolveLocationTaxRate } from './_lib/salesTax';
+import { reviewDeliveryWindows } from '../../shared/customerReviewDelivery';
 
 const LOCKED_PLATFORM_RATE = DEFAULT_BEEZIO_PLATFORM_RATE;
 const LOCKED_PAYPAL_PERCENT = 0.0399;
@@ -516,6 +517,7 @@ type CreateOrderBody = {
   customer?: {
     email?: string;
     name?: string;
+    country?: string;
   };
   shipping_info?: {
     firstName?: string;
@@ -1689,6 +1691,11 @@ export const handler: Handler = async (event) => {
       return { error: lastError };
     };
 
+    const reviewCountry = normalizeCountryCode(
+      localPickup ? pickupLocation?.country : digitalOnly ? body?.customer?.country : shippingAddress.country
+    );
+    const reviewWindows = reviewDeliveryWindows(checkoutProducts, localPickup, cjShippingSnapshot?.logistic_aging);
+
     // Persist DB order draft (schema-flexible)
     const orderPayload = {
       id: beezioOrderId,
@@ -1718,6 +1725,7 @@ export const handler: Handler = async (event) => {
       customer_name: body?.customer?.name || null,
       customer_email: body?.customer?.email || null,
       shipping_address: localPickup || digitalOnly ? null : body?.shipping_info || null,
+      ...(reviewCountry && reviewWindows ? { customer_review_delivery: { country: reviewCountry, windows: reviewWindows } } : {}),
       ...(hasDigitalProduct ? {digital_buyer_user_id:digitalBuyerUserId,digital_policy_version:DIGITAL_POLICY_VERSION,digital_policy_accepted_at:new Date().toISOString()} : {}),
       created_at: new Date().toISOString(),
     };

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import AffiliateShareWidget from '../components/AffiliateShareWidget';
 import DigitalDownloadPanel from '../components/DigitalDownloadPanel';
+import GoogleCustomerReview, { type CustomerReviewOrder } from '../components/GoogleCustomerReview';
 import { downloadReceiptHtml } from '../utils/receipt';
 import { resolveProductImageFromList } from '../utils/imageHelpers';
 
@@ -69,6 +70,7 @@ interface Order {
   } | null;
   fee_summary?: {affiliate_earnings: number; seller_earnings: number; applied_affiliate_commission_total: number; influencer_earnings: number; beezio_fee_gross: number; beezio_retained_total: number; paypal_fee_estimate: number; tax_amount: number};
   items: OrderItem[];
+  customer_review?: CustomerReviewOrder;
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -225,6 +227,7 @@ export default function OrderConfirmationPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 print:bg-white">
+      {searchParams.get('review') === '1' && order.customer_review && <GoogleCustomerReview order={order.customer_review} />}
       <div className="max-w-3xl mx-auto">
         {/* Success Header */}
         <div className="bg-white rounded-lg shadow-lg p-8 mb-6 print:shadow-none">
