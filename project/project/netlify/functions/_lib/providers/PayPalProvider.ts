@@ -64,6 +64,8 @@ export class PayPalProvider implements PaymentProvider {
 
     const currency = String(input.currency || 'USD').toUpperCase();
     const total = input.subtotal + input.shipping + input.tax;
+    const address = input.localPickup ? undefined : input.shippingAddress;
+    const shippingPreference = input.localPickup ? 'NO_SHIPPING' : address ? 'SET_PROVIDED_ADDRESS' : 'GET_FROM_FILE';
 
     const res = await fetch(`${baseUrl}/v2/checkout/orders`, {
       method: 'POST',
@@ -80,15 +82,26 @@ export class PayPalProvider implements PaymentProvider {
               landing_page: 'LOGIN',
               user_action: 'PAY_NOW',
               payment_method_preference: 'IMMEDIATE_PAYMENT_REQUIRED',
-              // Let PayPal collect/confirm address in-wallet to avoid 422 when no
-              // pre-supplied shipping object is attached at order creation time.
-              shipping_preference: input.localPickup ? 'NO_SHIPPING' : 'GET_FROM_FILE',
+              shipping_preference: shippingPreference,
             },
           },
         },
         purchase_units: [
           {
             reference_id: input.referenceId || undefined,
+            ...(address && {
+              shipping: {
+                name: { full_name: address.name },
+                address: {
+                  address_line_1: address.line1,
+                  address_line_2: address.line2,
+                  admin_area_2: address.city,
+                  admin_area_1: address.region,
+                  postal_code: address.postalCode,
+                  country_code: address.country,
+                },
+              },
+            }),
             amount: {
               currency_code: currency,
               value: toAmountString(total),

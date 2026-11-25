@@ -1,3 +1,5 @@
+import type { ProviderCreateOrderInput } from './_lib/providers/PaymentProvider';
+import { DOMESTIC_MARKETS, isDomesticMarketDraft, parseDomesticMarket } from '../../shared/domesticMarkets';
 import { DIGITAL_POLICY_VERSION } from '../../shared/digitalPolicy';
 import { extractAuthHeader } from './_lib/auth';
 import { loadAmbassadorProfile } from './_lib/ambassador-eligibility';
@@ -92,6 +94,7 @@ const PRODUCT_SELECT_COLUMNS = [
   'lineage',
   'dropship_provider',
   'requires_shipping',
+  'domestic_market_country',
   'pickup_mode',
   'vendor_managed_stock',
   'pickup_state',
@@ -868,6 +871,37 @@ export const handler: Handler = async (event) => {
     const localPickup = body?.fulfillment_method === 'pickup';
     const pickupEnabled = process.env.BEEZIO_LOCAL_PICKUP === 'true';
     const checkoutProducts = Array.from(productMap.values());
+    const listingMarkets = checkoutProducts.map(product => parseDomesticMarket(product.domestic_market_country));
+    if (listingMarkets.some(isDomesticMarketDraft)) {
+      return json(409, { error: 'An item in your cart is a draft and is unavailable for checkout.' });
+    }
+
+    const domesticMarket = listingMarkets.find(market => market !== null);
+    if (domesticMarket === 'US' && currency !== 'USD') {
+      return json(400, { error: 'This cart must be paid in U.S. dollars.' });
+    }
+
+    let domesticShippingAddress: ProviderCreateOrderInput['shippingAddress'];
+    if (domesticMarket && !localPickup) {
+      const country = normalizeCountryCode(shippingAddress.country);
+      if (country !== domesticMarket) {
+        return json(400, { error: `An item in your cart can only ship within the ${DOMESTIC_MARKETS[domesticMarket]}.`, code: 'DOMESTIC_SHIPPING_ONLY' });
+      }
+      const { name, firstName, lastName, address, address2, city, state, zip } = shippingAddress;
+      const fullName = String(name || [firstName, lastName].filter(Boolean).join(' ')).trim();
+      if (!fullName || !address?.trim() || !city?.trim() || !state?.trim() || !zip?.trim()) {
+        return json(400, { error: 'Enter a complete shipping address for this order.' });
+      }
+      domesticShippingAddress = {
+        name: fullName,
+        line1: address.trim(),
+        line2: address2?.trim() || undefined,
+        city: city.trim(),
+        region: state.trim(),
+        postalCode: zip.trim(),
+        country,
+      };
+    }
     if (process.env.BEEZIO_VENDOR_STOCK_RESERVATIONS !== 'true' &&
       checkoutProducts.some(product => product.vendor_managed_stock === true)) {
       return json(503, { error: 'Inventory checkout is temporarily unavailable for an item in your cart.' });
@@ -1865,6 +1899,7 @@ export const handler: Handler = async (event) => {
         subtotal: subtotalListing,
         shipping: shippingAmount,
         localPickup: localPickup || digitalOnly,
+        shippingAddress: domesticShippingAddress,
         tax: taxAmount,
         items: purchaseUnitItems.map((it) => ({
           name: it.name,
