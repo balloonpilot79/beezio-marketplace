@@ -3,6 +3,7 @@ import { createSupabaseAdmin } from './_lib/supabase';
 import { json } from './_lib/http';
 import { extractAuthHeader, getAuthedUser, requireAdmin } from './_lib/auth';
 import { resolveOwnedProfileIdsForUser } from './_lib/owned-profiles';
+import { reviewDeliveryDate } from '../../shared/customerReviewDelivery';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -156,6 +157,8 @@ export const handler: Handler = async (event) => {
       'payment_status',
       'fulfillment_status',
       'created_at',
+      'paid_at',
+      'customer_review_delivery',
       'customer_email',
       'customer_name',
       'shipping_address',
@@ -445,6 +448,17 @@ export const handler: Handler = async (event) => {
         items.reduce((sum, item) => sum + Number(item?.applied_affiliate_commission_amount || 0), 0).toFixed(2)
       );
 
+    const reviewDelivery = orderRow.customer_review_delivery;
+    const reviewEmail = String(orderRow.customer_email || '').trim();
+    const reviewCountry = String(reviewDelivery?.country || '');
+    const estimatedDeliveryDate = reviewDeliveryDate(orderRow.paid_at || orderRow.created_at, reviewDelivery?.windows);
+    const customerReview = process.env.BEEZIO_GOOGLE_CUSTOMER_REVIEWS === 'true' &&
+      ownerIdSet.has(buyerProfileId) &&
+      String(orderRow.payment_status || '').toLowerCase() === 'paid' &&
+      /^[A-Z]{2}$/.test(reviewCountry) && reviewCountry !== 'ZZ' &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reviewEmail) && estimatedDeliveryDate
+      ? { order_id: String(orderRow.id), email: reviewEmail, delivery_country: reviewCountry, estimated_delivery_date: estimatedDeliveryDate }
+      : null;
     return json(200, {
       ok: true,
       order: {
@@ -477,6 +491,7 @@ export const handler: Handler = async (event) => {
           email: String(orderRow.customer_email || buyerProfile?.email || '').trim() || '',
         },
         items,
+        ...(customerReview ? { customer_review: customerReview } : {}),
         ...(mayViewInternalOrderData ? { fee_summary: {
           seller_earnings: Number(payoutLedger?.seller_earnings || 0) || 0,
           tax_amount: Number(orderRow.tax_amount || 0),
