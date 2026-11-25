@@ -5,6 +5,15 @@ export type ProviderCreateOrderInput = {
   subtotal: number;
   shipping: number;
   localPickup?: boolean;
+  shippingAddress?: {
+    name: string;
+    line1: string;
+    line2?: string;
+    city: string;
+    region: string;
+    postalCode: string;
+    country: string;
+  };
   tax: number;
   items: Array<{
     name: string;

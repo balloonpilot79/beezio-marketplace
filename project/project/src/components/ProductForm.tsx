@@ -1,3 +1,4 @@
+import { DOMESTIC_MARKETS, isDomesticMarketDraft, parseDomesticMarket, type DomesticMarket } from '../../shared/domesticMarkets';
 import { uploadPrivateDigitalFile } from '../services/digitalUpload';
 import type { PickupMode } from '../../shared/vendorPickup';
 import { ITEM_CONDITIONS, MERCHANDISE_TYPES } from '../../shared/vendorListing';
@@ -245,6 +246,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     return [option];
   };
   const pickupEnabled = import.meta.env.VITE_BEEZIO_LOCAL_PICKUP === 'true';
+  const [domesticMarket, setDomesticMarket] = useState<DomesticMarket | null>(null);
   const [pickupMode, setPickupMode] = useState<PickupMode>('shipping');
   const [pickupState, setPickupState] = useState('');
   const [pickupZip, setPickupZip] = useState('');
@@ -485,6 +487,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         if (loadError) throw loadError;
         if (!data) throw new Error('This product could not be loaded for editing.');
         if (!cancelled) {
+          setDomesticMarket(parseDomesticMarket(data.domestic_market_country));
           setPickupMode(data.pickup_mode || 'shipping');
           setPickupState(data.pickup_state || '');
           setPickupZip(data.pickup_zip || '');
@@ -1212,7 +1215,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
     }
     const affiliateEnabled = formData.affiliate_enabled !== false && pricingBreakdown.affiliateAmount > 0;
     const listDirect = !affiliateEnabled && directMarketplace;
-    const effectivePickupMode = formData.is_digital ? 'shipping' : pickupMode;
+    const listingMarket = formData.is_digital ? null : domesticMarket;
+    const marketDraft = isDomesticMarketDraft(listingMarket);
+    const effectivePickupMode = formData.is_digital || marketDraft ? 'shipping' : pickupMode;
     if (pickupEnabled && effectivePickupMode !== 'shipping' &&
       (!/^[A-Z]{2}$/.test(pickupState) || !/^\d{5}$/.test(pickupZip))) {
       abortSubmit('Enter the pickup location’s two-letter state and five-digit ZIP code.');
@@ -1356,8 +1361,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
 
-    const requiresManualReview = false;
-
+    const publication = {
+      status: marketDraft ? 'draft' : (affiliateEnabled || listDirect) ? 'active' : 'store_only',
+      is_promotable: affiliateEnabled && !marketDraft,
+      is_active: !marketDraft,
+    };
 
     setLoading(true);
     setError(null);
@@ -1462,9 +1470,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             affiliate_commission_type: 'flat',
             affiliate_commission_value: affiliateEnabled ? pricingBreakdown.affiliateAmount : 0,
              calculated_customer_price: pricingBreakdown.listingPrice,
-             status: requiresManualReview ? 'draft' : (affiliateEnabled || listDirect) ? 'active' : 'store_only',
-             is_promotable: affiliateEnabled && !requiresManualReview,
-             is_active: !requiresManualReview,
+             domestic_market_country: listingMarket,
+             ...publication,
              has_variants: hasVariants,
              ...importedSourcePayload,
            };
@@ -1480,7 +1487,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
           lastError = error;
           const message = String((error as any)?.message || '');
           const missing = extractMissingColumnName(message);
-          if (missing && Object.prototype.hasOwnProperty.call(updatePayload, missing)) {
+          if (missing && !(listingMarket && missing === 'domestic_market_country') && Object.prototype.hasOwnProperty.call(updatePayload, missing)) {
             delete updatePayload[missing];
             continue;
           }
@@ -1603,9 +1610,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             affiliate_commission_type: 'flat',
             affiliate_commission_value: affiliateEnabled ? pricingBreakdown.affiliateAmount : 0,
              calculated_customer_price: pricingBreakdown.listingPrice,
-             status: requiresManualReview ? 'draft' : (affiliateEnabled || listDirect) ? 'active' : 'store_only',
-             is_promotable: affiliateEnabled && !requiresManualReview,
-             is_active: !requiresManualReview,
+             domestic_market_country: listingMarket,
+             ...publication,
              has_variants: hasVariants,
              ...importedSourcePayload,
            };
@@ -1631,7 +1637,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             error = res.error;
             const message = String((res.error as any)?.message || '');
             const missing = extractMissingColumnName(message);
-            if (missing && Object.prototype.hasOwnProperty.call(working, missing)) {
+            if (missing && !(listingMarket && missing === 'domestic_market_country') && Object.prototype.hasOwnProperty.call(working, missing)) {
               delete working[missing];
               continue;
             }
@@ -1743,15 +1749,15 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         }
       }
 
-      if (savedProductId && !requiresManualReview && affiliateEnabled) {
+      if (savedProductId && !marketDraft && affiliateEnabled) {
         await forceMarketplaceListing(savedProductId);
       }
 
-      const marketplaceStatus = requiresManualReview || (!affiliateEnabled && !listDirect) ? 'store_only' : 'marketplace';
-      setCreatedMarketplaceStatus(marketplaceStatus);
+      const marketplaceStatus = affiliateEnabled || listDirect ? 'marketplace' : 'store_only';
+      setCreatedMarketplaceStatus(marketDraft ? null : marketplaceStatus);
       setSuccess(
-        requiresManualReview
-          ? `Product saved as draft for manual review. ${reviewSummary || 'Beezio flagged this listing for launch protection checks.'}`
+        marketDraft && listingMarket
+          ? `Draft saved for ${DOMESTIC_MARKETS[listingMarket]}. It will stay private until checkout opens there.`
           : marketplaceStatus === 'marketplace'
           ? 'Product saved and listed in the marketplace.'
           : 'Product saved to your store (not listed in marketplace).'
@@ -1761,6 +1767,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       if (addAnother) {
+        setDomesticMarket(null);
         setPickupMode('shipping');
         setPickupState('');
         setPickupZip('');
@@ -1875,7 +1882,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               <div className="font-semibold">Success</div>
               <div className="mt-1">{success}</div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {createdProductId && (
+                {createdProductId && createdMarketplaceStatus && (
                   <button
                     type="button"
                     onClick={() => goTo(`/product/${createdProductId}`)}
@@ -1941,7 +1948,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {createdProductId && !error && (
+              {createdProductId && createdMarketplaceStatus && !error && (
                 <button
                   type="button"
                   onClick={() => goTo(`/product/${createdProductId}`)}
@@ -2173,6 +2180,22 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             <fieldset className="grid gap-3 rounded-xl border p-4">
               <legend className="px-2 font-bold">Merchandise details</legend>
               <label className="grid gap-1">
+                Domestic sales country
+                <select className="min-h-11 rounded border p-2" value={domesticMarket ?? ''}
+                  onChange={(event) => setDomesticMarket(parseDomesticMarket(event.target.value))}>
+                  <option value="">Use existing shipping settings</option>
+                  {Object.entries(DOMESTIC_MARKETS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+                </select>
+                <span className="text-sm text-gray-600">
+                  Select the country where the item is stocked and ships from. Buyers must ship to that country.
+                </span>
+                {isDomesticMarketDraft(domesticMarket) && (
+                  <span className="text-sm text-amber-800">
+                    This saves a private draft. Draft prices use USD until local pricing is available.
+                  </span>
+                )}
+              </label>
+              <label className="grid gap-1">
                 Item condition
                 <select className="min-h-11 rounded border p-2" value={itemCondition}
                   onChange={(event) => setItemCondition(event.target.value)}>
@@ -2197,7 +2220,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             </fieldset>
           )}
 
-          {pickupEnabled && !formData.is_digital && (
+          {pickupEnabled && !formData.is_digital && !isDomesticMarketDraft(domesticMarket) && (
             <fieldset className="grid gap-3 rounded-xl border p-4">
               <legend className="px-2 font-bold">Delivery options</legend>
               <label className="grid gap-1">

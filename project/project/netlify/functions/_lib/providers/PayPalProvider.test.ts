@@ -27,6 +27,29 @@ describe('PayPalProvider.createOrder', () => {
     expect(payload.purchase_units[0].amount.value).toBe('5.35');
   });
 
+  it('uses the validated domestic shipping address for PayPal approval', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true, json: async () => ({ id: 'domestic-order' }),
+    } as Response);
+    await new PayPalProvider().createOrder({
+      currency: 'USD', subtotal: 10, shipping: 0, tax: 0,
+      items: [{ name: 'Physical item', quantity: 1, unit_amount: 10 }],
+      shippingAddress: {
+        name: 'Test Buyer', line1: '1 Main St', city: 'Ottumwa',
+        region: 'IA', postalCode: '52501', country: 'US',
+      },
+    });
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(payload.payment_source.paypal.experience_context.shipping_preference).toBe('SET_PROVIDED_ADDRESS');
+    expect(payload.purchase_units[0].shipping).toEqual({
+      name: { full_name: 'Test Buyer' },
+      address: {
+        address_line_1: '1 Main St', admin_area_2: 'Ottumwa',
+        admin_area_1: 'IA', postal_code: '52501', country_code: 'US',
+      },
+    });
+  });
+
   it('preserves digital goods categories in the PayPal payload', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch' as any).mockResolvedValue({
       ok: true,
