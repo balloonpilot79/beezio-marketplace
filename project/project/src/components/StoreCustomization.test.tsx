@@ -77,6 +77,15 @@ afterEach(async () => {
 });
 
 describe('storefront draft preview and Save boundary', () => {
+
+  it('links sellers directly to product creation from the store editor', async () => {
+    await mount();
+    const productLink = editor.root.findByProps({ href: '/business/products/add' });
+    expect(text(productLink)).toBe('Add Product');
+    await save();
+    expect(editor.root.findByProps({ href: '/business/products/add' })).toBe(productLink);
+  });
+
   it('shows all six brand palettes immediately without saving or losing custom colors', async () => {
     await mount();
     for (const [name, primary] of Object.entries({ Bronze: '#B57B46', Forest: '#396451', Midnight: '#283B60', Rose: '#B66E7E', Charcoal: '#343434', Ocean: '#287F9B' })) {

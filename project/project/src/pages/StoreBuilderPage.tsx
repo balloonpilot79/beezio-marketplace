@@ -58,7 +58,7 @@ const StoreBuilderPage: React.FC = () => {
             One website for everything you sell. Customize the design here; manage your own and affiliate products from your product dashboards.
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <Link to="/business"
+            <Link to="/business?section=seller&tab=products"
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-3 text-sm font-bold text-slate-800">
               <Store className="h-4 w-4" /> Manage Products in Business Center
             </Link>

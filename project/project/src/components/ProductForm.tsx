@@ -1161,8 +1161,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
       return;
     }
 
-    // IMPORTANT: In production, `profiles.id` may not equal `auth.users.id`.
-    // Always resolve the canonical profile id for FK writes (products.seller_id).
+    // Storefront setup and ordering use the profile ID. Production product
+    // ownership uses the auth user ID, which can differ from the profile ID.
     let sellerProfileId = await resolveProfileIdForUser(user.id);
     if (!sellerProfileId || sellerProfileId === user.id) {
       const ensured = await ensureSellerProfileId();
@@ -1579,7 +1579,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             markup_value: Math.round(pricingBreakdown.sellerMarkup * 100),
             platform_fee: pricingBreakdown.platformFee,
             processing_fee: pricingBreakdown.processingFee,
-            seller_id: sellerProfileId,
+            seller_id: user.id,
             ...vendorDetails,
             ...pickupDetails,
             shipping_options: normalizedShippingOptions,
@@ -1643,10 +1643,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
         const sellerIdCandidates = Array.from(
           new Set(
             [
+              user.id,
               sellerProfileId,
               profile?.id,
-              profile?.user_id,
-              user?.id,
             ]
               .map((v) => (v ? String(v).trim() : ''))
               .filter((v) => v.length > 0)
@@ -1838,7 +1837,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h1 className="text-2xl font-bold text-black">Add New Product</h1>
-                <p className="text-sm text-gray-700">Use the quick fields first. Open the optional sections only if you need them.</p>
+                <p className="text-sm text-gray-700">Add your product details and photos, then publish it to your store.</p>
               </div>
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                 <button
@@ -1935,7 +1934,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               <div className={['font-semibold', error ? 'text-red-900' : 'text-green-900'].join(' ')}>
                 {error ? 'Save failed' : 'Saved'}
               </div>
-              <div className={['text-sm truncate', error ? 'text-red-800' : 'text-green-800'].join(' ')}>
+              <div className={['text-sm break-words', error ? 'text-red-800' : 'text-green-800'].join(' ')}>
                 {error || success}
               </div>
             </div>
@@ -2043,15 +2042,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
               </div>
             </section>
           ) : null}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-sm font-semibold text-slate-900">Fast phone flow</div>
-            <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-3">
-              <div>1. Add title, category, photos, and price.</div>
-              <div>2. Save fast if this is a simple product.</div>
-              <div>3. Open optional sections for {formData.is_digital ? 'download settings, videos, or affiliates' : 'variants, shipping, or videos'}.</div>
-            </div>
-          </div>
-
           {ownedStorefronts.length > 0 && (
             <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
               <div className="text-sm font-bold text-slate-950">Choose the brand storefront</div>
@@ -2329,6 +2319,42 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
                   Also list this item in the Beezio marketplace for direct purchase
                 </label>
               )}
+
+          {formData.is_digital && (
+            <section className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
+              <label htmlFor="digital-delivery-file" className="mb-2 block text-sm font-bold text-gray-900">
+                Digital delivery file <span className="text-red-500">*</span>
+              </label>
+              <p className="mb-3 text-sm text-gray-600">
+                Upload the exact file the buyer should receive. It uploads directly to private storage with progress and automatic retries, then is checked before it can be sold.
+              </p>
+              <input
+                id="digital-delivery-file"
+                type="file"
+                accept={DIGITAL_ACCEPT}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void uploadDigitalFile(file);
+                  e.currentTarget.value = '';
+                }}
+                disabled={digitalUploadLoading}
+                className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900"
+              />
+              <div className="mt-2 text-xs text-gray-600">
+                Private upload limit: 50 MB. PDF, PNG, JPG, TXT, CSV, ZIP, DOCX, XLSX, PPTX. Archives are checked; executable files, macros, nested archives, and active content are blocked.
+              </div>
+              {digitalUploadLoading && <p className="mt-2 text-sm font-semibold text-amber-800" role="status">{digitalUploadProgress || 'Preparing private upload…'}</p>}
+              {formData.digital_download_path ? (
+                <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
+                  <div className="font-semibold">{formData.digital_download_filename || 'Digital file uploaded'}</div>
+                  <div className="mt-1 text-xs">
+                    Stored privately and ready for buyer delivery.
+                    {Number((formData as any).digital_download_file_size || 0) > 0 ? ` File size: ${Math.max(1, Math.round(Number((formData as any).digital_download_file_size || 0) / 1024))} KB.` : ''}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+          )}
 
           {/* Pricing */}
           <div className="border-t border-gray-200 pt-6">
@@ -2699,37 +2725,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel, editMode
 
               {(formData as any).is_digital === true && (
                 <div className="border-t border-gray-200 pt-6">
-                  <label className="block text-sm font-bold text-gray-900 mb-2">
-                    Digital Delivery File
-                  </label>
-                  <p className="mb-3 text-sm text-gray-600">
-                    Upload the exact file the buyer should receive. It uploads directly to private storage with progress and automatic retries, then is checked before it can be sold.
-                  </p>
-                  <input
-                    type="file"
-                    accept={DIGITAL_ACCEPT}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) void uploadDigitalFile(file);
-                      e.currentTarget.value = '';
-                    }}
-                    disabled={digitalUploadLoading}
-                    className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900"
-                  />
-                  <div className="mt-2 text-xs text-gray-600">
-                    Private upload limit: 50 MB. PDF, PNG, JPG, TXT, CSV, ZIP, DOCX, XLSX, PPTX. Archives are checked; executable files, macros, nested archives, and active content are blocked.
-                  </div>
-                  {digitalUploadLoading && <p className="mt-2 text-sm font-semibold text-amber-800" role="status">{digitalUploadProgress || 'Preparing private upload…'}</p>}
-                  {formData.digital_download_path ? (
-                    <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
-                      <div className="font-semibold">{formData.digital_download_filename || 'Digital file uploaded'}</div>
-                      <div className="mt-1 text-xs">
-                        Stored privately and ready for buyer delivery.
-                        {Number((formData as any).digital_download_file_size || 0) > 0 ? ` File size: ${Math.max(1, Math.round(Number((formData as any).digital_download_file_size || 0) / 1024))} KB.` : ''}
-                      </div>
-                    </div>
-                  ) : null}
-
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                       <label className="mb-2 block text-sm font-semibold text-gray-900">Download limit per purchase</label>

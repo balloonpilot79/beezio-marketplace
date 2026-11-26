@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContextMultiRole';
 import { ensureProfileIdForUser, resolveProfileIdForUser } from '../utils/resolveProfileId';
 import {
   Save,
+  Plus,
   Eye,
   Palette,
   Globe,
@@ -664,6 +665,15 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
               <Save className="h-4 w-4" />
               {saving ? 'Saving...' : 'Save changes'}
             </button>
+            {role === 'seller' && (
+              <a
+                href="/business/products/add"
+                className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-[#ffcb05] px-5 py-3 text-sm font-bold text-[#101820] hover:bg-amber-300"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add Product
+              </a>
+            )}
           </div>
         </div>
       </div>
