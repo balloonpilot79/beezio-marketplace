@@ -34,6 +34,16 @@ describe("homepage live catalog", () => {
       available: true,
     });
   });
+  it("keeps the listed price, seller ask, and affiliate payout distinct", () => {
+    const [row] = prepareHomeProducts([{
+      ...product,
+      calculated_customer_price: 56.99,
+      shipping_reserve_amount: 6.91,
+      seller_ask: 29,
+      affiliate_payout_amount: 15,
+    }]);
+    expect(row).toMatchObject({ price: 50.08, sellerAmount: 29, affiliateAmount: 15 });
+  });
   it.each([
     { status: "draft" },
     { status: "archived" },

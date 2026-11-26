@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  Check,
   Globe,
-  Megaphone,
   Package,
   Store,
 } from "lucide-react";
@@ -14,6 +12,8 @@ import { fetchMarketplaceCatalog } from "../utils/marketplaceCatalog";
 import { prepareHomeProducts, type HomeProduct } from "../utils/homeCatalog";
 import { usePublicStores } from "../hooks/usePublicStores";
 import "../styles/beezio-home.css";
+
+const FOREVER_LOVE_NECKLACE_ID = "575bbae7-af58-4d17-8c40-1d206874925d";
 
 const money = (amount: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -48,7 +48,7 @@ const paths = [
     title: "Sell your products.",
     label: "For sellers",
     text: "Build your own free online store, list your products, and fulfill your orders. Choose which products affiliates can promote.",
-    signup: "/signup?role=seller",
+    signup: "/signup?intent=sell",
     href: "/sellers",
     action: "Start selling",
     icon: Store,
@@ -58,21 +58,11 @@ const paths = [
     title: "Promote products as an affiliate.",
     label: "For affiliates",
     text: "Build your own free storefront with products from Beezio sellers. Earn commissions on qualifying sales you bring in, while the seller fulfills the order.",
-    signup: "/signup?role=affiliate",
+    signup: "/signup?intent=earn",
     href: "/affiliates",
     action: "Become an affiliate",
     icon: Globe,
     tone: "affiliate",
-  },
-  {
-    title: "Refer people as a Beezio Ambassador.",
-    label: "For ambassadors",
-    text: "Invite shoppers, sellers, and affiliates with your referral link and earn rewards from their qualifying purchases and sales. No store required.",
-    signup: "/account?tab=ambassador",
-    href: "/ambassadors",
-    action: "Become an ambassador",
-    icon: Megaphone,
-    tone: "influencer",
   },
 ];
 
@@ -121,19 +111,33 @@ export default function HomePageBZO() {
     ? availableProducts
     : rotateCatalog(availableProducts.filter((product) => product.category === category), rotationSlot);
   const spotlight = availableProducts.slice(0, 4);
+  const example = availableProducts.find(product =>
+    product.id === FOREVER_LOVE_NECKLACE_ID &&
+    Number.isFinite(product.sellerAmount) && product.sellerAmount > 0 &&
+    Number.isFinite(product.affiliateAmount) && product.affiliateAmount > 0
+  );
 
   return (
     <div className="hm-page">
       <div className="hm-wrap">
         <section className="hm-hero">
           <div className="hm-hero-copy">
-            <p className="hm-kicker">Sell. Promote. Refer. Earn.</p>
-            <h1>
-              Your Store. More Sales. <span>More Ways to Earn.</span>
-            </h1>
+            <h1>Free store with a <span>built-in affiliate sales force.</span></h1>
             <p className="hm-hero-description">
-              Sell your own products, promote products from other sellers, or earn by referring people to Beezio. Free to join.
+              List your products and choose which ones affiliates can promote. You fulfill the orders and set what affiliates earn on qualifying sales.
             </p>
+            {example && (
+              <section className="hm-listing-example" aria-labelledby="home-listing-example">
+                <h2 id="home-listing-example">
+                  <Link to={`/product/${encodeURIComponent(example.id)}`}>{example.title}</Link>
+                </h2>
+                <dl>
+                  <div><dt>Listed price</dt><dd>{money(example.price)}</dd></div>
+                  <div><dt>Seller receives</dt><dd>{money(example.sellerAmount)}</dd></div>
+                  <div><dt>Affiliate earns per sale</dt><dd>{money(example.affiliateAmount)}</dd></div>
+                </dl>
+              </section>
+            )}
             <div className="hm-actions">
               <Link to="/signup" className="bz-button bz-button-gold">
                 Get Started Free <ArrowRight size={17} />
@@ -141,13 +145,7 @@ export default function HomePageBZO() {
               <Link to="/marketplace" className="hm-hero-secondary">
                 Shop the Marketplace <ArrowRight size={17} />
               </Link>
-              <Link to="/ambassadors" className="hm-hero-secondary">
-                Become an Ambassador <ArrowRight size={17} />
-              </Link>
             </div>
-            <p className="hm-hero-note">
-              <Check size={14} /> Free to join. No monthly store fees. Earnings depend on qualifying sales.
-            </p>
           </div>
           <div className="hm-spotlight">
             <div className="hm-spotlight-heading">
@@ -185,18 +183,6 @@ export default function HomePageBZO() {
               </Link>
             )}
           </div>
-        </section>
-        <section className="hm-earn-banner" aria-labelledby="home-referral-title">
-          <div className="hm-earn-icon"><Megaphone size={28} aria-hidden="true" /></div>
-          <div>
-            <p className="hm-kicker">Beezio Ambassadors</p>
-            <h2 id="home-referral-title">Become a Beezio Ambassador.</h2>
-            <p>Refer sellers, affiliates, and buyers. Earn rewards on qualifying purchases and sales from the people you introduce. Buyers can participate too.</p>
-            <p>Free to join. No store required.</p>
-          </div>
-          <Link to="/account?tab=ambassador" className="bz-button bz-button-gold">
-            Become an Ambassador <ArrowRight size={17} aria-hidden="true" />
-          </Link>
         </section>
         <section id="shop" className="hm-shop">
           <div className="hm-section-heading">
@@ -333,7 +319,6 @@ export default function HomePageBZO() {
             ))}
           </div>
         </section>
-        <p className="hm-build-note">Free websites for sellers AND affiliates. Designed by you.</p>
         <p className="hm-build-note">No seller fees. No listing fees or monthly subscriptions.</p>
         <section
           id="start"
@@ -361,7 +346,7 @@ export default function HomePageBZO() {
           <summary>What does it cost to join Beezio?</summary>
           <p>{pricingExplanation}</p>
           <p>
-            Affiliate and Ambassador earnings come from eligible sales. Earnings
+            Affiliate earnings come from eligible sales. Earnings
             are not guaranteed and are subject to returns and payout terms.
           </p>
           <Link to="/how-it-works">

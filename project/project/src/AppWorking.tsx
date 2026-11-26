@@ -783,11 +783,11 @@ const AppWorking: React.FC = () => {
                     <Route path="/paypal/connect/callback" element={<PayPalConnectCallbackPage />} />
                     <Route path="/start-earning" element={<BusinessLandingPage audience="influencer" />} />
                     <Route path="/sellers" element={<BusinessLandingPage audience="seller" />} />
-                    <Route path="/seller/signup" element={<SignUpPage />} />
+                    <Route path="/seller/signup" element={<SignUpPage defaultIntent="sell" />} />
                     <Route path="/affiliates" element={<BusinessLandingPage audience="affiliate" />} />
                     <Route path="/affiliate" element={<BusinessLandingPage audience="affiliate" />} />
-                    <Route path="/affiliate/signup" element={<SignUpPage />} />
-                    <Route path="/affiliate-signup" element={<SignUpPage />} />
+                    <Route path="/affiliate/signup" element={<SignUpPage defaultIntent="earn" />} />
+                    <Route path="/affiliate-signup" element={<SignUpPage defaultIntent="earn" />} />
                     <Route path="/affiliate/products" element={<AffiliateProductsPage />} />
                     <Route path="/affiliate/dashboard" element={<AffiliateDashboardPage />} />
                     <Route path="/store-builder" element={<BusinessRoute><StoreBuilderPage /></BusinessRoute>} />

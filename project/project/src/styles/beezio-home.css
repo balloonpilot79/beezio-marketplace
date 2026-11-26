@@ -96,6 +96,35 @@
   max-width: 430px;
   color: #475569;
 }
+.hm-listing-example {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid #e7ddac;
+  border-radius: 12px;
+  background: #fff9e5;
+}
+.hm-listing-example h2 {
+  font-size: 14px;
+  font-weight: 700;
+}
+.hm-listing-example a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.hm-listing-example dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 9px;
+}
+.hm-listing-example dt {
+  font-size: 12px;
+  color: #475569;
+}
+.hm-listing-example dd {
+  font-size: 17px;
+  font-weight: 750;
+}
 .hm-actions {
   display: flex;
   align-items: center;
@@ -227,7 +256,7 @@
 }
 .hm-business-paths {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin: 18px 0 35px;
 }
@@ -242,9 +271,6 @@
 }
 .hm-path-affiliate {
   background: #d6e2d6;
-}
-.hm-path-influencer {
-  background: #e4dcf0;
 }
 .hm-path-top {
   display: flex;
@@ -475,45 +501,6 @@
 .hm-skeleton span:last-child {
   width: 40%;
 }
-.hm-earn-banner {
-  display: flex;
-  align-items: center;
-  gap: 23px;
-  padding: 27px;
-  border-radius: 14px;
-  margin: 36px 0;
-  background: #fff5c2;
-  border: 1px solid #ead792;
-  color: #17212b;
-}
-.hm-earn-icon {
-  padding: 18px;
-  border-radius: 14px;
-  background: #ffe690;
-  color: #604800;
-}
-.hm-earn-banner > div:nth-child(2) {
-  flex: 1;
-}
-.hm-earn-banner .hm-kicker {
-  color: #705700;
-}
-.hm-earn-banner h2 {
-  font-size: 21px;
-  line-height: 1.35;
-  font-weight: 650;
-  letter-spacing: -0.025em;
-  margin: 5px 0 7px;
-}
-.hm-earn-banner p:not(.hm-kicker) {
-  color: #374151;
-  font-size: 12px;
-  line-height: 1.7;
-  max-width: 620px;
-}
-.hm-earn-banner > a {
-  flex-shrink: 0;
-}
 .hm-store-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -711,9 +698,6 @@
   .hm-actions {
     gap: 15px;
   }
-  .hm-earn-banner {
-    flex-wrap: wrap;
-  }
   .hm-build {
     gap: 35px;
     padding: 32px;
@@ -788,10 +772,6 @@
   .hm-hero-secondary {
     font-size: 11px;
   }
-  .hm-hero-note {
-    margin-top: 18px;
-    font-size: 9px;
-  }
   .hm-spotlight {
     padding: 16px 20px 20px;
   }
@@ -859,20 +839,6 @@
   .hm-categories button {
     white-space: nowrap;
   }
-  .hm-earn-banner {
-    padding: 24px;
-    gap: 15px;
-    margin: 26px 0;
-  }
-  .hm-earn-icon {
-    display: none;
-  }
-  .hm-earn-banner > div:nth-child(2) {
-    flex-basis: 100%;
-  }
-  .hm-earn-banner h2 {
-    font-size: 23px;
-  }
   .hm-store-grid {
     grid-template-columns: 1fr;
     gap: 13px;
@@ -934,14 +900,12 @@
 .hm-quick-start p:not(.hm-kicker) { font-size: 14px; line-height: 1.7; max-width: 690px; color: #47584a; }
 .hm-quick-start > a { flex-shrink: 0; }
 .hm-hero-secondary, .hm-all-link { min-height: 44px; }
-.hm-hero-note { font-size: 12px; }
 @media (max-width: 700px) {
   .hm-business-paths { display: grid; grid-template-columns: minmax(0, 1fr); overflow: visible; }
   .hm-path { min-width: 0; }
   .hm-path > p { max-width: none; }
   .hm-quick-start { flex-direction: column; align-items: stretch; padding: 20px; }
   .hm-hero-description { font-size: 15px; }
-  .hm-hero-note { font-size: 12px; }
   .hm-hero-secondary { font-size: 14px; }
   .hm-categories button { min-height: 44px; }
 }

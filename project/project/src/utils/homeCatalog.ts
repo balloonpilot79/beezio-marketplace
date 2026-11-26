@@ -13,6 +13,7 @@ export interface HomeProduct {
   seller: string;
   category: string;
   available: boolean;
+  sellerAmount: number;
   affiliateAmount: number;
 }
 
@@ -56,13 +57,15 @@ export function prepareHomeProducts(rows: any[]): HomeProduct[] {
         (knownStock
           ? Number(stock) > 0
           : !(row.track_inventory === true && row.in_stock === false));
+      const sellerAmount = Number(row.seller_ask ?? row.seller_amount ?? row.seller_ask_price ?? 0);
       const commission = resolveAffiliateCommission(row);
       const affiliateAmount = row.affiliate_enabled === false ? 0 : getAffiliateAmount(
-        Number(row.seller_ask ?? row.seller_amount ?? getBuyerFacingProductPrice(row)),
+        sellerAmount || getBuyerFacingProductPrice(row),
         commission.type,
         commission.value,
       );
       return {
+        sellerAmount,
         affiliateAmount,
         id: String(row.id),
         title: String(row.title),

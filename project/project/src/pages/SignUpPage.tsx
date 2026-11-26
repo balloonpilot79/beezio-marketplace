@@ -1,6 +1,7 @@
+import JoinPage from "./JoinPage";
 import SignupAddressFields from "../components/SignupAddressFields";
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContextMultiRole";
 import { supabase } from "../lib/supabase";
 import { Check, X } from "lucide-react";
@@ -21,8 +22,15 @@ import {
 
 const SIGNUP_DRAFT_KEY = "beezio_signup_draft_v1";
 
-const SignUpPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
+type SignupIntent = "sell" | "earn" | "ambassador";
+
+const legacySignupIntents = new Map<string, SignupIntent>([
+  ["seller", "sell"],
+  ["affiliate", "earn"],
+  ["influencer", "ambassador"],
+]);
+
+function BusinessSignupForm({ intent, recruit }: { intent: SignupIntent; recruit: string }) {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -33,7 +41,6 @@ const SignUpPage: React.FC = () => {
     city: "",
     state: "",
     zipCode: "",
-    role: "seller",
   });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedIndependentContractor, setAcceptedIndependentContractor] =
@@ -84,14 +91,9 @@ const SignUpPage: React.FC = () => {
 
   const passwordStrength = getPasswordStrength(formData.password);
 
-  const urlRole = searchParams.get("role");
-  const isInfluencerSignup = urlRole === "influencer";
-  const isAffiliateSignup = urlRole === "affiliate";
-  const referralFromLink =
-    searchParams.get("recruit") ||
-    searchParams.get("influencer") ||
-    searchParams.get("ic");
-  const urlInfluencer = String(referralFromLink || "").trim();
+  const isInfluencerSignup = intent === "ambassador";
+  const isAffiliateSignup = intent === "earn";
+  const urlInfluencer = recruit.trim();
   const invite = useRecruitInvite(urlInfluencer);
 
   const isIgnorableLookupError = (err: any) => {
@@ -201,7 +203,6 @@ const SignUpPage: React.FC = () => {
             fullName: formData.fullName,
             storeName: formData.storeName,
             phone: formData.phone,
-            role: formData.role,
           },
           acceptedTerms,
           acceptedIndependentContractor,
@@ -509,12 +510,6 @@ const SignUpPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (urlRole === "buyer") {
-      navigate(withRecruitCode("/account/signup", urlInfluencer), { replace: true });
-    }
-  }, [navigate, urlRole, urlInfluencer]);
-
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -668,17 +663,17 @@ const SignUpPage: React.FC = () => {
       </Link>
       <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl p-4 sm:p-6 md:p-8">
         <p className="bz-eyebrow mb-3 text-center">
-          {isInfluencerSignup ? "Beezio ambassador signup" : isAffiliateSignup ? "Beezio affiliate signup" : "Sellers · Affiliates · Ambassadors"}
+          {isInfluencerSignup ? "Beezio ambassador signup" : isAffiliateSignup ? "Beezio affiliate signup" : "Beezio seller signup"}
         </p>
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-2 text-center">
-          {isInfluencerSignup ? "Your referral link starts here." : isAffiliateSignup ? "Your free affiliate store starts here." : "Your free website starts here."}
+          {isInfluencerSignup ? "Your referral link starts here." : isAffiliateSignup ? "Your free affiliate store starts here." : "Open your free store."}
         </h1>
         <p className="mb-4 text-center text-sm text-gray-600">
           {isInfluencerSignup
             ? "Create your free account, open Ambassador tools in your Business Center, and share your personal referral link with sellers and affiliates. Earn when they make qualifying product sales. No products or store required to start. Your account also includes seller and affiliate tools."
             : isAffiliateSignup
-              ? "Choose products already on Beezio, add them to your free store, and earn on qualifying sales. Sellers fulfill the orders. Your account also includes seller and ambassador tools."
-              : "Sellers and affiliates get free custom websites they design themselves. One business account includes selling, affiliate promotion, ambassador referral tools, and your Business Center. No monthly fees, listing fees, or seller fees."}
+              ? "Choose products already on Beezio, add them to your free store, and earn on qualifying sales. Sellers fulfill the orders. You can also list your own products anytime."
+              : "List your own products, customize your storefront, and choose which listings affiliates can promote. You can also promote products from other sellers with this account."}
         </p>
         <p className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-center text-sm text-amber-950">
           Free to join. No credit card needed. Contact details and payout setup can wait.
@@ -1110,6 +1105,20 @@ const SignUpPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
-export default SignUpPage;
+export default function SignUpPage({ defaultIntent }: { defaultIntent?: SignupIntent }) {
+  const [params] = useSearchParams();
+  const role = params.get("role");
+  const recruit = params.get("recruit") || params.get("influencer") || params.get("ic") || "";
+  if (role === "buyer") {
+    return <Navigate to={withRecruitCode("/account/signup", recruit)} replace />;
+  }
+
+  const requestedIntent = params.get("intent");
+  const intent = requestedIntent === "sell" || requestedIntent === "earn"
+    ? requestedIntent
+    : legacySignupIntents.get(role || "") ?? defaultIntent;
+
+  return intent ? <BusinessSignupForm intent={intent} recruit={recruit} /> : <JoinPage />;
+}

@@ -6,7 +6,7 @@ import { RESERVED_STORE_SLUGS } from '../../../src/utils/storeSlug';
 export type SearchStore = { slug: string; name: string; description: string; image: string | null };
 
 // Page storefronts and their catalog sources independently.
-export async function loadPublicSearchStores(db: any): Promise<SearchStore[]> {
+export async function loadPublicSearchStores(db: any, { ownListingsOnly = false } = {}): Promise<SearchStore[]> {
   const read = async (table: string, fields: string, order: string) => {
     const rows: any[] = [];
     for (let offset = 0; ; offset += 500) {
@@ -22,9 +22,9 @@ export async function loadPublicSearchStores(db: any): Promise<SearchStore[]> {
     read('affiliate_store_settings','affiliate_id,subdomain,store_name,store_description,store_logo,is_active','affiliate_id'),
     read('profiles','id,user_id,subdomain,full_name,bio,role,primary_role,store_logo_url,avatar_url','id'),
     read('products','id,seller_id,is_active,status,is_promotable,affiliate_enabled,stock_quantity,total_inventory,in_stock,track_inventory','id'),
-    read('storefront_products','storefront_id,product_id','id'),
-    read('seller_product_order','seller_id,product_id','id'),
-    read('affiliate_products','affiliate_id,product_id,is_active','id'),
+    read('storefront_products','storefront_id,product_id,placement_source','id'),
+    ownListingsOnly ? [] : read('seller_product_order','seller_id,product_id','id'),
+    ownListingsOnly ? [] : read('affiliate_products','affiliate_id,product_id,is_active','id'),
   ]);
   const profileByOwner = new Map<string, any>();
   profiles.forEach(profile => {
@@ -55,7 +55,8 @@ export async function loadPublicSearchStores(db: any): Promise<SearchStore[]> {
   brandProducts.forEach(row => {
     const product = publicProducts.get(row.product_id);
     const owner = brandOwnerById.get(row.storefront_id);
-    if (owner && (canonicalOwner(product?.seller_id) === owner || isPublicAffiliateProduct(product))) {
+    const ownsListing = canonicalOwner(product?.seller_id) === owner && row.placement_source !== 'affiliate';
+    if (owner && (ownsListing || (!ownListingsOnly && isPublicAffiliateProduct(product)))) {
       brandStoresWithProducts.add(row.storefront_id);
     }
   });

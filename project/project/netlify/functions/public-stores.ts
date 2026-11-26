@@ -4,7 +4,7 @@ import { loadPublicSearchStores } from './_lib/publicSearchStores';
 
 export const handler: Handler = async () => {
   try {
-    const stores = await loadPublicSearchStores(createSupabaseAdmin());
+    const stores = await loadPublicSearchStores(createSupabaseAdmin(), { ownListingsOnly: true });
     return { statusCode:200, headers:{ 'Content-Type':'application/json', 'Cache-Control':'public, max-age=60, s-maxage=300' }, body:JSON.stringify({ ok:true, stores }) };
   } catch (error) {
     console.error('Public store directory failed', error);

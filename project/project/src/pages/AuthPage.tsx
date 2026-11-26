@@ -22,7 +22,7 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
     consumePostAuthPath();
     if (next) setPostAuthPath(next);
   }, [next]);
-  if (mode === "register") return <Navigate to="/join" replace />;
+  if (mode === "register") return <Navigate to={`/join${location.search}`} replace />;
   // AuthModal owns post-login navigation, including the user's chosen space.
   // Do not race it with an effect when the auth context changes after submit.
   return (

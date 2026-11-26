@@ -40,7 +40,7 @@ beforeEach(() => {
 });
 
 describe("Beezio public message and account boundaries", () => {
-  it("puts sellers, affiliates and influencers at the core, while welcoming buyers", () => {
+  it("leads with the free store and its affiliate sales force", () => {
     expect(audiences.map((item) => item.id)).toEqual([
       "seller",
       "affiliate",
@@ -48,9 +48,8 @@ describe("Beezio public message and account boundaries", () => {
       "shopper",
     ]);
     const html = render(<HomePageBZO />);
-    expect(html).toContain(
-      "Free websites for sellers AND affiliates. Designed by you.",
-    );
+    expect(html).toContain("Free store with a <span>built-in affiliate sales force.</span>");
+    expect(html).not.toMatch(/ambassador|income opportunity/i);
     expect(html).toContain("No seller fees. No listing fees or monthly subscriptions.");
     expect(html.indexOf('id="shop"')).toBeLessThan(html.indexOf('id="start"'));
     expect(html).toContain('href="/signup"');
@@ -69,11 +68,13 @@ describe("Beezio public message and account boundaries", () => {
       expect(html).toContain("Shop the marketplace");
     },
   );
-  it("offers a shopper signup without business payout setup", () => {
-    const html = render(<JoinPage />);
-    expect(html).toContain('href="/account/signup"');
-    expect(html).toContain('href="/signup"');
-    expect(html).toContain("No business setup or payout details.");
+  it("offers two signup paths and preserves referral credit for shoppers too", () => {
+    const html = render(<JoinPage />, "/join?recruit=example");
+    expect(html).toContain("I want to sell");
+    expect(html).toContain("I want to earn");
+    expect(html).toContain('href="/signup?intent=sell&amp;recruit=example"');
+    expect(html).toContain('href="/signup?intent=earn&amp;recruit=example"');
+    expect(html).toContain('href="/account/signup?recruit=example"');
   });
   it("keeps cart and sign-in visible to guests", () => {
     const html = render(<GlobalHeaderBar />);

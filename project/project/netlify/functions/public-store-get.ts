@@ -516,6 +516,36 @@ const handler: Handler = async (event) => {
       console.warn('[public-store-get] placements lookup error (non-fatal):', (placementsError as any)?.message || String(placementsError));
     }
 
+    const ownProductIds = Array.from(productsById.values())
+      .filter(product => sellerAliases.includes(String(product.seller_id)) &&
+        !orderData.some(row => row.product_id === product.id && row.placement_source === 'affiliate'))
+      .map(product => String(product.id));
+    let reviewCount = 0;
+    let ratingTotal = 0;
+    try {
+      for (let start = 0; start < ownProductIds.length; start += 100) {
+        for (let offset = 0; ; offset += 500) {
+          const { data, error } = await supabaseAdmin.from('product_reviews')
+            .select('rating')
+            .in('product_id', ownProductIds.slice(start, start + 100))
+            .eq('verified_purchase', true)
+            .gte('rating', 1)
+            .lte('rating', 5)
+            .order('id')
+            .range(offset, offset + 499);
+          if (error) throw error;
+          for (const review of data || []) {
+            reviewCount += 1;
+            ratingTotal += Number(review.rating);
+          }
+          if (!data || data.length < 500) break;
+        }
+      }
+    } catch (error) {
+      console.warn('[public-store-get] verified review lookup failed:', error);
+      reviewCount = 0;
+    }
+
     const responseBody = {
       ok: true,
       seller_id: sellerId,
@@ -523,6 +553,7 @@ const handler: Handler = async (event) => {
       store_slug: mergedSeller.subdomain || null,
       seller: mergedSeller,
       products: orderedProducts,
+      review_summary: reviewCount > 0 ? { count: reviewCount, average: ratingTotal / reviewCount } : null,
       insurance_listings: insuranceListings,
       custom_pages: pagesData || [],
       collections: collectionsData || [],

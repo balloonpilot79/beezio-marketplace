@@ -57,7 +57,7 @@ const GlobalHeaderBar: React.FC = () => {
     { label: "Shop", href: "/marketplace", icon: ShoppingBag },
     hasBusinessAccess
       ? { label: "Business", href: "/business", icon: LayoutDashboard }
-      : { label: "Sell & earn", href: "/start-earning", icon: Store },
+      : { label: "Start", href: "/signup", icon: Store },
     ...(hasBusinessAccess ? [{ label: "My store", href: "/store-builder", icon: Store }] : []),
     { label: "Account", href: user ? "/account" : "/auth/login", icon: User },
     { label: "Cart", href: "/cart", icon: ShoppingCart },

@@ -241,6 +241,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           setStoreStats(prev => ({
             ...prev,
             totalProducts: 0,
+            rating: 0,
+            reviewCount: 0,
             memberSince: 2024
           }));
           setLoading(false);
@@ -295,6 +297,8 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                 setStoreStats(prev => ({
                   ...prev,
                   totalProducts: Array.isArray(payload.products) ? payload.products.length : 0,
+                  rating: Number(payload.review_summary?.average) || 0,
+                  reviewCount: Number(payload.review_summary?.count) || 0,
                 }));
                 setLoading(false);
                 return;
@@ -591,7 +595,9 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
         // Update stats
         setStoreStats(prev => ({
           ...prev,
-          totalProducts: orderedProducts.length
+          totalProducts: orderedProducts.length,
+          rating: 0,
+          reviewCount: 0
         }));
 
         // Fetch custom pages
@@ -647,7 +653,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
           store_theme: 'modern',
         });
         setProducts([]);
-        setStoreStats(prev => ({ ...prev, totalProducts: 0 }));
+        setStoreStats(prev => ({ ...prev, totalProducts: 0, rating: 0, reviewCount: 0 }));
         setLoadError(null);
         setLoading(false);
         return;
@@ -1035,8 +1041,12 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                   {products.length > 0 ? (
                     <div className="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
                       <div><div className="text-2xl font-black">{heroProductCount}</div><div className="text-sm text-white/78">products live</div></div>
-                      <div><div className="text-2xl font-black">{storeStats.reviewCount > 0 ? storeStats.rating.toFixed(1) : 'New'}</div><div className="text-sm text-white/78">customer rating</div></div>
-                      <div><div className="text-2xl font-black">{storeStats.reviewCount}</div><div className="text-sm text-white/78">verified reviews</div></div>
+                      {storeStats.reviewCount > 0 && (
+                        <>
+                          <div><div className="text-2xl font-black">{storeStats.rating.toFixed(1)}</div><div className="text-sm text-white/78">customer rating</div></div>
+                          <div><div className="text-2xl font-black">{storeStats.reviewCount}</div><div className="text-sm text-white/78">verified reviews</div></div>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div className="mt-4 space-y-3">
@@ -1427,7 +1437,7 @@ const SellerStorePage: React.FC<SellerStorePageProps> = ({ sellerId: propSellerI
                   <div className="flex items-start gap-3">
                     <Star className="w-4 h-4 fill-amber-400 text-amber-400 mt-0.5" />
                     <div>
-                      <div className="font-semibold text-slate-900">{storeStats.rating} rating</div>
+                      <div className="font-semibold text-slate-900">{storeStats.rating.toFixed(1)} rating</div>
                       <div>{storeStats.reviewCount} verified customer reviews</div>
                     </div>
                   </div>
