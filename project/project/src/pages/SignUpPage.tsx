@@ -152,6 +152,18 @@ const SignUpPage: React.FC = () => {
     return true;
   }, []);
 
+  const checkStoreAvailability = useCallback(async (name: string, slug: string) => {
+    const { data, error } = await supabase.rpc("is_store_name_available", {
+      display_name: name,
+    });
+    if (error) throw error;
+    if (!data) return "That store name is already taken. Choose a different name.";
+    if (!(await checkSlugAvailability(slug))) {
+      return "That store URL is already taken. Choose a different name.";
+    }
+    return "";
+  }, [checkSlugAvailability]);
+
   // Restore draft (so refresh doesn’t wipe signup progress)
   useEffect(() => {
     if (user) return;
@@ -223,23 +235,18 @@ const SignUpPage: React.FC = () => {
 
     let alive = true;
     setStoreSlugStatus("checking");
-    setStoreSlugMessage("Checking store URL availability...");
+    setStoreSlugMessage("Checking store name and URL availability...");
 
     const timer = window.setTimeout(async () => {
       try {
-        const available = await checkSlugAvailability(slug);
+        const conflict = await checkStoreAvailability(candidate, slug);
         if (!alive) return;
-        if (available) {
-          setStoreSlugStatus("available");
-          setStoreSlugMessage("Store URL is available.");
-        } else {
-          setStoreSlugStatus("taken");
-          setStoreSlugMessage("That store URL is already taken.");
-        }
+        setStoreSlugStatus(conflict ? "taken" : "available");
+        setStoreSlugMessage(conflict);
       } catch {
         if (!alive) return;
         setStoreSlugStatus("error");
-        setStoreSlugMessage("Unable to check store URL right now.");
+        setStoreSlugMessage("Unable to check the store name and URL right now.");
       }
     }, 400);
 
@@ -248,7 +255,7 @@ const SignUpPage: React.FC = () => {
       window.clearTimeout(timer);
     };
   }, [
-    checkSlugAvailability,
+    checkStoreAvailability,
     formData.email,
     formData.storeName,
     resolveStoreName,
@@ -341,11 +348,9 @@ const SignUpPage: React.FC = () => {
         setLoading(false);
         return;
       }
-      const available = await checkSlugAvailability(storeSlug);
-      if (!available) {
-        setError(
-          "That store URL is already taken. Please choose a different business name.",
-        );
+      const conflict = await checkStoreAvailability(resolvedStoreName, storeSlug);
+      if (conflict) {
+        setError(conflict);
         setLoading(false);
         return;
       }
@@ -889,10 +894,7 @@ const SignUpPage: React.FC = () => {
                 <p className="mt-1 text-xs">
                   {storeSlugStatus === "available"
                     ? "This store name can be used."
-                    : storeSlugStatus === "taken"
-                      ? "This store name is already taken. You cannot create the account until you choose a different one."
-                      : storeSlugMessage ||
-                        "Enter a different store name and try again."}
+                    : storeSlugMessage || "Enter a different store name and try again."}
                 </p>
               </div>
             )}

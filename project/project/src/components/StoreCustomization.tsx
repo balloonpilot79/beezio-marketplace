@@ -400,7 +400,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
 
     if (error) {
       console.error('[StoreCustomization] Failed to save store settings:', error);
-      alert(`Failed to save store settings. ${error.message || 'Please try again.'}`);
+      alert(error.code === 'BZ001' ? error.message : `Failed to save store settings. ${error.message || 'Please try again.'}`);
     } else {
       initialSnapshotRef.current = JSON.stringify({
         ...storeSettings,

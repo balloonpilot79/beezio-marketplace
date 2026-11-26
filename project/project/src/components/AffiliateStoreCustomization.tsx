@@ -745,7 +745,8 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
       alert('Settings saved successfully!');
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Error saving settings. Please try again.');
+      const saveError = error as { code?: string; message?: string };
+      alert(saveError?.code === 'BZ001' && saveError.message ? saveError.message : 'Error saving settings. Please try again.');
     }
     setSaving(false);
   };
