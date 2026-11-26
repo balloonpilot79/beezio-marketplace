@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildReferralInviteMessage, buildSmsShareHref, MESSENGER_COMPOSE_URL, withRecruitCode } from './referralSharing';
+import { buildReferralInviteMessage, buildSmsShareHref, buildAmbassadorPrintInvite, getRecruitSignupPath, MESSENGER_COMPOSE_URL, withRecruitCode } from './referralSharing';
 
 describe('referral sharing', () => {
   const message = 'Join Beezio through my invite.';
@@ -37,5 +37,23 @@ describe('unified referral signup', () => {
   it('keeps normal signup free of a referral parameter', () => {
     expect(withRecruitCode('/account/signup', null)).toBe('/account/signup');
     expect(withRecruitCode('/signup', '   ')).toBe('/signup');
+  });
+});
+
+describe('printed Ambassador invites', () => {
+  it('preserves each account code through to the seller registration form', () => {
+    for (const code of ['BZO111111', 'BZO222222+&']) {
+      const invite = new URL(buildAmbassadorPrintInvite(code));
+      const incomingCode = decodeURIComponent(invite.pathname.split('/')[2]);
+      const signup = new URL(getRecruitSignupPath(incomingCode, invite.searchParams.get('intent')), invite.origin);
+      expect(invite.origin).toBe('https://beezio.co');
+      expect(signup.pathname).toBe('/signup');
+      expect([...signup.searchParams.entries()]).toEqual([['intent', 'sell'], ['recruit', code]]);
+    }
+  });
+
+  it('leaves the account chooser available for regular Ambassador links', () => {
+    expect(getRecruitSignupPath('BZO111111', null)).toBe('/join?recruit=BZO111111');
+    expect(buildAmbassadorPrintInvite('')).toBe('');
   });
 });

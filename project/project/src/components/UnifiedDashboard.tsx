@@ -451,7 +451,7 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ initialSellerTab, i
               </Link>
               <Link to="/business/invites"
                 className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900">
-                <span><span className="block text-xs font-medium text-slate-500">Ambassador sharing toolkit</span>My Referral Links & Invites</span>
+                <span><span className="block text-xs font-medium text-slate-500">Ambassador sharing toolkit</span>My Referral Links & Print Kit</span>
                 <span aria-hidden="true">→</span>
               </Link>
             </div>

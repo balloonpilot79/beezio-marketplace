@@ -74,7 +74,7 @@ export const signupWelcomeGuides: Record<SignupGuideAudience, {
     steps: [
       {
         heading: 'Earn as a Beezio Ambassador',
-        instructions: ['Open your invite tools in the Business Center.', ...ambassadorInstructions],
+        instructions: ['Open your invite tools in the Business Center. The Ambassador Print Kit has cards and flyers with your personal seller signup QR code.', ...ambassadorInstructions],
         action: 'Open Ambassador Invite Tools',
         path: '/business/invites',
         image: '08-invites.jpg',

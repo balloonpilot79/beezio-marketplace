@@ -21,3 +21,14 @@ export function withRecruitCode(path: '/join' | '/account/signup' | '/signup', c
   const cleanCode = code?.trim();
   return cleanCode ? `${path}?${new URLSearchParams({ recruit: cleanCode })}` : path;
 }
+
+export function buildAmbassadorPrintInvite(code: string): string {
+  const cleanCode = code.trim();
+  return cleanCode ? `https://beezio.co/i/${encodeURIComponent(cleanCode)}?intent=sell` : '';
+}
+
+export function getRecruitSignupPath(code: string | undefined, intent: string | null): string {
+  const cleanCode = code?.trim();
+  if (intent !== 'sell' || !cleanCode) return withRecruitCode('/join', cleanCode);
+  return `/signup?${new URLSearchParams({ intent: 'sell', recruit: cleanCode })}`;
+}

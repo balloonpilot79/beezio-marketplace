@@ -470,7 +470,8 @@ const AppWorking: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [isMobileDashboardSubNavOpen, setIsMobileDashboardSubNavOpen] = useState(false);
-    const hidePlatformChrome = isStorefrontPath(location.pathname) || (hasStoredStorefrontScope() && (location.pathname === '/cart' || location.pathname.startsWith('/checkout')));
+    const isPrintView = location.pathname === '/business/invites' && new URLSearchParams(location.search).has('print');
+    const hidePlatformChrome = isPrintView || isStorefrontPath(location.pathname) || (hasStoredStorefrontScope() && (location.pathname === '/cart' || location.pathname.startsWith('/checkout')));
     const hideGlobalAuthModal =
       location.pathname === '/auth/login' ||
       location.pathname === '/auth/signup' ||
@@ -618,7 +619,7 @@ const AppWorking: React.FC = () => {
                 </nav>
                 <nav aria-label="Website and promotion quick links" className="mt-2 grid grid-cols-2 gap-2">
                   <Link to="/store-builder" className="flex min-h-14 items-center justify-center rounded-lg bg-[#101820] px-2 py-2 text-center text-xs font-bold text-[#ffcb05]">Customize My Store</Link>
-                  <Link to="/business/invites" className="flex min-h-14 items-center justify-center rounded-lg border border-amber-300 bg-white px-2 py-2 text-center text-xs font-bold text-slate-900">Influencer Sharing Tools</Link>
+                  <Link to="/business/invites" className="flex min-h-14 items-center justify-center rounded-lg border border-amber-300 bg-white px-2 py-2 text-center text-xs font-bold text-slate-900">Ambassador Invite & Print Tools</Link>
                 </nav>
                 <button type="button" onClick={() => setIsMobileDashboardSubNavOpen((current) => !current)} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 text-xs font-semibold text-slate-700" aria-expanded={isMobileDashboardSubNavOpen} aria-controls="business-more-sections">More business tools<ChevronDown className={`h-4 w-4 ${isMobileDashboardSubNavOpen ? 'rotate-180' : ''}`} /></button>
                 {isMobileDashboardSubNavOpen && (

@@ -1,14 +1,21 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Megaphone, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 import { getInfluencerPublicCode } from '../utils/promoLinks';
 import InfluencerDashboard from '../components/InfluencerDashboard';
+import AmbassadorPrintKit from '../components/AmbassadorPrintKit';
+import { buildAmbassadorPrintInvite } from '../utils/referralSharing';
 
 export default function InfluencerToolsPage() {
   const { profile } = useAuth();
+  const [params] = useSearchParams();
+  const printDesign = params.get('print');
   const code = getInfluencerPublicCode({ referralCode: profile?.referral_code, profileId: profile?.__is_fallback ? '' : profile?.id });
   const inviteLink = code ? `${window.location.origin}/i/${encodeURIComponent(code)}` : '';
+  const printInvite = profile && !profile.__is_fallback ? buildAmbassadorPrintInvite(code) : '';
+
+  if (printDesign) return <AmbassadorPrintKit inviteUrl={printInvite} printDesign={printDesign} />;
 
   return (
     <main className="min-h-screen bg-[#faf9f5] px-3 pb-16 pt-6 sm:px-6">
@@ -19,7 +26,7 @@ export default function InfluencerToolsPage() {
         <div className="mt-2 rounded-2xl border border-amber-300 bg-white p-4 shadow-sm sm:p-6">
           <p className="text-xs font-bold uppercase tracking-widest text-amber-700">Your Beezio network</p>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-extrabold text-slate-950 sm:text-3xl">
-            <Megaphone className="h-6 w-6 text-amber-700" /> Influencer Sharing Tools
+            <Megaphone className="h-6 w-6 text-amber-700" /> Ambassador Invite Tools
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
             Invite people to start selling or promoting products through your tracked link. Share your invite and QR code, use ready-made messages, and see which accounts joined through you.
@@ -29,6 +36,7 @@ export default function InfluencerToolsPage() {
             <Link to="/business/promote" className="inline-flex min-h-11 items-center gap-1 font-bold text-amber-800"><ShoppingBag className="h-4 w-4" /> Product promotion tools</Link>
           </div>
         </div>
+        <AmbassadorPrintKit inviteUrl={printInvite} />
         <section className="mt-6 rounded-2xl border border-amber-200 bg-white p-5 sm:p-7">
           <h2 className="text-xl font-bold text-slate-950">Your first 72 hours: sharing kit</h2>
           <p className="mt-2 text-sm leading-6 text-slate-700">Your personal tracked invite link is included below. Only share in communities that permit promotions.</p>
