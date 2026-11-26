@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 
 const migration = readFileSync('supabase/migrations/20261126025514_unique_store_display_names.sql', 'utf8');
+const requiredNameMigration = readFileSync('supabase/migrations/20261126031458_require_store_display_names.sql', 'utf8');
 const firstOwner = '11111111-1111-4111-8111-111111111111';
 const secondOwner = '22222222-2222-4222-8222-222222222222';
 const nameTaken = { code: 'BZ001', message: 'That store name is already taken. Choose a different name.' };
@@ -32,7 +33,7 @@ beforeAll(async () => {
     insert into affiliate_store_settings (affiliate_id,store_name,subdomain) values ('${firstOwner}', 'Oak Supply','oak-supply');
     insert into storefronts (owner_id,name,slug) values ('${firstOwner}', 'Oak Supply','oak-supply');
   `);
-  await db.transaction(async (tx) => { await tx.exec(migration); });
+  await db.transaction(async (tx) => { await tx.exec(migration); await tx.exec(requiredNameMigration); });
 }, 30_000);
 
 afterAll(async () => { await db?.close(); });
@@ -70,4 +71,11 @@ it('bootstraps a distinct default and releases names after the last matching rec
   expect((await db.query("select is_store_name_available('Oak Supply') as free")).rows).toEqual([{ free: false }]);
   await db.query('delete from affiliate_store_settings where affiliate_id=$1', [firstOwner]);
   await db.query('update store_settings set store_name=$2 where seller_id=$1', [secondOwner, 'Oak Supply']);
+});
+
+it('requires a real name so public stores cannot fall back to a profile name', async () => {
+  await expect(db.query('update store_settings set store_name=$2 where seller_id=$1', [secondOwner, ' \t ']))
+    .rejects.toMatchObject({ code: '23514', constraint: 'seller_store_display_name_required' });
+  await expect(db.query('update affiliate_store_settings set store_name=null where affiliate_id=$1', [secondOwner]))
+    .rejects.toMatchObject({ code: '23514', constraint: 'affiliate_store_display_name_required' });
 });

@@ -338,6 +338,11 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
 
   const handleSave = async () => {
     if (!validateContent()) return;
+    const storeName = storeSettings.store_name?.trim();
+    if (!storeName) {
+      alert('Enter a store name.');
+      return;
+    }
 
     setSaving(true);
     const table = role === 'seller' ? 'store_settings' : 'affiliate_store_settings';
@@ -373,7 +378,7 @@ const StoreCustomization: React.FC<{ userId: string; role: 'seller' | 'affiliate
 
     const payload = {
       [`${role}_id`]: ownerId,
-      store_name: storeSettings.store_name || null,
+      store_name: storeName,
       store_description: storeSettings.store_description || null,
       store_banner: storeSettings.store_banner || null,
       store_logo: storeSettings.store_logo || null,

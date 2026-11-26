@@ -683,6 +683,11 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
   };
 
   const handleSave = async () => {
+    const storeName = storeSettings.store_name?.trim();
+    if (!storeName) {
+      alert('Enter a store name.');
+      return;
+    }
     setSaving(true);
     try {
       const ownerId = user ? await ensureProfileIdForUser(user) : affiliateId;
@@ -716,7 +721,7 @@ const AffiliateStoreCustomization: React.FC<{ affiliateId: string }> = ({ affili
 
       const payload: Record<string, any> = {
         affiliate_id: saveOwnerId,
-        store_name: storeSettings.store_name || null,
+        store_name: storeName,
         store_description: storeSettings.store_description || null,
         store_banner: storeSettings.store_banner || null,
         store_logo: storeSettings.store_logo || null,

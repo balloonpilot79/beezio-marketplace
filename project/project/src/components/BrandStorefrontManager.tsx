@@ -148,7 +148,12 @@ const BrandStorefrontManager: React.FC<{ ownerId: string }> = ({ ownerId }) => {
 
   const save = async () => {
     if (!draft || saving) return;
-    const cleanSlug = slugify(draft.slug || draft.name);
+    const name = draft.name.trim();
+    if (!name) {
+      setMessage('Enter a store name.');
+      return;
+    }
+    const cleanSlug = slugify(draft.slug || name);
     if (!cleanSlug) {
       setMessage('Add a valid storefront slug.');
       return;
@@ -160,7 +165,7 @@ const BrandStorefrontManager: React.FC<{ ownerId: string }> = ({ ownerId }) => {
     const { error } = await supabase
       .from('storefronts')
       .update({
-        name: draft.name.trim(),
+        name,
         slug: cleanSlug,
         description: draft.description?.trim() || null,
         logo_url: draft.logo_url?.trim() || null,
