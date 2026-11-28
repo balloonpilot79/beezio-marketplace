@@ -96,52 +96,12 @@
   max-width: 430px;
   color: #475569;
 }
-.hm-listing-example {
-  margin-top: 18px;
-  padding: 14px 16px;
-  border: 1px solid #e7ddac;
-  border-radius: 12px;
-  background: #fff9e5;
-}
-.hm-listing-example h2 {
-  font-size: 14px;
-  font-weight: 700;
-}
-.hm-listing-example a {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.hm-listing-example dl {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 9px;
-}
-.hm-listing-example dt {
-  font-size: 12px;
-  color: #475569;
-}
-.hm-listing-example dd {
-  font-size: 17px;
-  font-weight: 750;
-}
 .hm-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 20px;
   margin-top: 23px;
-}
-.hm-hero-secondary {
-  color: #243442;
-  font-size: 12px;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.hm-hero-secondary:hover {
-  color: #765700;
 }
 .hm-hero-note {
   display: flex;
@@ -152,22 +112,27 @@
   margin-top: 21px;
   line-height: 1.6;
 }
-/* Shopping links use dark text on the light hero. */
-.hm-hero-copy nav[aria-label="Shopping links"] a {
-  color: #243442;
-  text-decoration-line: underline;
-  text-decoration-color: currentColor;
+.hm-secondary-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+  margin-top: 8px;
+}
+.hm-secondary-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
   text-underline-offset: 3px;
 }
-.hm-hero-copy nav[aria-label="Shopping links"] a:hover,
-.hm-hero-copy nav[aria-label="Shopping links"] a:focus-visible {
+.hm-secondary-links a:hover,
+.hm-secondary-links a:focus-visible {
   color: #765700;
 }
-.hm-hero-copy nav[aria-label="Shopping links"] a:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 4px;
-  border-radius: 2px;
-}
+
 .hm-spotlight {
   padding: 26px;
   background: #fff8df;
@@ -769,9 +734,6 @@
     min-height: 44px;
     font-size: 12px;
   }
-  .hm-hero-secondary {
-    font-size: 11px;
-  }
   .hm-spotlight {
     padding: 16px 20px 20px;
   }
@@ -899,13 +861,12 @@
 .hm-quick-start h2 { font-size: 22px; font-weight: 700; line-height: 1.35; margin: 8px 0; }
 .hm-quick-start p:not(.hm-kicker) { font-size: 14px; line-height: 1.7; max-width: 690px; color: #47584a; }
 .hm-quick-start > a { flex-shrink: 0; }
-.hm-hero-secondary, .hm-all-link { min-height: 44px; }
+.hm-all-link { min-height: 44px; }
 @media (max-width: 700px) {
   .hm-business-paths { display: grid; grid-template-columns: minmax(0, 1fr); overflow: visible; }
   .hm-path { min-width: 0; }
   .hm-path > p { max-width: none; }
   .hm-quick-start { flex-direction: column; align-items: stretch; padding: 20px; }
   .hm-hero-description { font-size: 15px; }
-  .hm-hero-secondary { font-size: 14px; }
   .hm-categories button { min-height: 44px; }
 }

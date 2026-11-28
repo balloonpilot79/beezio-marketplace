@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   Globe,
@@ -11,9 +11,13 @@ import { catalogRotationSlot, rotateCatalog } from "../utils/catalogRotation";
 import { fetchMarketplaceCatalog } from "../utils/marketplaceCatalog";
 import { prepareHomeProducts, type HomeProduct } from "../utils/homeCatalog";
 import { usePublicStores } from "../hooks/usePublicStores";
+import { withRecruitCode } from "../utils/referralSharing";
 import "../styles/beezio-home.css";
 
-const FOREVER_LOVE_NECKLACE_ID = "575bbae7-af58-4d17-8c40-1d206874925d";
+const storeExamples = [
+  { slug: "marebelle", description: "Equestrian apparel and horse-inspired home accents." },
+  { slug: "redtail", description: "Graphic apparel, mugs, and gifts for first responders and outdoor enthusiasts." },
+];
 
 const money = (amount: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -48,7 +52,7 @@ const paths = [
     title: "Sell your products.",
     label: "For sellers",
     text: "Build your own free online store, list your products, and fulfill your orders. Choose which products affiliates can promote.",
-    signup: "/signup?intent=sell",
+    signup: "/signup?intent=sell" as const,
     href: "/sellers",
     action: "Start selling",
     icon: Store,
@@ -58,7 +62,7 @@ const paths = [
     title: "Promote products as an affiliate.",
     label: "For affiliates",
     text: "Build your own free storefront with products from Beezio sellers. Earn commissions on qualifying sales you bring in, while the seller fulfills the order.",
-    signup: "/signup?intent=earn",
+    signup: "/signup?intent=earn" as const,
     href: "/affiliates",
     action: "Become an affiliate",
     icon: Globe,
@@ -67,6 +71,8 @@ const paths = [
 ];
 
 export default function HomePageBZO() {
+  const [params] = useSearchParams();
+  const recruit = params.get("recruit") || params.get("influencer") || params.get("ic");
   const { stores, loading: storesLoading } = usePublicStores();
   const [products, setProducts] = useState<HomeProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,11 +117,6 @@ export default function HomePageBZO() {
     ? availableProducts
     : rotateCatalog(availableProducts.filter((product) => product.category === category), rotationSlot);
   const spotlight = availableProducts.slice(0, 4);
-  const example = availableProducts.find(product =>
-    product.id === FOREVER_LOVE_NECKLACE_ID &&
-    Number.isFinite(product.sellerAmount) && product.sellerAmount > 0 &&
-    Number.isFinite(product.affiliateAmount) && product.affiliateAmount > 0
-  );
 
   return (
     <div className="hm-page">
@@ -126,26 +127,16 @@ export default function HomePageBZO() {
             <p className="hm-hero-description">
               List your products and choose which ones affiliates can promote. You fulfill the orders and set what affiliates earn on qualifying sales.
             </p>
-            {example && (
-              <section className="hm-listing-example" aria-labelledby="home-listing-example">
-                <h2 id="home-listing-example">
-                  <Link to={`/product/${encodeURIComponent(example.id)}`}>{example.title}</Link>
-                </h2>
-                <dl>
-                  <div><dt>Listed price</dt><dd>{money(example.price)}</dd></div>
-                  <div><dt>Seller receives</dt><dd>{money(example.sellerAmount)}</dd></div>
-                  <div><dt>Affiliate earns per sale</dt><dd>{money(example.affiliateAmount)}</dd></div>
-                </dl>
-              </section>
-            )}
             <div className="hm-actions">
-              <Link to="/signup" className="bz-button bz-button-gold">
-                Get Started Free <ArrowRight size={17} />
-              </Link>
-              <Link to="/marketplace" className="hm-hero-secondary">
-                Shop the Marketplace <ArrowRight size={17} />
+              <Link to={withRecruitCode("/signup?intent=sell", recruit)} className="bz-button bz-button-gold">
+                Start Your Free Store <ArrowRight size={17} aria-hidden="true" />
               </Link>
             </div>
+            <nav className="hm-secondary-links" aria-label="Other ways to use Beezio">
+              <Link to="/marketplace">Shop the Marketplace</Link>
+              <Link to="/affiliates">For Affiliates</Link>
+              <Link to="/ambassadors">Beezio Ambassadors</Link>
+            </nav>
           </div>
           <div className="hm-spotlight">
             <div className="hm-spotlight-heading">
@@ -306,17 +297,19 @@ export default function HomePageBZO() {
           </div>
           {storesLoading && <p role="status">Loading stores…</p>}
           <div className="hm-store-grid">
-            {stores.filter(store => ["loving-jewelry", "marebelle"].includes(store.slug)).slice(0, 2).map(store => (
-              <Link key={store.slug} to={`/store/${encodeURIComponent(store.slug)}`} className="hm-store-card">
+            {storeExamples.map(({ slug, description }) => {
+              const store = stores.find(entry => entry.slug === slug);
+              if (!store) return null;
+              return <Link key={slug} to={`/store/${encodeURIComponent(slug)}`} className="hm-store-card">
                 {store.image
                   ? <img src={store.image} alt="" loading="lazy" />
                   : <div className="hm-store-image-placeholder"><Store size={36} aria-hidden="true" /></div>}
                 <div>
                   <h3>{store.name}</h3>
-                  <p>Visit store <ArrowRight size={16} aria-hidden="true" /></p>
+                  <p>{description}</p>
                 </div>
-              </Link>
-            ))}
+              </Link>;
+            })}
           </div>
         </section>
         <p className="hm-build-note">No seller fees. No listing fees or monthly subscriptions.</p>
@@ -335,7 +328,7 @@ export default function HomePageBZO() {
                 <h2>{title}</h2>
                 <p>{text}</p>
                 <div className="hm-path-actions">
-                  <Link to={signup}>{action}<ArrowRight size={15} /></Link>
+                  <Link to={withRecruitCode(signup, recruit)}>{action}<ArrowRight size={15} /></Link>
                   <Link to={href} className="hm-path-learn">How it works</Link>
                 </div>
               </article>

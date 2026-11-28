@@ -4,9 +4,9 @@ import PublicLayout from '../components/layout/PublicLayout';
 import { useAuth } from '../contexts/AuthContextMultiRole';
 
 const steps = [
-  { icon: Users, title: 'Join free', text: 'Create your Beezio account. No inventory purchase or membership fee is required to participate as an influencer.' },
+  { icon: Users, title: 'Join free', text: 'Create your Beezio account. No inventory purchase or membership fee is required to participate as a Beezio Ambassador.' },
   { icon: Share2, title: 'Invite sellers and affiliates', text: 'Use your tracked referral link to introduce people who want to sell products or promote stores.' },
-  { icon: Wallet, title: 'Earn from qualifying sales', text: 'When eligible referred accounts generate qualifying sales, you may receive influencer earnings under the program terms.' },
+  { icon: Wallet, title: 'Earn from qualifying sales', text: 'When eligible referred accounts generate qualifying sales, you may receive Ambassador rewards under the program terms.' },
 ];
 
 export default function InfluencerNetworkPage() {
@@ -15,12 +15,12 @@ export default function InfluencerNetworkPage() {
     <PublicLayout>
       <main className="mx-auto max-w-6xl px-3 pb-16 pt-8 sm:px-6">
         <section className="rounded-3xl bg-slate-950 px-6 py-12 text-white sm:px-12 sm:py-16">
-          <p className="text-sm font-bold uppercase tracking-[.2em] text-amber-300">Beezio Influencer Network</p>
+          <p className="text-sm font-bold uppercase tracking-[.2em] text-amber-300">Beezio Ambassador Program</p>
           <h1 className="mt-5 max-w-3xl text-4xl font-extrabold tracking-tight text-white sm:text-6xl" style={{ color: "#ffffff", WebkitTextFillColor: "#ffffff", backgroundImage: "none", opacity: 1 }}>You bring the people. They make the sales. You earn.</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200">Introduce sellers and affiliates to Beezio. Earn from their qualifying sales while the accounts, referrals and program remain eligible.</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-amber-400 px-6 font-bold text-slate-950 hover:bg-amber-300" to={user ? '/business/invites' : '/signup'}>{user ? 'Get your referral link' : 'Join Beezio free'}<ArrowRight className="h-5 w-5" /></Link>
-            <Link className="inline-flex min-h-12 items-center rounded-xl border border-slate-400 px-6 font-semibold text-white hover:bg-slate-800" to="/legal/influencer-terms">Read influencer terms</Link>
+            <Link className="inline-flex min-h-12 items-center rounded-xl border border-slate-400 px-6 font-semibold text-white hover:bg-slate-800" to="/legal/influencer-terms">Read Ambassador terms</Link>
           </div>
           <p className="mt-5 text-sm text-slate-300">No guaranteed earnings. Bonuses depend on actual qualifying sales, not signups alone.</p>
         </section>
@@ -31,9 +31,9 @@ export default function InfluencerNetworkPage() {
           </div>
         </section>
         <section className="rounded-2xl bg-amber-50 p-7 sm:p-10">
-          <h2 className="text-2xl font-bold text-slate-950">Affiliate or influencer?</h2>
-          <p className="mt-4 text-lg text-slate-800"><strong>Affiliates</strong> promote products and earn on eligible product sales. <strong>Influencers</strong> introduce sellers and affiliates and may earn on qualifying sales attributed to those referrals.</p>
-          <p className="mt-3 text-slate-700">You can participate in more than one role when eligible. Influencers do not have to stock a product catalog to invite people.</p>
+          <h2 className="text-2xl font-bold text-slate-950">How do affiliates and Ambassadors earn?</h2>
+          <p className="mt-4 text-lg text-slate-800"><strong>Affiliates</strong> promote products and earn on eligible product sales. <strong>Beezio Ambassadors</strong> introduce sellers and affiliates and may earn on qualifying sales attributed to those referrals.</p>
+          <p className="mt-3 text-slate-700">You can participate in more than one role when eligible. Beezio Ambassadors do not have to stock a product catalog to invite people.</p>
         </section>
         <section className="py-12">
           <h2 className="text-2xl font-bold text-slate-950">Your first 72 hours</h2>
@@ -44,7 +44,7 @@ export default function InfluencerNetworkPage() {
           </ol>
           <Link to={user ? '/business/invites' : '/signup'} className="mt-7 inline-flex min-h-11 items-center gap-2 font-bold text-amber-800">{user ? 'Open your sharing tools' : 'Create your free account'}<ArrowRight className="h-4 w-4" /></Link>
         </section>
-        <p className="flex items-start gap-2 border-t pt-6 text-sm leading-6 text-slate-600"><ShieldCheck className="mt-1 h-5 w-5 shrink-0" />Influencers must clearly disclose their financial relationship when promoting Beezio. Eligibility, refunds, disputes, and payouts are governed by the <Link className="font-semibold underline" to="/legal/influencer-terms">Influencer Terms</Link>.</p>
+        <p className="flex items-start gap-2 border-t pt-6 text-sm leading-6 text-slate-600"><ShieldCheck className="mt-1 h-5 w-5 shrink-0" />Beezio Ambassadors must clearly disclose their financial relationship when promoting Beezio. Eligibility, refunds, disputes, and payouts are governed by the <Link className="font-semibold underline" to="/legal/influencer-terms">Ambassador Terms</Link>.</p>
       </main>
     </PublicLayout>
   );

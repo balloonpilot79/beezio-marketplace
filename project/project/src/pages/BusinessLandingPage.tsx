@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, Palette } from "lucide-react";
+import BusinessEarningsExample from "../components/BusinessEarningsExample";
 import PublicLayout from "../components/layout/PublicLayout";
 import {
   AudienceCards,
@@ -31,9 +32,9 @@ const content = {
   },
   affiliate: {
     label: "For affiliates",
-    title: "You connect the products. You help power the marketplace.",
+    title: "Build a free affiliate storefront.",
     description:
-      "Affiliates are central to Beezio’s success. Your recommendations help shoppers discover products and give sellers a way to reach new customers. Build your free custom website, choose products you believe in, and earn commissions when your recommendations lead to qualifying sales. You don’t need your own products to start.",
+      "Choose eligible Beezio products and earn commissions when your recommendations lead to qualifying sales. The seller fulfills the orders.",
     features: [
       [
         "Build a store people trust",
@@ -108,7 +109,12 @@ export default function BusinessLandingPage({
           <p className="mt-5 leading-7 text-slate-600">{page.description}</p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link to={audience === "overview" ? "/signup" : `/signup?role=${audience}`} className="bz-button bz-button-gold">
-              {audience === "influencer" ? "Join free as an Ambassador" : "Start your free website"}
+              {{
+                seller: "Start Your Free Store",
+                affiliate: "Start your affiliate storefront",
+                influencer: "Join free as an Ambassador",
+                overview: "Start your free website",
+              }[audience]}
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link to="/marketplace" className="bz-button bz-button-outline">
@@ -157,6 +163,7 @@ export default function BusinessLandingPage({
           <Link to="/signup?role=influencer" className="bz-text-link mt-5">Join free and get your referral link <ArrowRight className="h-4 w-4" /></Link>
         </section>
       )}
+      {(audience === "seller" || audience === "affiliate") && <BusinessEarningsExample />}
       <section className="grid gap-5 py-12 md:grid-cols-3">
         {page.features.map(([title, detail], index) => (
           <article key={title} className="bz-panel p-6">

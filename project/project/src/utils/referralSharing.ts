@@ -17,9 +17,10 @@ export function buildSmsShareHref(
   return `sms:${separator}body=${body}`;
 }
 
-export function withRecruitCode(path: '/join' | '/account/signup' | '/signup', code: string | null | undefined): string {
+export function withRecruitCode(path: '/join' | '/account/signup' | '/signup' | '/signup?intent=sell' | '/signup?intent=earn', code: string | null | undefined): string {
   const cleanCode = code?.trim();
-  return cleanCode ? `${path}?${new URLSearchParams({ recruit: cleanCode })}` : path;
+  const separator = path.includes('?') ? '&' : '?';
+  return cleanCode ? `${path}${separator}${new URLSearchParams({ recruit: cleanCode })}` : path;
 }
 
 export function buildAmbassadorPrintInvite(code: string): string {

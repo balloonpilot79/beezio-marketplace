@@ -1,0 +1,46 @@
+{
+  "/": {
+    "title": "Beezio | Free Online Store With Affiliate Promotion",
+    "heading": "Free store with a built-in affiliate sales force.",
+    "description": "List your products and choose which ones affiliates can promote. You fulfill the orders and set what affiliates earn on qualifying sales.",
+    "links": [["Start Your Free Store", "/signup?intent=sell"], ["Shop the Marketplace", "/marketplace"], ["For Affiliates", "/affiliates"], ["Beezio Ambassadors", "/ambassadors"], ["See MareBelle", "/store/marebelle"], ["See RedTail", "/store/redtail"]]
+  },
+  "/sellers": {
+    "title": "Open a Free Online Store for Sellers | Beezio",
+    "heading": "Your products. Your website. More people selling for you.",
+    "description": "Open a free Beezio store with no monthly or listing fees. Sell directly to shoppers and choose the products that affiliates can promote.",
+    "links": [["Start Your Free Store", "/signup?intent=sell"], ["See MareBelle", "/store/marebelle"], ["Storefront setup guide", "/faq/storefronts"]]
+  },
+  "/affiliates": {
+    "title": "Build a Free Affiliate Storefront | Beezio",
+    "heading": "Build a free affiliate storefront.",
+    "description": "Choose eligible Beezio products and earn commissions when your recommendations lead to qualifying sales. The seller fulfills the orders.",
+    "links": [["Start your affiliate storefront", "/signup?intent=earn"], ["Browse the marketplace", "/marketplace"], ["Beezio Ambassadors", "/ambassadors"]]
+  },
+  "/ambassadors": {
+    "title": "Beezio Ambassador Program | Beezio",
+    "heading": "Help grow Beezio. Earn from qualifying sales.",
+    "description": "Become a Beezio Ambassador. Introduce shoppers, sellers, and affiliates using your personal referral link and earn from qualifying sales.",
+    "links": [["Join Beezio", "/signup?role=influencer"], ["Read Ambassador terms", "/legal/influencer-terms"]],
+    "ambassadorShare": true
+  },
+  "/earn-by-referring": {
+    "title": "Earn Extra Income by Referring | Beezio",
+    "heading": "Looking to earn extra side income? When they sell, you can earn too.",
+    "description": "Introduce sellers and affiliates to Beezio and earn referral commissions on qualifying sales. Free to join. Earnings depend on eligible sales.",
+    "links": [["Join Beezio", "/signup?role=influencer"], ["See the Ambassador program", "/ambassadors"]],
+    "ambassadorShare": true
+  },
+  "/marketplace": {
+    "title": "Shop the Beezio Marketplace | Beezio",
+    "heading": "Shop the Beezio Marketplace",
+    "description": "Discover products from Beezio sellers. Browse the marketplace or explore individual stores and their collections.",
+    "links": [["Browse Beezio stores", "/stores"], ["Shop MareBelle", "/store/marebelle"], ["Shop RedTail", "/store/redtail"]]
+  },
+  "/faq": {
+    "title": "Selling, Shopping and Referrals FAQ | Beezio",
+    "heading": "Frequently Asked Questions",
+    "description": "Find answers about shopping, opening a free store, affiliate commissions, Beezio Ambassador referrals, and payout timing.",
+    "links": [["For sellers", "/sellers"], ["For affiliates", "/affiliates"], ["Beezio Ambassadors", "/ambassadors"], ["Storefront setup guide", "/faq/storefronts"]]
+  }
+}

@@ -1,6 +1,7 @@
 import { loadPublicSearchStores } from './_lib/publicSearchStores';
 import { isPublicMarketplaceProduct } from '../../shared/publicProductVisibility';
-import { storeSearchUrl, escapeHtml } from '../../shared/searchMetadata';
+import publicLandingPages from "../../shared/publicLandingPages.json";
+import { SEARCH_ORIGIN, storeSearchUrl, escapeHtml } from '../../shared/searchMetadata';
 import type { Handler } from '@netlify/functions';
 import { createSupabaseAdmin } from './_lib/supabase';
 
@@ -9,7 +10,11 @@ const handler: Handler = async () => {
   try {
     const db = createSupabaseAdmin();
     const stores = await loadPublicSearchStores(db);
-    const urls = ['https://beezio.co/', 'https://beezio.co/marketplace', 'https://beezio.co/stores', ...stores.map(store => storeSearchUrl(store.slug))];
+    const urls = [
+      ...Object.keys(publicLandingPages).map(path => SEARCH_ORIGIN + path),
+      SEARCH_ORIGIN + '/stores',
+      ...stores.map(store => storeSearchUrl(store.slug)),
+    ];
     const pageSize = 500;
     for (let offset = 0; offset < 49000; offset += pageSize) {
       const { data, error } = await db.from('products')

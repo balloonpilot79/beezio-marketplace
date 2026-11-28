@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { getPartnerLabel, getPartnerProgramLabel } from '../utils/processorSafeCopy';
 import PayoutTimingNotice from '../components/PayoutTimingNotice';
 
@@ -14,7 +15,7 @@ const faqSections = [
       {
         question: 'How do I create an account?',
         answer:
-          'Create a shopper account for purchases, or a free business account for selling, affiliate promotion, and influencer referrals. A business account also lets you shop with the same login and includes one shared store.'
+          'Create a shopper account for purchases, or a free business account for selling, affiliate promotion, and Beezio Ambassador referrals. Shopper accounts also have Ambassador referral tools. A business account also lets you shop with the same login and includes one shared store.'
       },
       {
         question: 'Is Beezio secure?',
@@ -59,7 +60,7 @@ const faqSections = [
     ]
   },
   {
-    title: 'For Partners',
+    title: 'For Affiliates',
     faqs: [
       {
         question: `What is the ${getPartnerProgramLabel()}?`,
@@ -69,12 +70,27 @@ const faqSections = [
       {
         question: 'How do I share products?',
         answer:
-          'Choose a product in your Business Center or store and open its promotion tools to get tracked links and QR codes. Influencers use Influencer tools to get their signup referral link.'
+          'Choose a product in your Business Center or store and open its promotion tools to get tracked links and QR codes.'
       },
       {
         question: `Is the ${getPartnerProgramLabel()} active?`,
         answer:
           'Yes. A business account includes affiliate tools. Sellers choose which products affiliates can promote, and commissions apply to qualifying sales.'
+      }
+    ]
+  },
+  {
+    title: 'For Beezio Ambassadors',
+    faqs: [
+      {
+        question: 'What does a Beezio Ambassador do?',
+        answer:
+          'Beezio Ambassadors use a personal signup link to introduce shoppers, sellers, and affiliates. Eligible transactions involving those referrals can earn rewards under the program terms.'
+      },
+      {
+        question: 'Where is my Ambassador signup link?',
+        answer:
+          'Open the Ambassador referral tools in your shopper account or Business Center to copy your link or download your QR code.'
       }
     ]
   },
@@ -99,7 +115,7 @@ const faqSections = [
       {
         question: 'How do sellers get paid?',
         answer:
-          'Eligible seller, affiliate, and influencer payouts are sent through PayPal. Add your PayPal payout email and required payout details in your Business Center.'
+          'Eligible seller, affiliate, and Beezio Ambassador payouts are sent through PayPal. Add your payout details in your account.'
       },
       {
         question: 'How long do payouts take?',
@@ -148,7 +164,7 @@ const FAQPage: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 sm:mb-6">Frequently Asked Questions</h1>
           <p className="text-base sm:text-xl md:text-2xl opacity-90">
-            Practical answers for building, promoting, and operating your Beezio business
+            Answers about selling, affiliate commissions, Beezio Ambassador referrals, and shopping
           </p>
         </div>
       </section>
@@ -156,6 +172,11 @@ const FAQPage: React.FC = () => {
       {/* FAQ Categories */}
       <section className="py-8 sm:py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav aria-label="Programs" className="mb-6 flex flex-wrap gap-4 text-sm font-semibold text-blue-800">
+            <Link className="underline" to="/sellers">Sellers</Link>
+            <Link className="underline" to="/affiliates">Affiliates</Link>
+            <Link className="underline" to="/ambassadors">Beezio Ambassadors</Link>
+          </nav>
           <div className="mb-10 rounded-3xl border border-amber-200 bg-amber-50 p-6 sm:p-8">
             <h2 className="text-2xl font-black text-slate-950">Want your storefront to look as polished as MareBelle or RedTail?</h2>
             <p className="mt-2 text-slate-700">Use the beginner-friendly storefront guide for branding, layouts, product placement, custom domains, social media, and the final launch checklist.</p>

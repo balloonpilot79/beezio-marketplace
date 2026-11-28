@@ -49,16 +49,21 @@ describe("Beezio public message and account boundaries", () => {
     ]);
     const html = render(<HomePageBZO />);
     expect(html).toContain("Free store with a <span>built-in affiliate sales force.</span>");
-    expect(html).not.toMatch(/ambassador|income opportunity/i);
+    expect(html).toContain('href="/ambassadors"');
+    expect(html).toContain("Start Your Free Store");
     expect(html).toContain("No seller fees. No listing fees or monthly subscriptions.");
     expect(html.indexOf('id="shop"')).toBeLessThan(html.indexOf('id="start"'));
-    expect(html).toContain('href="/signup"');
+    expect(html).toContain('href="/signup?intent=sell"');
     expect(html).toContain('href="/marketplace"');
     expect(html).toContain("No business account needed.");
     expect(html).toContain('aria-label="Filter homepage products by category"');
     expect(html).toContain('href="#shop"');
     expect(html).toContain("Earnings are not guaranteed");
     expect(html).not.toContain("fixed inset-x");
+  });
+  it("keeps a referral code when the homepage opens seller signup directly", () => {
+    const html = render(<HomePageBZO />, "/?recruit=example");
+    expect(html).toContain('href="/signup?intent=sell&amp;recruit=example"');
   });
   it.each(["seller", "affiliate", "influencer", "overview"] as const)(
     "keeps %s messaging consistent",

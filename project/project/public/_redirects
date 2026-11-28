@@ -9,4 +9,5 @@
 /api/admin/sales-ledger    /.netlify/functions/admin-sales-ledger    200!
 /api/admin-sales-ledger    /.netlify/functions/admin-sales-ledger    200!
 /api/admin/user-moderation    /.netlify/functions/admin-user-moderation    200!
+/    /home-entry.html   200!
 /*    /index.html   200
